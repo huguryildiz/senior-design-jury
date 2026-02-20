@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const PROJECTS = [
   { id: 1, name: "Group 1" },
@@ -70,6 +70,43 @@ export default function JuryForm({ onBack }) {
   const [openRubric, setOpenRubric] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Track which inputs have been touched so we only show "required" styling after interaction
+  const initialTouched = useMemo(() => {
+    return Object.fromEntries(
+      PROJECTS.map((p) => [
+        p.id,
+        Object.fromEntries(CRITERIA.map((c) => [c.id, false])),
+      ])
+    );
+  }, []);
+
+  const [touched, setTouched] = useState(initialTouched);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const markTouched = (pid, cid) => {
+    setTouched((prev) => ({
+      ...prev,
+      [pid]: { ...prev[pid], [cid]: true },
+    }));
+  };
+
+  const markMissingTouched = (pid) => {
+    setTouched((prev) => ({
+      ...prev,
+      [pid]: {
+        ...prev[pid],
+        ...Object.fromEntries(
+          CRITERIA.map((c) => [c.id, prev[pid]?.[c.id] || scores[pid][c.id] !== "" ? prev[pid]?.[c.id] : true])
+        ),
+      },
+    }));
+  };
+
+  const firstIncompleteIndex = () => {
+    const idx = PROJECTS.findIndex((p) => !allFilled(p.id));
+    return idx >= 0 ? idx : 0;
+  };
+
   const project = PROJECTS[current];
   const total = (pid) => CRITERIA.reduce((s, c) => s + (parseInt(scores[pid][c.id]) || 0), 0);
   const allFilled = (pid) => CRITERIA.every((c) => scores[pid][c.id] !== "");
@@ -78,9 +115,25 @@ export default function JuryForm({ onBack }) {
     const crit = CRITERIA.find((c) => c.id === cid);
     const num = Math.min(Math.max(parseInt(val) || 0, 0), crit.max);
     setScores((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: val === "" ? "" : num } }));
+    markTouched(pid, cid);
   };
 
   const handleSubmit = async () => {
+    setSubmitAttempted(true);
+
+    // Mark all missing fields as touched so the UI can highlight them
+    PROJECTS.forEach((p) => {
+      if (!allFilled(p.id)) markMissingTouched(p.id);
+    });
+
+    // Block submit if any group is incomplete; jump to the first incomplete group
+    const firstBad = PROJECTS.findIndex((p) => !allFilled(p.id));
+    if (firstBad !== -1) {
+      setCurrent(firstBad);
+      alert("Please complete all required scores before submitting.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const rows = PROJECTS.map((p) => ({
@@ -161,21 +214,52 @@ export default function JuryForm({ onBack }) {
   return (
     <div className="form-screen">
       <div className="form-header">
-        <button className="back-btn" onClick={() => current === 0 ? setStep("info") : setCurrent(current - 1)}>←</button>
+        <button className="back-btn" onClick={() => setStep("info")}>←</button>
         <div>
           <h2>{project.name}</h2>
           <p>{juryName} · {current + 1} / {PROJECTS.length}</p>
         </div>
         <div className="progress-dots">
-          {PROJECTS.map((_, i) => (
-            <div key={i} className={`dot ${i === current ? "active" : i < current ? "done" : ""}`} />
-          ))}
+          {PROJECTS.map((p, i) => {
+            const complete = allFilled(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className={`dot-btn ${i === current ? "active" : ""} ${complete ? "done" : ""}`}
+                onClick={() => setCurrent(i)}
+                title={complete ? "Complete" : "Missing scores"}
+              >
+                <span className="dot" />
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="eval-body">
+        <div className="group-selector">
+          {PROJECTS.map((p, i) => {
+            const complete = allFilled(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className={`group-chip ${i === current ? "active" : ""} ${complete ? "ok" : "missing"}`}
+                onClick={() => setCurrent(i)}
+              >
+                {p.name} {complete ? "✅" : submitAttempted ? "⚠️" : ""}
+              </button>
+            );
+          })}
+        </div>
         {CRITERIA.map((crit) => (
-          <div key={crit.id} className="crit-card">
+          <div
+            key={crit.id}
+            className={`crit-card ${
+              (touched[project.id][crit.id] || submitAttempted) && scores[project.id][crit.id] === "" ? "invalid" : ""
+            }`}
+          >
             <div className="crit-header">
               <div>
                 <div className="crit-label">{crit.label}</div>
@@ -203,6 +287,7 @@ export default function JuryForm({ onBack }) {
                 type="number" min="0" max={crit.max}
                 value={scores[project.id][crit.id]}
                 onChange={(e) => handleScore(project.id, crit.id, e.target.value)}
+                onBlur={() => markTouched(project.id, crit.id)}
                 placeholder="—" className="score-input"
               />
               <span className="score-bar-wrap">
@@ -212,6 +297,9 @@ export default function JuryForm({ onBack }) {
                 {scores[project.id][crit.id] !== "" ? `${scores[project.id][crit.id]} / ${crit.max}` : `— / ${crit.max}`}
               </span>
             </div>
+            {((touched[project.id][crit.id] || submitAttempted) && scores[project.id][crit.id] === "") && (
+              <div className="required-hint">Required</div>
+            )}
           </div>
         ))}
 
@@ -233,13 +321,19 @@ export default function JuryForm({ onBack }) {
         </div>
 
         {current < PROJECTS.length - 1 ? (
-          <button className="btn-primary full" disabled={!allFilled(project.id)} onClick={() => setCurrent(current + 1)}>
+          <button className="btn-primary full" onClick={() => setCurrent(current + 1)}>
             Next Group →
           </button>
         ) : (
-          <button className="btn-primary full green" disabled={!allFilled(project.id) || submitting} onClick={handleSubmit}>
+          <button className="btn-primary full green" disabled={submitting} onClick={handleSubmit}>
             {submitting ? "Submitting..." : "✓ Submit All Evaluations"}
           </button>
+        )}
+
+        {submitAttempted && PROJECTS.some((p) => !allFilled(p.id)) && (
+          <div className="missing-note">
+            Please complete the missing scores (highlighted in red) before submitting.
+          </div>
         )}
       </div>
     </div>
