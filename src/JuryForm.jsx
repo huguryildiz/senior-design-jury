@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 const PROJECTS = [
   { id: 1, name: "Group 1" },
@@ -124,6 +124,8 @@ const CRITERIA = [
 const SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzww7kMxTG-w7GQapNA-5jbiRCsXQ5SXFmCTe8vx6isE3Ann9ANUMqoTseddQfWBP4M6g/exec";
 
+const STORAGE_KEY = "ee492_jury_draft_v1";
+
 export default function JuryForm({ onBack }) {
   const [juryName, setJuryName] = useState("");
   const [juryDept, setJuryDept] = useState("");
@@ -158,6 +160,45 @@ export default function JuryForm({ onBack }) {
 
   const [touched, setTouched] = useState(initialTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  // 🔄 Load draft from localStorage on first mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+
+      const parsed = JSON.parse(saved);
+
+      if (parsed.juryName) setJuryName(parsed.juryName);
+      if (parsed.juryDept) setJuryDept(parsed.juryDept);
+      if (parsed.scores) setScores(parsed.scores);
+      if (parsed.comments) setComments(parsed.comments);
+      if (typeof parsed.current === "number") setCurrent(parsed.current);
+      if (parsed.step === "eval") setStep("eval");
+    } catch (e) {
+      console.warn("Failed to load draft:", e);
+    }
+  }, []);
+
+  // 💾 Auto-save draft whenever evaluation data changes
+  useEffect(() => {
+    if (step !== "eval") return;
+
+    const draft = {
+      juryName,
+      juryDept,
+      scores,
+      comments,
+      current,
+      step,
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch (e) {
+      console.warn("Failed to save draft:", e);
+    }
+  }, [juryName, juryDept, scores, comments, current, step]);
 
   const project = PROJECTS[current];
 
@@ -242,6 +283,7 @@ export default function JuryForm({ onBack }) {
         body: JSON.stringify({ rows }),
       });
 
+      localStorage.removeItem(STORAGE_KEY);
       setStep("done");
     } catch (e) {
       alert("Submission failed. Please try again.");

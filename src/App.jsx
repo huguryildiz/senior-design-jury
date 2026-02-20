@@ -1,14 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import JuryForm from "./JuryForm";
 import AdminPanel from "./AdminPanel";
 import "./App.css";
+
 import teduLogo from "./assets/tedu-logo.png";
+
+const STORAGE_KEY = "ee492_jury_draft_v1";
 
 export default function App() {
   const [page, setPage] = useState("home");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminInput, setAdminInput] = useState("");
   const ADMIN_PASS = "ee492admin";
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+
+      const parsed = JSON.parse(saved);
+
+      // If a draft exists and user was in evaluation step, resume JuryForm
+      if (parsed?.step === "eval") {
+        setPage("jury");
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   if (page === "jury") return <JuryForm onBack={() => setPage("home")} />;
 

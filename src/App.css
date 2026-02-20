@@ -459,6 +459,8 @@ body {
   outline: none;
   cursor: pointer;
   transition: border-color .12s ease;
+  min-width: 0;
+  -webkit-appearance: menulist;
 }
 
 .group-nav-select:focus{
@@ -483,8 +485,31 @@ body {
 @media (max-width: 420px){
   .group-nav{
     grid-template-columns: 40px 1fr 40px;
+    grid-template-rows: auto auto;
+    align-items: center;
   }
-  .group-nav-select{ display: none; }
+
+  /* First row: prev button | title | next button */
+  .group-nav > .group-nav-btn:first-child{
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .group-nav-title{
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .group-nav > .group-nav-btn:last-child{
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  /* Second row: dropdown spans full width */
+  .group-nav-select{
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    display: block;
+  }
 }
 
 .dot-btn {
