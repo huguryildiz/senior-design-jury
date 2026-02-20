@@ -50,12 +50,35 @@ export default function App() {
     <div className="home">
       <div className="home-bg" />
       <div className="home-card">
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <img
-            src={teduLogo}
-            alt="TED University Logo"
-            style={{ width: 110, height: 110, objectFit: "contain" }}
-          />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              padding: 16,
+              borderRadius: 24,
+              background: "rgba(255,255,255,0.08)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 12px 45px rgba(0,0,0,0.35)",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            <img
+              src={teduLogo}
+              alt="TED University Logo"
+              style={{
+                width: 125,
+                height: 125,
+                objectFit: "contain",
+                filter: "drop-shadow(0 12px 30px rgba(0,0,0,0.45))",
+              }}
+            />
+          </div>
         </div>
         <div className="home-badge">EE 492</div>
         <h1>Poster Presentation<br />Evaluation</h1>
