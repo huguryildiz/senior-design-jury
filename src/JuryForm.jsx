@@ -335,9 +335,7 @@ export default function JuryForm({ onBack }) {
 
         <div>
           <h2>{project.name}</h2>
-          <p>
-            {juryName || "Jury"} · {current + 1} / {PROJECTS.length}
-          </p>
+          <p>{juryName || "Jury"}</p>
         </div>
 
         <div className="progress-dots">
@@ -361,23 +359,60 @@ export default function JuryForm({ onBack }) {
       </div>
 
       <div className="eval-body">
-        {/* scalable group chips (CSS makes it horizontally scrollable when many) */}
-        <div className="group-selector">
-          {PROJECTS.map((p, i) => {
-            const complete = allFilled(p.id);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className={`group-chip ${i === current ? "active" : ""} ${
-                  complete ? "ok" : "missing"
-                }`}
-                onClick={() => setCurrent(i)}
-              >
-                {p.name} {complete ? "✅" : submitAttempted ? "⚠️" : ""}
-              </button>
-            );
-          })}
+        {/* Group navigation (scales to many groups): Prev/Next + dropdown */}
+        <div className="group-nav" role="navigation" aria-label="Group navigation">
+          <button
+            type="button"
+            className="group-nav-btn"
+            onClick={() => setCurrent((i) => Math.max(0, i - 1))}
+            disabled={current === 0}
+            aria-label="Previous group"
+            title="Previous"
+          >
+            ←
+          </button>
+
+          <div className="group-nav-title">
+            <div className="group-nav-main">{project.name}</div>
+            <div className="group-nav-sub">
+              {current + 1} / {PROJECTS.length}
+              {allFilled(project.id) ? (
+                <span className="group-nav-status ok">· Complete</span>
+              ) : submitAttempted ? (
+                <span className="group-nav-status missing">· Missing</span>
+              ) : (
+                <span className="group-nav-status neutral">· In progress</span>
+              )}
+            </div>
+          </div>
+
+          <select
+            className="group-nav-select"
+            value={current}
+            onChange={(e) => setCurrent(Number(e.target.value))}
+            aria-label="Select group"
+          >
+            {PROJECTS.map((p, i) => {
+              const complete = allFilled(p.id);
+              const mark = complete ? "✅" : submitAttempted ? "⚠️" : "";
+              return (
+                <option key={p.id} value={i}>
+                  {p.name} {mark}
+                </option>
+              );
+            })}
+          </select>
+
+          <button
+            type="button"
+            className="group-nav-btn"
+            onClick={() => setCurrent((i) => Math.min(PROJECTS.length - 1, i + 1))}
+            disabled={current === PROJECTS.length - 1}
+            aria-label="Next group"
+            title="Next"
+          >
+            →
+          </button>
         </div>
 
         {CRITERIA.map((crit) => {

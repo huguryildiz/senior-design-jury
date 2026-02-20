@@ -263,7 +263,7 @@ body {
 .dot.active { background: var(--blue); width: 20px; border-radius: 4px; }
 .dot.done { background: var(--green); }
 
-/* ── Group navigation (chips + clickable dots) ── */
+. /* ── Group navigation (chips + clickable dots) ── */
 .group-selector {
   display: flex;
   flex-wrap: nowrap;              /* single row for scalability */
@@ -348,6 +348,145 @@ body {
   }
 }
 
+/* ── Group navigation v2 (sticky bar: prev/next + dropdown) ── */
+.group-nav{
+  position: sticky;
+  /* sits under the sticky header; adjust if your header height changes */
+  top: 72px;
+  z-index: 9;
+
+  display: grid;
+  grid-template-columns: 44px 1fr minmax(140px, 220px) 44px;
+  gap: 10px;
+  align-items: center;
+
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(226,232,240,0.9);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+}
+
+.group-nav-btn{
+  width: 44px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200);
+  background: white;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-700);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.group-nav-btn:hover:not(:disabled){
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+  transform: translateY(-1px);
+}
+
+.group-nav-btn:disabled{
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.group-nav-title{
+  min-width: 0;
+}
+
+.group-nav-main{
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--gray-900);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-nav-sub{
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.group-nav-status{
+  font-weight: 800;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.group-nav-status.ok{
+  color: #166534;
+  background: rgba(220,252,231,.75);
+  border-color: rgba(21,128,61,.25);
+}
+
+.group-nav-status.missing{
+  color: #991b1b;
+  background: rgba(254,226,226,.70);
+  border-color: rgba(220,38,38,.25);
+}
+
+.group-nav-status.neutral{
+  color: rgba(51,65,85,.9);
+  background: rgba(241,245,249,.85);
+  border-color: rgba(203,213,225,.7);
+}
+
+.group-nav-select{
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200);
+  background: white;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-700);
+  outline: none;
+  cursor: pointer;
+  transition: border-color .12s ease;
+}
+
+.group-nav-select:focus{
+  border-color: rgba(29, 78, 216, 0.55);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
+}
+
+@media (max-width: 640px){
+  .group-nav{
+    top: 64px;
+    margin: 10px 12px 0;
+    padding: 9px 10px;
+    gap: 8px;
+    grid-template-columns: 40px 1fr 1fr 40px;
+  }
+  .group-nav-btn{ width: 40px; height: 38px; }
+  .group-nav-select{ min-width: 0; }
+  /* Optional: hide dots on small screens to reduce clutter */
+  .progress-dots{ display: none; }
+}
+
+@media (max-width: 420px){
+  .group-nav{
+    grid-template-columns: 40px 1fr 40px;
+  }
+  .group-nav-select{ display: none; }
+}
+
 .dot-btn {
   border: none;
   background: transparent;
@@ -402,7 +541,7 @@ body {
 
 /* eval body */
 .eval-body {
-  padding: 16px 20px 32px;
+  padding: 12px 20px 32px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -784,6 +923,7 @@ body {
   .home-card h1 { font-size: 26px; }
   .rubric-row { grid-template-columns: 50px 70px 1fr; font-size: 11.5px; }
   .rank-card { flex-wrap: wrap; }
+  .eval-body { padding: 12px 12px 28px; }
 }
 
 /* =========================
