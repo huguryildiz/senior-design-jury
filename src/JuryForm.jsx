@@ -213,6 +213,10 @@ export default function JuryForm({ onBack }) {
   );
   const firstIncompleteIdx = PROJECTS.findIndex((p) => !allFilled(p.id));
 
+  // Overall progress
+  const completedCount = PROJECTS.length - incompleteCount;
+  const progressPct = Math.round((completedCount / PROJECTS.length) * 100);
+
   const markTouched = (pid, cid) => {
     setTouched((prev) => ({
       ...prev,
@@ -483,6 +487,73 @@ export default function JuryForm({ onBack }) {
           </button>
         </div>
 
+        {/* Overall progress */}
+        <div
+          className="overall-progress"
+          aria-label="Overall progress"
+          style={{
+            margin: "10px 0 14px",
+            padding: "10px 12px",
+            background: "rgba(255,255,255,0.85)",
+            border: "1px solid rgba(226,232,240,1)",
+            borderRadius: 14,
+            boxShadow: "0 8px 20px rgba(15,23,42,0.06)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <div
+            className="overall-progress-top"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              fontSize: 13,
+              color: "rgba(71,85,105,1)",
+            }}
+          >
+            <span className="overall-progress-text">
+              Progress:{" "}
+              <strong style={{ color: "rgba(15,23,42,1)" }}>{progressPct}%</strong>
+            </span>
+            <span className="overall-progress-count">
+              <strong style={{ color: "rgba(15,23,42,1)" }}>
+                {completedCount}
+              </strong>{" "}
+              / {PROJECTS.length} completed
+            </span>
+          </div>
+
+          <div
+            className="overall-progress-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPct}
+            style={{
+              marginTop: 10,
+              height: 10,
+              borderRadius: 999,
+              background: "rgba(226,232,240,1)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              className="overall-progress-fill"
+              style={{
+                width: `${progressPct}%`,
+                height: "100%",
+                borderRadius: 999,
+                background:
+                  progressPct === 100
+                    ? "linear-gradient(90deg, rgba(34,197,94,1), rgba(16,185,129,1))"
+                    : "linear-gradient(90deg, rgba(245,158,11,1), rgba(234,179,8,1))",
+                transition: "width 180ms ease",
+              }}
+            />
+          </div>
+        </div>
+
         {CRITERIA.map((crit) => {
           const isMissing = scores[project.id][crit.id] === "";
           const showMissing =
@@ -604,7 +675,6 @@ export default function JuryForm({ onBack }) {
             ? "✓ Submit All Evaluations"
             : `Complete remaining groups (${incompleteCount})`}
         </button>
-
       </div>
     </div>
   );
