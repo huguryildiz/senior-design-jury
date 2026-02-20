@@ -207,6 +207,9 @@ export default function JuryForm({ onBack }) {
 
   const allFilled = (pid) => CRITERIA.every((c) => scores[pid][c.id] !== "");
 
+  const incompleteCount = PROJECTS.reduce((acc, p) => acc + (allFilled(p.id) ? 0 : 1), 0);
+  const firstIncompleteIdx = PROJECTS.findIndex((p) => !allFilled(p.id));
+
   const markTouched = (pid, cid) => {
     setTouched((prev) => ({
       ...prev,
@@ -550,23 +553,33 @@ export default function JuryForm({ onBack }) {
           </span>
         </div>
 
-        {current < PROJECTS.length - 1 ? (
-          <button className="btn-primary full" onClick={() => setCurrent(current + 1)}>
-            Next Group →
-          </button>
-        ) : (
-          <button
-            className="btn-primary full green"
-            disabled={submitting}
-            onClick={handleSubmit}
-          >
-            {submitting ? "Submitting..." : "✓ Submit All Evaluations"}
-          </button>
-        )}
+        <button
+          className={`btn-primary full ${incompleteCount === 0 ? "green" : ""}`}
+          disabled={submitting}
+          onClick={() => {
+            if (incompleteCount === 0) {
+              handleSubmit();
+              return;
+            }
 
-        {submitAttempted && PROJECTS.some((p) => !allFilled(p.id)) && (
+            // Not ready yet: highlight missing fields and jump to first incomplete group
+            setSubmitAttempted(true);
+            PROJECTS.forEach((p) => {
+              if (!allFilled(p.id)) markMissingTouched(p.id);
+            });
+            if (firstIncompleteIdx !== -1) setCurrent(firstIncompleteIdx);
+          }}
+        >
+          {submitting
+            ? "Submitting..."
+            : incompleteCount === 0
+            ? "✓ Submit All Evaluations"
+            : `Complete remaining groups (${incompleteCount})`}
+        </button>
+
+        {incompleteCount > 0 && (
           <div className="missing-note">
-            Please complete the missing scores (highlighted in red) before submitting.
+            Please complete all required scores before submitting.
           </div>
         )}
       </div>
