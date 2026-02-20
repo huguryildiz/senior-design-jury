@@ -65,8 +65,15 @@ export default function App() {
           <img className="home-logo" src={teduLogo} alt="TED University Logo" loading="eager" />
         </div>
 
-        <h1>Senior Design Jury Portal</h1>
-        <p className="home-sub">TED University · Department of Electrical & Electronics Engineering</p>
+        <h1>
+          EE 491/492
+          <br />
+          Senior Project Jury Portal
+        </h1>
+        <p className="home-sub">
+          TED University<br />
+          Department of Electrical & Electronics Engineering
+        </p>
 
         <div className="home-buttons">
           <button className="btn-primary big" onClick={() => setPage("jury")}>
@@ -80,7 +87,7 @@ export default function App() {
         <div className="home-hint">
           <span className="home-hint-ico">ℹ️</span>
           <span>
-            Jury members: use <strong>Evaluation Form</strong> to submit scores.
+            Please use the <strong>Evaluation Form</strong> to submit your scores.
           </span>
         </div>
 
