@@ -19,6 +19,7 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+
 function cmp(a, b) {
   // numeric first if possible
   const an = Number(a);
@@ -32,6 +33,45 @@ function cmp(a, b) {
   if (as < bs) return -1;
   if (as > bs) return 1;
   return 0;
+}
+
+function hashStringToInt(str) {
+  let h = 2166136261; // FNV-1a style
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function hslToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => {
+    const c = l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return Math.round(255 * c)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function jurorBgColor(name) {
+  const seed = hashStringToInt((name || "unknown").toString());
+  const hue = seed % 360; // 0..359
+  const sat = 55; // pastel
+  const light = 95; // very light background for readability
+  return hslToHex(hue, sat, light);
+}
+
+function jurorDotColor(name) {
+  const seed = hashStringToInt((name || "unknown").toString());
+  const hue = seed % 360;
+  const sat = 65;
+  const light = 55; // darker than row background so the dot is visible
+  return hslToHex(hue, sat, light);
 }
 
 export default function AdminPanel({ onBack }) {
@@ -115,21 +155,13 @@ export default function AdminPanel({ onBack }) {
     return base.slice().sort((a, b) => cmp(a, b));
   }, [data]);
 
-  // Juror row colors
-  const JUROR_ROW_COLORS = [
-    "#f1f5ff", // light indigo
-    "#f0fdf4", // light green
-    "#fff7ed", // light orange
-    "#fdf2f8", // light pink
-    "#f0f9ff", // light sky
-    "#fefce8", // light yellow
-    "#f5f3ff", // light purple
-    "#ecfeff", // light cyan
-  ];
-
+  // Juror row colors (deterministic + scalable)
+  // Each juror gets a stable pastel color derived from their name.
   const jurorColorMap = useMemo(() => {
     const m = new Map();
-    jurors.forEach((name, idx) => m.set(name, JUROR_ROW_COLORS[idx % JUROR_ROW_COLORS.length]));
+    jurors.forEach((name) =>
+      m.set(name, { bg: jurorBgColor(name), dot: jurorDotColor(name) })
+    );
     return m;
   }, [jurors]);
 
@@ -243,10 +275,15 @@ export default function AdminPanel({ onBack }) {
           <div className="rank-list">
             {ranked.map((p, i) => (
               <div key={p.name} className="rank-card">
-                <div className="rank-num">{i + 1}</div>
+                <div className="rank-num">
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                </div>
 
                 <div className="rank-info">
                   <div className="rank-name">
+                    <span style={{ marginRight: 8 }}>
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : ""}
+                    </span>
                     {p.name}{" "}
                     <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>
                       ({p.count} evaluation{p.count !== 1 ? "s" : ""})
@@ -415,11 +452,24 @@ export default function AdminPanel({ onBack }) {
                     <tr
                       key={`${row.juryName}-${row.projectId}-${row.timestamp}-${i}`}
                       style={{
-                        backgroundColor: jurorColorMap.get(row.juryName) || "transparent",
+                        backgroundColor: jurorColorMap.get(row.juryName)?.bg || "transparent",
                         borderTop: isNewJurorBlock ? "2px solid #e5e7eb" : undefined,
                       }}
                     >
-                      <td>{row.juryName}</td>
+                      <td>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: 999,
+                              background: jurorColorMap.get(row.juryName)?.dot || "#64748b",
+                              border: "2px solid #cbd5e1",
+                            }}
+                          />
+                          {row.juryName}
+                        </span>
+                      </td>
                       <td><strong>{row.projectName}</strong></td>
                       <td>{row.design}</td>
                       <td>{row.technical}</td>
