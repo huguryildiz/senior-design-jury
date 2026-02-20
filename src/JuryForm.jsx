@@ -605,11 +605,6 @@ export default function JuryForm({ onBack }) {
             : `Complete remaining groups (${incompleteCount})`}
         </button>
 
-        {incompleteCount > 0 && (
-          <div className="missing-note">
-            Please complete all required scores before submitting.
-          </div>
-        )}
       </div>
     </div>
   );
