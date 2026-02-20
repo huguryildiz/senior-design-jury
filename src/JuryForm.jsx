@@ -6,7 +6,7 @@ const PROJECTS = [
   { id: 3, name: "Group 3" },
   { id: 4, name: "Group 4" },
   { id: 5, name: "Group 5" },
-  { id: 6, name: "Group1 6" },
+  { id: 6, name: "Group 6" },
 ];
 
 const CRITERIA = [
@@ -115,7 +115,7 @@ export default function JuryForm({ onBack }) {
         <div className="done-card">
           <div className="done-icon">✅</div>
           <h2>Evaluations Submitted!</h2>
-          <p>All your scores have been saved to Google Sheets.</p>
+          <p>Your evaluation has been successfully recorded. Thank you for your contribution. 🙏</p>
           <div className="done-summary">
             {PROJECTS.map((p) => (
               <div key={p.id} className="done-row">
