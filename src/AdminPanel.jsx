@@ -303,8 +303,10 @@ export default function AdminPanel({ onBack }) {
                 style={
                   i < 3
                     ? {
-                        background: "#ECFDF5", // very light green
-                        boxShadow: "0 0 0 1px #BBF7D0, 0 8px 30px rgba(34,197,94,0.25)",
+                        background: "#ECFDF5",
+                        boxShadow:
+                          "0 0 0 1px #BBF7D0, 0 10px 40px rgba(34,197,94,0.35), 0 0 60px rgba(34,197,94,0.25)",
+                        border: "1px solid #86EFAC",
                         transition: "all 0.3s ease",
                       }
                     : undefined
@@ -324,7 +326,7 @@ export default function AdminPanel({ onBack }) {
                     color: rankBadgeTheme(i).fg,
                     boxShadow:
                       i < 3
-                        ? "0 0 0 4px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.45)"
+                        ? "0 0 0 6px rgba(34,197,94,0.35), 0 0 30px rgba(34,197,94,0.6), 0 0 60px rgba(34,197,94,0.35)"
                         : "0 6px 18px rgba(15, 23, 42, 0.12)",
                     border: `3px solid ${rankBadgeTheme(i).ring}`,
                   }}
