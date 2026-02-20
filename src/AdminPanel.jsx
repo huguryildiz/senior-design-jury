@@ -252,22 +252,6 @@ export default function AdminPanel({ onBack }) {
     return sortDir === "asc" ? "↑" : "↓";
   };
 
-  const rankBadgeTheme = (rankIdx) => {
-    // rankIdx: 0-based
-    if (rankIdx === 0) return { bg: "#F59E0B", fg: "#0B1220", ring: "#FCD34D" }; // gold
-    if (rankIdx === 1) return { bg: "#94A3B8", fg: "#0B1220", ring: "#CBD5E1" }; // silver
-    if (rankIdx === 2) return { bg: "#B45309", fg: "#FFF7ED", ring: "#FDBA74" }; // bronze
-
-    // For 4+ use a rotating palette so many groups remain distinguishable
-    const palette = [
-      { bg: "#1D4ED8", fg: "#EFF6FF", ring: "#93C5FD" }, // blue
-      { bg: "#0EA5E9", fg: "#ECFEFF", ring: "#7DD3FC" }, // sky
-      { bg: "#14B8A6", fg: "#ECFDF5", ring: "#5EEAD4" }, // teal
-      { bg: "#6366F1", fg: "#EEF2FF", ring: "#A5B4FC" }, // indigo
-      { bg: "#8B5CF6", fg: "#F5F3FF", ring: "#C4B5FD" }, // violet
-    ];
-    return palette[(rankIdx - 3) % palette.length];
-  };
 
   const rankBadgeContent = (rankIdx) => {
     if (rankIdx === 0) return "🥇";
