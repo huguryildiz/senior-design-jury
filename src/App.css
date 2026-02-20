@@ -266,7 +266,7 @@ body {
 /* ── Group navigation (chips + clickable dots) ── */
 .group-selector {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;              /* single row for scalability */
   gap: 8px;
   margin: 12px 20px 0;
   padding: 10px;
@@ -274,7 +274,24 @@ body {
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+
+  overflow-x: auto;               /* horizontal scroll when many groups */
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+
+  /* subtle scrollbar */
+  scrollbar-width: thin;          /* Firefox */
+  scrollbar-color: rgba(100,116,139,.35) transparent;
 }
+
+.group-selector::-webkit-scrollbar { height: 8px; }
+.group-selector::-webkit-scrollbar-track { background: transparent; }
+.group-selector::-webkit-scrollbar-thumb {
+  background: rgba(100,116,139,.28);
+  border-radius: 999px;
+}
+.group-selector::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,.40); }
 
 .group-chip {
   appearance: none;
@@ -290,6 +307,9 @@ body {
   align-items: center;
   gap: 8px;
   transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  flex: 0 0 auto;           /* prevent shrinking */
+  white-space: nowrap;      /* keep label on one line */
+  scroll-snap-align: start; /* snap nicely while scrolling */
 }
 
 .group-chip:hover {
@@ -314,6 +334,18 @@ body {
   border-color: rgba(220, 38, 38, 0.45);
   background: rgba(254, 226, 226, 0.55);
   color: #991b1b;
+}
+
+@media (max-width: 640px) {
+  .group-selector {
+    margin: 10px 12px 0;
+    padding: 8px;
+    gap: 6px;
+  }
+  .group-chip {
+    padding: 7px 10px;
+    font-size: 12.5px;
+  }
 }
 
 .dot-btn {
@@ -585,6 +617,20 @@ body {
 .done-icon { font-size: 48px; }
 .done-card h2 { font-size: 22px; font-weight: 700; }
 .done-card p { color: var(--gray-500); }
+
+.done-note{
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(100,116,139,.95);
+}
+
+.done-card h2{
+  letter-spacing: -0.3px;
+}
+
+.done-icon{
+  filter: drop-shadow(0 6px 14px rgba(34,197,94,.35));
+}
 .done-summary {
   background: var(--gray-50);
   border-radius: var(--radius);
