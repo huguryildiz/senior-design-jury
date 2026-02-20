@@ -2,6 +2,7 @@ import { useState } from "react";
 import JuryForm from "./JuryForm";
 import AdminPanel from "./AdminPanel";
 import "./App.css";
+import teduLogo from "./assets/tedu-logo.png";
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -49,6 +50,13 @@ export default function App() {
     <div className="home">
       <div className="home-bg" />
       <div className="home-card">
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <img
+            src={teduLogo}
+            alt="TED University Logo"
+            style={{ width: 110, height: 110, objectFit: "contain" }}
+          />
+        </div>
         <div className="home-badge">EE 492</div>
         <h1>Poster Presentation<br />Evaluation</h1>
         <p className="home-sub">TED University · Dept. of Electrical & Electronics Engineering</p>
@@ -61,6 +69,31 @@ export default function App() {
           </button>
         </div>
         <p className="home-hint">Jury members can click "Evaluation Form" to enter their scores.</p>
+        <div
+          style={{
+            marginTop: 32,
+            fontSize: 13,
+            color: "#94a3b8",
+            textAlign: "center",
+            lineHeight: 1.6,
+          }}
+        >
+          © 2026 TED University – Department of Electrical & Electronics Engineering
+          <br />
+          Developed by{" "}
+          <a
+            href="https://huguryildiz.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#cbd5f5",
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+          >
+            Huseyin Ugur Yildiz
+          </a>
+        </div>
       </div>
     </div>
   );
