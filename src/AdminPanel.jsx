@@ -19,6 +19,57 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function tsToMillis(ts) {
+  if (!ts) return 0;
+  // Google Sheets/Forms often exports in formats like:
+  // "20/02/2026, 15:49:08" (DD/MM/YYYY, comma)
+  // Normalize a bit to improve parsing.
+  const s = String(ts).trim().replace(/\s*,\s*/g, ", ");
+
+  // First try native parsing
+  const native = Date.parse(s);
+  if (Number.isFinite(native)) return native;
+
+  // DD/MM/YYYY, HH:MM(:SS)
+  const eu = s.match(/^([0-3]?\d)\/([0-1]?\d)\/(\d{4}),\s*([0-2]?\d):([0-5]\d)(?::([0-5]\d))?$/);
+  if (eu) {
+    const day = Number(eu[1]);
+    const month = Number(eu[2]);
+    const year = Number(eu[3]);
+    const hour = Number(eu[4]);
+    const minute = Number(eu[5]);
+    const second = Number(eu[6] || 0);
+    const d = new Date(year, month - 1, day, hour, minute, second, 0);
+    const ms = d.getTime();
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  // Try common Google Forms timestamp formats like:
+  // "2/20/2026 18:12:00" or "2/20/2026 6:12:00 PM"
+  const m = s.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?$/
+  );
+  if (!m) return 0;
+
+  let month = Number(m[1]);
+  let day = Number(m[2]);
+  const year = Number(m[3]);
+  let hour = Number(m[4] || 0);
+  const minute = Number(m[5] || 0);
+  const second = Number(m[6] || 0);
+  const ampm = (m[7] || "").toUpperCase();
+
+  if (ampm) {
+    if (ampm === "PM" && hour < 12) hour += 12;
+    if (ampm === "AM" && hour === 12) hour = 0;
+  }
+
+  // Interpret as local time
+  const d = new Date(year, month - 1, day, hour, minute, second, 0);
+  const ms = d.getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 
 function cmp(a, b) {
   // numeric first if possible
@@ -119,8 +170,9 @@ export default function AdminPanel({ onBack }) {
 
       const parsed = (result.data || []).map((row) => ({
         juryName: row["Your Name"] || row["Juror Name"] || "",
-        juryDept: row["Department / In"] || "",
+        juryDept: row["Department / Institution"] || row["Department / Institution"] || "",
         timestamp: row["Timestamp"] || "",
+        tsMs: tsToMillis(row["Timestamp"] || ""),
         projectId: toNum(row["Group No"]),
         projectName: row["Group Name"] || "",
         design: toNum(row["Design (20)"]),
@@ -133,7 +185,45 @@ export default function AdminPanel({ onBack }) {
 
       // remove empty rows
       const cleaned = parsed.filter((r) => r.juryName || r.projectName || r.total > 0);
-      setData(cleaned);
+
+      // De-duplicate: keep the latest submission per (juror, group)
+      // Key uses projectId when available; falls back to projectName.
+      const byKey = new Map();
+      for (const r of cleaned) {
+        const jur = (r.juryName || "").trim();
+        const grp = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
+        if (!jur || !grp) continue;
+        const key = `${jur}__${grp}`;
+
+        const prev = byKey.get(key);
+        if (!prev) {
+          byKey.set(key, r);
+          continue;
+        }
+
+        // Prefer newer timestamp; if timestamps are equal (including the rare case they are both 0),
+        // keep the submission that appears later in the sheet (current `r`).
+        const prevMs = prev.tsMs || 0;
+        const curMs = r.tsMs || 0;
+        if (curMs > prevMs || curMs === prevMs) {
+          byKey.set(key, r);
+        }
+      }
+
+      // Keep rows without juror/group key as-is (rare), and merge with deduped keyed rows
+      const keyed = new Set(byKey.values());
+      const unkeyed = cleaned.filter((r) => {
+        const jur = (r.juryName || "").trim();
+        const grp = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
+        return !(jur && grp);
+      });
+
+      const deduped = [...byKey.values(), ...unkeyed];
+
+      // Sort by timestamp desc by default for nicer Details initial view
+      deduped.sort((a, b) => (b.tsMs || 0) - (a.tsMs || 0));
+
+      setData(deduped);
     } catch (e) {
       setError("Could not load data: " + e.message);
       setData([]);
