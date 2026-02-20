@@ -38,50 +38,36 @@ export default function App() {
             >
               Login
             </button>
-            <button className="btn-ghost" onClick={() => setPage("home")}>← Back</button>
+            <button className="btn-ghost" onClick={() => setPage("home")}>
+              ← Back
+            </button>
           </div>
         </div>
       );
     }
-    return <AdminPanel onBack={() => { setPage("home"); setAdminUnlocked(false); }} />;
+
+    return (
+      <AdminPanel
+        onBack={() => {
+          setPage("home");
+          setAdminUnlocked(false);
+        }}
+      />
+    );
   }
 
   return (
     <div className="home">
       <div className="home-bg" />
+
       <div className="home-card">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: 20,
-          }}
-        >
-          <div
-            style={{
-              padding: 16,
-              borderRadius: 24,
-              background: "rgba(255,255,255,0.08)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              boxShadow: "0 12px 45px rgba(0,0,0,0.35)",
-              border: "1px solid rgba(255,255,255,0.15)",
-            }}
-          >
-            <img
-              src={teduLogo}
-              alt="TED University Logo"
-              style={{
-                width: 125,
-                height: 125,
-                objectFit: "contain",
-                filter: "drop-shadow(0 12px 30px rgba(0,0,0,0.45))",
-              }}
-            />
-          </div>
+        <div className="home-logo-wrap">
+          <img className="home-logo" src={teduLogo} alt="TED University Logo" loading="eager" />
         </div>
+
         <h1>Senior Design Jury Portal</h1>
-        <p className="home-sub">TED University · Dept. of Electrical & Electronics Engineering</p>
+        <p className="home-sub">TED University · Department of Electrical & Electronics Engineering</p>
+
         <div className="home-buttons">
           <button className="btn-primary big" onClick={() => setPage("jury")}>
             <span>📋</span> Evaluation Form
@@ -90,26 +76,21 @@ export default function App() {
             <span>📊</span> View Results
           </button>
         </div>
-        <p className="home-hint">Jury members: use <strong>Evaluation Form</strong> to submit scores.</p>
-        <div
-          style={{
-            marginTop: 24,
-            fontSize: 12,
-            color: "rgba(148,163,184,0.65)",
-            textAlign: "center",
-            lineHeight: 1.4,
-          }}
-        >
+
+        <div className="home-hint">
+          <span className="home-hint-ico">ℹ️</span>
+          <span>
+            Jury members: use <strong>Evaluation Form</strong> to submit scores.
+          </span>
+        </div>
+
+        <div className="home-footer">
           © 2026 TED University · Developed by{" "}
           <a
+            className="home-footer-link"
             href="https://huguryildiz.com"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              color: "rgba(203,213,245,0.85)",
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
           >
             Huseyin Ugur Yildiz
           </a>
