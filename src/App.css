@@ -263,7 +263,7 @@ body {
 .dot.active { background: var(--blue); width: 20px; border-radius: 4px; }
 .dot.done { background: var(--green); }
 
-. /* ── Group navigation (chips + clickable dots) ── */
+/* ── Group navigation (chips + clickable dots) ── */
 .group-selector {
   display: flex;
   flex-wrap: nowrap;              /* single row for scalability */
@@ -755,7 +755,29 @@ body {
   line-height: 1;
 }
 
-.btn-primary.full { margin-top: 4px; padding: 16px; font-size: 16px; }
+/* Submit / CTA button on JuryForm
+   Default = amber (work remaining)
+   Ready = add .green class in JSX
+*/
+.btn-primary.full {
+  margin-top: 4px;
+  padding: 16px;
+  font-size: 16px;
+  background: var(--amber);
+}
+
+.btn-primary.full:hover:not(:disabled) {
+  background: #92400e; /* darker amber */
+}
+
+/* Ready state is already handled by .btn-primary.green, but keep this for clarity */
+.btn-primary.full.green {
+  background: var(--green);
+}
+
+.btn-primary.full.green:hover:not(:disabled) {
+  background: #166534;
+}
 
 /* ── DONE SCREEN ── */
 .done-screen {
