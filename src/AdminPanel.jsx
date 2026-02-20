@@ -297,7 +297,19 @@ export default function AdminPanel({ onBack }) {
 
           <div className="rank-list">
             {ranked.map((p, i) => (
-              <div key={p.name} className="rank-card">
+              <div
+                key={p.name}
+                className="rank-card"
+                style={
+                  i < 3
+                    ? {
+                        background: "#ECFDF5", // very light green
+                        boxShadow: "0 0 0 1px #BBF7D0, 0 8px 30px rgba(34,197,94,0.25)",
+                        transition: "all 0.3s ease",
+                      }
+                    : undefined
+                }
+              >
                 <div
                   className="rank-num"
                   style={{
@@ -310,7 +322,10 @@ export default function AdminPanel({ onBack }) {
                     fontWeight: 800,
                     background: rankBadgeTheme(i).bg,
                     color: rankBadgeTheme(i).fg,
-                    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.12)",
+                    boxShadow:
+                      i < 3
+                        ? "0 0 0 4px rgba(34,197,94,0.25), 0 0 25px rgba(34,197,94,0.45)"
+                        : "0 6px 18px rgba(15, 23, 42, 0.12)",
                     border: `3px solid ${rankBadgeTheme(i).ring}`,
                   }}
                   title={i < 3 ? "Top 3" : `Rank ${i + 1}`}
