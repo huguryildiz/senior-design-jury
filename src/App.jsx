@@ -80,8 +80,7 @@ export default function App() {
             />
           </div>
         </div>
-        <div className="home-badge">EE 492</div>
-        <h1>Poster Presentation<br />Evaluation</h1>
+        <h1>Senior Design Jury Portal</h1>
         <p className="home-sub">TED University · Dept. of Electrical & Electronics Engineering</p>
         <div className="home-buttons">
           <button className="btn-primary big" onClick={() => setPage("jury")}>
@@ -91,25 +90,23 @@ export default function App() {
             <span>📊</span> View Results
           </button>
         </div>
-        <p className="home-hint">Jury members can click "Evaluation Form" to enter their scores.</p>
+        <p className="home-hint">Jury members: use <strong>Evaluation Form</strong> to submit scores.</p>
         <div
           style={{
-            marginTop: 32,
-            fontSize: 13,
-            color: "#94a3b8",
+            marginTop: 24,
+            fontSize: 12,
+            color: "rgba(148,163,184,0.65)",
             textAlign: "center",
-            lineHeight: 1.6,
+            lineHeight: 1.4,
           }}
         >
-          © 2026 TED University – Department of Electrical & Electronics Engineering
-          <br />
-          Developed by{" "}
+          © 2026 TED University · Developed by{" "}
           <a
             href="https://huguryildiz.com"
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              color: "#cbd5f5",
+              color: "rgba(203,213,245,0.85)",
               textDecoration: "none",
               fontWeight: 500,
             }}
