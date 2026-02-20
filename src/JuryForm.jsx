@@ -207,7 +207,10 @@ export default function JuryForm({ onBack }) {
 
   const allFilled = (pid) => CRITERIA.every((c) => scores[pid][c.id] !== "");
 
-  const incompleteCount = PROJECTS.reduce((acc, p) => acc + (allFilled(p.id) ? 0 : 1), 0);
+  const incompleteCount = PROJECTS.reduce(
+    (acc, p) => acc + (allFilled(p.id) ? 0 : 1),
+    0
+  );
   const firstIncompleteIdx = PROJECTS.findIndex((p) => !allFilled(p.id));
 
   const markTouched = (pid, cid) => {
@@ -225,7 +228,9 @@ export default function JuryForm({ onBack }) {
         ...Object.fromEntries(
           CRITERIA.map((c) => [
             c.id,
-            prev[pid]?.[c.id] || scores[pid][c.id] !== "" ? prev[pid]?.[c.id] : true,
+            prev[pid]?.[c.id] || scores[pid][c.id] !== ""
+              ? prev[pid]?.[c.id]
+              : true,
           ])
         ),
       },
@@ -315,7 +320,14 @@ export default function JuryForm({ onBack }) {
             ))}
           </div>
 
-          <button className="btn-primary" onClick={onBack}>
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setStep("info");
+              setCurrent(0);
+              onBack();
+            }}
+          >
             Back to Home
           </button>
         </div>
@@ -374,7 +386,18 @@ export default function JuryForm({ onBack }) {
   return (
     <div className="form-screen">
       <div className="form-header">
-        <button className="back-btn" onClick={() => setStep("info")}>
+        <button
+          className="back-btn"
+          onClick={() => {
+            const goHome = window.confirm(
+              "Go back to Home? Your draft is saved, and you can resume later.\n\nPress OK to go Home, or Cancel to edit your name/department."
+            );
+            if (goHome) onBack();
+            else setStep("info");
+          }}
+          title="Back"
+          aria-label="Back"
+        >
           ←
         </button>
 
@@ -462,7 +485,8 @@ export default function JuryForm({ onBack }) {
 
         {CRITERIA.map((crit) => {
           const isMissing = scores[project.id][crit.id] === "";
-          const showMissing = (touched[project.id][crit.id] || submitAttempted) && isMissing;
+          const showMissing =
+            (touched[project.id][crit.id] || submitAttempted) && isMissing;
 
           return (
             <div
@@ -477,7 +501,9 @@ export default function JuryForm({ onBack }) {
 
                 <button
                   className="rubric-btn"
-                  onClick={() => setOpenRubric(openRubric === crit.id ? null : crit.id)}
+                  onClick={() =>
+                    setOpenRubric(openRubric === crit.id ? null : crit.id)
+                  }
                 >
                   {openRubric === crit.id ? "Hide Rubric ▲" : "Show Rubric ▼"}
                 </button>
@@ -512,7 +538,9 @@ export default function JuryForm({ onBack }) {
                     className="score-bar"
                     style={{
                       width: `${
-                        ((parseInt(scores[project.id][crit.id], 10) || 0) / crit.max) * 100
+                        ((parseInt(scores[project.id][crit.id], 10) || 0) /
+                          crit.max) *
+                        100
                       }%`,
                     }}
                   />
