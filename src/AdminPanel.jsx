@@ -183,6 +183,21 @@ export default function AdminPanel({ onBack }) {
 
   const ranked = useMemo(() => [...projectStats].sort((a, b) => b.totalAvg - a.totalAvg), [projectStats]);
 
+  // Rank badge theme: gold, silver, bronze, then slate/gray for 4+
+  const rankBadgeTheme = (rankIdx) => {
+    // rankIdx: 0-based
+    if (rankIdx === 0) return { bg: "#F59E0B", fg: "#0B1220", ring: "#FCD34D" }; // gold
+    if (rankIdx === 1) return { bg: "#94A3B8", fg: "#0B1220", ring: "#CBD5E1" }; // silver
+    if (rankIdx === 2) return { bg: "#B45309", fg: "#FFF7ED", ring: "#FDBA74" }; // bronze
+
+    // 4+ all slate grey (neutral, elegant)
+    return {
+      bg: "#475569",      // slate-600
+      fg: "#F1F5F9",      // very light text
+      ring: "#94A3B8",    // soft slate ring
+    };
+  };
+
   // Details filtered + sorted data
   const detailRows = useMemo(() => {
     const q = detailSearch.trim().toLowerCase();
@@ -237,6 +252,30 @@ export default function AdminPanel({ onBack }) {
     return sortDir === "asc" ? "↑" : "↓";
   };
 
+  const rankBadgeTheme = (rankIdx) => {
+    // rankIdx: 0-based
+    if (rankIdx === 0) return { bg: "#F59E0B", fg: "#0B1220", ring: "#FCD34D" }; // gold
+    if (rankIdx === 1) return { bg: "#94A3B8", fg: "#0B1220", ring: "#CBD5E1" }; // silver
+    if (rankIdx === 2) return { bg: "#B45309", fg: "#FFF7ED", ring: "#FDBA74" }; // bronze
+
+    // For 4+ use a rotating palette so many groups remain distinguishable
+    const palette = [
+      { bg: "#1D4ED8", fg: "#EFF6FF", ring: "#93C5FD" }, // blue
+      { bg: "#0EA5E9", fg: "#ECFEFF", ring: "#7DD3FC" }, // sky
+      { bg: "#14B8A6", fg: "#ECFDF5", ring: "#5EEAD4" }, // teal
+      { bg: "#6366F1", fg: "#EEF2FF", ring: "#A5B4FC" }, // indigo
+      { bg: "#8B5CF6", fg: "#F5F3FF", ring: "#C4B5FD" }, // violet
+    ];
+    return palette[(rankIdx - 3) % palette.length];
+  };
+
+  const rankBadgeContent = (rankIdx) => {
+    if (rankIdx === 0) return "🥇";
+    if (rankIdx === 1) return "🥈";
+    if (rankIdx === 2) return "🥉";
+    return String(rankIdx + 1);
+  };
+
   return (
     <div className="admin-screen">
       <div className="form-header">
@@ -275,15 +314,33 @@ export default function AdminPanel({ onBack }) {
           <div className="rank-list">
             {ranked.map((p, i) => (
               <div key={p.name} className="rank-card">
-                <div className="rank-num">
-                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                <div
+                  className="rank-num"
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 999,
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: i < 3 ? 22 : 18,
+                    fontWeight: 800,
+                    background: rankBadgeTheme(i).bg,
+                    color: rankBadgeTheme(i).fg,
+                    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.12)",
+                    border: `3px solid ${rankBadgeTheme(i).ring}`,
+                  }}
+                  title={i < 3 ? "Top 3" : `Rank ${i + 1}`}
+                >
+                  {rankBadgeContent(i)}
                 </div>
 
                 <div className="rank-info">
                   <div className="rank-name">
-                    <span style={{ marginRight: 8 }}>
-                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : ""}
-                    </span>
+                    {i < 3 && (
+                      <span style={{ marginRight: 8, fontSize: 14, opacity: 0.9 }}>
+                        {rankBadgeContent(i)}
+                      </span>
+                    )}
                     {p.name}{" "}
                     <span style={{ fontSize: 12, color: "#64748b", fontWeight: 400 }}>
                       ({p.count} evaluation{p.count !== 1 ? "s" : ""})
