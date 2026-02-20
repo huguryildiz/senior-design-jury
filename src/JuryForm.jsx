@@ -6,7 +6,7 @@ const PROJECTS = [
   { id: 3, name: "Group 3" },
   { id: 4, name: "Group 4" },
   { id: 5, name: "Group 5" },
-  { id: 6, name: "Group 6" },
+  { id: 6, name: "Group1 6" },
 ];
 
 const CRITERIA = [
