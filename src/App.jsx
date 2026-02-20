@@ -92,7 +92,7 @@ export default function App() {
         </div>
 
         <div className="home-footer">
-          © 2026 TED University · Developed by{" "}
+          © 2026 · Developed by{" "}
           <a
             className="home-footer-link"
             href="https://huguryildiz.com"
