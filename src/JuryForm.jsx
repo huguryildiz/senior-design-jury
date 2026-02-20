@@ -56,7 +56,7 @@ const CRITERIA = [
   },
 ];
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx0WVVzAySry0nZaIa4_0OLmtVfDM1R7VAxCRuIsq75ImBMmtC4DwLMMasbSfK02HLvkw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzww7kMxTG-w7GQapNA-5jbiRCsXQ5SXFmCTe8vx6isE3Ann9ANUMqoTseddQfWBP4M6g/exec";
 
 export default function JuryForm({ onBack }) {
   const [juryName, setJuryName] = useState("");
