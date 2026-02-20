@@ -1,130 +1,10 @@
 import { useMemo, useState, useEffect } from "react";
+import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
 
-const PROJECTS = [
-  { id: 1, name: "Group 1" },
-  { id: 2, name: "Group 2" },
-  { id: 3, name: "Group 3" },
-  { id: 4, name: "Group 4" },
-  { id: 5, name: "Group 5" },
-  { id: 6, name: "Group 6" },
-];
-
-const CRITERIA = [
-  {
-    id: "design",
-    label: "Poster Design & Organization",
-    max: 20,
-    rubric: [
-      {
-        range: "18–20",
-        level: "Excellent",
-        desc: "Information flow is intuitive and logical. Visuals are fully labeled and high quality. Layout is understandable even for non-technical readers.",
-      },
-      {
-        range: "14–17",
-        level: "Good",
-        desc: "Information flow is mostly logical. Visuals are readable with minor gaps. Layout is balanced and easy to follow.",
-      },
-      {
-        range: "9–13",
-        level: "Developing",
-        desc: "Occasional gaps in flow. Some missing labels or captions. Layout is acceptable but needs improvement.",
-      },
-      {
-        range: "0–8",
-        level: "Insufficient",
-        desc: "Information flow is confusing. Visuals are low quality or unlabeled. Layout is unbalanced or cluttered.",
-      },
-    ],
-  },
-  {
-    id: "technical",
-    label: "Technical Content & Clarity",
-    max: 40,
-    rubric: [
-      {
-        range: "35–40",
-        level: "Excellent",
-        desc: "Problem, motivation, and design decisions are clear and well-justified. Engineering depth and originality are evident. Content is accessible to non-specialist readers.",
-      },
-      {
-        range: "28–34",
-        level: "Good",
-        desc: "Design is mostly clear and justified. Technical decisions are largely supported. Partial adaptation for different audiences.",
-      },
-      {
-        range: "18–27",
-        level: "Developing",
-        desc: "Problem is stated but motivation/justification is insufficient. Audience diversity not considered.",
-      },
-      {
-        range: "0–17",
-        level: "Insufficient",
-        desc: "Problem is vague, decisions unjustified. Technical content is superficial. No adaptation for different audiences.",
-      },
-    ],
-  },
-  {
-    id: "delivery",
-    label: "Delivery & Q&A",
-    max: 30,
-    rubric: [
-      {
-        range: "27–30",
-        level: "Excellent",
-        desc: "Presentation consciously adapted for both technical and non-technical jury. Responses are accurate and audience-appropriate. Key ideas communicated within limited time.",
-      },
-      {
-        range: "21–26",
-        level: "Good",
-        desc: "Presentation is mostly clear. Partial audience adaptation. Most questions answered correctly. Time management acceptable.",
-      },
-      {
-        range: "13–20",
-        level: "Developing",
-        desc: "Understandable but inconsistent. Limited audience adaptation. Some questions unanswered. Weak time management.",
-      },
-      {
-        range: "0–12",
-        level: "Insufficient",
-        desc: "Presentation is unclear or disorganized. No audience adaptation. Most questions answered incorrectly or not at all.",
-      },
-    ],
-  },
-  {
-    id: "teamwork",
-    label: "Teamwork & Professionalism",
-    max: 10,
-    rubric: [
-      {
-        range: "9–10",
-        level: "Excellent",
-        desc: "All members participate actively and equally. Team represents all project components. Professional and ethical conduct observed.",
-      },
-      {
-        range: "7–8",
-        level: "Good",
-        desc: "Most members contribute actively. Minor knowledge gaps. Professionalism mostly observed.",
-      },
-      {
-        range: "4–6",
-        level: "Developing",
-        desc: "Participation is uneven. Some members are passive. Knowledge gaps in certain areas.",
-      },
-      {
-        range: "0–3",
-        level: "Insufficient",
-        desc: "Participation is very low or limited to one person. Lack of professionalism or ethical concerns observed.",
-      },
-    ],
-  },
-];
-
-// IMPORTANT: update to your latest deployed Apps Script Web App URL
-const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzww7kMxTG-w7GQapNA-5jbiRCsXQ5SXFmCTe8vx6isE3Ann9ANUMqoTseddQfWBP4M6g/exec";
 
 const STORAGE_KEY = "ee492_jury_draft_v1";
+
+const SCRIPT_URL = APP_CONFIG?.scriptUrl;
 
 export default function JuryForm({ onBack }) {
   const [juryName, setJuryName] = useState("");
@@ -274,6 +154,9 @@ export default function JuryForm({ onBack }) {
 
     setSubmitting(true);
     try {
+      if (!SCRIPT_URL) {
+        throw new Error("Missing APP_CONFIG.scriptUrl in src/config.js");
+      }
       const rows = PROJECTS.map((p) => ({
         juryName: juryName.trim(),
         juryDept: juryDept.trim(),

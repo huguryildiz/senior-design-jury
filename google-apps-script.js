@@ -5,6 +5,12 @@
 
 const SHEET_NAME = "Evaluations";
 
+function isAuthorized(pass) {
+  const props = PropertiesService.getScriptProperties();
+  const adminPass = props.getProperty("ADMIN_PASSWORD");
+  return pass && adminPass && pass === adminPass;
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -102,7 +108,47 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return ContentService
-    .createTextOutput(JSON.stringify({ status: "ok" }))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const action = e.parameter.action;
+    const pass = e.parameter.pass;
+
+    if (action === "export") {
+      if (!isAuthorized(pass)) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ status: "unauthorized" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(SHEET_NAME);
+
+      if (!sheet) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ status: "ok", rows: [] }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const values = sheet.getDataRange().getValues();
+      const headers = values.shift();
+
+      const rows = values.map((r) => {
+        const obj = {};
+        headers.forEach((h, i) => (obj[h] = r[i]));
+        return obj;
+      });
+
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "ok", rows }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "ok" }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }

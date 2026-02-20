@@ -1,16 +1,19 @@
 import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
+import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
 
-const PROJECTS = ["Group 1", "Group 2", "Group 3", "Group 4", "Group 5", "Group 6"];
-const CRITERIA = [
-  { id: "design", label: "Design", max: 20 },
-  { id: "technical", label: "Technical", max: 40 },
-  { id: "delivery", label: "Delivery", max: 30 },
-  { id: "teamwork", label: "Teamwork", max: 10 },
-];
+// ---- Normalize config shapes (supports legacy arrays of strings too) ----
+const PROJECT_LIST = (Array.isArray(PROJECTS) ? PROJECTS : []).map((p, idx) =>
+  typeof p === "string" ? { id: idx + 1, name: p } : { id: p.id ?? idx + 1, name: p.name ?? `Group ${idx + 1}` }
+);
 
-const SHEET_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/1FjIw9TD8sqZl-WWDS0PZ5WgL6DXNVzqlpBsswJDfDb4/gviz/tq?tqx=out:csv&sheet=Evaluations";
+const CRITERIA_LIST = (Array.isArray(CRITERIA) ? CRITERIA : []).map((c) => ({
+  id: c.id,
+  label: c.label,
+  max: c.max,
+}));
+
+const SHEET_CSV_URL = APP_CONFIG?.sheetCsvUrl;
 
 function toNum(v) {
   if (v === null || v === undefined) return 0;
@@ -148,6 +151,10 @@ export default function AdminPanel({ onBack }) {
     setError(null);
 
     try {
+      if (!SHEET_CSV_URL) {
+        throw new Error("Missing APP_CONFIG.sheetCsvUrl in src/config.js");
+      }
+
       const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
@@ -170,7 +177,7 @@ export default function AdminPanel({ onBack }) {
 
       const parsed = (result.data || []).map((row) => ({
         juryName: row["Your Name"] || row["Juror Name"] || "",
-        juryDept: row["Department / Institution"] || row["Department / Institution"] || "",
+        juryDept: row["Department / Institution"] || row["Department"] || row["Institution"] || "",
         timestamp: row["Timestamp"] || "",
         tsMs: tsToMillis(row["Timestamp"] || ""),
         projectId: toNum(row["Group No"]),
@@ -239,9 +246,9 @@ export default function AdminPanel({ onBack }) {
   );
 
   const groups = useMemo(() => {
-    // Use actual projectName values from data if present; fallback to PROJECTS
+    // Use actual projectName values from data if present; fallback to PROJECT_LIST.map(p => p.name)
     const fromData = [...new Set(data.map((d) => d.projectName).filter(Boolean))];
-    const base = fromData.length ? fromData : PROJECTS;
+    const base = fromData.length ? fromData : PROJECT_LIST.map((p) => p.name);
     return base.slice().sort((a, b) => cmp(a, b));
   }, [data]);
 
@@ -257,17 +264,17 @@ export default function AdminPanel({ onBack }) {
 
   // Project stats for summary
   const projectStats = useMemo(() => {
-    return PROJECTS.map((name, idx) => {
-      const rows = data.filter((d) => d.projectId === idx + 1);
-      if (rows.length === 0) return { name, count: 0, avg: {}, totalAvg: 0 };
+    return PROJECT_LIST.map((p) => {
+      const rows = data.filter((d) => d.projectId === p.id);
+      if (rows.length === 0) return { id: p.id, name: p.name, count: 0, avg: {}, totalAvg: 0 };
 
       const avg = {};
-      CRITERIA.forEach((c) => {
+      CRITERIA_LIST.forEach((c) => {
         avg[c.id] = rows.reduce((s, r) => s + (r[c.id] || 0), 0) / rows.length;
       });
       const totalAvg = rows.reduce((s, r) => s + (r.total || 0), 0) / rows.length;
 
-      return { name, count: rows.length, avg, totalAvg };
+      return { id: p.id, name: p.name, count: rows.length, avg, totalAvg };
     });
   }, [data]);
 
@@ -439,7 +446,7 @@ export default function AdminPanel({ onBack }) {
                   </div>
 
                   <div className="rank-bars">
-                    {CRITERIA.map((c) => (
+                    {CRITERIA_LIST.map((c) => (
                       <div key={c.id} className="mini-bar-row">
                         <span className="mini-label">{c.label}</span>
                         <div className="mini-bar-track">

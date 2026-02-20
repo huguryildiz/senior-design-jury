@@ -11,7 +11,6 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminInput, setAdminInput] = useState("");
-  const ADMIN_PASS = "ee492admin";
 
   useEffect(() => {
     try {
@@ -45,14 +44,14 @@ export default function App() {
               value={adminInput}
               onChange={(e) => setAdminInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && adminInput === ADMIN_PASS) setAdminUnlocked(true);
+                if (e.key === "Enter" && adminInput.trim()) setAdminUnlocked(true);
               }}
             />
             <button
               className="btn-primary"
               onClick={() => {
-                if (adminInput === ADMIN_PASS) setAdminUnlocked(true);
-                else alert("Incorrect password!");
+                if (adminInput.trim()) setAdminUnlocked(true);
+                else alert("Please enter the admin password.");
               }}
             >
               Login
@@ -67,9 +66,11 @@ export default function App() {
 
     return (
       <AdminPanel
+        adminPass={adminInput}
         onBack={() => {
           setPage("home");
           setAdminUnlocked(false);
+          setAdminInput("");
         }}
       />
     );
