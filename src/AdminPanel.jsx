@@ -1,20 +1,48 @@
+// src/AdminPanel.jsx
+//
+// Admin results dashboard for EE491/492 jury evaluations.
+//
+// Supports TWO data-loading modes:
+//
+// (A) Secure (recommended): Apps Script JSON export
+//     - APP_CONFIG.scriptUrl must exist
+//     - Admin enters password in the AdminPanel UI
+//     - We call:  `${scriptUrl}?action=export&pass=...`
+//     - Apps Script returns: { status: "ok", rows: [ { "Juror Name": "...", ... }, ... ] }
+//
+// (B) Legacy (fallback): Public Google Sheet CSV export
+//     - APP_CONFIG.sheetCsvUrl must exist
+//     - Sheet must be public (Anyone with the link: Viewer)
+//     - We call: sheetCsvUrl and parse with PapaParse
+//
+// NOTE: Jury submissions (writing) are still done by JuryForm -> Apps Script doPost.
+// This file is ONLY for reading/displaying results.
+
 import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
 
-// ---- Normalize config shapes (supports legacy arrays of strings too) ----
+// ---------------- Config normalization ----------------
+// PROJECTS can be:
+//   - ["Group 1", "Group 2", ...]  (legacy)
+//   - [{id:1,name:"Group 1"}, ...]
 const PROJECT_LIST = (Array.isArray(PROJECTS) ? PROJECTS : []).map((p, idx) =>
-  typeof p === "string" ? { id: idx + 1, name: p } : { id: p.id ?? idx + 1, name: p.name ?? `Group ${idx + 1}` }
+  typeof p === "string"
+    ? { id: idx + 1, name: p }
+    : { id: p.id ?? idx + 1, name: p.name ?? `Group ${idx + 1}` }
 );
 
+// CRITERIA can contain additional rubric text; AdminPanel needs only id/label/max for charts.
 const CRITERIA_LIST = (Array.isArray(CRITERIA) ? CRITERIA : []).map((c) => ({
   id: c.id,
   label: c.label,
   max: c.max,
 }));
 
-const SHEET_CSV_URL = APP_CONFIG?.sheetCsvUrl;
+const SCRIPT_URL = APP_CONFIG?.scriptUrl;     // Apps Script Web App URL (recommended)
+const SHEET_CSV_URL = APP_CONFIG?.sheetCsvUrl; // Public CSV export link (fallback)
 
+// ---------------- Helpers ----------------
 function toNum(v) {
   if (v === null || v === undefined) return 0;
   const s = String(v).trim().replace(/^"+|"+$/g, "").replace(",", ".");
@@ -22,19 +50,22 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Convert common Google Sheet / Form timestamps into milliseconds,
+// so we can dedupe and sort reliably.
 function tsToMillis(ts) {
   if (!ts) return 0;
-  // Google Sheets/Forms often exports in formats like:
-  // "20/02/2026, 15:49:08" (DD/MM/YYYY, comma)
-  // Normalize a bit to improve parsing.
+
+  // Common format: "20/02/2026, 15:49:08"
   const s = String(ts).trim().replace(/\s*,\s*/g, ", ");
 
-  // First try native parsing
+  // Try native parsing first
   const native = Date.parse(s);
   if (Number.isFinite(native)) return native;
 
-  // DD/MM/YYYY, HH:MM(:SS)
-  const eu = s.match(/^([0-3]?\d)\/([0-1]?\d)\/(\d{4}),\s*([0-2]?\d):([0-5]\d)(?::([0-5]\d))?$/);
+  // EU format "DD/MM/YYYY, HH:MM(:SS)"
+  const eu = s.match(
+    /^([0-3]?\d)\/([0-1]?\d)\/(\d{4}),\s*([0-2]?\d):([0-5]\d)(?::([0-5]\d))?$/
+  );
   if (eu) {
     const day = Number(eu[1]);
     const month = Number(eu[2]);
@@ -47,15 +78,14 @@ function tsToMillis(ts) {
     return Number.isFinite(ms) ? ms : 0;
   }
 
-  // Try common Google Forms timestamp formats like:
-  // "2/20/2026 18:12:00" or "2/20/2026 6:12:00 PM"
+  // US-ish forms: "2/20/2026 6:12:00 PM" or "2/20/2026 18:12:00"
   const m = s.match(
     /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?$/
   );
   if (!m) return 0;
 
-  let month = Number(m[1]);
-  let day = Number(m[2]);
+  const month = Number(m[1]);
+  const day = Number(m[2]);
   const year = Number(m[3]);
   let hour = Number(m[4] || 0);
   const minute = Number(m[5] || 0);
@@ -67,15 +97,13 @@ function tsToMillis(ts) {
     if (ampm === "AM" && hour === 12) hour = 0;
   }
 
-  // Interpret as local time
   const d = new Date(year, month - 1, day, hour, minute, second, 0);
   const ms = d.getTime();
   return Number.isFinite(ms) ? ms : 0;
 }
 
-
+// Comparison helper (numbers first, then strings)
 function cmp(a, b) {
-  // numeric first if possible
   const an = Number(a);
   const bn = Number(b);
   const aNum = Number.isFinite(an);
@@ -89,8 +117,11 @@ function cmp(a, b) {
   return 0;
 }
 
+// ---------------- Deterministic juror colors ----------------
+// We compute stable pastel colors from juror name, so rows have consistent colors,
+// even when juror count grows (scalable).
 function hashStringToInt(str) {
-  let h = 2166136261; // FNV-1a style
+  let h = 2166136261; // FNV-1a-ish
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
     h = Math.imul(h, 16777619);
@@ -114,45 +145,117 @@ function hslToHex(h, s, l) {
 
 function jurorBgColor(name) {
   const seed = hashStringToInt((name || "unknown").toString());
-  const hue = seed % 360; // 0..359
-  const sat = 55; // pastel
-  const light = 95; // very light background for readability
-  return hslToHex(hue, sat, light);
+  const hue = seed % 360;
+  return hslToHex(hue, 55, 95); // very light pastel background
 }
 
 function jurorDotColor(name) {
   const seed = hashStringToInt((name || "unknown").toString());
   const hue = seed % 360;
-  const sat = 65;
-  const light = 55; // darker than row background so the dot is visible
-  return hslToHex(hue, sat, light);
+  return hslToHex(hue, 65, 55); // darker dot color
 }
 
+// ---------------- AdminPanel Component ----------------
 export default function AdminPanel({ onBack }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // error: network / parsing / unexpected response
   const [error, setError] = useState(null);
+
+  // authError: password missing or incorrect (Apps Script mode)
+  const [authError, setAuthError] = useState(null);
+
   const [activeTab, setActiveTab] = useState("summary");
 
   // Details: filters + sorting
   const [detailJuror, setDetailJuror] = useState("ALL");
   const [detailGroup, setDetailGroup] = useState("ALL");
   const [detailSearch, setDetailSearch] = useState("");
-  const [sortKey, setSortKey] = useState("timestamp"); // default sort
-  const [sortDir, setSortDir] = useState("desc"); // asc | desc
+  const [sortKey, setSortKey] = useState("timestamp");
+  const [sortDir, setSortDir] = useState("desc");
+
+  // Admin password is NOT stored in config (safer).
+  // We store it in sessionStorage so refreshing the page doesn't force retyping.
+  const [adminPass, setAdminPass] = useState(() => {
+    try {
+      return sessionStorage.getItem("ee492_admin_pass") || "";
+    } catch {
+      return "";
+    }
+  });
 
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // -------------------------------------------
+  // fetchData: loads evaluation rows for Admin UI
+  // -------------------------------------------
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+    setAuthError(null);
 
     try {
+      // Prefer Apps Script JSON export (secure)
+      if (SCRIPT_URL) {
+        const pass = (adminPass || "").trim();
+        if (!pass) {
+          setData([]);
+          setAuthError("Enter the admin password to load results.");
+          return;
+        }
+
+        const url = `${SCRIPT_URL}?action=export&pass=${encodeURIComponent(pass)}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+        const json = await res.json();
+
+        // Expected: { status: "ok", rows: [...] }
+        if (json?.status === "unauthorized") {
+          setData([]);
+          setAuthError("Incorrect password.");
+          return;
+        }
+        if (json?.status !== "ok" || !Array.isArray(json?.rows)) {
+          throw new Error("Unexpected response from Apps Script export.");
+        }
+
+        // Save password only for this browser session
+        try {
+          sessionStorage.setItem("ee492_admin_pass", pass);
+        } catch {
+          // ignore
+        }
+
+        const parsed = (json.rows || []).map((row) => ({
+          juryName: row["Your Name"] || row["Juror Name"] || "",
+          juryDept:
+            row["Department / Institution"] || row["Department"] || row["Institution"] || "",
+          timestamp: row["Timestamp"] || "",
+          tsMs: tsToMillis(row["Timestamp"] || ""),
+          projectId: toNum(row["Group No"]),
+          projectName: row["Group Name"] || "",
+          design: toNum(row["Design (20)"]),
+          technical: toNum(row["Technical (40)"]),
+          delivery: toNum(row["Delivery (30)"]),
+          teamwork: toNum(row["Teamwork (10)"]),
+          total: toNum(row["Total (100)"]),
+          comments: row["Comments"] || "",
+        }));
+
+        setData(dedupeAndSort(parsed));
+        return;
+      }
+
+      // Fallback: CSV mode (sheet must be public)
       if (!SHEET_CSV_URL) {
-        throw new Error("Missing APP_CONFIG.sheetCsvUrl in src/config.js");
+        throw new Error(
+          "Missing APP_CONFIG.scriptUrl (recommended) or APP_CONFIG.sheetCsvUrl (fallback) in src/config.js"
+        );
       }
 
       const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
@@ -161,7 +264,7 @@ export default function AdminPanel({ onBack }) {
       const text = await res.text();
       if (text.toLowerCase().includes("<html")) {
         throw new Error(
-          "Received HTML instead of CSV. Make the sheet public: Anyone with the link (Viewer)."
+          "Received HTML instead of CSV. If you are using CSV mode, the sheet must be public (Anyone with the link: Viewer)."
         );
       }
 
@@ -171,13 +274,12 @@ export default function AdminPanel({ onBack }) {
         dynamicTyping: false,
       });
 
-      if (result.errors?.length) {
-        console.warn("CSV parse warnings:", result.errors);
-      }
+      if (result.errors?.length) console.warn("CSV parse warnings:", result.errors);
 
       const parsed = (result.data || []).map((row) => ({
         juryName: row["Your Name"] || row["Juror Name"] || "",
-        juryDept: row["Department / Institution"] || row["Department"] || row["Institution"] || "",
+        juryDept:
+          row["Department / Institution"] || row["Department"] || row["Institution"] || "",
         timestamp: row["Timestamp"] || "",
         tsMs: tsToMillis(row["Timestamp"] || ""),
         projectId: toNum(row["Group No"]),
@@ -190,47 +292,7 @@ export default function AdminPanel({ onBack }) {
         comments: row["Comments"] || "",
       }));
 
-      // remove empty rows
-      const cleaned = parsed.filter((r) => r.juryName || r.projectName || r.total > 0);
-
-      // De-duplicate: keep the latest submission per (juror, group)
-      // Key uses projectId when available; falls back to projectName.
-      const byKey = new Map();
-      for (const r of cleaned) {
-        const jur = (r.juryName || "").trim();
-        const grp = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
-        if (!jur || !grp) continue;
-        const key = `${jur}__${grp}`;
-
-        const prev = byKey.get(key);
-        if (!prev) {
-          byKey.set(key, r);
-          continue;
-        }
-
-        // Prefer newer timestamp; if timestamps are equal (including the rare case they are both 0),
-        // keep the submission that appears later in the sheet (current `r`).
-        const prevMs = prev.tsMs || 0;
-        const curMs = r.tsMs || 0;
-        if (curMs > prevMs || curMs === prevMs) {
-          byKey.set(key, r);
-        }
-      }
-
-      // Keep rows without juror/group key as-is (rare), and merge with deduped keyed rows
-      const keyed = new Set(byKey.values());
-      const unkeyed = cleaned.filter((r) => {
-        const jur = (r.juryName || "").trim();
-        const grp = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
-        return !(jur && grp);
-      });
-
-      const deduped = [...byKey.values(), ...unkeyed];
-
-      // Sort by timestamp desc by default for nicer Details initial view
-      deduped.sort((a, b) => (b.tsMs || 0) - (a.tsMs || 0));
-
-      setData(deduped);
+      setData(dedupeAndSort(parsed));
     } catch (e) {
       setError("Could not load data: " + e.message);
       setData([]);
@@ -239,30 +301,69 @@ export default function AdminPanel({ onBack }) {
     }
   };
 
-  // Unique jurors + groups for dropdowns
+  // ---------------- Dedupe + sort logic ----------------
+  // Keep the latest submission per (juror, group).
+  // If timestamps are equal or missing, the later row wins.
+  function dedupeAndSort(rows) {
+    const cleaned = (rows || []).filter((r) => r.juryName || r.projectName || r.total > 0);
+
+    const byKey = new Map();
+    for (const r of cleaned) {
+      const jurRaw = (r.juryName || "").trim();
+      const grpRaw = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
+
+      // Normalize for dedupe key only (case-insensitive, whitespace-safe)
+      const jur = jurRaw.toLowerCase();
+      const grp = grpRaw.toLowerCase();
+      if (!jur || !grp) continue;
+
+      const key = `${jur}__${grp}`;
+      const prev = byKey.get(key);
+      if (!prev) {
+        byKey.set(key, r);
+        continue;
+      }
+
+      const prevMs = prev.tsMs || 0;
+      const curMs = r.tsMs || 0;
+
+      if (curMs >= prevMs) byKey.set(key, r);
+    }
+
+    const unkeyed = cleaned.filter((r) => {
+      const jurRaw = (r.juryName || "").trim();
+      const grpRaw = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
+      // Normalize for dedupe key only (case-insensitive, whitespace-safe)
+      const jur = jurRaw.toLowerCase();
+      const grp = grpRaw.toLowerCase();
+      return !(jur && grp);
+    });
+
+    const deduped = [...byKey.values(), ...unkeyed];
+    deduped.sort((a, b) => (b.tsMs || 0) - (a.tsMs || 0));
+    return deduped;
+  }
+
+  // ---------------- Dropdown options ----------------
   const jurors = useMemo(
     () => [...new Set(data.map((d) => d.juryName).filter(Boolean))].sort((a, b) => cmp(a, b)),
     [data]
   );
 
   const groups = useMemo(() => {
-    // Use actual projectName values from data if present; fallback to PROJECT_LIST.map(p => p.name)
     const fromData = [...new Set(data.map((d) => d.projectName).filter(Boolean))];
     const base = fromData.length ? fromData : PROJECT_LIST.map((p) => p.name);
     return base.slice().sort((a, b) => cmp(a, b));
   }, [data]);
 
-  // Juror row colors (deterministic + scalable)
-  // Each juror gets a stable pastel color derived from their name.
+  // Stable juror color mapping
   const jurorColorMap = useMemo(() => {
     const m = new Map();
-    jurors.forEach((name) =>
-      m.set(name, { bg: jurorBgColor(name), dot: jurorDotColor(name) })
-    );
+    jurors.forEach((name) => m.set(name, { bg: jurorBgColor(name), dot: jurorDotColor(name) }));
     return m;
   }, [jurors]);
 
-  // Project stats for summary
+  // ---------------- Summary calculations ----------------
   const projectStats = useMemo(() => {
     return PROJECT_LIST.map((p) => {
       const rows = data.filter((d) => d.projectId === p.id);
@@ -272,33 +373,35 @@ export default function AdminPanel({ onBack }) {
       CRITERIA_LIST.forEach((c) => {
         avg[c.id] = rows.reduce((s, r) => s + (r[c.id] || 0), 0) / rows.length;
       });
-      const totalAvg = rows.reduce((s, r) => s + (r.total || 0), 0) / rows.length;
 
+      const totalAvg = rows.reduce((s, r) => s + (r.total || 0), 0) / rows.length;
       return { id: p.id, name: p.name, count: rows.length, avg, totalAvg };
     });
   }, [data]);
 
-  const ranked = useMemo(() => [...projectStats].sort((a, b) => b.totalAvg - a.totalAvg), [projectStats]);
+  const ranked = useMemo(
+    () => [...projectStats].sort((a, b) => b.totalAvg - a.totalAvg),
+    [projectStats]
+  );
 
-  // Rank badge theme: gold, silver, bronze, then slate/gray for 4+
+  // Rank badge theme: gold/silver/bronze, then slate-gray for 4+
   const rankBadgeTheme = (rankIdx) => {
-    // rankIdx: 0-based
     if (rankIdx === 0) return { bg: "#F59E0B", fg: "#0B1220", ring: "#FCD34D" }; // gold
     if (rankIdx === 1) return { bg: "#94A3B8", fg: "#0B1220", ring: "#CBD5E1" }; // silver
     if (rankIdx === 2) return { bg: "#B45309", fg: "#FFF7ED", ring: "#FDBA74" }; // bronze
-
-    // 4+ all slate grey (neutral, elegant)
-    return {
-      bg: "#475569",      // slate-600
-      fg: "#F1F5F9",      // very light text
-      ring: "#94A3B8",    // soft slate ring
-    };
+    return { bg: "#475569", fg: "#F1F5F9", ring: "#94A3B8" }; // slate
   };
 
-  // Details filtered + sorted data
+  const rankBadgeContent = (rankIdx) => {
+    if (rankIdx === 0) return "🥇";
+    if (rankIdx === 1) return "🥈";
+    if (rankIdx === 2) return "🥉";
+    return String(rankIdx + 1);
+  };
+
+  // ---------------- Details filtering & sorting ----------------
   const detailRows = useMemo(() => {
     const q = detailSearch.trim().toLowerCase();
-
     let rows = data.slice();
 
     if (detailJuror !== "ALL") rows = rows.filter((r) => r.juryName === detailJuror);
@@ -336,9 +439,8 @@ export default function AdminPanel({ onBack }) {
   }, [data, detailJuror, detailGroup, detailSearch, sortKey, sortDir]);
 
   const setSort = (key) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
       setSortKey(key);
       setSortDir("desc");
     }
@@ -349,27 +451,54 @@ export default function AdminPanel({ onBack }) {
     return sortDir === "asc" ? "↑" : "↓";
   };
 
-
-  const rankBadgeContent = (rankIdx) => {
-    if (rankIdx === 0) return "🥇";
-    if (rankIdx === 1) return "🥈";
-    if (rankIdx === 2) return "🥉";
-    return String(rankIdx + 1);
-  };
-
+  // ---------------- UI ----------------
   return (
     <div className="admin-screen">
       <div className="form-header">
-        <button className="back-btn" onClick={onBack}>←</button>
+        <button className="back-btn" onClick={onBack}>
+          ←
+        </button>
 
         <div>
           <h2>Results Panel</h2>
           <p>
-            {jurors.length} juror{jurors.length !== 1 ? "s" : ""} · {data.length} evaluation{data.length !== 1 ? "s" : ""}
+            {jurors.length} juror{jurors.length !== 1 ? "s" : ""} · {data.length} evaluation
+            {data.length !== 1 ? "s" : ""}
           </p>
+
+          {/* If Apps Script mode is active, show a password field here */}
+          {SCRIPT_URL && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+              <label style={{ fontSize: 13, color: "#475569" }}>Admin password</label>
+              <input
+                type="password"
+                value={adminPass}
+                onChange={(e) => setAdminPass(e.target.value)}
+                placeholder="Enter password"
+                style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #e5e7eb", minWidth: 220 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") fetchData();
+                }}
+              />
+              <button
+                onClick={fetchData}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #e5e7eb",
+                  background: "#f8fafc",
+                  cursor: "pointer",
+                }}
+              >
+                Load
+              </button>
+            </div>
+          )}
         </div>
 
-        <button className="refresh-btn" onClick={fetchData}>↻ Refresh</button>
+        <button className="refresh-btn" onClick={fetchData}>
+          ↻ Refresh
+        </button>
       </div>
 
       <div className="tab-bar">
@@ -386,9 +515,10 @@ export default function AdminPanel({ onBack }) {
 
       {loading && <div className="loading">Loading data...</div>}
       {error && <div className="error-msg">{error}</div>}
+      {authError && <div className="error-msg">{authError}</div>}
 
-      {/* SUMMARY */}
-      {!loading && !error && activeTab === "summary" && (
+      {/* ---------------- SUMMARY TAB ---------------- */}
+      {!loading && !error && !authError && activeTab === "summary" && (
         <div className="admin-body">
           {data.length === 0 && <div className="empty-msg">No evaluation data yet.</div>}
 
@@ -471,10 +601,10 @@ export default function AdminPanel({ onBack }) {
         </div>
       )}
 
-      {/* DETAILS */}
-      {!loading && !error && activeTab === "detail" && (
+      {/* ---------------- DETAILS TAB ---------------- */}
+      {!loading && !error && !authError && activeTab === "detail" && (
         <div className="admin-body">
-          {/* Filters */}
+          {/* Filters row */}
           <div
             style={{
               display: "flex",
@@ -525,13 +655,8 @@ export default function AdminPanel({ onBack }) {
               <input
                 value={detailSearch}
                 onChange={(e) => setDetailSearch(e.target.value)}
-                placeholder="Type to search (juror, group, comments...)"
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                }}
+                placeholder="Search juror, group, comments..."
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: "1px solid #e5e7eb" }}
               />
             </div>
 
@@ -625,12 +750,16 @@ export default function AdminPanel({ onBack }) {
                           {row.juryName}
                         </span>
                       </td>
-                      <td><strong>{row.projectName}</strong></td>
+                      <td>
+                        <strong>{row.projectName}</strong>
+                      </td>
                       <td>{row.design}</td>
                       <td>{row.technical}</td>
                       <td>{row.delivery}</td>
                       <td>{row.teamwork}</td>
-                      <td><strong>{row.total}</strong></td>
+                      <td>
+                        <strong>{row.total}</strong>
+                      </td>
                       <td className="comment-cell">{row.comments}</td>
                     </tr>
                   );
@@ -641,8 +770,8 @@ export default function AdminPanel({ onBack }) {
         </div>
       )}
 
-      {/* JURORS */}
-      {!loading && !error && activeTab === "jurors" && (
+      {/* ---------------- JURORS TAB ---------------- */}
+      {!loading && !error && !authError && activeTab === "jurors" && (
         <div className="admin-body">
           {jurors.length === 0 && <div className="empty-msg">No juror submissions yet.</div>}
 
