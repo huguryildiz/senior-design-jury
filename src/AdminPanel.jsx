@@ -263,12 +263,15 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
       }
 
       const parsed = (json.rows || []).map((row) => ({
-        juryName: row["Your Name"] || row["Juror Name"] || "",
-        juryDept: row["Department / Institution"] || row["Department"] || row["Institution"] || "",
+        // Coerce to string because Google Sheets can return numbers for some cells.
+        juryName: String(row["Your Name"] ?? row["Juror Name"] ?? ""),
+        juryDept: String(
+          row["Department / Institution"] ?? row["Department"] ?? row["Institution"] ?? ""
+        ),
         timestamp: row["Timestamp"] || "",
         tsMs: tsToMillis(row["Timestamp"] || ""),
         projectId: toNum(row["Group No"]),
-        projectName: row["Group Name"] || "",
+        projectName: String(row["Group Name"] ?? ""),
         design: toNum(row["Design (20)"]),
         technical: toNum(row["Technical (40)"]),
         delivery: toNum(row["Delivery (30)"]),
@@ -294,8 +297,8 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
 
     const byKey = new Map();
     for (const r of cleaned) {
-      const jurRaw = (r.juryName || "").trim();
-      const grpRaw = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
+      const jurRaw = String(r.juryName ?? "").trim();
+      const grpRaw = r.projectId ? String(r.projectId) : String(r.projectName ?? "").trim();
 
       // Normalize for dedupe key only (case-insensitive, whitespace-safe)
       const jur = jurRaw.toLowerCase();
@@ -316,8 +319,8 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
     }
 
     const unkeyed = cleaned.filter((r) => {
-      const jurRaw = (r.juryName || "").trim();
-      const grpRaw = r.projectId ? String(r.projectId) : (r.projectName || "").trim();
+      const jurRaw = String(r.juryName ?? "").trim();
+      const grpRaw = r.projectId ? String(r.projectId) : String(r.projectName ?? "").trim();
       // Normalize for dedupe key only (case-insensitive, whitespace-safe)
       const jur = jurRaw.toLowerCase();
       const grp = grpRaw.toLowerCase();
