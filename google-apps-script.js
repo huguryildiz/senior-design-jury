@@ -1,14 +1,62 @@
 // ============================================================
-// EE 492 Poster Presentation Evaluation – Google Apps Script
-// Paste this code into Google Apps Script and deploy as Web App.
+// EE 492 Jury App – Google Apps Script
+// Handles:
+//   - POST: Writes/updates jury evaluations to Google Sheets
+//   - GET (action=export): Returns secure JSON export for AdminPanel
 // ============================================================
 
 const SHEET_NAME = "Evaluations";
 
-function isAuthorized(pass) {
-  const props = PropertiesService.getScriptProperties();
-  const adminPass = props.getProperty("ADMIN_PASSWORD");
-  return pass && adminPass && pass === adminPass;
+function doGet(e) {
+  try {
+    const action = (e.parameter.action || "").toLowerCase();
+
+    if (action === "export") {
+      const pass = e.parameter.pass || "";
+      const ADMIN_PASSWORD =
+        PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD") || "";
+
+      if (!ADMIN_PASSWORD || pass !== ADMIN_PASSWORD) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ status: "unauthorized" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName(SHEET_NAME);
+
+      if (!sheet) {
+        return ContentService
+          .createTextOutput(JSON.stringify({ status: "ok", rows: [] }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const values = sheet.getDataRange().getValues();
+      const headers = values.shift();
+
+      const rows = values.map((r) => {
+        const obj = {};
+        headers.forEach((h, i) => {
+          obj[String(h)] = r[i];
+        });
+        return obj;
+      });
+
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: "ok", rows }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // health check
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "ok" }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function doPost(e) {
@@ -33,42 +81,30 @@ function doPost(e) {
       sheet.setFrozenRows(1);
     }
 
-    // Build an index of existing submissions by (jurorName + groupNo)
-    // We treat this pair as the unique key for overwrite behavior.
+    // Build index of existing rows by (jurorName + groupNo) for overwrite logic
     const lastRow = sheet.getLastRow();
-    const lastCol = sheet.getLastColumn();
-
-    // Header is row 1
     const existingValues = lastRow >= 2
-      ? sheet.getRange(2, 1, lastRow - 1, Math.max(11, lastCol)).getValues()
+      ? sheet.getRange(2, 1, lastRow - 1, 11).getValues()
       : [];
 
-    const keyOf = (name, groupNo) => {
-      const n = String(name || "").trim().toLowerCase();
-      const g = String(groupNo || "").trim();
-      return `${n}__${g}`;
-    };
+    const keyOf = (name, groupNo) =>
+      `${String(name || "").trim().toLowerCase()}__${String(groupNo || "").trim()}`;
 
-    // Map key -> absolute sheet row number
     const index = new Map();
     existingValues.forEach((r, i) => {
-      const juror = r[0];      // col A
-      const groupNo = r[3];    // col D
-      const key = keyOf(juror, groupNo);
-      if (key) index.set(key, i + 2); // +2 because data starts at row 2
+      const key = keyOf(r[0], r[3]); // col A = juror name, col D = group no
+      if (key) index.set(key, i + 2); // +2: 1-indexed + header row
     });
 
-    // If payload contains duplicates, last one wins
+    // Dedupe payload: if same juror submits same group twice, last one wins
     const latestByKey = new Map();
     (data.rows || []).forEach((row) => {
       const key = keyOf(row.juryName, row.projectId);
       if (key) latestByKey.set(key, row);
     });
 
-    let updated = 0;
-    let added = 0;
+    let updated = 0, added = 0;
 
-    // Overwrite-or-append one row per (juror, group)
     latestByKey.forEach((row, key) => {
       const values = [
         row.juryName,
@@ -86,13 +122,12 @@ function doPost(e) {
 
       const existingRow = index.get(key);
       if (existingRow) {
-        // Update the entire row (A..K)
         sheet.getRange(existingRow, 1, 1, 11).setValues([values]);
-        updated += 1;
+        updated++;
       } else {
         sheet.appendRow(values);
         index.set(key, sheet.getLastRow());
-        added += 1;
+        added++;
       }
     });
 
@@ -102,53 +137,7 @@ function doPost(e) {
 
   } catch (err) {
     return ContentService
-      .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function doGet(e) {
-  try {
-    const action = e.parameter.action;
-    const pass = e.parameter.pass;
-
-    if (action === "export") {
-      if (!isAuthorized(pass)) {
-        return ContentService
-          .createTextOutput(JSON.stringify({ status: "unauthorized" }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sheet = ss.getSheetByName(SHEET_NAME);
-
-      if (!sheet) {
-        return ContentService
-          .createTextOutput(JSON.stringify({ status: "ok", rows: [] }))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-
-      const values = sheet.getDataRange().getValues();
-      const headers = values.shift();
-
-      const rows = values.map((r) => {
-        const obj = {};
-        headers.forEach((h, i) => (obj[h] = r[i]));
-        return obj;
-      });
-
-      return ContentService
-        .createTextOutput(JSON.stringify({ status: "ok", rows }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: "ok" }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .createTextOutput(JSON.stringify({ status: "error", message: String(err) }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
