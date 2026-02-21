@@ -11,24 +11,44 @@ export default function App() {
   const [page, setPage] = useState("home");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminInput, setAdminInput] = useState("");
+  const [draftOwner, setDraftOwner] = useState(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
-
-      const parsed = JSON.parse(saved);
-
-      // If a draft exists and user was in evaluation step, resume JuryForm
-      if (parsed?.step === "eval") {
-        setPage("jury");
-      }
-    } catch (e) {
-      // ignore
-    }
+    loadDraftInfo();
   }, []);
 
-  if (page === "jury") return <JuryForm onBack={() => setPage("home")} />;
+  const loadDraftInfo = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) { setDraftOwner(null); return; }
+      const parsed = JSON.parse(saved);
+      if (parsed?.step === "eval" && parsed?.juryName) {
+        setDraftOwner({
+          name: parsed.juryName,
+          dept: parsed.juryDept || "",
+        });
+      } else {
+        setDraftOwner(null);
+      }
+    } catch (e) {
+      setDraftOwner(null);
+    }
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setDraftOwner(null);
+  };
+
+  if (page === "jury")
+    return (
+      <JuryForm
+        onBack={() => {
+          setPage("home");
+          loadDraftInfo();
+        }}
+      />
+    );
 
   if (page === "admin") {
     if (!adminUnlocked) {
@@ -79,21 +99,33 @@ export default function App() {
   return (
     <div className="home">
       <div className="home-bg" />
-
       <div className="home-card">
         <div className="home-logo-wrap">
           <img className="home-logo" src={teduLogo} alt="TED University Logo" loading="eager" />
         </div>
-
-        <h1>
-          EE 491/492
-          <br />
-          Senior Project Jury Portal
-        </h1>
+        <h1>EE 491/492<br />Senior Project Jury Portal</h1>
         <p className="home-sub">
           TED University<br />
           Department of Electrical & Electronics Engineering
         </p>
+
+        {draftOwner && (
+          <div className="draft-banner">
+            <div className="draft-banner-icon">📝</div>
+            <div className="draft-banner-text">
+              <strong>Saved draft found</strong>
+              <span>{draftOwner.name}{draftOwner.dept ? ` · ${draftOwner.dept}` : ""}</span>
+            </div>
+            <div className="draft-banner-actions">
+              <button className="btn-draft-resume" onClick={() => setPage("jury")}>
+                Resume
+              </button>
+              <button className="btn-draft-clear" onClick={clearDraft} title="Clear draft">
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="home-buttons">
           <button className="btn-primary big" onClick={() => setPage("jury")}>
@@ -106,19 +138,12 @@ export default function App() {
 
         <div className="home-hint">
           <span className="home-hint-ico">ℹ️</span>
-          <span>
-            Please use the <strong>Evaluation Form</strong> to submit your scores.
-          </span>
+          <span>Please use the <strong>Evaluation Form</strong> to submit your scores.</span>
         </div>
 
         <div className="home-footer">
           © 2026 · Developed by{" "}
-          <a
-            className="home-footer-link"
-            href="https://huguryildiz.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a className="home-footer-link" href="https://huguryildiz.com" target="_blank" rel="noopener noreferrer">
             Huseyin Ugur Yildiz
           </a>
         </div>

@@ -1048,3 +1048,242 @@ body {
   .home-logo{ width:116px; height:116px; }
   .home-hint{ font-size:13px; padding:9px 12px; }
 }
+
+/* ─── Draft Banner (Home screen) ─────────────────────────── */
+.draft-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.draft-banner-icon { font-size: 20px; flex-shrink: 0; }
+.draft-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.draft-banner-text strong { font-size: 13px; color: #1e40af; }
+.draft-banner-text span { font-size: 12px; color: #3b82f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draft-banner-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.btn-draft-resume {
+  padding: 6px 14px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-draft-resume:hover { background: #2563eb; }
+.btn-draft-clear {
+  padding: 6px 10px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-draft-clear:hover { color: #ef4444; border-color: #fca5a5; }
+
+/* ─── Info screen draft banner ───────────────────────────── */
+.info-draft-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #166534;
+}
+.draft-name-warning {
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: #92400e;
+  margin-bottom: 12px;
+}
+
+/* ─── Back menu overlay ──────────────────────────────────── */
+.back-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 24px;
+}
+.back-menu {
+  background: #fff;
+  border-radius: 20px 20px 20px 20px;
+  padding: 24px 20px 20px;
+  width: min(420px, 96vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 20px 60px rgba(15,23,42,0.25);
+}
+.back-menu-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
+.back-menu-sub { font-size: 13px; color: #64748b; margin: 0 0 6px; }
+.back-menu-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-align: left;
+}
+.back-menu-btn.primary { background: #0f172a; color: #fff; }
+.back-menu-btn.primary:hover { background: #1e293b; }
+.back-menu-btn.secondary { background: #f1f5f9; color: #0f172a; }
+.back-menu-btn.secondary:hover { background: #e2e8f0; }
+.back-menu-btn.ghost { background: transparent; color: #64748b; font-weight: 500; text-align: center; }
+.back-menu-btn.ghost:hover { color: #0f172a; }
+
+/* ─── Submit error ───────────────────────────────────────── */
+.submit-error-msg {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #991b1b;
+  margin-bottom: 10px;
+}
+
+/* ─── Admin: filter bar ──────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+.filter-item { display: flex; gap: 6px; align-items: center; }
+.filter-item span { font-size: 13px; color: #475569; }
+.filter-item select, .filter-item input {
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+.filter-search { flex: 1; min-width: 200px; }
+.filter-search input { width: 100%; }
+.filter-reset {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 13px;
+}
+.filter-count { margin-left: auto; font-size: 13px; color: #64748b; }
+.csv-export-btn {
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.csv-export-btn:hover { background: #dbeafe; }
+
+/* ─── Radar Chart ────────────────────────────────────────── */
+.radar-wrap {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.radar-title { font-size: 13px; font-weight: 600; color: #475569; }
+.radar-svg { width: 220px; height: 220px; }
+
+/* ─── Completion summary (Summary tab) ───────────────────── */
+.completion-summary {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.completion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.completion-name { font-size: 13px; color: #0f172a; font-weight: 500; min-width: 140px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.completion-bar-wrap { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.completion-bar { height: 100%; background: #22c55e; border-radius: 999px; transition: width 300ms; }
+.completion-count { font-size: 12px; color: #475569; font-weight: 600; min-width: 32px; text-align: right; }
+.completion-warn { font-size: 14px; }
+
+/* ─── Matrix Tab ─────────────────────────────────────────── */
+.matrix-wrap { padding: 4px 0; }
+.matrix-subtitle { font-size: 13px; color: #64748b; margin: 0 0 12px; }
+.matrix-scroll { overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; }
+.matrix-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+.matrix-table th {
+  background: #f8fafc;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  text-align: center;
+}
+.matrix-corner { text-align: left !important; }
+.matrix-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: center;
+}
+.matrix-juror { text-align: left !important; font-weight: 500; color: #0f172a; white-space: nowrap; }
+.matrix-progress-cell { white-space: nowrap; }
+.matrix-progress-bar-wrap { display: inline-block; width: 60px; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.matrix-progress-bar { height: 100%; background: #22c55e; border-radius: 999px; }
+.matrix-progress-label { font-size: 12px; font-weight: 600; color: #475569; vertical-align: middle; }
+
+/* ─── Juror card updates ─────────────────────────────────── */
+.juror-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.juror-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.juror-last-submit { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.juror-last-submit-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+.juror-last-submit-time { font-size: 12px; color: #475569; font-weight: 600; font-variant-numeric: tabular-nums; }
+.juror-progress-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.juror-progress-bar-bg { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.juror-progress-bar-fill { height: 100%; border-radius: 999px; transition: width 300ms; }
+.juror-progress-label { font-size: 12px; font-weight: 700; color: #475569; min-width: 34px; text-align: right; }
+.juror-row { display: flex; align-items: center; gap: 8px; }
+.juror-row span:first-child { flex: 1; }
