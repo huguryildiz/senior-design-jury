@@ -41,6 +41,7 @@ export const CRITERIA = [
   {
     id: "design",
     label: "Poster Design & Organization",
+    shortLabel: "Design",
     max: 20,
     rubric: [
       {
@@ -68,6 +69,7 @@ export const CRITERIA = [
   {
     id: "technical",
     label: "Technical Content & Clarity",
+    shortLabel: "Technical",
     max: 40,
     rubric: [
       {
@@ -95,6 +97,7 @@ export const CRITERIA = [
   {
     id: "delivery",
     label: "Delivery & Q&A",
+    shortLabel: "Delivery",
     max: 30,
     rubric: [
       {
@@ -122,6 +125,7 @@ export const CRITERIA = [
   {
     id: "teamwork",
     label: "Teamwork & Professionalism",
+    shortLabel: "Teamwork",
     max: 10,
     rubric: [
       {

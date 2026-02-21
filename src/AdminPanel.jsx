@@ -36,6 +36,7 @@ const PROJECT_LIST = (Array.isArray(PROJECTS) ? PROJECTS : []).map((p, idx) =>
 const CRITERIA_LIST = (Array.isArray(CRITERIA) ? CRITERIA : []).map((c) => ({
   id: c.id,
   label: c.label,
+  shortLabel: c.shortLabel,
   max: c.max,
 }));
 
@@ -664,7 +665,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
                   <div className="rank-bars">
                     {CRITERIA_LIST.map((c) => (
                       <div key={c.id} className="mini-bar-row">
-                        <span className="mini-label">{c.label}</span>
+                        <span className="mini-label">{c.shortLabel || c.label}</span>
                         <div className="mini-bar-track">
                           <div
                             className="mini-bar-fill"
