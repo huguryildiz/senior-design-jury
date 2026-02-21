@@ -2,23 +2,17 @@
 //
 // Admin results dashboard for EE491/492 jury evaluations.
 //
-// Supports TWO data-loading modes:
+// Uses Apps Script JSON export (secure):
+// - APP_CONFIG.scriptUrl must exist
+// - Admin password is entered once on the Admin login screen (App.jsx)
+// - AdminPanel calls: `${scriptUrl}?action=export&pass=...`
+// - Apps Script returns: { status: "ok", rows: [ { "Juror Name": "...", ... }, ... ] }
 //
-// (A) Secure (recommended): Apps Script JSON export
-//     - APP_CONFIG.scriptUrl must exist
-//     - Admin enters password in the AdminPanel UI
-//     - We call:  `${scriptUrl}?action=export&pass=...`
-//     - Apps Script returns: { status: "ok", rows: [ { "Juror Name": "...", ... }, ... ] }
+// NOTE: There is NO public Google Sheet CSV fallback in this version.
 //
-// (B) Legacy (fallback): Public Google Sheet CSV export
-//     - APP_CONFIG.sheetCsvUrl must exist
-//     - Sheet must be public (Anyone with the link: Viewer)
-//     - We call: sheetCsvUrl and parse with PapaParse
-//
-// NOTE: Jury submissions (writing) are still done by JuryForm -> Apps Script doPost.
+// Jury submissions (writing) are still done by JuryForm -> Apps Script doPost.
 // This file is ONLY for reading/displaying results.
 
-import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
 
@@ -40,8 +34,7 @@ const CRITERIA_LIST = (Array.isArray(CRITERIA) ? CRITERIA : []).map((c) => ({
   max: c.max,
 }));
 
-const SCRIPT_URL = APP_CONFIG?.scriptUrl;     // Apps Script Web App URL (recommended)
-const SHEET_CSV_URL = APP_CONFIG?.sheetCsvUrl; // Public CSV export link (fallback)
+const SCRIPT_URL = APP_CONFIG?.scriptUrl;     // Apps Script Web App URL (required)
 
 // ---------------- Helpers ----------------
 function toNum(v) {
@@ -176,14 +169,11 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
   const [sortKey, setSortKey] = useState("timestamp");
   const [sortDir, setSortDir] = useState("desc");
 
-  // Admin password is NOT stored in config (safer).
-  // Preferred flow:
-  // - User types the password once in the Admin login screen (App.jsx)
-  // - App passes it here via `adminPass` prop
-  // Fallback flow (if prop is not provided):
-  // - AdminPanel shows its own password input and stores it in sessionStorage for convenience.
   const [adminPass, setAdminPass] = useState(() => {
+    // Prefer the password passed from App.jsx (admin login screen)
     if (typeof adminPassProp === "string" && adminPassProp.trim()) return adminPassProp.trim();
+
+    // Fallback: allow refresh within the same browser session without retyping
     try {
       return sessionStorage.getItem("ee492_admin_pass") || "";
     } catch {
@@ -217,152 +207,64 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
     setAuthError(null);
 
     try {
-      // Prefer Apps Script JSON export (secure)
-      if (SCRIPT_URL) {
-        const pass = (adminPass || "").trim();
-        if (!pass) {
-          setData([]);
-          setAuthError("Enter the admin password to load results.");
-          return;
-        }
+      if (!SCRIPT_URL) {
+        throw new Error("Missing APP_CONFIG.scriptUrl in src/config.js");
+      }
 
-        const url = `${SCRIPT_URL}?action=export&pass=${encodeURIComponent(pass)}`;
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
-        // Apps Script may return JSON (preferred) or CSV text (legacy).
-        // We'll read as text first, then try JSON.parse; if that fails, we fall back to CSV parsing.
-        const raw = await res.text();
-        const trimmed = (raw || "").trim();
-
-        // If the endpoint returns HTML, it is almost always an auth / permission / deployment issue.
-        if (trimmed.toLowerCase().includes("<html")) {
-          throw new Error("Received HTML from Apps Script (expected JSON/CSV). Check deployment access and URL.");
-        }
-
-        // 1) Try JSON
-        let json = null;
-        try {
-          if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-            json = JSON.parse(trimmed);
-          }
-        } catch {
-          json = null;
-        }
-
-        if (json) {
-          // Expected: { status: "ok", rows: [...] }
-          // Some deployments may return: { status: "unauthorized" }
-          // Or: { status: "error", message: "Unauthorized" }
-          const msg = (json?.message || "").toString();
-
-          const isUnauthorized =
-            json?.status === "unauthorized" ||
-            (json?.status === "error" && /unauthorized/i.test(msg));
-
-          if (isUnauthorized) {
-            setData([]);
-            setAuthError("Incorrect password.");
-            return;
-          }
-
-          if (json?.status !== "ok" || !Array.isArray(json?.rows)) {
-            throw new Error("Unexpected response from Apps Script export.");
-          }
-
-          const parsed = (json.rows || []).map((row) => ({
-            juryName: row["Your Name"] || row["Juror Name"] || "",
-            juryDept:
-              row["Department / Institution"] || row["Department"] || row["Institution"] || "",
-            timestamp: row["Timestamp"] || "",
-            tsMs: tsToMillis(row["Timestamp"] || ""),
-            projectId: toNum(row["Group No"]),
-            projectName: row["Group Name"] || "",
-            design: toNum(row["Design (20)"]),
-            technical: toNum(row["Technical (40)"]),
-            delivery: toNum(row["Delivery (30)"]),
-            teamwork: toNum(row["Teamwork (10)"]),
-            total: toNum(row["Total (100)"]),
-            comments: row["Comments"] || "",
-          }));
-
-          setData(dedupeAndSort(parsed));
-          // Save password only for this browser session
-          try {
-            sessionStorage.setItem("ee492_admin_pass", pass);
-          } catch {
-            // ignore
-          }
-          return;
-        }
-
-        // 2) Fallback: treat response as CSV (starts with "Juror Name,...")
-        const csvResult = Papa.parse(trimmed, {
-          header: true,
-          skipEmptyLines: true,
-          dynamicTyping: false,
-        });
-
-        if (csvResult.errors?.length) {
-          console.warn("CSV parse warnings:", csvResult.errors);
-        }
-
-        const csvParsed = (csvResult.data || []).map((row) => ({
-          juryName: row["Your Name"] || row["Juror Name"] || "",
-          juryDept:
-            row["Department / Institution"] || row["Department"] || row["Institution"] || "",
-          timestamp: row["Timestamp"] || "",
-          tsMs: tsToMillis(row["Timestamp"] || ""),
-          projectId: toNum(row["Group No"]),
-          projectName: row["Group Name"] || "",
-          design: toNum(row["Design (20)"]),
-          technical: toNum(row["Technical (40)"]),
-          delivery: toNum(row["Delivery (30)"]),
-          teamwork: toNum(row["Teamwork (10)"]),
-          total: toNum(row["Total (100)"]),
-          comments: row["Comments"] || "",
-        }));
-
-        setData(dedupeAndSort(csvParsed));
-
-        // Save password only for this browser session
-        try {
-          sessionStorage.setItem("ee492_admin_pass", pass);
-        } catch {
-          // ignore
-        }
+      const pass = (adminPass || "").trim();
+      if (!pass) {
+        setData([]);
+        setAuthError("Enter the admin password to load results.");
         return;
       }
 
-      // Fallback: CSV mode (sheet must be public)
-      if (!SHEET_CSV_URL) {
-        throw new Error(
-          "Missing APP_CONFIG.scriptUrl (recommended) or APP_CONFIG.sheetCsvUrl (fallback) in src/config.js"
-        );
-      }
-
-      const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+      const url = `${SCRIPT_URL}?action=export&pass=${encodeURIComponent(pass)}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
-      const text = await res.text();
-      if (text.toLowerCase().includes("<html")) {
+      // Read as text first to detect HTML responses (common deployment/access issue)
+      const raw = await res.text();
+      const trimmed = (raw || "").trim();
+
+      if (trimmed.toLowerCase().includes("<html")) {
         throw new Error(
-          "Received HTML instead of CSV. If you are using CSV mode, the sheet must be public (Anyone with the link: Viewer)."
+          "Received HTML from Apps Script (expected JSON). Check deployment access (Anyone) and that you copied the Web App /exec URL."
         );
       }
 
-      const result = Papa.parse(text, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: false,
-      });
+      let json;
+      try {
+        json = JSON.parse(trimmed);
+      } catch {
+        throw new Error("Apps Script did not return valid JSON.");
+      }
 
-      if (result.errors?.length) console.warn("CSV parse warnings:", result.errors);
+      // Handle unauthorized responses (both supported shapes)
+      const msg = (json?.message || "").toString();
+      const unauthorized =
+        json?.status === "unauthorized" ||
+        (json?.status === "error" && /unauthorized/i.test(msg));
 
-      const parsed = (result.data || []).map((row) => ({
+      if (unauthorized) {
+        setData([]);
+        setAuthError("Incorrect password.");
+        return;
+      }
+
+      if (json?.status !== "ok" || !Array.isArray(json?.rows)) {
+        throw new Error("Unexpected response from Apps Script export.");
+      }
+
+      // Save password only for this browser session
+      try {
+        sessionStorage.setItem("ee492_admin_pass", pass);
+      } catch {
+        // ignore
+      }
+
+      const parsed = (json.rows || []).map((row) => ({
         juryName: row["Your Name"] || row["Juror Name"] || "",
-        juryDept:
-          row["Department / Institution"] || row["Department"] || row["Institution"] || "",
+        juryDept: row["Department / Institution"] || row["Department"] || row["Institution"] || "",
         timestamp: row["Timestamp"] || "",
         tsMs: tsToMillis(row["Timestamp"] || ""),
         projectId: toNum(row["Group No"]),
@@ -549,38 +451,6 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
             {data.length !== 1 ? "s" : ""}
           </p>
 
-          {/*
-            Apps Script mode requires an admin password for exporting results.
-            If the password is already provided by the Admin login screen (App.jsx),
-            we don't ask for it again here.
-          */}
-          {SCRIPT_URL && !(typeof adminPassProp === "string" && adminPassProp.trim()) && (
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
-              <label style={{ fontSize: 13, color: "#475569" }}>Admin password</label>
-              <input
-                type="password"
-                value={adminPass}
-                onChange={(e) => setAdminPass(e.target.value)}
-                placeholder="Enter password"
-                style={{ padding: "8px 10px", borderRadius: 10, border: "1px solid #e5e7eb", minWidth: 220 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") fetchData();
-                }}
-              />
-              <button
-                onClick={fetchData}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  background: "#f8fafc",
-                  cursor: "pointer",
-                }}
-              >
-                Load
-              </button>
-            </div>
-          )}
         </div>
 
         <button className="refresh-btn" onClick={fetchData}>

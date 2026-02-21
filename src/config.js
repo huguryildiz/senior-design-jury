@@ -8,16 +8,9 @@ export const APP_CONFIG = {
   department: "Department of Electrical & Electronics Engineering",
   university: "TED University",
 
-
   // Google Apps Script Web App endpoint (POST)
   // Used by JuryForm to submit rows to Google Sheets.
-  scriptUrl: "https://script.google.com/macros/s/AKfycbyQK792Cd5-3X7mpqd-LwOuFlvB8MbreTXDqY9KLgTTl7hw9GBCzNtZ3C1aS89R9lARCA/exec",
-
-  // Google Sheet CSV export endpoint (GET)
-  // Used by AdminPanel to read evaluations (gviz CSV).
-  sheetCsvUrl:
-    "https://docs.google.com/spreadsheets/d/AKfycbyQK792Cd5-3X7mpqd-LwOuFlvB8MbreTXDqY9KLgTTl7hw9GBCzNtZ3C1aS89R9lARCA/gviz/tq?tqx=out:csv&sheet=Evaluations",
-
+  scriptUrl: "https://script.google.com/macros/s/AKfycbyQK792Cd5-3X7mpqd-LwOuFlvB8MbreTXDqY9KLgTTl7hw9GBCzNtZ3C1aS89R9lARCA/exec"
 };
 
 // Fallback groups (works offline / if Groups sheet fetch fails)
