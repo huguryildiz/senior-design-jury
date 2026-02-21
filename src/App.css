@@ -1287,3 +1287,226 @@ body {
 .juror-progress-label { font-size: 12px; font-weight: 700; color: #475569; min-width: 34px; text-align: right; }
 .juror-row { display: flex; align-items: center; gap: 8px; }
 .juror-row span:first-child { flex: 1; }
+
+/* ─── Sticky segmented progress bar ─────────────────────── */
+.sticky-progress {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+}
+.sticky-seg {
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  transition: all 180ms ease;
+  position: relative;
+  overflow: hidden;
+}
+.sticky-seg.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.sticky-seg.done {
+  border-color: #22c55e;
+  background: #dcfce7;
+  color: #166534;
+}
+.sticky-seg.done.active {
+  border-color: #16a34a;
+  background: #bbf7d0;
+}
+.sticky-seg-check { font-size: 11px; }
+.sticky-seg-label { font-size: 12px; font-weight: 800; }
+.sticky-progress-count {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ─── Project info card ──────────────────────────────────── */
+.project-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.project-info-desc {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.project-info-students {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* ─── Status badges ──────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status-badge.submitted   { background: #dcfce7; color: #166534; }
+.status-badge.in-progress { background: #fef9c3; color: #92400e; }
+
+/* ─── Live indicator in header ───────────────────────────── */
+.live-indicator { color: #f59e0b; font-weight: 700; }
+
+/* ─── Dashboard charts layout ────────────────────────────── */
+.dashboard-charts {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.dashboard-charts > * { flex: 1; min-width: 260px; }
+
+/* ─── Criteria bar chart ─────────────────────────────────── */
+.crit-bar-chart {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.crit-bar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 4px;
+}
+.crit-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.crit-bar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 60px;
+}
+.crit-bar-track {
+  flex: 1;
+  height: 12px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+}
+.crit-bar-range {
+  position: absolute;
+  top: 0; height: 100%;
+  background: #bfdbfe;
+  border-radius: 999px;
+}
+.crit-bar-avg {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 18px;
+  background: #1d4ed8;
+  border-radius: 2px;
+  transform: translateX(-50%);
+}
+.crit-bar-stats {
+  font-size: 11px;
+  color: #475569;
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: right;
+}
+.crit-bar-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.legend-range {
+  display: inline-block;
+  width: 14px; height: 8px;
+  background: #bfdbfe;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.legend-avg {
+  display: inline-block;
+  width: 4px; height: 12px;
+  background: #1d4ed8;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ─── Radar chart size fix ───────────────────────────────── */
+.radar-svg { width: 260px; height: 260px; }
+
+/* ─── Rank description ───────────────────────────────────── */
+.rank-desc {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* ─── Juror dept inline ──────────────────────────────────── */
+.juror-dept-inline {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+/* ─── Juror row with desc ────────────────────────────────── */
+.juror-row-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.juror-row-name { font-size: 13px; font-weight: 600; color: #0f172a; }
+.juror-row-desc { font-size: 11px; color: #64748b; }
+
+/* ─── Completion header ──────────────────────────────────── */
+.completion-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
