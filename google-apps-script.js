@@ -1,55 +1,52 @@
 // ============================================================
 // EE 492 Jury App – Google Apps Script
 // ============================================================
-// Handles two endpoints:
-//   POST  → Write / update jury evaluation rows
-//   GET   → action=export: Authenticated JSON dump for AdminPanel
+// POST → upsert jury evaluation rows (in_progress or submitted)
+// GET  → action=export: authenticated JSON dump for AdminPanel
 //
-// Sheet columns (A–L):
-//   A: Juror Name
-//   B: Department / Institution
-//   C: Timestamp
-//   D: Group No
-//   E: Group Name
-//   F: Design (20)
-//   G: Technical (40)
-//   H: Delivery (30)
-//   I: Teamwork (10)
-//   J: Total (100)
-//   K: Comments
-//   L: Status  ← NEW ("in_progress" or "submitted")
+// Sheet columns A–L:
+//   A  Juror Name
+//   B  Department / Institution
+//   C  Timestamp
+//   D  Group No
+//   E  Group Name
+//   F  Design (20)
+//   G  Technical (40)
+//   H  Delivery (30)
+//   I  Teamwork (10)
+//   J  Total (100)
+//   K  Comments
+//   L  Status   ("in_progress" | "submitted")
 //
 // Dedup key: lowercase(jurorName) + "__" + groupNo
-// Last write wins; "submitted" always overwrites "in_progress".
+// "submitted" rows are never overwritten by "in_progress" updates.
 // ============================================================
 
 const SHEET_NAME = "Evaluations";
-const NUM_COLS   = 12; // A through L
+const NUM_COLS   = 12; // columns A–L
 
-// ── Authorization helper ──────────────────────────────────────
+// ── Check admin password against Script Properties ────────────
 function isAuthorized(pass) {
   const stored = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD") || "";
   return stored.length > 0 && pass === stored;
 }
 
-// ── GET handler: health-check + authenticated export ──────────
+// ── GET: health-check + authenticated export ──────────────────
 function doGet(e) {
   try {
     const action = (e.parameter.action || "").toLowerCase();
 
     if (action === "export") {
-      const pass = e.parameter.pass || "";
-      if (!isAuthorized(pass)) {
-        return json({ status: "unauthorized" });
+      if (!isAuthorized(e.parameter.pass || "")) {
+        return respond({ status: "unauthorized" });
       }
 
       const ss    = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName(SHEET_NAME);
-
-      if (!sheet) return json({ status: "ok", rows: [] });
+      if (!sheet) return respond({ status: "ok", rows: [] });
 
       const values  = sheet.getDataRange().getValues();
-      const headers = values.shift(); // first row = headers
+      const headers = values.shift(); // remove header row
 
       const rows = values.map((r) => {
         const obj = {};
@@ -57,18 +54,16 @@ function doGet(e) {
         return obj;
       });
 
-      return json({ status: "ok", rows });
+      return respond({ status: "ok", rows });
     }
 
-    // Default health-check response
-    return json({ status: "ok" });
-
+    return respond({ status: "ok" }); // health-check
   } catch (err) {
-    return json({ status: "error", message: String(err) });
+    return respond({ status: "error", message: String(err) });
   }
 }
 
-// ── POST handler: upsert jury evaluation rows ─────────────────
+// ── POST: upsert evaluation rows ──────────────────────────────
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -76,15 +71,16 @@ function doPost(e) {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     let   sheet = ss.getSheetByName(SHEET_NAME);
 
-    // Create sheet with header row if it does not exist yet
+    // Create sheet with styled header row if it does not exist yet
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_NAME);
       sheet.appendRow([
         "Juror Name", "Department / Institution", "Timestamp",
-        "Group No",   "Group Name",
+        "Group No", "Group Name",
         "Design (20)", "Technical (40)", "Delivery (30)", "Teamwork (10)",
         "Total (100)", "Comments", "Status"
       ]);
+      // Style all 12 header columns consistently
       sheet.getRange(1, 1, 1, NUM_COLS)
         .setFontWeight("bold")
         .setBackground("#1d4ed8")
@@ -92,15 +88,15 @@ function doPost(e) {
       sheet.setFrozenRows(1);
     }
 
-    // Build index: dedup-key → sheet row number (1-indexed)
-    const lastRow = sheet.getLastRow();
+    // Build an index: dedup-key → sheet row number (1-based, skipping header)
+    const lastRow  = sheet.getLastRow();
     const existing = lastRow >= 2
       ? sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues()
       : [];
 
-    // Normalize a (name, groupNo) pair into a stable dedup key
+    // Normalize (jurorName, groupNo) into a stable lowercase dedup key
     const keyOf = (name, groupNo) =>
-      String(name  || "").trim().toLowerCase() + "__" +
+      String(name   || "").trim().toLowerCase() + "__" +
       String(groupNo || "").trim();
 
     const index = new Map(); // key → row number
@@ -109,34 +105,33 @@ function doPost(e) {
       if (key !== "__") index.set(key, i + 2); // +2: 1-indexed + header
     });
 
-    // Dedupe the incoming payload (last entry for a key wins)
+    // Dedupe incoming payload (last row per key wins inside the payload)
     const latestByKey = new Map();
     (data.rows || []).forEach((row) => {
       const key = keyOf(row.juryName, row.projectId);
       if (key !== "__") latestByKey.set(key, row);
     });
 
-    let updated = 0;
-    let added   = 0;
+    let updated = 0, added = 0;
 
     latestByKey.forEach((row, key) => {
-      // Determine effective status: never downgrade "submitted" → "in_progress"
       let newStatus = String(row.status || "submitted");
-      const existingRowNum = index.get(key);
 
+      // Protect submitted rows: never downgrade to in_progress
+      const existingRowNum = index.get(key);
       if (existingRowNum) {
-        // Read current status from col L (index 11, 0-based)
+        // col L is index 11 (0-based) in the existing values array
         const currentStatus = String(existing[existingRowNum - 2][11] || "");
         if (currentStatus === "submitted" && newStatus === "in_progress") {
-          newStatus = "submitted"; // protect submitted rows from in_progress overwrites
+          newStatus = "submitted";
         }
       }
 
       const values = [
-        row.juryName,   row.juryDept,    row.timestamp,
-        row.projectId,  row.projectName,
-        row.design,     row.technical,   row.delivery, row.teamwork,
-        row.total,      row.comments,    newStatus
+        row.juryName, row.juryDept,  row.timestamp,
+        row.projectId, row.projectName,
+        row.design,   row.technical, row.delivery, row.teamwork,
+        row.total,    row.comments,  newStatus
       ];
 
       if (existingRowNum) {
@@ -149,15 +144,15 @@ function doPost(e) {
       }
     });
 
-    return json({ status: "ok", updated, added });
+    return respond({ status: "ok", updated, added });
 
   } catch (err) {
-    return json({ status: "error", message: String(err) });
+    return respond({ status: "error", message: String(err) });
   }
 }
 
 // ── JSON response helper ──────────────────────────────────────
-function json(obj) {
+function respond(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);

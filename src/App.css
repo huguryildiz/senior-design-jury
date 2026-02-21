@@ -1510,3 +1510,323 @@ body {
   color: #0f172a;
   margin-bottom: 4px;
 }
+
+/* ══════════════════════════════════════════════════════════
+   JURY FORM — Sticky combined eval header
+══════════════════════════════════════════════════════════ */
+.eval-screen { display: flex; flex-direction: column; }
+
+.eval-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(15,23,42,0.07);
+  padding: 10px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Back button — compact, top-left */
+.eval-back-btn {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  flex-shrink: 0;
+}
+.eval-back-btn:hover { background: #f1f5f9; }
+
+/* Project info row */
+.eval-project-info {
+  padding-left: 44px; /* clear the back button */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.eval-project-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.eval-project-desc {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.eval-project-students {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* Nav row: prev | select | next | segments */
+.eval-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+}
+
+/* Segment progress bar */
+.eval-seg-bar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+.eval-seg {
+  width: 28px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 140ms;
+}
+.eval-seg.active { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+.eval-seg.done   { border-color: #22c55e; background: #dcfce7; color: #166534; }
+.eval-seg.done.active { border-color: #16a34a; background: #bbf7d0; }
+.eval-seg-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Tab bar scrollable on mobile
+══════════════════════════════════════════════════════════ */
+.tab-bar {
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab { flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Juror search bar
+══════════════════════════════════════════════════════════ */
+.juror-search-bar {
+  position: relative;
+  margin-bottom: 14px;
+}
+.juror-search-bar input {
+  width: 100%;
+  padding: 10px 36px 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 14px;
+  background: #fff;
+  box-sizing: border-box;
+}
+.juror-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Summary rank card multi-line layout
+══════════════════════════════════════════════════════════ */
+.rank-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.rank-group-name  { font-size: 15px; font-weight: 800; color: #0f172a; }
+.rank-desc-line   { font-size: 12px; color: #475569; font-weight: 500; line-height: 1.4; }
+.rank-students-line { font-size: 11px; color: #64748b; line-height: 1.4; }
+.rank-eval-count  { font-size: 11px; color: #94a3b8; font-style: italic; }
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Dashboard grid layout
+══════════════════════════════════════════════════════════ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media (max-width: 700px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Shared chart card
+══════════════════════════════════════════════════════════ */
+.chart-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px;
+}
+.chart-title    { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+.chart-subtitle { font-size: 11px; color: #94a3b8; margin-bottom: 12px; }
+.chart-empty    { font-size: 13px; color: #94a3b8; padding: 12px 0; }
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #475569; }
+.legend-dot  { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Horizontal bar rows (shared by GroupBar + Strictness)
+══════════════════════════════════════════════════════════ */
+.hbar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.hbar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 56px;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.strictness-label { max-width: 90px; }
+.hbar-track {
+  flex: 1;
+  height: 14px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+}
+.hbar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 999px;
+  position: absolute;
+  top: 0; left: 0;
+}
+.strictness-fill { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+.hbar-range {
+  position: absolute;
+  top: 3px;
+  height: 8px;
+  background: rgba(59,130,246,0.2);
+  border-radius: 999px;
+}
+.hbar-tick {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 18px;
+  background: #64748b;
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+.hbar-mean-line {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 20px;
+  background: #3b82f6;
+  border-radius: 1px;
+  transform: translateX(-50%);
+  border-left: 2px dashed #3b82f6;
+  background: none;
+}
+.hbar-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.hbar-axis {
+  position: relative;
+  height: 16px;
+  margin-left: calc(56px + 10px);
+  margin-top: 4px;
+}
+.hbar-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: #94a3b8;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Clustered bar chart
+══════════════════════════════════════════════════════════ */
+.clustered-scroll { overflow-x: auto; }
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Radar chart card + group select
+══════════════════════════════════════════════════════════ */
+.radar-chart-card { display: flex; flex-direction: column; align-items: center; }
+.radar-svg { width: 100%; max-width: 300px; height: auto; }
+.radar-group-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ADMIN — Matrix legend
+══════════════════════════════════════════════════════════ */
+.matrix-subtitle {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+.matrix-legend-item { display: flex; align-items: center; gap: 5px; }
+.matrix-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.submitted-dot  { background: #86efac; }
+.progress-dot   { background: #fde68a; }
+.empty-dot      { background: #e2e8f0; }
