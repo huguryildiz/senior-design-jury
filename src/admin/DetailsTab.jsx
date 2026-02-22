@@ -133,7 +133,7 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
                     </div>
                   </td>
                   <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>{formatTs(row.timestamp)}</td>
-                  <td><StatusBadge status={row.status} /></td>
+                  <td><StatusBadge status={row.status} editingFlag={row.editingFlag} /></td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.design)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.technical)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.delivery)}</td>

@@ -16,7 +16,7 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
 );
 const TOTAL_GROUPS = PROJECT_LIST.length;
 
-export default function JurorsTab({ jurorStats, jurors }) {
+export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
   const [jurorDropdown, setJurorDropdown] = useState("ALL");
   const [jurorSearch,   setJurorSearch]   = useState("");
 
@@ -105,6 +105,21 @@ export default function JurorsTab({ jurorStats, jurors }) {
                     ? "✓ All completed"
                     : `${submitted.length}/${TOTAL_GROUPS} completed`}
                 </div>
+
+                {/* PIN reset button — only shown when onPinReset is provided */}
+                {onPinReset && (
+                  <button
+                    className="pin-reset-btn"
+                    title={`Reset PIN for ${jury}`}
+                    onClick={() => {
+                      if (window.confirm(`Reset PIN for ${jury}?\nThey will receive a new PIN on next login.`)) {
+                        onPinReset(jury, latestRow?.juryDept || "");
+                      }
+                    }}
+                  >
+                    🔑 Reset PIN
+                  </button>
+                )}
               </div>
             </div>
 

@@ -531,9 +531,19 @@ function doPost(e) {
           }
         }
 
-        // Carry over editing flag — clear it only when all_submitted
+        // EditingFlag carry-over rules:
+        //  - If newStatus = all_submitted → always clear the flag (edit done)
+        //  - If resetJuror unlock window is still active → force "editing" (in case
+        //    the rows POST arrived before resetJuror wrote the flag)
+        //  - Otherwise → carry over whatever was in the sheet
         var prevEditingFlag = String(existing[existingRowNum - 2][12] || "");
-        newEditingFlag = (newStatus === "all_submitted") ? "" : prevEditingFlag;
+        if (newStatus === "all_submitted") {
+          newEditingFlag = "";
+        } else if (isResetUnlockActive(row.juryName, row.juryDept)) {
+          newEditingFlag = "editing";
+        } else {
+          newEditingFlag = prevEditingFlag;
+        }
       }
 
       // Row background colour by status

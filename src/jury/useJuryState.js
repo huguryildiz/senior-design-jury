@@ -25,7 +25,7 @@ import {
 
 const STORAGE_KEY   = "ee492_jury_draft_v1";
 const SCRIPT_URL    = import.meta.env.VITE_SCRIPT_URL || "";
-const SYNC_INTERVAL = 2 * 60 * 1000; // 2 minutes
+const SYNC_INTERVAL = 30 * 1000; // 30 seconds — safe for Apps Script quota, max 30s draft loss
 const DEBOUNCE_MS   = 400;
 const INSTANT_DELAY = 300;
 
@@ -319,10 +319,14 @@ export default function useJuryState({ startAtEval = false } = {}) {
     const useScores   = doneScores   || scores;
     const useComments = doneComments || comments;
 
-    // Unlock Sheets so all_submitted can be downgraded
+    // resetJuror does two things server-side:
+    //   1. Sets all rows → in_progress
+    //   2. Sets EditingFlag = "editing"  ← must happen BEFORE any rows POST
+    // We fire resetJuror first, then delay the rows POST by 1.5s so Apps Script
+    // processes them in order. The upsert carry-over logic then preserves "editing"
+    // on subsequent group_submitted writes.
     if (n.trim()) {
       postToSheet({ action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
-      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, useScores, useComments, p, "in_progress")) });
     }
 
     setScores(useScores);
@@ -332,7 +336,11 @@ export default function useJuryState({ startAtEval = false } = {}) {
     setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
     setStep("eval");
 
-    postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, useScores, useComments, p, "group_submitted")) });
+    // Delay rows POST so resetJuror has time to write EditingFlag = "editing" first.
+    setTimeout(() => {
+      if (!n.trim()) return;
+      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, useScores, useComments, p, "group_submitted")) });
+    }, 1500);
   }, [doneScores, doneComments, scores, comments]);
 
   // Called from Edit Final Submit button

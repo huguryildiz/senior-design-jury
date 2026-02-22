@@ -2329,3 +2329,23 @@ body {
   border-color: #f59e0b !important;
   color: #92400e !important;
 }
+
+/* ── PIN reset button in juror cards ─────────────────────── */
+.pin-reset-btn {
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: white;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.pin-reset-btn:hover {
+  background: var(--amber-light);
+  border-color: #fcd34d;
+  color: var(--amber);
+}

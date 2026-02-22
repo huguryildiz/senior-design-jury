@@ -135,10 +135,17 @@ export default function AdminPanel({ adminPass, onBack }) {
   };
 
   // ── Derived memos ────────────────────────────────────────
-  const jurors = useMemo(
-    () => [...new Set(data.map((d) => d.juryName).filter(Boolean))].sort(cmp),
-    [data]
-  );
+  // Deduplicate juror names case-insensitively (same person, different capitalisation).
+  // Display name = first occurrence (preserves original casing for readability).
+  const jurors = useMemo(() => {
+    const seen = new Map(); // lowercase → original
+    data.forEach((d) => {
+      if (!d.juryName) return;
+      const low = d.juryName.trim().toLowerCase();
+      if (!seen.has(low)) seen.set(low, d.juryName.trim());
+    });
+    return [...seen.values()].sort(cmp);
+  }, [data]);
   const groups = useMemo(
     () => PROJECT_LIST.map((p) => ({ id: p.id, label: `Group ${p.id}`, desc: p.desc || "" }))
       .sort((a, b) => a.id - b.id),
