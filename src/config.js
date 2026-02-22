@@ -6,8 +6,8 @@
 
 export const APP_CONFIG = {
   // Displayed in the browser tab and home screen
-  appTitle:    "Senior Design Jury Portal",
-  courseName:  "EE 491 / EE 492 — Senior Design Projects",
+  appTitle:    "Senior ProjectJury Portal",
+  courseName:  "EE 491 / EE 492 — Senior Project",
   department:  "Electrical & Electronics Engineering",
   university:  "TED University",
 

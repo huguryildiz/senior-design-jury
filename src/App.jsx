@@ -130,7 +130,7 @@ export default function App() {
         <h1>Senior Design<br />Jury Portal</h1>
 
         <p className="home-sub">
-          TED University · Spring 2025<br />
+          TED University · <br />
           Electrical &amp; Electronics Engineering
         </p>
 
