@@ -14,10 +14,11 @@
 // Key behaviors:
 //   - Info screen: name+dept entered → debounced cloud draft lookup
 //   - Start: immediate in_progress ping for all groups
-//   - Each group completed: auto-sync as group_submitted INSTANTLY (no button needed)
+//   - Each group completed: auto-sync as group_submitted INSTANTLY
 //   - Every 2 min: periodic sync + cloud draft save
-//   - All groups done: auto-transition to "Thank You" done screen after 800ms
-//   - Done screen: scores summary + back to home
+//   - Manual "Save Draft" button: sticky header far right
+//   - All groups done: auto-transition to "Thank You" done screen
+//   - Done screen: "Edit Scores" button to go back and revise
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -25,7 +26,7 @@ import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
 
 const STORAGE_KEY   = "ee492_jury_draft_v1";
 const SCRIPT_URL    = APP_CONFIG?.scriptUrl;
-const SYNC_INTERVAL = 2 * 60 * 1000; // 2 minutes
+const SYNC_INTERVAL = 2 * 60 * 1000;
 const DEBOUNCE_MS   = 500;
 
 // ── Empty state factories ─────────────────────────────────────
@@ -62,13 +63,13 @@ async function postToSheet(body) {
 }
 
 // ── Build one evaluation row for a single project ─────────────
-// projectName uses desc so Google Sheets "Group Name" column shows the description
+// projectName = project.name (Group Name column in Sheets)
 function buildRow(juryName, juryDept, scores, comments, project, status) {
   return {
     juryName, juryDept,
     timestamp:   new Date().toLocaleString("en-GB"),
     projectId:   project.id,
-    projectName: project.desc || project.name,
+    projectName: project.name,   // ← Group Name (not desc)
     design:      scores[project.id]?.design    ?? "",
     technical:   scores[project.id]?.technical ?? "",
     delivery:    scores[project.id]?.delivery  ?? "",
@@ -79,13 +80,24 @@ function buildRow(juryName, juryDept, scores, comments, project, status) {
   };
 }
 
-// ── SVG Home icon ─────────────────────────────────────────────
+// ── SVG icons ─────────────────────────────────────────────────
 function HomeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z" />
       <polyline points="9 21 9 12 15 12 15 21" />
+    </svg>
+  );
+}
+
+function SaveIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <polyline points="17 21 17 13 7 13 7 21"/>
+      <polyline points="7 3 7 8 15 8"/>
     </svg>
   );
 }
@@ -105,10 +117,9 @@ export default function JuryForm({ onBack }) {
   const [cloudDraft,      setCloudDraft]      = useState(null);
   const [cloudChecking,   setCloudChecking]   = useState(false);
   const [localDraftOwner, setLocalDraftOwner] = useState(null);
-  // Prevent double-trigger of "all done" transition
+  const [saveStatus,      setSaveStatus]      = useState("idle"); // idle | saving | saved
   const doneFiredRef = useRef(false);
-
-  const debounceRef = useRef(null);
+  const debounceRef  = useRef(null);
 
   // ── Load localStorage draft info on mount ───────────────────
   useEffect(() => {
@@ -168,13 +179,19 @@ export default function JuryForm({ onBack }) {
   }, [juryName, juryDept, scores, comments, current, groupSynced, step]);
 
   // ── Save draft to cloud ───────────────────────────────────────
-  const saveCloudDraft = useCallback(() => {
+  const saveCloudDraft = useCallback((showFeedback = false) => {
     if (!juryName.trim() || !SCRIPT_URL) return;
+    if (showFeedback) setSaveStatus("saving");
     postToSheet({
       action: "saveDraft",
       juryName: juryName.trim(),
       juryDept: juryDept.trim(),
       draft: { juryName: juryName.trim(), juryDept: juryDept.trim(), scores, comments, current, groupSynced },
+    }).then(() => {
+      if (showFeedback) {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      }
     });
   }, [juryName, juryDept, scores, comments, current, groupSynced]);
 
@@ -221,7 +238,6 @@ export default function JuryForm({ onBack }) {
 
     doneFiredRef.current = true;
     const timer = setTimeout(() => {
-      // Upgrade all rows to all_submitted
       const rows = PROJECTS.map((p) =>
         buildRow(juryName, juryDept, scores, comments, p, "all_submitted")
       );
@@ -241,6 +257,17 @@ export default function JuryForm({ onBack }) {
     setShowBackMenu(false);
     setGroupSynced({}); setCloudDraft(null); setLocalDraftOwner(null);
     doneFiredRef.current = false;
+  };
+
+  // ── "Edit Scores" from done screen ──────────────────────────
+  const handleEditScores = () => {
+    doneFiredRef.current = false;
+    setStep("eval");
+    // Re-open all groups as group_submitted (allow editing)
+    const rows = PROJECTS.map((p) =>
+      buildRow(juryName, juryDept, scores, comments, p, "group_submitted")
+    );
+    postToSheet({ rows });
   };
 
   // ── Derived values ────────────────────────────────────────────
@@ -295,6 +322,9 @@ export default function JuryForm({ onBack }) {
           </div>
 
           <div className="done-actions">
+            <button className="btn-secondary" onClick={handleEditScores}>
+              ✏️ Edit Scores
+            </button>
             <button className="btn-primary" onClick={() => { resetAll(); onBack(); }}>
               <HomeIcon /> Back to Home
             </button>
@@ -427,7 +457,7 @@ export default function JuryForm({ onBack }) {
           )}
         </div>
 
-        {/* Navigation row: prev | dropdown | next  (no segment buttons) */}
+        {/* Navigation row */}
         <div className="eval-nav-row">
           <button className="group-nav-btn"
             onClick={() => setCurrent((i) => Math.max(0, i - 1))}
@@ -446,6 +476,19 @@ export default function JuryForm({ onBack }) {
             onClick={() => setCurrent((i) => Math.min(PROJECTS.length - 1, i + 1))}
             disabled={current === PROJECTS.length - 1} aria-label="Next group">→</button>
         </div>
+
+        {/* Save Draft button — far right of nav row */}
+        <button
+          className={`save-draft-btn ${saveStatus === "saved" ? "saved" : ""}`}
+          onClick={() => saveCloudDraft(true)}
+          disabled={saveStatus === "saving"}
+          title="Save draft to cloud"
+        >
+          <SaveIcon />
+          {saveStatus === "saving" && <span>Saving…</span>}
+          {saveStatus === "saved"  && <span>✓ Saved</span>}
+          {saveStatus === "idle"   && <span>Save Draft</span>}
+        </button>
 
         {/* Progress bar */}
         <div className="eval-progress-wrap">
@@ -475,14 +518,12 @@ export default function JuryForm({ onBack }) {
       {/* ── Eval body ────────────────────────────────────── */}
       <div className="eval-body">
 
-        {/* Group saved banner */}
         {groupSynced[project.id] && (
           <div className="group-done-banner">
             ✅ Scores saved for this group. Continue with other groups.
           </div>
         )}
 
-        {/* Criteria score cards */}
         {CRITERIA.map((crit) => {
           const isMissing   = scores[project.id][crit.id] === "";
           const showMissing = (touched[project.id][crit.id] || submitAttempted) && isMissing;
@@ -531,7 +572,6 @@ export default function JuryForm({ onBack }) {
           );
         })}
 
-        {/* Comments */}
         <div className="crit-card comment-card">
           <div className="crit-label">Comments (Optional)</div>
           <textarea
@@ -542,7 +582,6 @@ export default function JuryForm({ onBack }) {
           />
         </div>
 
-        {/* Total score */}
         <div className="total-bar">
           <span>Total</span>
           <span className={`total-score ${calcTotal(scores, project.id) >= 80 ? "high" : calcTotal(scores, project.id) >= 60 ? "mid" : ""}`}>
