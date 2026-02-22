@@ -803,6 +803,19 @@ body {
 .done-icon { font-size: 48px; }
 .done-card h2 { font-size: 22px; font-weight: 700; }
 .done-card p { color: var(--gray-500); }
+.done-subtitle { font-size: 14px; color: var(--gray-500); line-height: 1.5; }
+
+/* Banner shown when a group's scores are saved */
+.group-done-banner {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+  margin-bottom: 4px;
+}
 
 .done-note{
   margin-top: 6px;
@@ -1583,6 +1596,29 @@ body {
   padding-left: 2px;
 }
 
+/* Nav row: all children same height */
+.eval-nav-row .group-nav-btn,
+.eval-nav-row .group-nav-select {
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.eval-nav-row .group-nav-select {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .eval-nav-row .group-nav-btn,
+  .eval-nav-row .group-nav-select {
+    height: 38px;
+  }
+  .eval-nav-row .group-nav-select {
+    font-size: 12px;
+  }
+}
+
 /* Segment progress bar */
 .eval-seg-bar {
   display: flex;
@@ -1917,7 +1953,8 @@ body {
 .done-verify-warn    { font-size: 12px; color: #b45309; margin: 6px 0; line-height: 1.5; }
 
 .done-row-left   { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.done-row-desc   { font-size: 11px; color: #94a3b8; }
+.done-row-name   { font-size: 13px; font-weight: 600; color: var(--gray-800); text-align: left; }
+.done-row-desc   { font-size: 11px; color: #94a3b8; text-align: left; }
 .done-actions    { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
 
 /* ══════════════════════════════════════════════════════════

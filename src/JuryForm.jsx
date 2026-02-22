@@ -8,26 +8,25 @@
 //
 // Submission status flow:
 //   in_progress      – juror started, group not fully scored
-//   group_submitted  – this specific group fully scored (auto-synced)
-//   all_submitted    – final submit button clicked, all groups locked
+//   group_submitted  – this specific group fully scored (auto-synced instantly)
+//   all_submitted    – all groups fully scored; sent automatically
 //
 // Key behaviors:
 //   - Info screen: name+dept entered → debounced cloud draft lookup
 //   - Start: immediate in_progress ping for all groups
-//   - Each group completed: auto-sync that group as group_submitted
+//   - Each group completed: auto-sync as group_submitted INSTANTLY (no button needed)
 //   - Every 2 min: periodic sync + cloud draft save
-//   - Submit: all groups → all_submitted, verify via GET, delete draft
-//   - Done screen: scores visible, "Submit Again" keeps scores, "Home" resets
+//   - All groups done: auto-transition to "Thank You" done screen after 800ms
+//   - Done screen: scores summary + back to home
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
 
-const STORAGE_KEY    = "ee492_jury_draft_v1";
-const SCRIPT_URL     = APP_CONFIG?.scriptUrl;
-const SYNC_INTERVAL  = 2 * 60 * 1000; // 2 minutes
-const DEBOUNCE_MS    = 500;            // draft lookup debounce after typing
-const TOTAL_CRITERIA = PROJECTS.length * CRITERIA.length; // e.g. 6×4 = 24
+const STORAGE_KEY   = "ee492_jury_draft_v1";
+const SCRIPT_URL    = APP_CONFIG?.scriptUrl;
+const SYNC_INTERVAL = 2 * 60 * 1000; // 2 minutes
+const DEBOUNCE_MS   = 500;
 
 // ── Empty state factories ─────────────────────────────────────
 const makeEmptyScores = () =>
@@ -36,7 +35,7 @@ const makeEmptyScores = () =>
   ]));
 const makeEmptyComments = () =>
   Object.fromEntries(PROJECTS.map((p) => [p.id, ""]));
-const makeEmptyTouched  = () =>
+const makeEmptyTouched = () =>
   Object.fromEntries(PROJECTS.map((p) => [
     p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, false]))
   ]));
@@ -45,12 +44,12 @@ const makeEmptyTouched  = () =>
 const calcTotal   = (scores, pid) =>
   CRITERIA.reduce((s, c) => s + (parseInt(scores[pid]?.[c.id], 10) || 0), 0);
 const isAllFilled = (scores, pid) =>
-  CRITERIA.every((c) => scores[pid][c.id] !== "");
+  CRITERIA.every((c) => scores[pid]?.[c.id] !== "");
 const countFilled = (scores) =>
   PROJECTS.reduce((t, p) =>
     t + CRITERIA.reduce((n, c) => n + (scores[p.id][c.id] !== "" ? 1 : 0), 0), 0);
 
-// ── Fire-and-forget POST (no-cors, evaluation rows) ───────────
+// ── Fire-and-forget POST ──────────────────────────────────────
 async function postToSheet(body) {
   if (!SCRIPT_URL) return;
   try {
@@ -59,16 +58,17 @@ async function postToSheet(body) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-  } catch (_) { /* best-effort */ }
+  } catch (_) {}
 }
 
 // ── Build one evaluation row for a single project ─────────────
+// projectName uses desc so Google Sheets "Group Name" column shows the description
 function buildRow(juryName, juryDept, scores, comments, project, status) {
   return {
     juryName, juryDept,
     timestamp:   new Date().toLocaleString("en-GB"),
     projectId:   project.id,
-    projectName: project.name,
+    projectName: project.desc || project.name,
     design:      scores[project.id]?.design    ?? "",
     technical:   scores[project.id]?.technical ?? "",
     delivery:    scores[project.id]?.delivery  ?? "",
@@ -79,7 +79,7 @@ function buildRow(juryName, juryDept, scores, comments, project, status) {
   };
 }
 
-// ── SVG Home icon (replaces ← back arrow) ────────────────────
+// ── SVG Home icon ─────────────────────────────────────────────
 function HomeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -94,23 +94,19 @@ export default function JuryForm({ onBack }) {
   const [juryName,        setJuryName]        = useState("");
   const [juryDept,        setJuryDept]        = useState("");
   const [step,            setStep]            = useState("info");
-  const [current,        setCurrent]          = useState(0);
+  const [current,         setCurrent]         = useState(0);
   const [scores,          setScores]          = useState(makeEmptyScores);
   const [comments,        setComments]        = useState(makeEmptyComments);
   const [openRubric,      setOpenRubric]      = useState(null);
-  const [submitting,      setSubmitting]      = useState(false);
   const [touched,         setTouched]         = useState(makeEmptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showBackMenu,    setShowBackMenu]    = useState(false);
-  const [submitError,     setSubmitError]     = useState(null);
-  const [verifyStatus,    setVerifyStatus]    = useState(null); // null | "ok" | "warn"
-  // Which groups have been auto-synced as group_submitted
   const [groupSynced,     setGroupSynced]     = useState({});
-  // Cloud draft lookup state
-  const [cloudDraft,      setCloudDraft]      = useState(null);   // draft object from server
+  const [cloudDraft,      setCloudDraft]      = useState(null);
   const [cloudChecking,   setCloudChecking]   = useState(false);
-  // localStorage draft banner
   const [localDraftOwner, setLocalDraftOwner] = useState(null);
+  // Prevent double-trigger of "all done" transition
+  const doneFiredRef = useRef(false);
 
   const debounceRef = useRef(null);
 
@@ -134,7 +130,7 @@ export default function JuryForm({ onBack }) {
     if (draft.groupSynced) setGroupSynced(draft.groupSynced);
   }, []);
 
-  // ── Cloud draft lookup (debounced, triggered by name+dept) ──
+  // ── Cloud draft lookup (debounced) ───────────────────────────
   const lookupCloudDraft = useCallback(async (name, dept) => {
     const n = name.trim(), d = dept.trim();
     if (!n || !SCRIPT_URL) return;
@@ -152,7 +148,6 @@ export default function JuryForm({ onBack }) {
     }
   }, []);
 
-  // Debounce cloud lookup when name or dept changes
   useEffect(() => {
     if (step !== "info") return;
     clearTimeout(debounceRef.current);
@@ -172,7 +167,7 @@ export default function JuryForm({ onBack }) {
     } catch (_) {}
   }, [juryName, juryDept, scores, comments, current, groupSynced, step]);
 
-  // ── Save draft to cloud (Apps Script Drafts sheet) ───────────
+  // ── Save draft to cloud ───────────────────────────────────────
   const saveCloudDraft = useCallback(() => {
     if (!juryName.trim() || !SCRIPT_URL) return;
     postToSheet({
@@ -183,20 +178,18 @@ export default function JuryForm({ onBack }) {
     });
   }, [juryName, juryDept, scores, comments, current, groupSynced]);
 
-  // ── Delete cloud draft after final submit ────────────────────
+  // ── Delete cloud draft ───────────────────────────────────────
   const deleteCloudDraft = useCallback(() => {
     if (!juryName.trim() || !SCRIPT_URL) return;
     postToSheet({ action: "deleteDraft", juryName: juryName.trim(), juryDept: juryDept.trim() });
   }, [juryName, juryDept]);
 
-  // ── Periodic 2-minute sync: eval rows + cloud draft ─────────
+  // ── Periodic 2-minute sync ───────────────────────────────────
   useEffect(() => {
     if (step !== "eval" || !juryName.trim()) return;
     const id = setInterval(() => {
-      // Sync all groups with their current status
       const rows = PROJECTS.map((p) => {
-        const synced = groupSynced[p.id];
-        const status = synced ? "group_submitted" : "in_progress";
+        const status = groupSynced[p.id] ? "group_submitted" : "in_progress";
         return buildRow(juryName, juryDept, scores, comments, p, status);
       });
       postToSheet({ rows });
@@ -205,96 +198,59 @@ export default function JuryForm({ onBack }) {
     return () => clearInterval(id);
   }, [step, juryName, juryDept, scores, comments, groupSynced, saveCloudDraft]);
 
-  // ── Auto-sync a group when it becomes fully scored ───────────
+  // ── Auto-sync group INSTANTLY when all 4 criteria filled ─────
   useEffect(() => {
     if (step !== "eval") return;
+    const newlySynced = {};
     PROJECTS.forEach((p) => {
       if (!groupSynced[p.id] && isAllFilled(scores, p.id)) {
-        // Mark this group as synced and send group_submitted immediately
-        setGroupSynced((prev) => ({ ...prev, [p.id]: true }));
+        newlySynced[p.id] = true;
         postToSheet({ rows: [buildRow(juryName, juryDept, scores, comments, p, "group_submitted")] });
       }
     });
+    if (Object.keys(newlySynced).length > 0) {
+      setGroupSynced((prev) => ({ ...prev, ...newlySynced }));
+    }
   }, [scores, step, juryName, juryDept, comments, groupSynced]);
+
+  // ── All groups done → auto-transition to done screen ─────────
+  useEffect(() => {
+    if (step !== "eval" || doneFiredRef.current) return;
+    const allDone = PROJECTS.length > 0 && PROJECTS.every((p) => groupSynced[p.id]);
+    if (!allDone) return;
+
+    doneFiredRef.current = true;
+    const timer = setTimeout(() => {
+      // Upgrade all rows to all_submitted
+      const rows = PROJECTS.map((p) =>
+        buildRow(juryName, juryDept, scores, comments, p, "all_submitted")
+      );
+      postToSheet({ rows });
+      deleteCloudDraft();
+      localStorage.removeItem(STORAGE_KEY);
+      setStep("done");
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [groupSynced, step, juryName, juryDept, scores, comments, deleteCloudDraft]);
 
   // ── Full state reset ─────────────────────────────────────────
   const resetAll = () => {
     setJuryName(""); setJuryDept(""); setStep("info"); setCurrent(0);
     setScores(makeEmptyScores()); setComments(makeEmptyComments());
     setTouched(makeEmptyTouched()); setSubmitAttempted(false);
-    setSubmitting(false); setShowBackMenu(false);
-    setSubmitError(null); setVerifyStatus(null);
+    setShowBackMenu(false);
     setGroupSynced({}); setCloudDraft(null); setLocalDraftOwner(null);
-  };
-
-  // ── Final submit ─────────────────────────────────────────────
-  const handleSubmit = async () => {
-    setSubmitAttempted(true);
-    setSubmitError(null);
-    setVerifyStatus(null);
-
-    // Mark all missing fields as touched so errors show
-    PROJECTS.forEach((p) => {
-      if (!isAllFilled(scores, p.id)) {
-        setTouched((prev) => ({
-          ...prev,
-          [p.id]: Object.fromEntries(
-            CRITERIA.map((c) => [c.id, prev[p.id]?.[c.id] || scores[p.id][c.id] !== "" ? prev[p.id]?.[c.id] : true])
-          ),
-        }));
-      }
-    });
-
-    const firstBad = PROJECTS.findIndex((p) => !isAllFilled(scores, p.id));
-    if (firstBad !== -1) { setCurrent(firstBad); alert("Please complete all scores before submitting."); return; }
-
-    setSubmitting(true);
-    try {
-      if (!SCRIPT_URL) throw new Error("Missing APP_CONFIG.scriptUrl");
-
-      // Send all rows with all_submitted status
-      const rows = PROJECTS.map((p) => buildRow(juryName, juryDept, scores, comments, p, "all_submitted"));
-      await postToSheet({ rows });
-
-      // Delete cloud draft and localStorage
-      deleteCloudDraft();
-      localStorage.removeItem(STORAGE_KEY);
-      setStep("done");
-
-      // Verify after 3 seconds via GET (no-cors limitation workaround)
-      setTimeout(async () => {
-        try {
-          const url = `${SCRIPT_URL}?action=verify&juryName=${encodeURIComponent(juryName.trim())}`;
-          const res = await fetch(url, { cache: "no-store" });
-          if (!res.ok) throw new Error("HTTP error");
-          const json = await res.json();
-          // Confirmed if sheet has at least as many rows as there are projects
-          if (json.status === "ok" && json.submittedCount >= PROJECTS.length) {
-            setVerifyStatus("ok");
-          } else {
-            setVerifyStatus("warn");
-          }
-        } catch (_) {
-          setVerifyStatus("warn");
-        }
-      }, 3000);
-
-    } catch (_) {
-      setSubmitError("Submission failed. Please check your internet connection and try again.");
-    }
-    setSubmitting(false);
+    doneFiredRef.current = false;
   };
 
   // ── Derived values ────────────────────────────────────────────
-  const project         = PROJECTS[current];
-  const incompleteCount = PROJECTS.reduce((n, p) => n + (isAllFilled(scores, p.id) ? 0 : 1), 0);
-  const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(scores, p.id));
-  const filledCount     = countFilled(scores);
-  const progressPct     = Math.round((filledCount / TOTAL_CRITERIA) * 100);
+  const project        = PROJECTS[current];
+  const TOTAL_CRITERIA = PROJECTS.length * CRITERIA.length;
+  const filledCount    = countFilled(scores);
+  const progressPct    = Math.round((filledCount / TOTAL_CRITERIA) * 100);
 
-  // Gradient color for progress bar based on completion percentage
   const progressColor = (() => {
-    if (progressPct === 0)   return "#e2e8f0";
+    if (progressPct === 0)  return "#e2e8f0";
     if (progressPct < 33)   return "linear-gradient(90deg, #ef4444, #f97316)";
     if (progressPct < 66)   return "linear-gradient(90deg, #ef4444, #f97316, #eab308)";
     if (progressPct < 100)  return "linear-gradient(90deg, #f97316, #eab308, #84cc16)";
@@ -319,23 +275,13 @@ export default function JuryForm({ onBack }) {
     return (
       <div className="done-screen">
         <div className="done-card">
-          <div className="done-icon">✅</div>
-          <h2>Evaluation Submitted</h2>
+          <div className="done-icon">🎉</div>
+          <h2>Thank You!</h2>
+          <p className="done-subtitle">
+            Your evaluations have been recorded successfully.<br />
+            We appreciate your time and valuable feedback.
+          </p>
 
-          {/* Verification status */}
-          {verifyStatus === null && (
-            <p className="done-verify-pending">⏳ Verifying submission…</p>
-          )}
-          {verifyStatus === "ok" && (
-            <p className="done-verify-ok">✅ Your submission is verified and confirmed.</p>
-          )}
-          {verifyStatus === "warn" && (
-            <p className="done-verify-warn">⚠️ Could not verify — please screenshot your scores as backup.</p>
-          )}
-
-          <p className="done-note">You can review or resubmit your scores below.</p>
-
-          {/* Score summary — loaded from local state */}
           <div className="done-summary">
             {PROJECTS.map((p) => (
               <div key={p.id} className="done-row">
@@ -349,10 +295,6 @@ export default function JuryForm({ onBack }) {
           </div>
 
           <div className="done-actions">
-            {/* Submit Again: return to eval screen with scores intact */}
-            <button className="btn-secondary" onClick={() => { setStep("eval"); setSubmitAttempted(false); setSubmitError(null); setVerifyStatus(null); }}>
-              ↩ Submit Again
-            </button>
             <button className="btn-primary" onClick={() => { resetAll(); onBack(); }}>
               <HomeIcon /> Back to Home
             </button>
@@ -368,7 +310,6 @@ export default function JuryForm({ onBack }) {
   if (step === "info") {
     const handleStart = () => {
       setStep("eval");
-      // Immediate in_progress ping for all groups so admin sees this juror right away
       if (juryName.trim() && SCRIPT_URL) {
         const rows = PROJECTS.map((p) => buildRow(juryName, juryDept, scores, comments, p, "in_progress"));
         postToSheet({ rows });
@@ -402,7 +343,6 @@ export default function JuryForm({ onBack }) {
           <div><h2>Evaluation Form</h2><p>EE 492 Poster Presentation</p></div>
         </div>
 
-        {/* localStorage draft notice */}
         {localDraftOwner && !cloudDraft && (
           <div className="info-draft-banner">
             💾 Local draft found for <strong>{localDraftOwner}</strong> — enter matching name &amp; dept to restore.
@@ -429,12 +369,10 @@ export default function JuryForm({ onBack }) {
             />
           </div>
 
-          {/* Cloud draft lookup indicator */}
           {cloudChecking && (
             <div className="cloud-checking">🔍 Checking for saved progress…</div>
           )}
 
-          {/* Cloud draft found — offer resume or fresh start */}
           {cloudDraft && !cloudChecking && (
             <div className="cloud-draft-banner">
               <div className="cloud-draft-title">☁️ Saved progress found</div>
@@ -448,7 +386,6 @@ export default function JuryForm({ onBack }) {
             </div>
           )}
 
-          {/* Browser-only draft note */}
           <div className="draft-device-note">
             ℹ️ Your progress is auto-saved to the cloud. You can continue from any device by entering the same name and department.
           </div>
@@ -474,7 +411,6 @@ export default function JuryForm({ onBack }) {
       {/* ── Sticky combined header ───────────────────────── */}
       <div className="eval-sticky-header">
 
-        {/* Home/back button — top-left corner */}
         <button
           className="eval-back-btn"
           onClick={() => setShowBackMenu(true)}
@@ -483,7 +419,6 @@ export default function JuryForm({ onBack }) {
           <HomeIcon />
         </button>
 
-        {/* Project name, description, students */}
         <div className="eval-project-info">
           <div className="eval-project-name">{project.name}</div>
           {project.desc && <div className="eval-project-desc">{project.desc}</div>}
@@ -492,7 +427,7 @@ export default function JuryForm({ onBack }) {
           )}
         </div>
 
-        {/* Navigation row: prev | dropdown | next | segments (desktop only) */}
+        {/* Navigation row: prev | dropdown | next  (no segment buttons) */}
         <div className="eval-nav-row">
           <button className="group-nav-btn"
             onClick={() => setCurrent((i) => Math.max(0, i - 1))}
@@ -502,7 +437,7 @@ export default function JuryForm({ onBack }) {
             onChange={(e) => setCurrent(Number(e.target.value))} aria-label="Select group">
             {PROJECTS.map((p, i) => (
               <option key={p.id} value={i}>
-                {p.name} {isAllFilled(scores, p.id) ? "✅" : submitAttempted ? "⚠️" : ""}
+                {p.name} {groupSynced[p.id] ? "✅" : ""}
               </option>
             ))}
           </select>
@@ -510,20 +445,9 @@ export default function JuryForm({ onBack }) {
           <button className="group-nav-btn"
             onClick={() => setCurrent((i) => Math.min(PROJECTS.length - 1, i + 1))}
             disabled={current === PROJECTS.length - 1} aria-label="Next group">→</button>
-
-          {/* Segment buttons — hidden on mobile via CSS */}
-          <div className="eval-seg-bar desktop-only">
-            {PROJECTS.map((p, i) => (
-              <button key={p.id}
-                className={`eval-seg ${isAllFilled(scores, p.id) ? "done" : ""} ${i === current ? "active" : ""}`}
-                onClick={() => setCurrent(i)} title={p.name}>
-                {isAllFilled(scores, p.id) ? "✓" : i + 1}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Progress bar — full width, gradient fill, % label in center */}
+        {/* Progress bar */}
         <div className="eval-progress-wrap">
           <div className="eval-progress-track">
             <div className="eval-progress-fill" style={{
@@ -550,6 +474,13 @@ export default function JuryForm({ onBack }) {
 
       {/* ── Eval body ────────────────────────────────────── */}
       <div className="eval-body">
+
+        {/* Group saved banner */}
+        {groupSynced[project.id] && (
+          <div className="group-done-banner">
+            ✅ Scores saved for this group. Continue with other groups.
+          </div>
+        )}
 
         {/* Criteria score cards */}
         {CRITERIA.map((crit) => {
@@ -619,32 +550,15 @@ export default function JuryForm({ onBack }) {
           </span>
         </div>
 
-        {submitError && <div className="submit-error-msg">⚠️ {submitError}</div>}
-
-        {/* Submit / next incomplete group */}
-        <button
-          className={`btn-primary full ${incompleteCount === 0 ? "green" : ""}`}
-          disabled={submitting}
-          onClick={() => {
-            if (incompleteCount === 0) { handleSubmit(); return; }
-            setSubmitAttempted(true);
-            PROJECTS.forEach((p) => {
-              if (!isAllFilled(scores, p.id)) {
-                setTouched((prev) => ({
-                  ...prev,
-                  [p.id]: Object.fromEntries(
-                    CRITERIA.map((c) => [c.id, scores[p.id][c.id] !== "" ? prev[p.id]?.[c.id] : true])
-                  ),
-                }));
-              }
-            });
-            if (firstIncomplete !== -1) setCurrent(firstIncomplete);
-          }}
-        >
-          {submitting ? "Submitting…"
-            : incompleteCount === 0 ? "✓ Submit All Evaluations"
-            : `Complete remaining groups (${incompleteCount})`}
-        </button>
+        {/* Next group shortcut button */}
+        {current < PROJECTS.length - 1 && (
+          <button
+            className="btn-secondary full"
+            onClick={() => setCurrent((i) => i + 1)}
+          >
+            Next Group →
+          </button>
+        )}
       </div>
     </div>
   );

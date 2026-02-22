@@ -82,10 +82,10 @@ const jurorDot = (n) => hsl2hex(hashInt(n||"?") % 360, 65, 55);
 
 // CSV export — UTF-8 BOM fixes Turkish characters in Excel
 function exportCSV(rows) {
-  const hdrs = ["Juror","Department","Group","Design/20","Technical/40","Delivery/30","Teamwork/10","Total/100","Timestamp","Status","Comments"];
+  const hdrs = ["Juror","Department","Group","Design/20","Technical/40","Delivery/30","Teamwork/10","Total/100","Timestamp","Comments"];
   const esc  = (v) => { const s=String(v??""); return (s.includes(",")||s.includes('"')||s.includes("\n")) ? `"${s.replace(/"/g,'""')}"` : s; };
   const lines = [hdrs.map(esc).join(","), ...rows.map((r) =>
-    [r.juryName,r.juryDept,r.projectName,r.design,r.technical,r.delivery,r.teamwork,r.total,r.timestamp,r.status||"",r.comments].map(esc).join(",")
+    [r.juryName,r.juryDept,r.projectName,r.design,r.technical,r.delivery,r.teamwork,r.total,r.timestamp,r.comments].map(esc).join(",")
   )];
   const blob = new Blob(["\uFEFF"+lines.join("\n")], {type:"text/csv;charset=utf-8;"});
   const url  = URL.createObjectURL(blob);
@@ -105,9 +105,12 @@ function HomeIcon() {
 }
 
 // ── Status badge ──────────────────────────────────────────────
+// group_submitted = group scores saved → show green "Submitted"
+// all_submitted   = all groups done    → also green "Submitted"
+// in_progress     = started but not scored yet → yellow
 function StatusBadge({ status }) {
   if (status === "all_submitted")   return <span className="status-badge submitted">✓ Submitted</span>;
-  if (status === "group_submitted") return <span className="status-badge group-submitted">◑ In Evaluation</span>;
+  if (status === "group_submitted") return <span className="status-badge submitted">✓ Submitted</span>;
   if (status === "in_progress")     return <span className="status-badge in-progress">● In Progress</span>;
   return null;
 }
@@ -126,7 +129,7 @@ function MatrixTab({ data, jurors, groups, jurorDeptMap }) {
   const cellStyle = (entry) => {
     if (!entry) return { background: "#f8fafc", color: "#94a3b8" };
     if (entry.status === "all_submitted")   return { background: "#dcfce7", color: "#166534", fontWeight: 700 };
-    if (entry.status === "group_submitted") return { background: "#dbeafe", color: "#1e40af", fontWeight: 600 };
+    if (entry.status === "group_submitted") return { background: "#dcfce7", color: "#166534", fontWeight: 700 };
     if (entry.status === "in_progress")     return { background: "#fef9c3", color: "#92400e" };
     return { background: "#f8fafc", color: "#94a3b8" };
   };
@@ -142,8 +145,7 @@ function MatrixTab({ data, jurors, groups, jurorDeptMap }) {
   return (
     <div className="matrix-wrap">
       <p className="matrix-subtitle">
-        <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>All Submitted</span>
-        <span className="matrix-legend-item"><span className="matrix-legend-dot group-dot"/>Group Done</span>
+        <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
         <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
         <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
       </p>
@@ -322,8 +324,8 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
     return m;
   }, [jurors]);
 
-  // Only fully submitted rows used for scoring/ranking
-  const submittedData = useMemo(() => data.filter((r) => r.status === "all_submitted"), [data]);
+  // Only submitted rows (group_submitted or all_submitted) for scoring/ranking
+  const submittedData = useMemo(() => data.filter((r) => r.status === "all_submitted" || r.status === "group_submitted"), [data]);
 
   // Per-project stats (all_submitted only) — includes min/max for bar chart
   const projectStats = useMemo(() => {
@@ -349,14 +351,13 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
   const jurorStats = useMemo(() => {
     return jurors.map((jury) => {
       const rows       = data.filter((d) => d.juryName === jury);
-      const submitted  = rows.filter((r) => r.status === "all_submitted");
-      const inEval     = rows.filter((r) => r.status === "group_submitted");
+      const submitted  = rows.filter((r) => r.status === "all_submitted" || r.status === "group_submitted");
       const inProgress = rows.filter((r) => r.status === "in_progress");
       const latestTs   = rows.reduce((mx, r) => r.tsMs > mx ? r.tsMs : mx, 0);
       const latestRow  = rows.find((r) => r.tsMs === latestTs) || rows[0];
       const overall    = submitted.length === TOTAL_GROUPS ? "all_submitted"
-                       : (inEval.length + inProgress.length) > 0 ? "in_progress" : "not_started";
-      return { jury, rows, submitted, inEval, inProgress, latestTs, latestRow, overall };
+                       : submitted.length > 0 || inProgress.length > 0 ? "in_progress" : "not_started";
+      return { jury, rows, submitted, inProgress, latestTs, latestRow, overall };
     });
   }, [jurors, data]);
 
@@ -401,8 +402,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
   };
   const si = (key) => sortKey !== key ? "↕" : sortDir === "asc" ? "↑" : "↓";
 
-  const inProgressCount    = data.filter((r) => r.status === "in_progress").length;
-  const groupSubmittedCount = data.filter((r) => r.status === "group_submitted").length;
+  const inProgressCount = data.filter((r) => r.status === "in_progress").length;
 
   const TABS = [
     { id: "summary",   label: "🏆 Summary"   },
@@ -424,8 +424,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
           <h2>Results Panel</h2>
           <p>
             {jurors.length} juror{jurors.length !== 1 ? "s" : ""} · {submittedData.length} submitted
-            {groupSubmittedCount > 0 && <span className="live-indicator"> · {groupSubmittedCount} evaluating</span>}
-            {inProgressCount     > 0 && <span className="live-indicator"> · {inProgressCount} in progress</span>}
+            {inProgressCount > 0 && <span className="live-indicator"> · {inProgressCount} in progress</span>}
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
@@ -689,7 +688,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
                         </div>
                         <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatTs(d.timestamp)}</span>
                         <StatusBadge status={d.status} />
-                        {d.status === "all_submitted" && (
+                        {(d.status === "all_submitted" || d.status === "group_submitted") && (
                           <span className="juror-score">{d.total} / 100</span>
                         )}
                       </div>
