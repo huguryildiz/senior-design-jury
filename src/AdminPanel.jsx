@@ -109,8 +109,10 @@ export default function AdminPanel({ adminPass, onBack }) {
     jurors.forEach((n) => m.set(n, { bg: jurorBg(n), dot: jurorDot(n) }));
     return m;
   }, [jurors]);
+  // Only FINAL submissions should count for averages and ranking
   const submittedData = useMemo(() =>
-    data.filter((r) => r.status === "all_submitted" || r.status === "group_submitted"), [data]
+    data.filter((r) => r.status === "all_submitted"),
+    [data]
   );
   const projectStats = useMemo(() => {
     return PROJECT_LIST.map((p) => {
@@ -135,7 +137,8 @@ export default function AdminPanel({ adminPass, onBack }) {
   const jurorStats = useMemo(() => {
     return jurors.map((jury) => {
       const rows       = data.filter((d) => d.juryName === jury);
-      const submitted  = rows.filter((r) => r.status === "all_submitted" || r.status === "group_submitted");
+      // For completion logic, only all_submitted counts as fully completed
+      const submitted  = rows.filter((r) => r.status === "all_submitted");
       const inProgress = rows.filter((r) => r.status === "in_progress");
       const latestTs   = rows.reduce((mx, r) => r.tsMs > mx ? r.tsMs : mx, 0);
       const latestRow  = rows.find((r) => r.tsMs === latestTs) || rows[0];

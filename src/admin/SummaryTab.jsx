@@ -18,7 +18,20 @@ export default function SummaryTab({ ranked, submittedData }) {
     return <div className="empty-msg">No submitted evaluations yet.</div>;
   }
   return (
-    <div className="rank-list">
+    <>
+      <div className="summary-note" style={{
+        marginBottom: 16,
+        padding: "10px 14px",
+        borderRadius: 12,
+        background: "#EFF6FF",
+        border: "1px solid #BFDBFE",
+        color: "#1E3A8A",
+        fontSize: 13,
+        fontWeight: 500
+      }}>
+        ℹ️ Averages and rankings include only <strong>final submissions (all_submitted)</strong>.
+      </div>
+      <div className="rank-list">
       {ranked.map((p, i) => (
         <div key={p.name} className="rank-card" style={i < 3 ? {
           background: "#ECFDF5",
@@ -58,6 +71,7 @@ export default function SummaryTab({ ranked, submittedData }) {
           <div className="rank-total"><span>{p.totalAvg.toFixed(1)}</span><small>avg.</small></div>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 }
