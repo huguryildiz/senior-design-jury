@@ -1,5 +1,5 @@
 // ============================================================
-// EE 492 Jury App – Google Apps Script
+// EE 492 Jury App – Google Apps Script (FULL)
 // ============================================================
 // Sheet: "Evaluations"  columns A–L (12 cols)
 //   A  Juror Name          G  Technical (40)
@@ -27,7 +27,7 @@
 //   GET  ?action=initInfo&pass=X
 //   GET  ?action=loadDraft&juryName=X&juryDept=Y
 //   GET  ?action=verify&juryName=X&juryDept=Y
-//   GET  ?action=myscores&juryName=X&juryDept=Y      // NEW
+//   GET  ?action=myscores&juryName=X&juryDept=Y
 //
 //   POST body { action:"saveDraft", juryName, juryDept, draft }
 //   POST body { action:"deleteDraft", juryName, juryDept }
@@ -163,7 +163,7 @@ function doGet(e) {
       return respond({ status: "ok", submittedCount: count });
     }
 
-    // ── NEW: myscores → latest rows for juror (one per group) ──
+    // ── myscores → latest rows for juror (one per group) ──────
     // Returns {rows:[{projectId, projectName, design, technical, delivery, teamwork, total, comments, status}]}
     if (action === "myscores") {
       var juryNameM = (e.parameter.juryName || "").trim().toLowerCase();
@@ -179,8 +179,7 @@ function doGet(e) {
 
       var valuesM = sheetM.getRange(2, 1, lastRowM - 1, NUM_COLS).getValues();
 
-      // pick latest row per group (by timestamp string; best-effort)
-      // and prefer all_submitted over others if duplicates exist
+      // best row per group: prefer higher status, then later timestamp (best-effort)
       var bestByGroup = {}; // groupNo -> rowValues
       var pri = { "all_submitted": 3, "group_submitted": 2, "in_progress": 1 };
 
@@ -197,10 +196,7 @@ function doGet(e) {
         var status = String(r[11] || "").trim();
         var cur = bestByGroup[groupNo];
 
-        if (!cur) {
-          bestByGroup[groupNo] = r;
-          return;
-        }
+        if (!cur) { bestByGroup[groupNo] = r; return; }
 
         var curStatus = String(cur[11] || "").trim();
         if ((pri[status] || 0) > (pri[curStatus] || 0)) {
@@ -208,7 +204,7 @@ function doGet(e) {
           return;
         }
 
-        // If same priority, keep "later" timestamp (best-effort string compare)
+        // If same priority, keep later timestamp (best-effort string compare)
         var curTs = String(cur[2] || "");
         var newTs = String(r[2] || "");
         if ((pri[status] || 0) === (pri[curStatus] || 0) && newTs > curTs) {
@@ -385,21 +381,24 @@ function doPost(e) {
       ? sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues()
       : [];
 
-    function keyOf(name, groupNo) {
-      return String(name || "").trim().toLowerCase() + "__" + String(groupNo || "").trim();
+    // ✅ IMPORTANT: include dept in key to avoid collisions
+    function keyOf(name, dept, groupNo) {
+      return String(name || "").trim().toLowerCase()
+        + "__" + String(dept || "").trim().toLowerCase()
+        + "__" + String(groupNo || "").trim();
     }
 
     var index = {};
     existing.forEach(function(r, i) {
-      var k = keyOf(r[0], r[3]);
-      if (k !== "__") index[k] = i + 2;
+      var k = keyOf(r[0], r[1], r[3]);
+      if (k !== "____") index[k] = i + 2;
     });
 
     // keep latest payload per key
     var latestByKey = {};
     (data.rows || []).forEach(function(row) {
-      var k = keyOf(row.juryName, row.projectId);
-      if (k !== "__") latestByKey[k] = row;
+      var k = keyOf(row.juryName, row.juryDept, row.projectId);
+      if (k !== "____") latestByKey[k] = row;
     });
 
     var updated = 0, added = 0;
@@ -408,20 +407,20 @@ function doPost(e) {
       var row = latestByKey[k];
       var newStatus = String(row.status || "all_submitted");
 
-      // Prevent downgrading status unless sheet already downgraded (resetJuror does that)
+      // Only lock all_submitted (unless resetJuror was called)
       var existingRowNum = index[k];
       if (existingRowNum) {
         var currentStatus = String(existing[existingRowNum - 2][11] || "");
-        var priority = { "all_submitted": 3, "group_submitted": 2, "in_progress": 1 };
-        var curPri = priority[currentStatus] || 0;
-        var newPri = priority[newStatus] || 0;
-        if (curPri > newPri) newStatus = currentStatus;
+        if (currentStatus === "all_submitted" && newStatus !== "all_submitted") {
+          newStatus = "all_submitted";
+        }
       }
 
+      // Color-code row by status (distinct greens)
       var bgColor =
-        newStatus === "in_progress"     ? "#fef9c3" :
-        newStatus === "group_submitted" ? "#dcfce7" :
-        newStatus === "all_submitted"   ? "#dcfce7" :
+        newStatus === "in_progress"     ? "#fef9c3" :  // yellow
+        newStatus === "group_submitted" ? "#dcfce7" :  // light green
+        newStatus === "all_submitted"   ? "#bbf7d0" :  // darker green (final)
         "#ffffff";
 
       var values = [
