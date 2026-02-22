@@ -66,7 +66,7 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
           <span>Group</span>
           <select value={detailGroup} onChange={(e) => setDetailGroup(e.target.value)}>
             <option value="ALL">All</option>
-            {groups.map((g) => <option key={g.id} value={String(g.id)}>{g.label} — {g.name}</option>)}
+            {groups.map((g) => <option key={g.id} value={String(g.id)}>{g.label}</option>)}
           </select>
         </div>
         <div className="filter-item filter-search">

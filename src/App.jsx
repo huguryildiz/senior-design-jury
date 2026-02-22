@@ -4,18 +4,29 @@ import AdminPanel from "./AdminPanel";
 import "./App.css";
 
 import teduLogo from "./assets/tedu-logo.png";
+import { APP_CONFIG } from "./config";
 
 const STORAGE_KEY = "ee492_jury_draft_v1";
+const SCRIPT_URL  = APP_CONFIG?.scriptUrl;
+
+async function postToSheet(body) {
+  if (!SCRIPT_URL) return;
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (_) {}
+}
 
 export default function App() {
-  const [page, setPage] = useState("home");
+  const [page,          setPage]          = useState("home");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminInput, setAdminInput] = useState("");
-  const [draftOwner, setDraftOwner] = useState(null);
+  const [adminInput,    setAdminInput]    = useState("");
+  const [draftOwner,    setDraftOwner]    = useState(null);
 
-  useEffect(() => {
-    loadDraftInfo();
-  }, []);
+  useEffect(() => { loadDraftInfo(); }, []);
 
   const loadDraftInfo = () => {
     try {
@@ -23,31 +34,30 @@ export default function App() {
       if (!saved) { setDraftOwner(null); return; }
       const parsed = JSON.parse(saved);
       if (parsed?.step === "eval" && parsed?.juryName) {
-        setDraftOwner({
-          name: parsed.juryName,
-          dept: parsed.juryDept || "",
-        });
+        setDraftOwner({ name: parsed.juryName, dept: parsed.juryDept || "" });
       } else {
         setDraftOwner(null);
       }
-    } catch (e) {
-      setDraftOwner(null);
-    }
+    } catch (_) { setDraftOwner(null); }
   };
 
+  // #1 & #5: clear localStorage AND delete from Sheets Drafts tab
   const clearDraft = () => {
+    const owner = draftOwner;
     localStorage.removeItem(STORAGE_KEY);
     setDraftOwner(null);
+    if (owner?.name) {
+      postToSheet({
+        action:   "deleteDraft",
+        juryName: owner.name,
+        juryDept: owner.dept || "",
+      });
+    }
   };
 
   if (page === "jury")
     return (
-      <JuryForm
-        onBack={() => {
-          setPage("home");
-          loadDraftInfo();
-        }}
-      />
+      <JuryForm onBack={() => { setPage("home"); loadDraftInfo(); }} />
     );
 
   if (page === "admin") {
@@ -63,36 +73,18 @@ export default function App() {
               placeholder="Password"
               value={adminInput}
               onChange={(e) => setAdminInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && adminInput.trim()) setAdminUnlocked(true);
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter" && adminInput.trim()) setAdminUnlocked(true); }}
             />
-            <button
-              className="btn-primary"
-              onClick={() => {
-                if (adminInput.trim()) setAdminUnlocked(true);
-                else alert("Please enter the admin password.");
-              }}
-            >
+            <button className="btn-primary" onClick={() => { if (adminInput.trim()) setAdminUnlocked(true); else alert("Please enter the admin password."); }}>
               Login
             </button>
-            <button className="btn-ghost" onClick={() => setPage("home")}>
-              ← Back
-            </button>
+            <button className="btn-ghost" onClick={() => setPage("home")}>← Back</button>
           </div>
         </div>
       );
     }
-
     return (
-      <AdminPanel
-        adminPass={adminInput}
-        onBack={() => {
-          setPage("home");
-          setAdminUnlocked(false);
-          setAdminInput("");
-        }}
-      />
+      <AdminPanel adminPass={adminInput} onBack={() => { setPage("home"); setAdminUnlocked(false); setAdminInput(""); }} />
     );
   }
 
@@ -106,7 +98,7 @@ export default function App() {
         <h1>EE 491/492<br />Senior Project Jury Portal</h1>
         <p className="home-sub">
           TED University<br />
-          Department of Electrical & Electronics Engineering
+          Department of Electrical &amp; Electronics Engineering
         </p>
 
         {draftOwner && (
@@ -117,12 +109,9 @@ export default function App() {
               <span>{draftOwner.name}{draftOwner.dept ? ` · ${draftOwner.dept}` : ""}</span>
             </div>
             <div className="draft-banner-actions">
-              <button className="btn-draft-resume" onClick={() => setPage("jury")}>
-                Resume
-              </button>
-              <button className="btn-draft-clear" onClick={clearDraft} title="Clear draft">
-                ✕
-              </button>
+              <button className="btn-draft-resume" onClick={() => setPage("jury")}>Resume</button>
+              {/* #5: ✕ deletes from Sheets too */}
+              <button className="btn-draft-clear" onClick={clearDraft} title="Delete draft">✕</button>
             </div>
           </div>
         )}

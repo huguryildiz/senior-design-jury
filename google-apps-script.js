@@ -220,6 +220,37 @@ function doPost(e) {
       return respond({ status: "ok" });
     }
 
+    // ── Reset juror: force all rows back to in_progress ─────────
+    // Used when an all_submitted juror wants to re-submit (#6)
+    if (data.action === "resetJuror") {
+      var juryName = (data.juryName || "").trim().toLowerCase();
+      var juryDept = (data.juryDept || "").trim().toLowerCase();
+      if (!juryName) return respond({ status: "error", message: "juryName required" });
+
+      var ss    = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName(EVAL_SHEET);
+      if (!sheet) return respond({ status: "ok", reset: 0 });
+
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return respond({ status: "ok", reset: 0 });
+
+      var values = sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
+      var reset  = 0;
+      values.forEach(function(r, i) {
+        var rowName = String(r[0] || "").trim().toLowerCase();
+        var rowDept = String(r[1] || "").trim().toLowerCase();
+        var nameMatch = rowName === juryName;
+        var deptMatch = !juryDept || rowDept === juryDept;
+        if (nameMatch && deptMatch) {
+          // Force status to in_progress and clear scores
+          sheet.getRange(i + 2, 12).setValue("in_progress");
+          sheet.getRange(i + 2, 1, 1, NUM_COLS).setBackground("#fef9c3");
+          reset++;
+        }
+      });
+      return respond({ status: "ok", reset: reset });
+    }
+
     // ── Upsert evaluation rows (default POST action) ──────────
     var ss    = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(EVAL_SHEET);
