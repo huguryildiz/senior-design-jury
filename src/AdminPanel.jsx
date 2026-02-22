@@ -11,7 +11,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
-import { toNum, tsToMillis, cmp, jurorBg, jurorDot, dedupeAndSort, HomeIcon } from "./admin/utils";
+import { toNum, tsToMillis, cmp, jurorBg, jurorDot, dedupeAndSort } from "./admin/utils";
+import { HomeIcon } from "./admin/components";
 import SummaryTab   from "./admin/SummaryTab";
 import DashboardTab from "./admin/DashboardTab";
 import DetailsTab   from "./admin/DetailsTab";

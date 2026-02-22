@@ -3,7 +3,8 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { cmp, exportCSV, jurorBg, jurorDot, formatTs, StatusBadge } from "./utils";
+import { cmp, exportCSV, jurorBg, jurorDot, formatTs } from "./utils";
+import { StatusBadge } from "./components";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
