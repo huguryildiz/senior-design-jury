@@ -2349,3 +2349,16 @@ body {
   border-color: #fcd34d;
   color: var(--amber);
 }
+
+/* ── Identity warning on Info screen ─────────────────────── */
+/* Shown once to remind jurors their name/dept cannot be changed. */
+.identity-warning {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}

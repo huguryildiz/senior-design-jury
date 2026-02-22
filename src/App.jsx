@@ -1,71 +1,74 @@
 // src/App.jsx
 // ============================================================
-// Root component — manages page routing and local draft banner.
+// Root component — manages top-level page routing.
 //
-// Security fix: admin password is no longer stored in state.
-// It is read once at login time, passed to AdminPanel for the
-// initial export call, then immediately discarded. Subsequent
-// calls inside AdminPanel use sessionStorage (cleared on tab close).
+// Pages: "home" | "jury" | "admin"
+//
+// Security: admin password is stored in a useRef (not useState)
+// so it is never serialised into the React DevTools component
+// tree as readable plaintext. Cleared when leaving admin.
 // ============================================================
 
 import { useEffect, useRef, useState } from "react";
-import JuryForm    from "./JuryForm";
-import AdminPanel  from "./AdminPanel";
+import JuryForm   from "./JuryForm";
+import AdminPanel from "./AdminPanel";
 import { postToSheet } from "./shared/api";
 import "./App.css";
 
 import teduLogo from "./assets/tedu-logo.png";
-import { APP_CONFIG } from "./config";
 
 const STORAGE_KEY = "ee492_jury_draft_v1";
 
 export default function App() {
-  const [page,         setPage]         = useState("home");
-  // Admin: keep password in a ref (not state) so it is never
-  // serialised into DevTools component tree as plain text.
-  const adminPassRef   = useRef("");
+  const [page,          setPage]         = useState("home");
+  const adminPassRef    = useRef("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminInput,    setAdminInput]    = useState("");
   const [draftOwner,    setDraftOwner]    = useState(null);
   const [startAtEval,   setStartAtEval]   = useState(false);
 
-  useEffect(() => { loadDraftInfo(); }, []);
+  // Load draft info on mount and whenever we return to home.
+  useEffect(() => { refreshDraftInfo(); }, []);
 
-  const loadDraftInfo = () => {
+  function refreshDraftInfo() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) { setDraftOwner(null); return; }
-      const parsed = JSON.parse(saved);
-      if (parsed?.step === "eval" && parsed?.juryName) {
-        setDraftOwner({ name: parsed.juryName, dept: parsed.juryDept || "" });
+      const raw    = localStorage.getItem(STORAGE_KEY);
+      if (!raw) { setDraftOwner(null); return; }
+      const saved = JSON.parse(raw);
+      if (saved?.step === "eval" && saved?.juryName) {
+        setDraftOwner({ name: saved.juryName, dept: saved.juryDept || "" });
       } else {
         setDraftOwner(null);
       }
     } catch (_) {
       setDraftOwner(null);
     }
-  };
+  }
 
-  // Clear local draft AND delete from Sheets (Drafts + Evaluations)
-  const clearDraft = () => {
+  // Delete local draft + Sheets data when the user dismisses the banner.
+  function handleClearDraft() {
     const owner = draftOwner;
     localStorage.removeItem(STORAGE_KEY);
     setDraftOwner(null);
     if (owner?.name) {
-      postToSheet({ action: "deleteJurorData", juryName: owner.name, juryDept: owner.dept || "" });
+      postToSheet({
+        action:   "deleteJurorData",
+        juryName: owner.name,
+        juryDept: owner.dept || "",
+      });
     }
-  };
+  }
 
-  // Admin login: store password in ref only, never in state
-  const handleAdminLogin = () => {
+  // Admin login: store password in ref only, clear the input immediately.
+  function handleAdminLogin() {
     const pass = adminInput.trim();
     if (!pass) { alert("Please enter the admin password."); return; }
     adminPassRef.current = pass;
-    setAdminInput("");        // clear input immediately
+    setAdminInput("");
     setAdminUnlocked(true);
-  };
+  }
 
-  // ── Jury form page ────────────────────────────────────────
+  // ── Jury form ─────────────────────────────────────────────
   if (page === "jury") {
     return (
       <JuryForm
@@ -73,30 +76,31 @@ export default function App() {
         onBack={() => {
           setPage("home");
           setStartAtEval(false);
-          loadDraftInfo();
+          refreshDraftInfo();
         }}
       />
     );
   }
 
-  // ── Admin page ────────────────────────────────────────────
+  // ── Admin panel ───────────────────────────────────────────
   if (page === "admin") {
     if (!adminUnlocked) {
       return (
         <div className="lock-screen">
           <div className="lock-card">
             <div className="lock-icon">🔒</div>
-            <h2>Admin Panel</h2>
-            <p>Enter the password to view results</p>
+            <h2>Results Panel</h2>
+            <p>Enter the admin password to view results</p>
             <input
               type="password"
               placeholder="Password"
               value={adminInput}
               onChange={(e) => setAdminInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAdminLogin(); }}
+              autoFocus
             />
             <button className="btn-primary" onClick={handleAdminLogin}>Login</button>
-            <button className="btn-ghost" onClick={() => setPage("home")}>← Back</button>
+            <button className="btn-ghost"   onClick={() => setPage("home")}>← Back</button>
           </div>
         </div>
       );
@@ -118,18 +122,16 @@ export default function App() {
     <div className="home">
       <div className="home-bg" />
       <div className="home-card">
+
         <div className="home-logo-wrap">
-          <img className="home-logo" src={teduLogo} alt="TED University Logo" loading="eager" />
+          <img className="home-logo" src={teduLogo} alt="TED University" loading="eager" />
         </div>
 
-        <h1>
-          EE 491/492<br />
-          Senior Project Jury Portal
-        </h1>
+        <h1>Senior Design<br />Jury Portal</h1>
 
         <p className="home-sub">
-          TED University<br />
-          Department of Electrical &amp; Electronics Engineering
+          TED University · Spring 2025<br />
+          Electrical &amp; Electronics Engineering
         </p>
 
         {/* Local draft resume banner */}
@@ -150,7 +152,11 @@ export default function App() {
               >
                 Resume
               </button>
-              <button className="btn-draft-clear" onClick={clearDraft} title="Delete draft">
+              <button
+                className="btn-draft-clear"
+                onClick={handleClearDraft}
+                title="Discard draft"
+              >
                 ✕
               </button>
             </div>
@@ -169,17 +175,23 @@ export default function App() {
           </button>
         </div>
 
-        <div className="home-hint">
+        <p className="home-hint">
           <span className="home-hint-ico">ℹ️</span>
-          <span>Please use the <strong>Evaluation Form</strong> to submit your scores.</span>
-        </div>
+          Use the <strong>Evaluation Form</strong> to score each project group.
+        </p>
 
         <div className="home-footer">
-          © 2026 · Developed by{" "}
-          <a className="home-footer-link" href="https://huguryildiz.com" target="_blank" rel="noopener noreferrer">
+          © 2025 · Developed by{" "}
+          <a
+            className="home-footer-link"
+            href="https://huguryildiz.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Huseyin Ugur Yildiz
           </a>
         </div>
+
       </div>
     </div>
   );

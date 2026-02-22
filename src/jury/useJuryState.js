@@ -1,55 +1,75 @@
 // src/jury/useJuryState.js
 // ============================================================
-// Custom hook that owns ALL state and side-effects for the
-// jury evaluation flow. JuryForm.jsx becomes a pure renderer.
+// Custom hook — owns ALL state and side-effects for the jury
+// evaluation flow. JuryForm.jsx is a thin renderer that just
+// passes these values and handlers down to step components.
 //
 // Responsibilities:
-//  - Score / comment state management
-//  - localStorage persistence
-//  - Cloud draft save / load
-//  - Periodic 2-min sync to Sheets
-//  - Auto-done detection
-//  - Edit mode transitions
-//  - PIN check orchestration
+//   - Score / comment state
+//   - localStorage persistence (survives browser refresh)
+//   - Cloud draft save / load (survives device change)
+//   - Periodic 30-second background sync
+//   - PIN authentication with session-level caching
+//   - Auto-done detection (all groups filled → done screen)
+//   - Edit-mode transitions
+//
+// PIN session logic:
+//   Once a juror successfully verifies their PIN, we store a
+//   session token in sessionStorage so they aren't asked again
+//   within the same browser tab. Closing the tab clears it.
+//   A different device or a new tab will always require the PIN.
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PROJECTS, CRITERIA } from "../config";
 import {
   postToSheet,
+  buildRow,
   fetchMyScores,
   verifySubmittedCount,
-  buildRow,
-  calcRowTotal,
+  checkPin,
+  createPin,
+  verifyPin,
+  getFromSheet,
 } from "../shared/api";
 
+// ── Constants ─────────────────────────────────────────────────
 const STORAGE_KEY   = "ee492_jury_draft_v1";
-const SCRIPT_URL    = import.meta.env.VITE_SCRIPT_URL || "";
-const SYNC_INTERVAL = 30 * 1000; // 30 seconds — safe for Apps Script quota, max 30s draft loss
-const DEBOUNCE_MS   = 400;
-const INSTANT_DELAY = 300;
+// Session token key — cleared when the browser tab closes.
+const PIN_SESSION_KEY = "ee492_pin_verified";
+// How often to sync draft and rows to the cloud (30 s is safe for
+// Apps Script quota and limits draft loss to at most 30 seconds).
+const SYNC_INTERVAL = 30 * 1000;
+// Debounce for cloud-draft lookup while the user types name/dept.
+const DEBOUNCE_MS   = 500;
+// Short delay before firing the instant rows-write so rapid
+// keystrokes are batched into one network request.
+const INSTANT_DELAY = 350;
+// Delay before sending group_submitted rows after resetJuror,
+// giving Apps Script time to write EditingFlag = "editing" first.
+const EDITING_ROWS_DELAY = 1500;
 
-// ── State factory helpers ─────────────────────────────────────
+// ── Empty-state factories ─────────────────────────────────────
 
 export const makeEmptyScores = () =>
-  Object.fromEntries(PROJECTS.map((p) => [
-    p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, ""])),
-  ]));
+  Object.fromEntries(
+    PROJECTS.map((p) => [p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, ""]))])
+  );
 
 export const makeEmptyComments = () =>
   Object.fromEntries(PROJECTS.map((p) => [p.id, ""]));
 
 const makeEmptyTouched = () =>
-  Object.fromEntries(PROJECTS.map((p) => [
-    p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, false])),
-  ]));
+  Object.fromEntries(
+    PROJECTS.map((p) => [p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, false]))])
+  );
 
 export const makeAllTouched = () =>
-  Object.fromEntries(PROJECTS.map((p) => [
-    p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, true])),
-  ]));
+  Object.fromEntries(
+    PROJECTS.map((p) => [p.id, Object.fromEntries(CRITERIA.map((c) => [c.id, true]))])
+  );
 
-// ── Score helpers (pure, exported for UI use) ─────────────────
+// ── Pure helpers (also exported for use in step components) ───
 
 export const isAllFilled = (scores, pid) =>
   CRITERIA.every((c) => scores[pid]?.[c.id] !== "");
@@ -58,23 +78,53 @@ export const isAllComplete = (scores) =>
   PROJECTS.every((p) => isAllFilled(scores, p.id));
 
 export const countFilled = (scores) =>
-  PROJECTS.reduce((t, p) =>
-    t + CRITERIA.reduce((n, c) => n + (scores[p.id]?.[c.id] !== "" ? 1 : 0), 0), 0);
+  PROJECTS.reduce(
+    (t, p) => t + CRITERIA.reduce((n, c) => n + (scores[p.id]?.[c.id] !== "" ? 1 : 0), 0),
+    0
+  );
 
 export const hasAnyCriteria = (scores, pid) =>
   CRITERIA.some((c) => scores[pid]?.[c.id] !== "");
 
-// Convert myscores API rows → scores/comments state
+// Build a session token string that encodes identity so a PIN
+// verified for "Ali Veli" doesn't grant access to "Mehmet Yılmaz".
+function pinSessionKey(juryName, juryDept) {
+  return `${PIN_SESSION_KEY}__${juryName.trim().toLowerCase()}__${juryDept.trim().toLowerCase()}`;
+}
+
+// Check if PIN was already verified this session for this identity.
+export function isPinVerifiedInSession(juryName, juryDept) {
+  try {
+    return sessionStorage.getItem(pinSessionKey(juryName, juryDept)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// Mark PIN as verified for this session.
+function markPinVerified(juryName, juryDept) {
+  try {
+    sessionStorage.setItem(pinSessionKey(juryName, juryDept), "1");
+  } catch {}
+}
+
+// Convert myscores API rows → { scores, comments } state shape.
 export function rowsToState(rows) {
-  const es = makeEmptyScores();
-  const ec = makeEmptyComments();
+  const scores   = makeEmptyScores();
+  const comments = makeEmptyComments();
   (rows || []).forEach((r) => {
     const pid = Number(r.projectId);
     if (!pid) return;
-    es[pid] = { ...es[pid], design: r.design ?? "", technical: r.technical ?? "", delivery: r.delivery ?? "", teamwork: r.teamwork ?? "" };
-    ec[pid] = r.comments ?? "";
+    scores[pid] = {
+      ...scores[pid],
+      design:    r.design    ?? "",
+      technical: r.technical ?? "",
+      delivery:  r.delivery  ?? "",
+      teamwork:  r.teamwork  ?? "",
+    };
+    comments[pid] = r.comments ?? "";
   });
-  return { scores: es, comments: ec };
+  return { scores, comments };
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -82,65 +132,85 @@ export function rowsToState(rows) {
 // ═════════════════════════════════════════════════════════════
 
 export default function useJuryState({ startAtEval = false } = {}) {
+
+  // ── Identity ──────────────────────────────────────────────
   const [juryName, setJuryName] = useState("");
   const [juryDept, setJuryDept] = useState("");
 
-  // Screens: "info" | "pin" | "eval" | "done"
+  // ── Step / navigation ─────────────────────────────────────
+  // Possible steps: "info" | "pin" | "eval" | "done"
   const [step,    setStep]    = useState("info");
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(0); // index into PROJECTS array
 
+  // ── Scoring state ─────────────────────────────────────────
   const [scores,   setScores]   = useState(makeEmptyScores);
   const [comments, setComments] = useState(makeEmptyComments);
-  const [touched,  setTouched]  = useState(makeEmptyTouched);
+  // touched tracks whether a field has been interacted with (for
+  // showing validation errors only after the user has touched a field)
+  const [touched, setTouched]   = useState(makeEmptyTouched);
 
+  // groupSynced[projectId] = true once all criteria for that group
+  // are filled in. Triggers auto-done when every group is synced.
   const [groupSynced, setGroupSynced] = useState({});
-  const [editMode,    setEditMode]    = useState(false);
+  // editMode = true when the juror is re-editing after submission.
+  // Auto-done is suppressed in edit mode.
+  const [editMode, setEditMode] = useState(false);
 
-  // Snapshot scores/comments at the moment of submission (for Done screen)
+  // Snapshot of scores/comments taken at the moment of final
+  // submission — used by the Done screen to show confirmed values.
   const [doneScores,   setDoneScores]   = useState(null);
   const [doneComments, setDoneComments] = useState(null);
 
-  // Cloud / PIN state
-  const [cloudDraft,      setCloudDraft]      = useState(null);
-  const [cloudChecking,   setCloudChecking]   = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-
-  // Save feedback: "idle" | "saving" | "saved"
+  // ── Cloud state ───────────────────────────────────────────
+  const [cloudDraft,       setCloudDraft]       = useState(null);
+  const [cloudChecking,    setCloudChecking]     = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted]  = useState(false);
+  // "idle" | "saving" | "saved" — drives the Save button label
   const [saveStatus, setSaveStatus] = useState("idle");
 
-  // PIN flow state
-  const [pinStep,       setPinStep]       = useState("idle"); // "idle"|"entering"|"new"|"locked"
-  const [pinError,      setPinError]      = useState("");
-  const [newPin,        setNewPin]        = useState("");     // shown once on first registration
-  const [attemptsLeft,  setAttemptsLeft]  = useState(3);
+  // ── PIN state ─────────────────────────────────────────────
+  // pinStep: "idle" | "entering" | "new" | "locked"
+  const [pinStep,      setPinStep]      = useState("idle");
+  const [pinError,     setPinError]     = useState("");
+  const [newPin,       setNewPin]       = useState(""); // shown once to first-time jurors
+  const [attemptsLeft, setAttemptsLeft] = useState(3);
 
-  const doneFiredRef  = useRef(false);
-  const debounceRef   = useRef(null);
-  const instantRef    = useRef(null);
-  // Use refs for values accessed inside setInterval to avoid stale closures
-  const stateRef      = useRef({});
-  stateRef.current    = { juryName, juryDept, scores, comments, groupSynced };
+  // ── Refs ──────────────────────────────────────────────────
+  // doneFiredRef prevents the auto-done effect from firing twice.
+  const doneFiredRef = useRef(false);
+  const debounceRef  = useRef(null);
+  const instantRef   = useRef(null);
+  // stateRef holds the latest state values so setInterval callbacks
+  // always read fresh values without stale-closure issues.
+  const stateRef = useRef({});
+  stateRef.current = { juryName, juryDept, scores, comments, groupSynced, current };
 
   // ── Restore from localStorage on mount ───────────────────
+  // Fills in name/dept so the user doesn't have to retype them.
+  // If startAtEval=true (Resume button on home screen), also
+  // restores scores and jumps directly to the eval step.
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
-      const p = JSON.parse(saved);
-      if (p.juryName) setJuryName(p.juryName);
-      if (p.juryDept) setJuryDept(p.juryDept);
-      if (startAtEval && p.step === "eval") {
-        if (p.scores)      setScores(p.scores);
-        if (p.comments)    setComments(p.comments);
-        if (typeof p.current === "number") setCurrent(p.current);
-        if (p.groupSynced) setGroupSynced(p.groupSynced);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.juryName) setJuryName(saved.juryName);
+      if (saved.juryDept) setJuryDept(saved.juryDept);
+      if (startAtEval && saved.step === "eval") {
+        if (saved.scores)      setScores(saved.scores);
+        if (saved.comments)    setComments(saved.comments);
+        if (saved.groupSynced) setGroupSynced(saved.groupSynced);
+        if (typeof saved.current === "number") setCurrent(saved.current);
         setStep("eval");
       }
     } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Cloud draft lookup (debounced on name/dept change) ────
+  // ── Cloud-draft lookup ────────────────────────────────────
+  // Fires when the user types in the info fields (debounced).
+  // Sets cloudDraft or alreadySubmitted so the info screen can
+  // show the appropriate banner.
   const lookupCloud = useCallback(async (name, dept) => {
     const n = name.trim(), d = dept.trim();
     if (!n || !d) return;
@@ -153,11 +223,10 @@ export default function useJuryState({ startAtEval = false } = {}) {
         setAlreadySubmitted(true);
         return;
       }
-      // Load draft
-      const { getFromSheet } = await import("../shared/api");
       const json = await getFromSheet({ action: "loadDraft", juryName: n, juryDept: d });
       if (json.status === "ok" && json.draft) setCloudDraft(json.draft);
     } catch (_) {
+      // Cloud unreachable — silently degrade; user can still work offline.
     } finally {
       setCloudChecking(false);
     }
@@ -166,37 +235,45 @@ export default function useJuryState({ startAtEval = false } = {}) {
   useEffect(() => {
     if (step !== "info") return;
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => lookupCloud(juryName, juryDept), DEBOUNCE_MS);
+    debounceRef.current = setTimeout(
+      () => lookupCloud(juryName, juryDept),
+      DEBOUNCE_MS
+    );
     return () => clearTimeout(debounceRef.current);
   }, [juryName, juryDept, step, lookupCloud]);
 
-  // ── localStorage auto-save during eval ───────────────────
+  // ── localStorage auto-save ────────────────────────────────
+  // Runs on every state change during the eval step so a browser
+  // refresh never loses more than a single React render cycle.
   useEffect(() => {
     if (step !== "eval") return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(
-        { juryName, juryDept, scores, comments, current, groupSynced, step }
-      ));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ juryName, juryDept, scores, comments, current, groupSynced, step })
+      );
     } catch (_) {}
   }, [juryName, juryDept, scores, comments, current, groupSynced, step]);
 
   // ── Cloud draft save ──────────────────────────────────────
+  // showFeedback = true drives the "Saving… / ✓ Saved" button state.
   const saveCloudDraft = useCallback((showFeedback = false) => {
-    const { juryName: n, juryDept: d, scores: s, comments: c, groupSynced: gs } = stateRef.current;
+    const { juryName: n, juryDept: d, scores: s, comments: c, groupSynced: gs, current: cur } =
+      stateRef.current;
     if (!n.trim()) return;
     if (showFeedback) setSaveStatus("saving");
     postToSheet({
       action:   "saveDraft",
       juryName: n.trim(),
       juryDept: d.trim(),
-      draft:    { juryName: n.trim(), juryDept: d.trim(), scores: s, comments: c, current, groupSynced: gs },
+      draft:    { juryName: n.trim(), juryDept: d.trim(), scores: s, comments: c, current: cur, groupSynced: gs },
     }).then(() => {
       if (showFeedback) {
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       }
     });
-  }, [current]);
+  }, []); // stateRef always has latest values — no deps needed
 
   const deleteCloudDraft = useCallback(() => {
     const { juryName: n, juryDept: d } = stateRef.current;
@@ -204,8 +281,10 @@ export default function useJuryState({ startAtEval = false } = {}) {
     postToSheet({ action: "deleteDraft", juryName: n.trim(), juryDept: d.trim() });
   }, []);
 
-  // ── Instant write on score/comment change ─────────────────
-  // Sends only groups that have at least one criterion filled.
+  // ── Instant rows write ────────────────────────────────────
+  // Fires 350 ms after the last score change. Only sends groups
+  // that have at least one criterion filled — avoids writing
+  // blank rows to Sheets for untouched groups.
   const instantWrite = useCallback((newScores, newComments, newGroupSynced) => {
     clearTimeout(instantRef.current);
     instantRef.current = setTimeout(() => {
@@ -213,15 +292,17 @@ export default function useJuryState({ startAtEval = false } = {}) {
       if (!n.trim()) return;
       const rows = PROJECTS
         .filter((p) => hasAnyCriteria(newScores, p.id))
-        .map((p) => buildRow(
-          n, d, newScores, newComments, p,
-          isAllFilled(newScores, p.id) ? "group_submitted" : "in_progress"
-        ));
+        .map((p) =>
+          buildRow(n, d, newScores, newComments, p,
+            isAllFilled(newScores, p.id) ? "group_submitted" : "in_progress")
+        );
       if (rows.length > 0) postToSheet({ rows });
     }, INSTANT_DELAY);
   }, []);
 
-  // ── Periodic 2-min background sync ───────────────────────
+  // ── 30-second background sync ─────────────────────────────
+  // Keeps the cloud draft and Sheets rows fresh even if the user
+  // forgets to click Save. Only active during the eval step.
   useEffect(() => {
     if (step !== "eval") return;
     const id = setInterval(() => {
@@ -229,24 +310,31 @@ export default function useJuryState({ startAtEval = false } = {}) {
       if (!n.trim()) return;
       const rows = PROJECTS
         .filter((p) => hasAnyCriteria(s, p.id))
-        .map((p) => buildRow(n, d, s, c, p, isAllFilled(s, p.id) ? "group_submitted" : "in_progress"));
+        .map((p) =>
+          buildRow(n, d, s, c, p, isAllFilled(s, p.id) ? "group_submitted" : "in_progress")
+        );
       if (rows.length > 0) postToSheet({ rows });
       saveCloudDraft();
     }, SYNC_INTERVAL);
     return () => clearInterval(id);
   }, [step, saveCloudDraft]);
 
-  // ── Auto-upgrade groupSynced when all criteria filled ─────
+  // ── Auto-upgrade groupSynced ──────────────────────────────
+  // When all criteria for a group are filled, mark it as synced.
+  // This is what eventually triggers auto-done.
   useEffect(() => {
     if (step !== "eval" || editMode) return;
     const newly = {};
     PROJECTS.forEach((p) => {
       if (!groupSynced[p.id] && isAllFilled(scores, p.id)) newly[p.id] = true;
     });
-    if (Object.keys(newly).length > 0) setGroupSynced((prev) => ({ ...prev, ...newly }));
+    if (Object.keys(newly).length > 0)
+      setGroupSynced((prev) => ({ ...prev, ...newly }));
   }, [scores, step, groupSynced, editMode]);
 
-  // ── Auto-done: all groups synced → fire done screen ───────
+  // ── Auto-done ─────────────────────────────────────────────
+  // Once every group is synced and we're not in edit mode, wait
+  // 800 ms then send all_submitted and navigate to the done screen.
   useEffect(() => {
     if (step !== "eval" || doneFiredRef.current || editMode) return;
     if (!PROJECTS.every((p) => groupSynced[p.id])) return;
@@ -265,66 +353,82 @@ export default function useJuryState({ startAtEval = false } = {}) {
   }, [groupSynced, step, editMode, deleteCloudDraft]);
 
   // ── Score change handler ──────────────────────────────────
-  const handleScore = useCallback((pid, cid, val) => {
-    const crit    = CRITERIA.find((c) => c.id === cid);
-    const parsed  = val === "" ? "" : parseInt(val, 10);
-    // Clamp only on blur (see handleScoreBlur), not on every keystroke
-    const clamped = val === "" ? "" : (!Number.isFinite(parsed) ? 0 : Math.min(Math.max(parsed, 0), crit.max));
-    const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: clamped } };
-    setScores(newScores);
-    setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
+  // Allows free typing (does not clamp mid-keystroke).
+  // Clamping happens in handleScoreBlur so "23" doesn't snap to
+  // "20" while the user is still typing.
+  const handleScore = useCallback(
+    (pid, cid, val) => {
+      const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: val } };
+      setScores(newScores);
+      setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
 
-    // Downgrade groupSynced if criterion was cleared
-    let newGroupSynced = groupSynced;
-    if (clamped === "" && groupSynced[pid]) {
-      newGroupSynced = { ...groupSynced, [pid]: false };
-      setGroupSynced(newGroupSynced);
-    }
-    instantWrite(newScores, comments, newGroupSynced);
-  }, [scores, comments, groupSynced, instantWrite]);
+      // If the field was cleared, downgrade this group's synced state
+      // so the auto-done won't fire with a missing value.
+      let newGroupSynced = groupSynced;
+      if (val === "" && groupSynced[pid]) {
+        newGroupSynced = { ...groupSynced, [pid]: false };
+        setGroupSynced(newGroupSynced);
+      }
+      instantWrite(newScores, comments, newGroupSynced);
+    },
+    [scores, comments, groupSynced, instantWrite]
+  );
 
-  // Clamp on blur (feels more natural than clamping mid-typing)
-  const handleScoreBlur = useCallback((pid, cid) => {
-    const crit = CRITERIA.find((c) => c.id === cid);
-    const val  = scores[pid]?.[cid];
-    if (val === "") return;
-    const clamped = Math.min(Math.max(parseInt(val, 10) || 0, 0), crit.max);
-    if (clamped !== val) setScores((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: clamped } }));
-    setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
-  }, [scores]);
+  // Clamp and mark touched on blur.
+  const handleScoreBlur = useCallback(
+    (pid, cid) => {
+      const crit = CRITERIA.find((c) => c.id === cid);
+      const val  = scores[pid]?.[cid];
+      setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
+      if (val === "" || val === undefined) return;
+      const n       = parseInt(val, 10);
+      const clamped = Number.isFinite(n) ? Math.min(Math.max(n, 0), crit.max) : 0;
+      if (String(clamped) !== String(val)) {
+        setScores((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: clamped } }));
+      }
+    },
+    [scores]
+  );
 
-  const handleCommentChange = useCallback((pid, val) => {
-    const nc = { ...comments, [pid]: val };
-    setComments(nc);
-    instantWrite(scores, nc, groupSynced);
-  }, [scores, comments, groupSynced, instantWrite]);
+  const handleCommentChange = useCallback(
+    (pid, val) => {
+      const nc = { ...comments, [pid]: val };
+      setComments(nc);
+      instantWrite(scores, nc, groupSynced);
+    },
+    [scores, comments, groupSynced, instantWrite]
+  );
 
   // ── Centralised final submit ──────────────────────────────
-  // Used by both "normal" done flow and "edit mode" submit.
-  const submitFinal = useCallback((currentScores, currentComments) => {
-    const { juryName: n, juryDept: d } = stateRef.current;
-    postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, currentScores, currentComments, p, "all_submitted")) });
-    deleteCloudDraft();
-    localStorage.removeItem(STORAGE_KEY);
-    setDoneScores({ ...currentScores });
-    setDoneComments({ ...currentComments });
-    setEditMode(false);
-    doneFiredRef.current = true;
-    setStep("done");
-  }, [deleteCloudDraft]);
+  // Used by both the auto-done path and the manual edit-mode submit.
+  const submitFinal = useCallback(
+    (finalScores, finalComments) => {
+      const { juryName: n, juryDept: d } = stateRef.current;
+      postToSheet({
+        rows: PROJECTS.map((p) => buildRow(n, d, finalScores, finalComments, p, "all_submitted")),
+      });
+      deleteCloudDraft();
+      localStorage.removeItem(STORAGE_KEY);
+      setDoneScores({ ...finalScores });
+      setDoneComments({ ...finalComments });
+      setEditMode(false);
+      doneFiredRef.current = true;
+      setStep("done");
+    },
+    [deleteCloudDraft]
+  );
 
-  // Called from Edit Scores button on Done screen
+  // ── Edit-mode entry (from Done screen "Edit Scores") ──────
+  // Sequence:
+  //   1. Fire resetJuror — sets EditingFlag = "editing" in Sheets
+  //   2. Wait EDITING_ROWS_DELAY ms (Apps Script processes resetJuror)
+  //   3. Fire group_submitted rows — carry-over logic in Apps Script
+  //      reads EditingFlag="editing" from the existing row and keeps it
   const handleEditScores = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
     const useScores   = doneScores   || scores;
     const useComments = doneComments || comments;
 
-    // resetJuror does two things server-side:
-    //   1. Sets all rows → in_progress
-    //   2. Sets EditingFlag = "editing"  ← must happen BEFORE any rows POST
-    // We fire resetJuror first, then delay the rows POST by 1.5s so Apps Script
-    // processes them in order. The upsert carry-over logic then preserves "editing"
-    // on subsequent group_submitted writes.
     if (n.trim()) {
       postToSheet({ action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
     }
@@ -333,19 +437,26 @@ export default function useJuryState({ startAtEval = false } = {}) {
     setComments(useComments);
     setEditMode(true);
     doneFiredRef.current = false;
+    // All groups are pre-marked as synced so the nav dropdown shows ✅ for each.
     setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
     setStep("eval");
 
-    // Delay rows POST so resetJuror has time to write EditingFlag = "editing" first.
+    // Delayed rows write so resetJuror has time to write EditingFlag first.
     setTimeout(() => {
       if (!n.trim()) return;
-      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, useScores, useComments, p, "group_submitted")) });
-    }, 1500);
+      postToSheet({
+        rows: PROJECTS.map((p) =>
+          buildRow(n, d, useScores, useComments, p, "group_submitted")
+        ),
+      });
+    }, EDITING_ROWS_DELAY);
   }, [doneScores, doneComments, scores, comments]);
 
-  // Called from Edit Final Submit button
+  // ── Edit-mode submit (from eval screen in edit mode) ──────
   const handleFinalSubmit = useCallback(() => {
     if (!isAllComplete(scores)) {
+      // Show validation errors on all untouched fields and jump
+      // to the first incomplete group.
       setTouched(makeAllTouched());
       const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(scores, p.id));
       if (firstIncomplete >= 0) setCurrent(firstIncomplete);
@@ -354,26 +465,49 @@ export default function useJuryState({ startAtEval = false } = {}) {
     submitFinal(scores, comments);
   }, [scores, comments, submitFinal]);
 
-  // Called from Re-submit on Info screen (already submitted juror)
+  // ── Re-submit from info screen (already-submitted juror) ──
+  // Fetches the existing scores from Sheets, then enters edit mode.
   const handleResubmit = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
-    const rows = await fetchMyScores(n, d);
-    if (rows && rows.length) {
-      const st = rowsToState(rows);
-      setScores(st.scores);
-      setComments(st.comments);
-      setDoneScores(st.scores);
-      setDoneComments(st.comments);
+
+    // Load existing scores so the juror sees their previous values.
+    let useScores   = makeEmptyScores();
+    let useComments = makeEmptyComments();
+    try {
+      const rows = await fetchMyScores(n, d);
+      if (rows && rows.length) {
+        const st  = rowsToState(rows);
+        useScores   = st.scores;
+        useComments = st.comments;
+      }
+    } catch (_) {}
+
+    if (n.trim()) {
+      postToSheet({ action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
     }
-    if (n.trim()) postToSheet({ action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
+
+    setScores(useScores);
+    setComments(useComments);
+    setDoneScores(useScores);
+    setDoneComments(useComments);
     setAlreadySubmitted(false);
     setEditMode(true);
     doneFiredRef.current = false;
     setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
     setStep("eval");
+
+    // Same delayed write as handleEditScores.
+    setTimeout(() => {
+      if (!n.trim()) return;
+      postToSheet({
+        rows: PROJECTS.map((p) =>
+          buildRow(n, d, useScores, useComments, p, "group_submitted")
+        ),
+      });
+    }, EDITING_ROWS_DELAY);
   }, []);
 
-  // Called from Resume cloud draft button
+  // ── Resume cloud draft ────────────────────────────────────
   const handleResumeCloud = useCallback(() => {
     const d = cloudDraft;
     if (!d) return;
@@ -383,7 +517,8 @@ export default function useJuryState({ startAtEval = false } = {}) {
     if (d.comments) setComments(d.comments);
     if (typeof d.current === "number") setCurrent(d.current);
     if (d.groupSynced) setGroupSynced(d.groupSynced);
-    // Sync resumed state back to localStorage immediately
+    // Sync resumed cloud state to localStorage immediately so a
+    // browser refresh doesn't revert to stale local data.
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...d, step: "eval" }));
     } catch (_) {}
@@ -391,8 +526,10 @@ export default function useJuryState({ startAtEval = false } = {}) {
     setStep("eval");
   }, [cloudDraft]);
 
+  // ── Start fresh (discard cloud draft) ────────────────────
   const handleStartFresh = useCallback(() => {
-    const es = makeEmptyScores(), ec = makeEmptyComments();
+    const es = makeEmptyScores();
+    const ec = makeEmptyComments();
     setScores(es);
     setComments(ec);
     setGroupSynced({});
@@ -400,71 +537,100 @@ export default function useJuryState({ startAtEval = false } = {}) {
     setEditMode(false);
     setCloudDraft(null);
     setStep("eval");
-    const { juryName: n, juryDept: d } = stateRef.current;
-    if (n.trim()) postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, es, ec, p, "in_progress")) });
+    // Write in_progress rows only after the user has actually
+    // started scoring — not here at start-fresh time.
   }, []);
 
-  // ── Info screen: Start / PIN gate ────────────────────────
+  // ── Proceed to eval (after PIN verification) ──────────────
+  // Does NOT write any rows to Sheets yet — we only write once
+  // the user has entered at least one score (see instantWrite).
+  const proceedToEval = useCallback(() => {
+    setStep("eval");
+  }, []);
+
+  // ── Start button handler ───────────────────────────────────
+  // Flow:
+  //   1. Check session cache — if PIN was verified this session, skip PIN.
+  //   2. If alreadySubmitted → still require PIN, then show done screen.
+  //   3. Call checkPin:
+  //        exists=false → createPin → show new PIN screen
+  //        exists=true  → show PIN entry screen
+  //   4. On network error → graceful degradation (proceed without PIN).
   const handleStart = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
     if (!n.trim() || !d.trim()) return;
-    if (alreadySubmitted) { setStep("done"); return; }
 
-    try {
-      const { checkPin } = await import("../shared/api");
-      const res = await checkPin(n, d);
-      if (res.status === "ok") {
-        if (res.exists) {
-          // Existing juror — ask for PIN
-          setPinStep("entering");
-          setPinError("");
-          setAttemptsLeft(3);
-          setStep("pin");
-        } else {
-          // New juror — generate PIN, show it once, then proceed
-          const { createPin } = await import("../shared/api");
-          const r2 = await createPin(n, d);
-          if (r2.status === "ok") {
-            setNewPin(r2.pin);
-            setPinStep("new");
-            setStep("pin");
-          } else {
-            // Server failed to create PIN — proceed without PIN (graceful degradation)
-            proceedToEval();
-          }
-        }
-      } else {
-        // Could not reach server — proceed anyway
-        proceedToEval();
-      }
-    } catch (_) {
+    // If PIN already verified this session, skip straight to destination.
+    if (isPinVerifiedInSession(n, d)) {
+      if (alreadySubmitted) { setStep("done"); return; }
       proceedToEval();
+      return;
     }
-  }, [alreadySubmitted]);
 
-  const proceedToEval = useCallback(() => {
-    setStep("eval");
-    const { juryName: n, juryDept: d, scores: s, comments: c } = stateRef.current;
-    if (n.trim()) postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, s, c, p, "in_progress")) });
-  }, []);
-
-  // Called when user submits PIN on the PIN screen
-  const handlePinSubmit = useCallback(async (enteredPin) => {
-    const { juryName: n, juryDept: d } = stateRef.current;
     try {
-      const { verifyPin } = await import("../shared/api");
-      const res = await verifyPin(n, d, enteredPin);
-      if (res.locked) {
-        setPinStep("locked");
-        setPinError("Too many failed attempts. Please contact the admin to reset your PIN.");
+      const res = await checkPin(n, d);
+      if (res.status !== "ok") {
+        // Server error — degrade gracefully.
+        if (alreadySubmitted) { setStep("done"); return; }
+        proceedToEval();
         return;
       }
-      if (res.valid) {
-        setPinStep("idle");
+
+      if (res.exists) {
+        // Returning juror — ask for PIN.
+        setPinStep("entering");
         setPinError("");
-        proceedToEval();
+        setAttemptsLeft(3);
+        setStep("pin");
       } else {
-        const left = res.attemptsLeft ?? (attemptsLeft - 1);
+        // First-time juror — generate PIN and show it once.
+        const r2 = await createPin(n, d);
+        if (r2.status === "ok") {
+          setNewPin(r2.pin);
+          setPinStep("new");
+          setStep("pin");
+        } else {
+          // PIN creation failed — proceed without PIN.
+          if (alreadySubmitted) { setStep("done"); return; }
+          proceedToEval();
+        }
+      }
+    } catch (_) {
+      // Network unreachable — proceed without PIN.
+      if (alreadySubmitted) { setStep("done"); return; }
+      proceedToEval();
+    }
+  }, [alreadySubmitted, proceedToEval]);
+
+  // ── PIN submit ────────────────────────────────────────────
+  const handlePinSubmit = useCallback(
+    async (enteredPin) => {
+      const { juryName: n, juryDept: d } = stateRef.current;
+      try {
+        const res = await verifyPin(n, d, enteredPin);
+
+        if (res.locked) {
+          setPinStep("locked");
+          setPinError("Too many failed attempts. Please contact the admin to reset your PIN.");
+          return;
+        }
+
+        if (res.valid) {
+          // Cache the verification for this browser session.
+          markPinVerified(n, d);
+          setPinStep("idle");
+          setPinError("");
+          // Now decide where to go based on submission status.
+          if (alreadySubmitted) {
+            setStep("done");
+          } else {
+            proceedToEval();
+          }
+          return;
+        }
+
+        // Wrong PIN.
+        const left = typeof res.attemptsLeft === "number" ? res.attemptsLeft : attemptsLeft - 1;
         setAttemptsLeft(left);
         if (left <= 0) {
           setPinStep("locked");
@@ -472,11 +638,23 @@ export default function useJuryState({ startAtEval = false } = {}) {
         } else {
           setPinError(`Incorrect PIN. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
         }
+      } catch (_) {
+        setPinError("Could not verify PIN. Please try again.");
       }
-    } catch (_) {
-      setPinError("Could not verify PIN. Please try again.");
+    },
+    [alreadySubmitted, attemptsLeft, proceedToEval]
+  );
+
+  // Called from PinStep when a new juror acknowledges their PIN.
+  const handlePinAcknowledge = useCallback(() => {
+    const { juryName: n, juryDept: d } = stateRef.current;
+    markPinVerified(n, d);
+    if (alreadySubmitted) {
+      setStep("done");
+    } else {
+      proceedToEval();
     }
-  }, [attemptsLeft, proceedToEval]);
+  }, [alreadySubmitted, proceedToEval]);
 
   // ── Full reset ────────────────────────────────────────────
   const resetAll = useCallback(() => {
@@ -493,17 +671,21 @@ export default function useJuryState({ startAtEval = false } = {}) {
     setDoneScores(null);
     setDoneComments(null);
     setAlreadySubmitted(false);
+    setSaveStatus("idle");
     setPinStep("idle");
     setPinError("");
     setNewPin("");
+    setAttemptsLeft(3);
     doneFiredRef.current = false;
   }, []);
 
   // ── Derived values ────────────────────────────────────────
   const project     = PROJECTS[current];
-  const progressPct = Math.round((countFilled(scores) / (PROJECTS.length * CRITERIA.length)) * 100);
-  const allComplete  = isAllComplete(scores);
+  const totalFields = PROJECTS.length * CRITERIA.length;
+  const progressPct = Math.round((countFilled(scores) / totalFields) * 100);
+  const allComplete = isAllComplete(scores);
 
+  // ── Return value ──────────────────────────────────────────
   return {
     // Identity
     juryName, setJuryName,
@@ -513,29 +695,25 @@ export default function useJuryState({ startAtEval = false } = {}) {
     step, setStep,
     current, setCurrent,
 
-    // Scores / comments
+    // Scores / comments / validation
     scores, comments, touched,
     handleScore, handleScoreBlur, handleCommentChange,
 
     // Derived
     project, progressPct, allComplete,
-    groupSynced,
-    editMode,
+    groupSynced, editMode,
 
-    // Done screen
-    doneScores, doneComments,
+    // Done-screen snapshots
+    doneScores,   setDoneScores,
+    doneComments, setDoneComments,
 
-    // Cloud / status
+    // Cloud / submission status
     cloudDraft, cloudChecking, alreadySubmitted,
     saveStatus,
 
     // PIN
     pinStep, pinError, newPin, attemptsLeft,
-    handlePinSubmit,
-
-    // State setters (exposed for edge-case use in JuryForm)
-    setDoneScores,
-    setDoneComments,
+    handlePinSubmit, handlePinAcknowledge,
 
     // Actions
     handleStart,

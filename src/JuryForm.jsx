@@ -1,23 +1,22 @@
 // src/JuryForm.jsx
 // ============================================================
 // Thin orchestrator for the jury evaluation flow.
-// All state lives in useJuryState; rendering is split into:
-//   InfoStep  → identity + cloud draft detection + PIN gate
-//   PinStep   → PIN entry / first-time PIN display
-//   EvalStep  → scoring form per group
-//   DoneStep  → thank-you + edit option
+// All state and business logic lives in useJuryState.
+//
+// Step routing:
+//   "info"  → InfoStep  (identity entry + cloud draft detection)
+//   "pin"   → PinStep   (PIN entry / first-time PIN display)
+//   "eval"  → EvalStep  (scoring form)
+//   "done"  → DoneStep  (confirmation + edit option)
 // ============================================================
 
-import useJuryState from "./jury/useJuryState";
-import InfoStep     from "./jury/InfoStep";
-import PinStep      from "./jury/PinStep";
-import EvalStep     from "./jury/EvalStep";
-import DoneStep     from "./jury/DoneStep";
-import { fetchMyScores } from "./shared/api";
+import useJuryState  from "./jury/useJuryState";
+import InfoStep      from "./jury/InfoStep";
+import PinStep       from "./jury/PinStep";
+import EvalStep      from "./jury/EvalStep";
+import DoneStep      from "./jury/DoneStep";
 
 export default function JuryForm({ onBack, startAtEval = false }) {
-  const state = useJuryState({ startAtEval });
-
   const {
     step, setStep,
     juryName, setJuryName,
@@ -38,11 +37,12 @@ export default function JuryForm({ onBack, startAtEval = false }) {
     handleEditScores,
     handleFinalSubmit,
     handlePinSubmit,
+    handlePinAcknowledge,
     saveCloudDraft,
     resetAll,
-  } = state;
+  } = useJuryState({ startAtEval });
 
-  // ── Done screen ───────────────────────────────────────────
+  // ── Done ──────────────────────────────────────────────────
   if (step === "done") {
     return (
       <DoneStep
@@ -56,7 +56,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
     );
   }
 
-  // ── PIN screen ────────────────────────────────────────────
+  // ── PIN ───────────────────────────────────────────────────
   if (step === "pin") {
     return (
       <PinStep
@@ -65,18 +65,13 @@ export default function JuryForm({ onBack, startAtEval = false }) {
         newPin={newPin}
         attemptsLeft={attemptsLeft}
         juryName={juryName}
-        juryDept={juryDept}
         onPinSubmit={handlePinSubmit}
-        // After viewing new PIN, proceed directly to eval
-        onPinAcknowledge={() => {
-          setStep("eval");
-        }}
-        onBack={() => setStep("info")}
+        onPinAcknowledge={handlePinAcknowledge}
       />
     );
   }
 
-  // ── Eval screen ───────────────────────────────────────────
+  // ── Eval ──────────────────────────────────────────────────
   if (step === "eval") {
     return (
       <EvalStep
@@ -96,13 +91,12 @@ export default function JuryForm({ onBack, startAtEval = false }) {
         handleCommentChange={handleCommentChange}
         handleFinalSubmit={handleFinalSubmit}
         saveCloudDraft={saveCloudDraft}
-        onBack={() => setStep("info")}
         onGoHome={() => { saveCloudDraft(); onBack(); }}
       />
     );
   }
 
-  // ── Info screen (default) ─────────────────────────────────
+  // ── Info (default) ────────────────────────────────────────
   return (
     <InfoStep
       juryName={juryName}
@@ -112,21 +106,9 @@ export default function JuryForm({ onBack, startAtEval = false }) {
       cloudChecking={cloudChecking}
       cloudDraft={cloudDraft}
       alreadySubmitted={alreadySubmitted}
-      scores={scores}
       onStart={handleStart}
       onResumeCloud={handleResumeCloud}
       onStartFresh={handleStartFresh}
-      onResubmit={handleResubmit}
-      onViewScores={async () => {
-        const rows = await fetchMyScores(juryName.trim(), juryDept.trim());
-        if (rows && rows.length) {
-          const { rowsToState } = await import("./jury/useJuryState");
-          const st = rowsToState(rows);
-          state.setDoneScores(st.scores);
-          state.setDoneComments(st.comments);
-        }
-        setStep("done");
-      }}
       onBack={onBack}
     />
   );

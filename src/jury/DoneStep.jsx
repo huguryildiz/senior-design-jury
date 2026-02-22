@@ -1,13 +1,13 @@
 // src/jury/DoneStep.jsx
 // ============================================================
-// Step 3: Thank-you / confirmation screen.
-// Shows submitted scores with edit option.
+// Step 3 — Confirmation / thank-you screen.
+// Shows the submitted scores per group with an option to edit.
 // ============================================================
 
 import { PROJECTS, CRITERIA } from "../config";
 import { HomeIcon } from "../shared/Icons";
 
-function calcTotal(scores, pid) {
+function groupTotal(scores, pid) {
   return CRITERIA.reduce((s, c) => s + (parseInt(scores[pid]?.[c.id], 10) || 0), 0);
 }
 
@@ -17,8 +17,10 @@ export default function DoneStep({
   scores,
   comments,
   onEditScores,
-  onBack,          // back to home
+  onBack,
 }) {
+  // Fall back to live scores/comments if done-snapshots are null
+  // (e.g. when navigating to done screen from the info page).
   const displayScores   = doneScores   || scores;
   const displayComments = doneComments || comments;
 
@@ -37,12 +39,18 @@ export default function DoneStep({
             <div key={p.id} className="done-row">
               <div className="done-row-left">
                 <span className="done-row-name">{p.name}</span>
-                {p.desc && <span className="done-row-desc">{p.desc}</span>}
+                {p.desc && (
+                  <span className="done-row-desc">{p.desc}</span>
+                )}
                 {displayComments?.[p.id] && (
-                  <div className="done-comment">💬 {displayComments[p.id]}</div>
+                  <div className="done-comment">
+                    💬 {displayComments[p.id]}
+                  </div>
                 )}
               </div>
-              <span className="done-score">{calcTotal(displayScores, p.id)} / 100</span>
+              <span className="done-score">
+                {groupTotal(displayScores, p.id)} / 100
+              </span>
             </div>
           ))}
         </div>

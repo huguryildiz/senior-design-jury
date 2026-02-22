@@ -1,64 +1,71 @@
 // src/jury/EvalStep.jsx
 // ============================================================
-// Step 2: The main scoring form.
-// One project at a time; sticky header with navigation + progress.
+// Step 2 — The scoring form.
+//
+// Layout:
+//   Sticky header: home button | project info | save button
+//                  prev | group dropdown | next
+//                  progress bar
+//   Body: one criterion card per CRITERIA entry + comments + total
+//         in edit mode: Submit Final button at the bottom
+//
+// Design decisions:
+//   - "Edit Name / Department" has been removed. The home button
+//     saves the draft and goes back to the landing page only.
+//   - Scores are NOT clamped while typing (onChange). Clamping
+//     happens on blur so "23" doesn't snap to "20" mid-keystroke.
+//   - Rubric is toggled per criterion; only one can be open at a time.
 // ============================================================
 
 import { useState } from "react";
-import { PROJECTS, CRITERIA } from "../config";
-import { APP_CONFIG } from "../config";
-import { isAllFilled, countFilled, makeAllTouched } from "./useJuryState";
+import { PROJECTS, CRITERIA, APP_CONFIG } from "../config";
+import { isAllFilled, countFilled } from "./useJuryState";
 import { HomeIcon, SaveIcon } from "../shared/Icons";
 
-// Progress bar colour: red → orange → yellow → green as % grows
-function progressColor(pct) {
+// Progress bar gradient: red → orange → yellow → green
+function progressGradient(pct) {
   if (pct === 0)   return "#e2e8f0";
-  if (pct < 33)    return "linear-gradient(90deg,#ef4444,#f97316)";
-  if (pct < 66)    return "linear-gradient(90deg,#ef4444,#f97316,#eab308)";
-  if (pct < 100)   return "linear-gradient(90deg,#f97316,#eab308,#84cc16)";
-  return "linear-gradient(90deg,#eab308,#22c55e)";
+  if (pct < 34)    return "linear-gradient(90deg,#ef4444,#f97316)";
+  if (pct < 67)    return "linear-gradient(90deg,#f97316,#eab308)";
+  if (pct < 100)   return "linear-gradient(90deg,#eab308,#84cc16)";
+  return "linear-gradient(90deg,#84cc16,#22c55e)";
 }
 
 export default function EvalStep({
   juryName,
   current, setCurrent,
   scores, comments, touched,
-  groupSynced,
-  editMode,
-  progressPct,
-  allComplete,
+  groupSynced, editMode,
+  progressPct, allComplete,
   saveStatus,
-  handleScore,
-  handleScoreBlur,
-  handleCommentChange,
+  handleScore, handleScoreBlur, handleCommentChange,
   handleFinalSubmit,
   saveCloudDraft,
-  onBack,            // back to info screen (after confirmation menu)
-  onGoHome,          // go all the way back to App home
+  onGoHome,     // save draft + return to landing page
 }) {
   const [showBackMenu, setShowBackMenu] = useState(false);
   const [openRubric,   setOpenRubric]   = useState(null);
 
   const project = PROJECTS[current];
-  const pColor  = progressColor(progressPct);
 
-  // Filled count for each group (shown in dropdown)
+  // Dropdown label: shows completion status and fill count per group.
   const groupLabel = (p) => {
-    const filled  = CRITERIA.filter((c) => scores[p.id]?.[c.id] !== "").length;
-    const checkMark = isAllFilled(scores, p.id) ? "✅" : "⚠️";
-    return `${checkMark} ${p.name} (${filled}/${CRITERIA.length})`;
+    const filled = CRITERIA.filter((c) => scores[p.id]?.[c.id] !== "").length;
+    return `${isAllFilled(scores, p.id) ? "✅" : "⚠️"} ${p.name} (${filled}/${CRITERIA.length})`;
   };
 
   return (
     <div className="form-screen eval-screen">
-      {/* ── Sticky header ─────────────────────────────────── */}
+
+      {/* ── Sticky header ──────────────────────────────────── */}
       <div className="eval-sticky-header">
-        {/* Row 1: back + project info + save */}
+
+        {/* Row 1: home | project info | save */}
         <div className="eval-top-row">
           <button
             className="eval-back-btn"
             onClick={() => setShowBackMenu(true)}
-            aria-label="Back"
+            aria-label="Back to home"
           >
             <HomeIcon />
           </button>
@@ -79,25 +86,23 @@ export default function EvalStep({
             className={`save-draft-btn ${saveStatus === "saved" ? "saved" : ""}`}
             onClick={() => saveCloudDraft(true)}
             disabled={saveStatus === "saving"}
-            title="Save draft to cloud"
+            title="Save progress to cloud"
           >
             <SaveIcon />
-            {saveStatus === "saving" && <span>Saving…</span>}
-            {saveStatus === "saved"  && <span>✓ Saved</span>}
-            {saveStatus === "idle"   && <span>Save</span>}
+            <span>
+              {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "✓ Saved" : "Save"}
+            </span>
           </button>
         </div>
 
-        {/* Row 2: prev / dropdown / next */}
+        {/* Row 2: prev | group selector | next */}
         <div className="eval-nav-row">
           <button
             className="group-nav-btn"
             onClick={() => setCurrent((i) => Math.max(0, i - 1))}
             disabled={current === 0}
             aria-label="Previous group"
-          >
-            ←
-          </button>
+          >←</button>
 
           <select
             className="group-nav-select"
@@ -114,9 +119,7 @@ export default function EvalStep({
             onClick={() => setCurrent((i) => Math.min(PROJECTS.length - 1, i + 1))}
             disabled={current === PROJECTS.length - 1}
             aria-label="Next group"
-          >
-            →
-          </button>
+          >→</button>
         </div>
 
         {/* Row 3: progress bar */}
@@ -124,41 +127,45 @@ export default function EvalStep({
           <div className="eval-progress-track">
             <div
               className="eval-progress-fill"
-              style={{ width: `${progressPct}%`, background: pColor }}
+              style={{ width: `${progressPct}%`, background: progressGradient(progressPct) }}
             />
             <span className="eval-progress-label">{progressPct}%</span>
           </div>
         </div>
       </div>
 
-      {/* ── Back / exit menu ─────────────────────────────── */}
+      {/* ── Home confirmation menu ─────────────────────────── */}
       {showBackMenu && (
         <div className="back-menu-overlay" onClick={() => setShowBackMenu(false)}>
           <div className="back-menu" onClick={(e) => e.stopPropagation()}>
-            <p className="back-menu-title">What would you like to do?</p>
-            <p className="back-menu-sub">Your draft is saved and you can resume any time.</p>
+            <p className="back-menu-title">Leave evaluation?</p>
+            <p className="back-menu-sub">
+              Your progress is saved and you can resume any time.
+            </p>
             <button
               className="back-menu-btn primary"
-              onClick={() => { saveCloudDraft(); setShowBackMenu(false); onGoHome(); }}
+              onClick={() => {
+                saveCloudDraft();
+                setShowBackMenu(false);
+                onGoHome();
+              }}
             >
               🏠 Go to Home
             </button>
             <button
-              className="back-menu-btn secondary"
-              onClick={() => { setShowBackMenu(false); onBack(); }}
+              className="back-menu-btn ghost"
+              onClick={() => setShowBackMenu(false)}
             >
-              ✏️ Edit Name / Department
-            </button>
-            <button className="back-menu-btn ghost" onClick={() => setShowBackMenu(false)}>
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Body ─────────────────────────────────────────── */}
+      {/* ── Body ───────────────────────────────────────────── */}
       <div className="eval-body">
-        {/* Group done / edit mode banner */}
+
+        {/* Status banners */}
         {groupSynced[project.id] && !editMode && (
           <div className="group-done-banner">
             ✅ Scores saved for this group. Continue with other groups.
@@ -166,15 +173,14 @@ export default function EvalStep({
         )}
         {editMode && (
           <div className="group-done-banner edit-mode-banner">
-            ✏️ Edit mode — modify scores then click "Submit Final" below.
+            ✏️ Edit mode — adjust scores then click <strong>Submit Final</strong>.
           </div>
         )}
 
-        {/* Criteria cards */}
+        {/* Criterion cards */}
         {CRITERIA.map((crit) => {
           const val         = scores[project.id]?.[crit.id] ?? "";
-          const isMissing   = val === "";
-          const showMissing = touched[project.id]?.[crit.id] && isMissing;
+          const showMissing = touched[project.id]?.[crit.id] && val === "";
           const barPct      = ((parseInt(val, 10) || 0) / crit.max) * 100;
 
           return (
@@ -212,7 +218,7 @@ export default function EvalStep({
                   max={crit.max}
                   value={val}
                   onChange={(e) => handleScore(project.id, crit.id, e.target.value)}
-                  onBlur={() => handleScoreBlur(project.id, crit.id)}
+                  onBlur={()  => handleScoreBlur(project.id, crit.id)}
                   placeholder="—"
                   className="score-input"
                 />
@@ -235,32 +241,37 @@ export default function EvalStep({
           <textarea
             value={comments[project.id] || ""}
             onChange={(e) => handleCommentChange(project.id, e.target.value)}
-            placeholder="Any additional comments about this group…"
+            placeholder="Any additional feedback about this group…"
             rows={3}
           />
         </div>
 
-        {/* Total */}
+        {/* Running total */}
         <div className="total-bar">
           <span>Total</span>
           {(() => {
-            const total = CRITERIA.reduce((s, c) => s + (parseInt(scores[project.id]?.[c.id], 10) || 0), 0);
-            const cls   = total >= 80 ? "high" : total >= 60 ? "mid" : "";
-            return <span className={`total-score ${cls}`}>{total} / 100</span>;
+            const total = CRITERIA.reduce(
+              (s, c) => s + (parseInt(scores[project.id]?.[c.id], 10) || 0), 0
+            );
+            return (
+              <span className={`total-score ${total >= 80 ? "high" : total >= 60 ? "mid" : ""}`}>
+                {total} / 100
+              </span>
+            );
           })()}
         </div>
 
-        {/* Submit Final — edit mode only */}
+        {/* Submit Final — visible only in edit mode */}
         {editMode && (
           <button
             className="btn-primary"
-            style={{ width: "100%", marginTop: 8, opacity: allComplete ? 1 : 0.6 }}
+            style={{ width: "100%", marginTop: 8, opacity: allComplete ? 1 : 0.65 }}
             onClick={handleFinalSubmit}
-            title={allComplete ? "Submit all scores" : "Fill in all scores before submitting"}
+            title={allComplete ? "Submit all evaluations" : "Fill in all scores first"}
           >
             {allComplete
               ? "✅ Submit Final"
-              : `⚠️ Submit Final (${countFilled(scores)}/${PROJECTS.length * CRITERIA.length} filled)`}
+              : `⚠️ Submit Final (${countFilled(scores)} / ${PROJECTS.length * CRITERIA.length} filled)`}
           </button>
         )}
       </div>

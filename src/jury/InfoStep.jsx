@@ -1,8 +1,15 @@
 // src/jury/InfoStep.jsx
 // ============================================================
-// Step 1: Juror identity form.
-// Shows cloud draft / already-submitted banners when relevant.
-// The Start button triggers PIN verification before entering eval.
+// Step 1 — Juror identity form.
+//
+// Design decisions:
+//   - Name and department cannot be changed once the juror
+//     starts scoring. A permanent static warning makes this clear
+//     upfront. There is no "Edit Name / Department" option anywhere.
+//   - The Start button always triggers PIN verification (even for
+//     already-submitted jurors — they must prove identity first).
+//   - Cloud draft and already-submitted banners show conditionally
+//     after the cloud lookup completes.
 // ============================================================
 
 import { PROJECTS } from "../config";
@@ -15,17 +22,14 @@ export default function InfoStep({
   cloudChecking,
   cloudDraft,
   alreadySubmitted,
-  scores,
-  onStart,          // triggers PIN check → eval
+  onStart,
   onResumeCloud,
   onStartFresh,
-  onResubmit,
-  onViewScores,
-  onBack,
+  onBack,         // back to landing page
 }) {
-  const hasName = juryName.trim().length > 0;
-  const hasDept = juryDept.trim().length > 0;
-  const canStart = hasName && hasDept && !cloudChecking;
+  const canStart = juryName.trim().length > 0
+                && juryDept.trim().length > 0
+                && !cloudChecking;
 
   return (
     <div className="form-screen">
@@ -36,12 +40,18 @@ export default function InfoStep({
         </button>
         <div>
           <h2>Evaluation Form</h2>
-          <p>EE 492 Poster Presentation</p>
+          <p>EE 491/492 — Senior Design Poster Day</p>
         </div>
       </div>
 
       <div className="info-card">
         <h3>Jury Member Information</h3>
+
+        {/* Permanent identity warning */}
+        <div className="identity-warning">
+          ⚠️ Please enter your name and department carefully. Once you begin the
+          evaluation, these cannot be changed.
+        </div>
 
         <div className="field">
           <label htmlFor="jury-name">Full Name *</label>
@@ -51,6 +61,7 @@ export default function InfoStep({
             onChange={(e) => setJuryName(e.target.value)}
             placeholder="e.g. Prof. Dr. Jane Smith"
             autoComplete="name"
+            autoFocus
           />
         </div>
 
@@ -64,12 +75,14 @@ export default function InfoStep({
           />
         </div>
 
-        {/* Cloud checking indicator */}
+        {/* Cloud status indicators */}
         {cloudChecking && (
-          <div className="cloud-checking">🔍 Checking for saved progress…</div>
+          <div className="cloud-checking">
+            🔍 Checking for saved progress…
+          </div>
         )}
 
-        {/* Already submitted banner */}
+        {/* Already-submitted banner */}
         {!cloudChecking && alreadySubmitted && (
           <div className="cloud-draft-banner banner-done">
             <div className="cloud-draft-title">✅ All evaluations submitted</div>
@@ -77,11 +90,9 @@ export default function InfoStep({
               {PROJECTS.length} / {PROJECTS.length} groups completed
             </div>
             <div className="cloud-draft-actions">
-              <button className="btn-primary" onClick={onViewScores}>
-                View My Scores
-              </button>
-              <button className="btn-secondary" onClick={onResubmit}>
-                Edit / Re-submit
+              {/* Both actions go through onStart → PIN check first */}
+              <button className="btn-primary" onClick={onStart}>
+                View / Edit My Scores
               </button>
             </div>
           </div>
@@ -96,19 +107,20 @@ export default function InfoStep({
               {" / "}{PROJECTS.length} groups completed
             </div>
             <div className="cloud-draft-actions">
-              <button className="btn-primary"    onClick={onResumeCloud}>Resume</button>
-              <button className="btn-secondary"  onClick={onStartFresh}>Start Fresh</button>
+              <button className="btn-primary"   onClick={onResumeCloud}>Resume</button>
+              <button className="btn-secondary" onClick={onStartFresh}>Start Fresh</button>
             </div>
           </div>
         )}
 
-        {/* Start button — hidden when draft/submitted banners are shown */}
+        {/* Normal start — shown when no draft/submitted state */}
         {!alreadySubmitted && !cloudChecking && !cloudDraft && (
           <>
-            <div className="draft-device-note">
-              ℹ️ Your progress is auto-saved to the cloud. You can continue from any device
-              by entering the same name and department. A PIN will be created for security.
-            </div>
+            <p className="draft-device-note">
+              ℹ️ Your progress is auto-saved every 30 seconds. You can continue from
+              any device using the same name and department. A PIN will be assigned
+              on first login to protect your evaluations.
+            </p>
             <button
               className="btn-primary"
               disabled={!canStart}
