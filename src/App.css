@@ -2157,3 +2157,175 @@ body {
   background: #e2e8f0;
   border-color: #cbd5e1;
 }
+
+/* ══════════════════════════════════════════════════════════
+   PIN SYSTEM STYLES
+   ══════════════════════════════════════════════════════════ */
+
+.pin-card {
+  text-align: center;
+  max-width: 380px;
+  margin: 40px auto;
+}
+
+.pin-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--blue-light);
+  color: var(--blue);
+  margin: 0 auto 16px;
+  font-size: 24px;
+}
+
+.pin-intro {
+  color: var(--gray-500);
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* Four digit PIN display (shown once on first registration) */
+.pin-display {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0 16px;
+}
+
+.pin-digit {
+  width: 52px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue);
+  color: white;
+  font-size: 28px;
+  font-weight: 700;
+  border-radius: 10px;
+  font-family: 'DM Mono', monospace;
+  box-shadow: 0 4px 12px rgba(29,78,216,0.35);
+}
+
+.pin-hint {
+  font-size: 13px;
+  color: var(--gray-500);
+  background: var(--amber-light);
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+}
+
+/* PIN entry input */
+.pin-input-row {
+  margin: 16px 0;
+}
+
+.pin-input {
+  width: 140px;
+  height: 56px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  outline: none;
+  font-family: 'DM Mono', monospace;
+  transition: border-color 0.15s;
+}
+
+.pin-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
+}
+
+.pin-error-msg {
+  color: var(--red);
+  background: var(--red-light);
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin: 12px 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDITING FLAG STYLES (admin panel)
+   ══════════════════════════════════════════════════════════ */
+
+/* Status badge for "editing" state */
+.status-badge.editing {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+/* Juror card highlight when actively editing */
+.juror-card-editing {
+  border: 1.5px solid #fcd34d !important;
+  background: #fffbeb !important;
+}
+
+/* Admin header indicator */
+.editing-indicator {
+  color: #92400e;
+  font-weight: 600;
+}
+
+/* PIN reset toast notification */
+.pin-reset-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.2s ease;
+}
+
+.pin-reset-toast.loading { background: #f1f5f9; color: var(--gray-700); }
+.pin-reset-toast.ok      { background: var(--green-light); color: var(--green); border: 1px solid #86efac; }
+.pin-reset-toast.error   { background: var(--red-light); color: var(--red); border: 1px solid #fca5a5; }
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   BANNER VARIANTS (InfoStep)
+   ══════════════════════════════════════════════════════════ */
+
+.banner-done {
+  background: var(--green-light) !important;
+  border-color: #86efac !important;
+}
+
+.banner-done .cloud-draft-title,
+.banner-done .cloud-draft-sub {
+  color: var(--green) !important;
+}
+
+.banner-draft {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDIT MODE BANNER (EvalStep)
+   ══════════════════════════════════════════════════════════ */
+
+.edit-mode-banner {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}

@@ -5,16 +5,15 @@
 // ============================================================
 
 export const APP_CONFIG = {
-  appTitle: "Senior Project Jury Portal",
-  courseName: "EE 491 / EE 492 – Senior Project I & II",
-  department: "Department of Electrical & Electronics Engineering",
-  university: "TED University",
+  appTitle:    "Senior Project Jury Portal",
+  courseName:  "EE 491 / EE 492 – Senior Project I & II",
+  department:  "Department of Electrical & Electronics Engineering",
+  university:  "TED University",
 
-  // Google Apps Script Web App endpoint (POST for submissions, GET for export)
+  // Google Apps Script Web App endpoint
   scriptUrl: "https://script.google.com/macros/s/AKfycbyQK792Cd5-3X7mpqd-LwOuFlvB8MbreTXDqY9KLgTTl7hw9GBCzNtZ3C1aS89R9lARCA/exec",
 
-  // Whether to show student names in jury form and admin panel
-  // Set to false if you prefer not to display student names
+  // Set to false to hide student names in jury form and admin panel
   showStudents: true,
 };
 
@@ -116,11 +115,11 @@ export const CRITERIA = [
 ];
 
 // ── Derived helpers ───────────────────────────────────────────
-export const TOTAL_MAX = CRITERIA.reduce((s, c) => s + (Number(c.max) || 0), 0);
+export const TOTAL_MAX        = CRITERIA.reduce((s, c) => s + (Number(c.max) || 0), 0);
 export const getCriterionById = (id) => CRITERIA.find((c) => c.id === id);
 export const getProjectById   = (id) => PROJECTS.find((p) => p.id === id);
 export const clampScore = (val, max) => {
-  if (val === "" || val === null || typeof val === "undefined") return "";
+  if (val === "" || val === null || val === undefined) return "";
   const n = Number.parseInt(val, 10);
   if (!Number.isFinite(n)) return 0;
   return Math.min(Math.max(n, 0), max);
