@@ -315,7 +315,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
             newScores,
             newComments,
             p,
-            synced || allFilled ? "group_submitted" : "in_progress"
+            allFilled ? "group_submitted" : "in_progress"
           );
         });
 
@@ -336,7 +336,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
           scores,
           comments,
           p,
-          groupSynced[p.id] ? "group_submitted" : "in_progress"
+          isAllFilled(scores, p.id) ? "group_submitted" : "in_progress"
         ));
 
       if (rows.length > 0) postToSheet({ rows });
@@ -348,13 +348,13 @@ export default function JuryForm({ onBack, startAtEval = false }) {
 
   // ── Auto-upgrade groupSynced ──────────────────────────────
   useEffect(() => {
-    if (step !== "eval") return;
-    const newly = {};
-    PROJECTS.forEach((p) => {
-      if (!groupSynced[p.id] && isAllFilled(scores, p.id)) newly[p.id] = true;
-    });
-    if (Object.keys(newly).length > 0) setGroupSynced((prev) => ({ ...prev, ...newly }));
-  }, [scores, step, groupSynced]);
+  if (step !== "eval" || editMode) return; // ✅ edit modda otomatik upgrade yapma
+  const newly = {};
+  PROJECTS.forEach((p) => {
+    if (!groupSynced[p.id] && isAllFilled(scores, p.id)) newly[p.id] = true;
+  });
+  if (Object.keys(newly).length > 0) setGroupSynced((prev) => ({ ...prev, ...newly }));
+}, [scores, step, groupSynced, editMode]);
 
   // ── All groups done → done screen (only when NOT editing) ─
   useEffect(() => {

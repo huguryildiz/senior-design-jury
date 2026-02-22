@@ -41,6 +41,9 @@ var DRAFT_SHEET = "Drafts";
 var INFO_SHEET  = "Info";
 var NUM_COLS    = 12;
 
+// ✅ resetJuror sonrası downgrade’e izin vermek için "unlock window"
+var RESET_UNLOCK_MINUTES = 20; // istersen 5-10 da yapabilirsin
+
 // ── PROJECTS_DATA: copy from config.js and update each semester ──
 var PROJECTS_DATA = [
   { id: 1, name: "Group 1", desc: "Göksiper Hava Savunma Sistemi", students: ["Mustafa Yusuf Ünal", "Ayça Naz Dedeoğlu", "Onur Mesci", "Çağan Erdoğan"] },
@@ -62,6 +65,28 @@ function respond(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ✅ reset unlock helpers
+function norm_(s) { return String(s || "").trim().toLowerCase(); }
+
+function resetUnlockKey_(juryName, juryDept) {
+  return "RESET_UNLOCK__" + norm_(juryName) + "__" + norm_(juryDept);
+}
+
+function markResetUnlock_(juryName, juryDept) {
+  var key = resetUnlockKey_(juryName, juryDept);
+  PropertiesService.getScriptProperties().setProperty(key, String(Date.now()));
+}
+
+function isResetUnlockActive_(juryName, juryDept) {
+  var key = resetUnlockKey_(juryName, juryDept);
+  var v = PropertiesService.getScriptProperties().getProperty(key);
+  if (!v) return false;
+  var ts = parseInt(v, 10);
+  if (!isFinite(ts)) return false;
+  var ageMs = Date.now() - ts;
+  return ageMs <= RESET_UNLOCK_MINUTES * 60 * 1000;
 }
 
 // ── GET handler ───────────────────────────────────────────────
@@ -121,7 +146,7 @@ function doGet(e) {
     if (action === "loaddraft") {
       var juryName = (e.parameter.juryName || "").trim();
       var juryDept = (e.parameter.juryDept || "").trim();
-      if (!juryName) return respond({ status: "error", message: "juryName required" });
+      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
 
       var draftSheet = getOrCreateDraftSheet();
       var key        = makeDraftKey(juryName, juryDept);
@@ -142,7 +167,7 @@ function doGet(e) {
     if (action === "verify") {
       var juryNameV = (e.parameter.juryName || "").trim().toLowerCase();
       var juryDeptV = (e.parameter.juryDept || "").trim().toLowerCase();
-      if (!juryNameV) return respond({ status: "error", message: "juryName required" });
+      if (!juryNameV || !juryDeptV) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
 
       var ssV    = SpreadsheetApp.getActiveSpreadsheet();
       var sheetV = ssV.getSheetByName(EVAL_SHEET);
@@ -155,20 +180,17 @@ function doGet(e) {
         var rowName   = String(r[0] || "").trim().toLowerCase();
         var rowDept   = String(r[1] || "").trim().toLowerCase();
         var rowStatus = String(r[11] || "").trim();
-        var nameMatch = rowName === juryNameV;
-        var deptMatch = !juryDeptV || rowDept === juryDeptV;
-        return nameMatch && deptMatch && rowStatus === "all_submitted";
+        return (rowName === juryNameV) && (rowDept === juryDeptV) && (rowStatus === "all_submitted"); // ✅ exact match
       }).length;
 
       return respond({ status: "ok", submittedCount: count });
     }
 
     // ── myscores → latest rows for juror (one per group) ──────
-    // Returns {rows:[{projectId, projectName, design, technical, delivery, teamwork, total, comments, status}]}
     if (action === "myscores") {
       var juryNameM = (e.parameter.juryName || "").trim().toLowerCase();
       var juryDeptM = (e.parameter.juryDept || "").trim().toLowerCase();
-      if (!juryNameM) return respond({ status: "error", message: "juryName required" });
+      if (!juryNameM || !juryDeptM) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
 
       var ssM    = SpreadsheetApp.getActiveSpreadsheet();
       var sheetM = ssM.getSheetByName(EVAL_SHEET);
@@ -179,8 +201,7 @@ function doGet(e) {
 
       var valuesM = sheetM.getRange(2, 1, lastRowM - 1, NUM_COLS).getValues();
 
-      // best row per group: prefer higher status, then later timestamp (best-effort)
-      var bestByGroup = {}; // groupNo -> rowValues
+      var bestByGroup = {};
       var pri = { "all_submitted": 3, "group_submitted": 2, "in_progress": 1 };
 
       valuesM.forEach(function(r) {
@@ -189,9 +210,9 @@ function doGet(e) {
         var groupNo = String(r[3] || "").trim();
         if (!groupNo) return;
 
-        var nameMatch = rowName === juryNameM;
-        var deptMatch = !juryDeptM || rowDept === juryDeptM;
-        if (!nameMatch || !deptMatch) return;
+        // ✅ exact match
+        if (rowName !== juryNameM) return;
+        if (rowDept !== juryDeptM) return;
 
         var status = String(r[11] || "").trim();
         var cur = bestByGroup[groupNo];
@@ -204,7 +225,6 @@ function doGet(e) {
           return;
         }
 
-        // If same priority, keep later timestamp (best-effort string compare)
         var curTs = String(cur[2] || "");
         var newTs = String(r[2] || "");
         if ((pri[status] || 0) === (pri[curStatus] || 0) && newTs > curTs) {
@@ -235,7 +255,6 @@ function doGet(e) {
       return respond({ status: "ok", rows: rowsOut });
     }
 
-    // ── Health check ──────────────────────────────────────────
     return respond({ status: "ok" });
 
   } catch (err) {
@@ -253,7 +272,7 @@ function doPost(e) {
       var juryName   = (data.juryName || "").trim();
       var juryDept   = (data.juryDept || "").trim();
       var draftValue = JSON.stringify(data.draft || {});
-      if (!juryName) return respond({ status: "error", message: "juryName required" });
+      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
 
       var draftSheet = getOrCreateDraftSheet();
       var key        = makeDraftKey(juryName, juryDept);
@@ -272,9 +291,8 @@ function doPost(e) {
     if (data.action === "deleteJurorData") {
       var juryNameD = (data.juryName || "").trim();
       var juryDeptD = (data.juryDept || "").trim();
-      if (!juryNameD) return respond({ status: "error", message: "juryName required" });
+      if (!juryNameD || !juryDeptD) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
 
-      // 1) Delete draft
       var draftDeleted = 0;
       var draftSheetD = getOrCreateDraftSheet();
       var keyD = makeDraftKey(juryNameD, juryDeptD);
@@ -284,7 +302,6 @@ function doPost(e) {
         draftDeleted = 1;
       }
 
-      // 2) Delete evaluations
       var evalDeleted = 0;
       var ssD = SpreadsheetApp.getActiveSpreadsheet();
       var evalSheetD = ssD.getSheetByName(EVAL_SHEET);
@@ -299,9 +316,7 @@ function doPost(e) {
           for (var i = valuesD.length - 1; i >= 0; i--) {
             var rowName = String(valuesD[i][0] || "").trim().toLowerCase();
             var rowDept = String(valuesD[i][1] || "").trim().toLowerCase();
-            var nameMatch = rowName === targetName;
-            var deptMatch = !targetDept || rowDept === targetDept;
-            if (nameMatch && deptMatch) {
+            if (rowName === targetName && rowDept === targetDept) {
               evalSheetD.deleteRow(i + 2);
               evalDeleted++;
             }
@@ -316,7 +331,7 @@ function doPost(e) {
     if (data.action === "deleteDraft") {
       var juryNameX = (data.juryName || "").trim();
       var juryDeptX = (data.juryDept || "").trim();
-      if (!juryNameX) return respond({ status: "error", message: "juryName required" });
+      if (!juryNameX || !juryDeptX) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
 
       var draftSheetX = getOrCreateDraftSheet();
       var keyX = makeDraftKey(juryNameX, juryDeptX);
@@ -329,7 +344,10 @@ function doPost(e) {
     if (data.action === "resetJuror") {
       var juryNameR = (data.juryName || "").trim().toLowerCase();
       var juryDeptR = (data.juryDept || "").trim().toLowerCase();
-      if (!juryNameR) return respond({ status: "error", message: "juryName required" });
+      if (!juryNameR || !juryDeptR) return respond({ status: "error", message: "juryName and juryDept required" }); // ✅ require BOTH
+
+      // ✅ mark unlock so upsert can downgrade from all_submitted
+      markResetUnlock_(juryNameR, juryDeptR);
 
       var ssR = SpreadsheetApp.getActiveSpreadsheet();
       var sheetR = ssR.getSheetByName(EVAL_SHEET);
@@ -344,10 +362,8 @@ function doPost(e) {
       valuesR.forEach(function(r, i) {
         var rowName = String(r[0] || "").trim().toLowerCase();
         var rowDept = String(r[1] || "").trim().toLowerCase();
-        var nameMatch = rowName === juryNameR;
-        var deptMatch = !juryDeptR || rowDept === juryDeptR;
 
-        if (nameMatch && deptMatch) {
+        if (rowName === juryNameR && rowDept === juryDeptR) {
           sheetR.getRange(i + 2, 12).setValue("in_progress");
           sheetR.getRange(i + 2, 1, 1, NUM_COLS).setBackground("#fef9c3"); // yellow
           reset++;
@@ -381,7 +397,7 @@ function doPost(e) {
       ? sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues()
       : [];
 
-    // ✅ IMPORTANT: include dept in key to avoid collisions
+    // ✅ include dept in key to avoid collisions
     function keyOf(name, dept, groupNo) {
       return String(name || "").trim().toLowerCase()
         + "__" + String(dept || "").trim().toLowerCase()
@@ -407,12 +423,17 @@ function doPost(e) {
       var row = latestByKey[k];
       var newStatus = String(row.status || "all_submitted");
 
-      // Only lock all_submitted (unless resetJuror was called)
       var existingRowNum = index[k];
       if (existingRowNum) {
         var currentStatus = String(existing[existingRowNum - 2][11] || "");
+
+        // ✅ Default: lock all_submitted
+        // ✅ BUT: if resetJuror was called recently for this juror+dept, allow downgrade
         if (currentStatus === "all_submitted" && newStatus !== "all_submitted") {
-          newStatus = "all_submitted";
+          var allowDowngrade = isResetUnlockActive_(row.juryName, row.juryDept);
+          if (!allowDowngrade) {
+            newStatus = "all_submitted";
+          }
         }
       }
 
@@ -420,7 +441,7 @@ function doPost(e) {
       var bgColor =
         newStatus === "in_progress"     ? "#fef9c3" :  // yellow
         newStatus === "group_submitted" ? "#dcfce7" :  // light green
-        newStatus === "all_submitted"   ? "#bbf7d0" :  // darker green (final)
+        newStatus === "all_submitted"   ? "#bbf7d0" :  // slightly darker green (final)
         "#ffffff";
 
       var values = [

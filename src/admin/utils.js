@@ -63,24 +63,54 @@ export function exportCSV(rows) {
   URL.revokeObjectURL(url);
 }
 
-// Deduplicate rows: keep best status per (juror, group)
-// Priority: all_submitted > group_submitted > in_progress
+// Deduplicate rows: keep LATEST row per (juror + dept + group)
+// NOTE: For Details tab we want LIVE data: newest timestamp wins,
+// even if status goes from all_submitted -> in_progress after edits.
 export function dedupeAndSort(rows) {
-  const priority = { "all_submitted": 3, "group_submitted": 2, "in_progress": 1 };
-  const cleaned  = rows.filter((r) => r.juryName || r.projectName || r.total > 0);
-  const byKey    = new Map();
+  const priority = { all_submitted: 3, group_submitted: 2, in_progress: 1 };
+
+  const cleaned = (rows || [])
+    .filter((r) => r?.juryName || r?.projectName || (r?.total ?? 0) > 0)
+    .map((r) => ({
+      ...r,
+      // ensure tsMs exists (use timestamp string if needed)
+      tsMs: Number.isFinite(r?.tsMs) ? r.tsMs : tsToMillis(r?.timestamp),
+    }));
+
+  const byKey = new Map();
 
   for (const r of cleaned) {
-    const jur = String(r.juryName ?? "").trim().toLowerCase();
-    const grp = r.projectId ? String(r.projectId) : String(r.projectName ?? "").trim().toLowerCase();
+    const jur  = String(r.juryName ?? "").trim().toLowerCase();
+    const dep  = String(r.juryDept ?? "").trim().toLowerCase();
+    const grp  = r.projectId
+      ? String(r.projectId).trim()
+      : String(r.projectName ?? "").trim().toLowerCase();
+
     if (!jur || !grp) continue;
-    const key  = `${jur}__${grp}`;
+
+    // ✅ include dept to avoid collisions
+    const key = `${jur}__${dep}__${grp}`;
+
     const prev = byKey.get(key);
-    if (!prev) { byKey.set(key, r); continue; }
-    const prevPri = priority[prev.status] || 0;
-    const curPri  = priority[r.status]    || 0;
-    if (curPri > prevPri || (curPri === prevPri && r.tsMs >= (prev.tsMs || 0))) {
+    if (!prev) {
       byKey.set(key, r);
+      continue;
+    }
+
+    const prevTs = prev.tsMs || 0;
+    const curTs  = r.tsMs || 0;
+
+    // ✅ MAIN RULE: newer timestamp always wins (live updates!)
+    if (curTs > prevTs) {
+      byKey.set(key, r);
+      continue;
+    }
+
+    // Tie-breaker: if same timestamp, prefer higher status
+    if (curTs === prevTs) {
+      const prevPri = priority[prev.status] || 0;
+      const curPri  = priority[r.status] || 0;
+      if (curPri > prevPri) byKey.set(key, r);
     }
   }
 
