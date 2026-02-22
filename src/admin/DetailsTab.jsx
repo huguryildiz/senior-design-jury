@@ -105,6 +105,7 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
               const dot = jurorColorMap.get(row.juryName)?.dot || "#64748b";
               const grp = PROJECT_LIST.find((p) => p.id === row.projectId);
               const isIP = row.status === "in_progress";
+              // Even if in_progress, show any recorded (partial) scores. Use "—" only when value is empty.
               return (
                 <tr key={`${row.juryName}-${row.projectId}-${i}`}
                   style={{ backgroundColor: bg, borderTop: isNewBlock ? "2px solid #e5e7eb" : undefined }}>
@@ -133,11 +134,11 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
                   </td>
                   <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>{formatTs(row.timestamp)}</td>
                   <td><StatusBadge status={row.status} /></td>
-                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.design)}</td>
-                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.technical)}</td>
-                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.delivery)}</td>
-                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.teamwork)}</td>
-                  <td style={{ color: isIP ? "#94a3b8" : undefined }}><strong>{isIP ? "—" : displayScore(row.total)}</strong></td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.design)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.technical)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.delivery)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.teamwork)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}><strong>{displayScore(row.total)}</strong></td>
                   <td className="comment-cell">{row.comments}</td>
                 </tr>
               );
