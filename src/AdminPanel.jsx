@@ -122,7 +122,7 @@ function MatrixTab({ data, jurors, groups, jurorDeptMap }) {
   const lookup = {};
   data.forEach((r) => {
     if (!lookup[r.juryName]) lookup[r.juryName] = {};
-    lookup[r.juryName][r.projectName] = { total: r.total, status: r.status };
+    lookup[r.juryName][r.projectId] = { total: r.total, status: r.status };
   });
   if (!jurors.length) return <div className="empty-msg">No data yet.</div>;
 
@@ -154,14 +154,25 @@ function MatrixTab({ data, jurors, groups, jurorDeptMap }) {
           <thead>
             <tr>
               <th className="matrix-corner">Juror / Group</th>
-              {groups.map((g) => <th key={g}>{g}</th>)}
+              {groups.map((g) => (
+                <th key={g.id}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, lineHeight: 1.15 }}>
+                    <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>{g.label}</span>
+                    {g.desc && (
+                      <span style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>
+                        {g.desc}
+                      </span>
+                    )}
+                  </div>
+                </th>
+              ))}
               <th>Done</th>
             </tr>
           </thead>
           <tbody>
             {jurors.map((juror) => {
               const dept      = jurorDeptMap.get(juror) || "";
-              const submitted = groups.filter((g) => lookup[juror]?.[g]?.status === "all_submitted").length;
+              const submitted = groups.filter((g) => lookup[juror]?.[g.id]?.status === "all_submitted").length;
               return (
                 <tr key={juror}>
                   <td className="matrix-juror">
@@ -169,9 +180,9 @@ function MatrixTab({ data, jurors, groups, jurorDeptMap }) {
                     {dept && <span className="matrix-juror-dept"> ({dept})</span>}
                   </td>
                   {groups.map((g) => {
-                    const entry = lookup[juror]?.[g] ?? null;
+                    const entry = lookup[juror]?.[g.id] ?? null;
                     return (
-                      <td key={g} style={cellStyle(entry)}>
+                      <td key={g.id} style={cellStyle(entry)}>
                         {cellText(entry)}
                       </td>
                     );
@@ -306,10 +317,17 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
   const jurors = useMemo(
     () => [...new Set(data.map((d) => d.juryName).filter(Boolean))].sort(cmp), [data]
   );
-  const groups = useMemo(() => {
-    const fromData = [...new Set(data.map((d) => d.projectName).filter(Boolean))];
-    return (fromData.length ? fromData : PROJECT_LIST.map((p) => p.name)).sort(cmp);
-  }, [data]);
+  const groups = useMemo(
+    () =>
+      PROJECT_LIST
+        .map((p) => ({
+          id: p.id,
+          label: `Group ${p.id}`,
+          desc: p.desc || "",
+        }))
+        .sort((a, b) => a.id - b.id),
+    []
+  );
 
   // Map juror name → department (for matrix display)
   const jurorDeptMap = useMemo(() => {
@@ -566,6 +584,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
                   <th onClick={() => setSort("juryName")}    style={{ cursor: "pointer" }}>Juror {si("juryName")}</th>
                   <th onClick={() => setSort("juryDept")}    style={{ cursor: "pointer" }}>Department {si("juryDept")}</th>
                   <th onClick={() => setSort("projectName")} style={{ cursor: "pointer", whiteSpace: "nowrap" }}>Group {si("projectName")}</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Group Description</th>
                   <th onClick={() => setSort("tsMs")}        style={{ cursor: "pointer" }}>Timestamp {si("tsMs")}</th>
                   <th>Status</th>
                   <th onClick={() => setSort("design")}      style={{ cursor: "pointer" }}>Design /20 {si("design")}</th>
@@ -578,7 +597,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
               </thead>
               <tbody>
                 {detailRows.length === 0 && (
-                  <tr><td colSpan={11} style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No matching rows.</td></tr>
+                  <tr><td colSpan={12} style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No matching rows.</td></tr>
                 )}
                 {detailRows.map((row, i) => {
                   const isNewBlock = i === 0 || detailRows[i-1].juryName !== row.juryName;
@@ -593,7 +612,12 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
                       </td>
                       <td style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
                       {/* nowrap prevents "Group 1" wrapping across lines */}
-                      <td style={{ whiteSpace: "nowrap" }}><strong>{row.projectName}</strong></td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <strong>{`Group ${row.projectId}`}</strong>
+                      </td>
+                      <td style={{ fontSize: 12, color: "#475569", minWidth: 220 }}>
+                        {PROJECT_LIST.find((p) => p.id === row.projectId)?.desc || ""}
+                      </td>
                       <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>{formatTs(row.timestamp)}</td>
                       <td><StatusBadge status={row.status} /></td>
                       <td>{row.design}</td>
@@ -690,7 +714,7 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
                     return (
                       <div key={`${jury}-${d.projectId}-${d.timestamp}`} className="juror-row">
                         <div className="juror-row-main">
-                          <span className="juror-row-name">{d.projectName}</span>
+                          <span className="juror-row-name">{`Group ${d.projectId}`}</span>
                           {grp?.desc && <span className="juror-row-desc">{grp.desc}</span>}
                         </div>
                         <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatTs(d.timestamp)}</span>
