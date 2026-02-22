@@ -550,15 +550,6 @@ export default function JuryForm({ onBack }) {
           </span>
         </div>
 
-        {/* Next group shortcut button */}
-        {current < PROJECTS.length - 1 && (
-          <button
-            className="btn-secondary full"
-            onClick={() => setCurrent((i) => i + 1)}
-          >
-            Next Group →
-          </button>
-        )}
       </div>
     </div>
   );

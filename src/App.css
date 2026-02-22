@@ -1596,27 +1596,22 @@ body {
   padding-left: 2px;
 }
 
-/* Nav row: all children same height */
+/* Make prev / dropdown / next exactly equal width (1/3 each) */
 .eval-nav-row .group-nav-btn,
 .eval-nav-row .group-nav-select {
+  flex: 1 1 0;
+  width: 0;            /* critical for equal flex distribution */
+  min-width: 0;
   height: 38px;
   box-sizing: border-box;
 }
 
+/* Keep dropdown text nicely truncated */
 .eval-nav-row .group-nav-select {
-  flex: 1;
-  min-width: 0;
   font-size: 13px;
-}
-
-@media (max-width: 480px) {
-  .eval-nav-row .group-nav-btn,
-  .eval-nav-row .group-nav-select {
-    height: 38px;
-  }
-  .eval-nav-row .group-nav-select {
-    font-size: 12px;
-  }
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Segment progress bar */
@@ -1624,7 +1619,6 @@ body {
   display: flex;
   align-items: center;
   gap: 3px;
-  margin-left: auto;
 }
 .eval-seg {
   width: 28px;
