@@ -345,6 +345,13 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
     });
   }, [submittedData]);
 
+  // Dashboard charts should use short group labels (Group 1, Group 2, …)
+  // so long project titles from Google Sheets do not wrap on mobile.
+  const dashboardStats = useMemo(
+    () => projectStats.map((s) => ({ ...s, name: `Group ${s.id}` })),
+    [projectStats]
+  );
+
   const ranked = useMemo(() => [...projectStats].sort((a, b) => b.totalAvg - a.totalAvg), [projectStats]);
 
   // Per-juror stats
@@ -510,12 +517,12 @@ export default function AdminPanel({ onBack, adminPass: adminPassProp }) {
           {submittedData.length > 0 && (
             <>
               <div className="dashboard-grid">
-                <GroupBarChart     stats={projectStats} />
+                <GroupBarChart     stats={dashboardStats} />
                 <JurorStrictnessChart data={submittedData} />
               </div>
               <div className="dashboard-grid">
-                <ClusteredBarChart stats={projectStats} />
-                <RadarChart        stats={projectStats} />
+                <ClusteredBarChart stats={dashboardStats} />
+                <RadarChart        stats={dashboardStats} />
               </div>
               <ScoreDotPlot data={submittedData} />
             </>
