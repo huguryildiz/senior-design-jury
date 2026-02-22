@@ -478,9 +478,9 @@ export default function JuryForm({ onBack }) {
           <div className="draft-device-note">
             ℹ️ Your progress is auto-saved to the cloud. You can continue from any device by entering the same name and department.
           </div>
-
-          {/* Show Start button only when NOT alreadySubmitted (#4B) */}
-          {!alreadySubmitted && (
+          
+          {/* Show Start button only when NOT alreadySubmitted and no saved progress is found */}
+          {!alreadySubmitted && !cloudChecking && !cloudDraft && (
             <button
               className="btn-primary"
               disabled={!juryName.trim() || !juryDept.trim()}

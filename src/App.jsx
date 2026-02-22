@@ -13,7 +13,8 @@ async function postToSheet(body) {
   if (!SCRIPT_URL) return;
   try {
     await fetch(SCRIPT_URL, {
-      method: "POST", mode: "no-cors",
+      method: "POST",
+      mode: "no-cors",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
@@ -25,6 +26,7 @@ export default function App() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminInput,    setAdminInput]    = useState("");
   const [draftOwner,    setDraftOwner]    = useState(null);
+  const [startAtEval,   setStartAtEval]   = useState(false);
 
   useEffect(() => { loadDraftInfo(); }, []);
 
@@ -32,23 +34,30 @@ export default function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) { setDraftOwner(null); return; }
+
       const parsed = JSON.parse(saved);
       if (parsed?.step === "eval" && parsed?.juryName) {
         setDraftOwner({ name: parsed.juryName, dept: parsed.juryDept || "" });
       } else {
         setDraftOwner(null);
       }
-    } catch (_) { setDraftOwner(null); }
+    } catch (_) {
+      setDraftOwner(null);
+    }
   };
 
-  // #1 & #5: clear localStorage AND delete from Sheets Drafts tab
+  // Clear local draft AND delete from Sheets (Drafts + Evaluations)
   const clearDraft = () => {
     const owner = draftOwner;
+
+    // 1) remove local draft
     localStorage.removeItem(STORAGE_KEY);
     setDraftOwner(null);
+
+    // 2) remove server-side data (draft + ALL evaluation rows for that juror)
     if (owner?.name) {
       postToSheet({
-        action:   "deleteDraft",
+        action:   "deleteJurorData",
         juryName: owner.name,
         juryDept: owner.dept || "",
       });
@@ -57,7 +66,14 @@ export default function App() {
 
   if (page === "jury")
     return (
-      <JuryForm onBack={() => { setPage("home"); loadDraftInfo(); }} />
+      <JuryForm
+        startAtEval={startAtEval}
+        onBack={() => {
+          setPage("home");
+          setStartAtEval(false);
+          loadDraftInfo();
+        }}
+      />
     );
 
   if (page === "admin") {
@@ -73,18 +89,35 @@ export default function App() {
               placeholder="Password"
               value={adminInput}
               onChange={(e) => setAdminInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && adminInput.trim()) setAdminUnlocked(true); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && adminInput.trim()) setAdminUnlocked(true);
+              }}
             />
-            <button className="btn-primary" onClick={() => { if (adminInput.trim()) setAdminUnlocked(true); else alert("Please enter the admin password."); }}>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                if (adminInput.trim()) setAdminUnlocked(true);
+                else alert("Please enter the admin password.");
+              }}
+            >
               Login
             </button>
-            <button className="btn-ghost" onClick={() => setPage("home")}>← Back</button>
+            <button className="btn-ghost" onClick={() => setPage("home")}>
+              ← Back
+            </button>
           </div>
         </div>
       );
     }
     return (
-      <AdminPanel adminPass={adminInput} onBack={() => { setPage("home"); setAdminUnlocked(false); setAdminInput(""); }} />
+      <AdminPanel
+        adminPass={adminInput}
+        onBack={() => {
+          setPage("home");
+          setAdminUnlocked(false);
+          setAdminInput("");
+        }}
+      />
     );
   }
 
@@ -93,9 +126,19 @@ export default function App() {
       <div className="home-bg" />
       <div className="home-card">
         <div className="home-logo-wrap">
-          <img className="home-logo" src={teduLogo} alt="TED University Logo" loading="eager" />
+          <img
+            className="home-logo"
+            src={teduLogo}
+            alt="TED University Logo"
+            loading="eager"
+          />
         </div>
-        <h1>EE 491/492<br />Senior Project Jury Portal</h1>
+
+        <h1>
+          EE 491/492<br />
+          Senior Project Jury Portal
+        </h1>
+
         <p className="home-sub">
           TED University<br />
           Department of Electrical &amp; Electronics Engineering
@@ -106,20 +149,45 @@ export default function App() {
             <div className="draft-banner-icon">📝</div>
             <div className="draft-banner-text">
               <strong>Saved draft found</strong>
-              <span>{draftOwner.name}{draftOwner.dept ? ` · ${draftOwner.dept}` : ""}</span>
+              <span>
+                {draftOwner.name}
+                {draftOwner.dept ? ` · ${draftOwner.dept}` : ""}
+              </span>
             </div>
             <div className="draft-banner-actions">
-              <button className="btn-draft-resume" onClick={() => setPage("jury")}>Resume</button>
-              {/* #5: ✕ deletes from Sheets too */}
-              <button className="btn-draft-clear" onClick={clearDraft} title="Delete draft">✕</button>
+              <button
+                className="btn-draft-resume"
+                onClick={() => {
+                  setStartAtEval(true);
+                  setPage("jury");
+                }}
+              >
+                Resume
+              </button>
+
+              {/* ✕ deletes local draft + Sheets (Drafts + Evaluations) */}
+              <button
+                className="btn-draft-clear"
+                onClick={clearDraft}
+                title="Delete draft"
+              >
+                ✕
+              </button>
             </div>
           </div>
         )}
 
         <div className="home-buttons">
-          <button className="btn-primary big" onClick={() => setPage("jury")}>
+          <button
+            className="btn-primary big"
+            onClick={() => {
+              setStartAtEval(false);
+              setPage("jury");
+            }}
+          >
             <span>📋</span> Evaluation Form
           </button>
+
           <button className="btn-outline big" onClick={() => setPage("admin")}>
             <span>📊</span> View Results
           </button>
@@ -127,12 +195,19 @@ export default function App() {
 
         <div className="home-hint">
           <span className="home-hint-ico">ℹ️</span>
-          <span>Please use the <strong>Evaluation Form</strong> to submit your scores.</span>
+          <span>
+            Please use the <strong>Evaluation Form</strong> to submit your scores.
+          </span>
         </div>
 
         <div className="home-footer">
           © 2026 · Developed by{" "}
-          <a className="home-footer-link" href="https://huguryildiz.com" target="_blank" rel="noopener noreferrer">
+          <a
+            className="home-footer-link"
+            href="https://huguryildiz.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Huseyin Ugur Yildiz
           </a>
         </div>
