@@ -12,6 +12,13 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
     : { id: p.id ?? i + 1, name: p.name ?? `Group ${i + 1}`, desc: p.desc ?? "", students: p.students ?? [] }
 );
 
+// Show "—" for empty/missing scores instead of 0
+function displayScore(val) {
+  if (val === "" || val === null || val === undefined) return "—";
+  const n = Number(val);
+  return Number.isFinite(n) ? n : "—";
+}
+
 export default function DetailsTab({ data, jurors, jurorColorMap }) {
   const [detailJuror,  setDetailJuror]  = useState("ALL");
   const [detailGroup,  setDetailGroup]  = useState("ALL");
@@ -46,7 +53,7 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
   const si = (key) => sortKey !== key ? "↕" : sortDir === "asc" ? "↑" : "↓";
 
   return (
-    <div className="admin-body">
+    <>
       <div className="filter-bar">
         <div className="filter-item">
           <span>Juror</span>
@@ -77,8 +84,7 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
             <tr>
               <th onClick={() => setSort("juryName")}    style={{ cursor: "pointer" }}>Juror {si("juryName")}</th>
               <th onClick={() => setSort("juryDept")}    style={{ cursor: "pointer" }}>Department {si("juryDept")}</th>
-              <th onClick={() => setSort("projectId")}   style={{ cursor: "pointer", whiteSpace: "nowrap" }}>Group No {si("projectId")}</th>
-              <th>Group Name</th>
+              <th onClick={() => setSort("projectId")}   style={{ cursor: "pointer", whiteSpace: "nowrap" }}>Group {si("projectId")}</th>
               <th onClick={() => setSort("tsMs")}        style={{ cursor: "pointer" }}>Timestamp {si("tsMs")}</th>
               <th>Status</th>
               <th onClick={() => setSort("design")}      style={{ cursor: "pointer" }}>Design /20 {si("design")}</th>
@@ -91,13 +97,14 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
           </thead>
           <tbody>
             {detailRows.length === 0 && (
-              <tr><td colSpan={12} style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No matching rows.</td></tr>
+              <tr><td colSpan={11} style={{ textAlign: "center", padding: 32, color: "#64748b" }}>No matching rows.</td></tr>
             )}
             {detailRows.map((row, i) => {
               const isNewBlock = i === 0 || detailRows[i-1].juryName !== row.juryName;
               const bg  = jurorColorMap.get(row.juryName)?.bg  || "transparent";
               const dot = jurorColorMap.get(row.juryName)?.dot || "#64748b";
               const grp = PROJECT_LIST.find((p) => p.id === row.projectId);
+              const isIP = row.status === "in_progress";
               return (
                 <tr key={`${row.juryName}-${row.projectId}-${i}`}
                   style={{ backgroundColor: bg, borderTop: isNewBlock ? "2px solid #e5e7eb" : undefined }}>
@@ -108,18 +115,17 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
                     </span>
                   </td>
                   <td style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
-                  <td style={{ whiteSpace: "nowrap" }}><strong>Group {row.projectId}</strong></td>
-                  <td style={{ fontSize: 12, color: "#475569", minWidth: 200 }}>
-                    {grp?.name || row.projectName || ""}
-                    {grp?.desc && <span style={{ display: "block", color: "#94a3b8", fontSize: 11 }}>{grp.desc}</span>}
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <strong>Group {row.projectId}</strong>
+                    {grp?.desc && <span style={{ display: "block", fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{grp.desc}</span>}
                   </td>
                   <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>{formatTs(row.timestamp)}</td>
                   <td><StatusBadge status={row.status} /></td>
-                  <td>{row.design}</td>
-                  <td>{row.technical}</td>
-                  <td>{row.delivery}</td>
-                  <td>{row.teamwork}</td>
-                  <td><strong>{row.total}</strong></td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.design)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.technical)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.delivery)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{isIP ? "—" : displayScore(row.teamwork)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}><strong>{isIP ? "—" : displayScore(row.total)}</strong></td>
                   <td className="comment-cell">{row.comments}</td>
                 </tr>
               );
@@ -127,6 +133,6 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }

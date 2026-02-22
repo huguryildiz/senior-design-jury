@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { cmp, formatTs } from "./utils";
+import { formatTs } from "./utils";
 import { StatusBadge } from "./components";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
@@ -99,9 +99,9 @@ export default function JurorsTab({ jurorStats, jurors }) {
                 return (
                   <div key={`${jury}-${d.projectId}-${d.timestamp}`} className="juror-row">
                     <div className="juror-row-main">
+                      {/* Bold "Group X" then description on same line */}
                       <span className="juror-row-name">{`Group ${d.projectId}`}</span>
-                      {grp?.name && <span className="juror-row-desc">{grp.name}</span>}
-                      {grp?.desc && <span className="juror-row-desc" style={{ color: "#94a3b8" }}>{grp.desc}</span>}
+                      {grp?.desc && <span className="juror-row-desc">{grp.desc}</span>}
                     </div>
                     <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatTs(d.timestamp)}</span>
                     <StatusBadge status={d.status} />

@@ -99,7 +99,7 @@ function doGet(e) {
       if (!infoSheet) {
         infoSheet = ss.insertSheet(INFO_SHEET);
       } else {
-        infoSheet.clearContents();
+        infoSheet.clear(); // clears both content and formatting
       }
 
       // Header row

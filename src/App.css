@@ -1588,30 +1588,33 @@ body {
   line-height: 1.4;
 }
 
-/* Nav row: prev | select | next | segments */
+/* Nav row: prev | select | next | Save Draft (far right) */
 .eval-nav-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding-left: 2px;
 }
-
-/* Make prev / dropdown / next exactly equal width (1/3 each) */
-.eval-nav-row .group-nav-btn,
-.eval-nav-row .group-nav-select {
-  flex: 1 1 0;
-  width: 0;            /* critical for equal flex distribution */
-  min-width: 0;
+.eval-nav-row .group-nav-btn {
+  flex: 0 0 38px;
+  width: 38px;
   height: 38px;
   box-sizing: border-box;
 }
-
-/* Keep dropdown text nicely truncated */
 .eval-nav-row .group-nav-select {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 38px;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  box-sizing: border-box;
+}
+/* Save Draft pushed to far right */
+.eval-nav-row .save-draft-btn {
+  flex: 0 0 auto;
+  margin-left: 4px;
 }
 
 /* Segment progress bar */

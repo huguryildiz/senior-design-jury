@@ -160,22 +160,8 @@ export default function AdminPanel({ adminPass, onBack }) {
             {inProgressCount > 0 && <span className="live-indicator"> · {inProgressCount} in progress</span>}
           </p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button className="refresh-btn" onClick={fetchData}>↻ Refresh</button>
-            <button
-              className="refresh-btn"
-              title="Create / refresh the Info sheet in Google Sheets from config.js data"
-              onClick={async () => {
-                const pass = adminPass || (sessionStorage.getItem("ee492_admin_pass") || "");
-                const res = await fetch(`${SCRIPT_URL}?action=initInfo&pass=${encodeURIComponent(pass)}`, { cache: "no-store" });
-                const json = await res.json();
-                alert(json.message || json.status);
-              }}
-            >
-              📋 Init Info Sheet
-            </button>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+          <button className="refresh-btn" onClick={fetchData}>↻ Refresh</button>
           {lastRefresh && (
             <span style={{ fontSize: 10, color: "#94a3b8" }}>
               {lastRefresh.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}

@@ -47,22 +47,11 @@ export default function MatrixTab({ data, jurors, groups, jurorDeptMap }) {
           <thead>
             <tr>
               <th className="matrix-corner">Juror / Group</th>
-              {groups.map((g) => {
-                const proj = PROJECT_LIST.find((p) => p.id === g.id);
-                return (
-                  <th key={g.id}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, lineHeight: 1.15 }}>
-                      <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>{g.label}</span>
-                      {proj?.name && (
-                        <span style={{ fontSize: 11, color: "#475569", fontWeight: 600 }}>{proj.name}</span>
-                      )}
-                      {proj?.desc && (
-                        <span style={{ fontSize: 10, color: "#64748b", fontWeight: 400 }}>{proj.desc}</span>
-                      )}
-                    </div>
-                  </th>
-                );
-              })}
+              {groups.map((g) => (
+                <th key={g.id}>
+                  <strong>{g.label}</strong>
+                </th>
+              ))}
               <th>Done</th>
             </tr>
           </thead>
