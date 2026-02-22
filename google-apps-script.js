@@ -148,8 +148,10 @@ function doGet(e) {
     }
 
     // ── Verify: count all_submitted rows for a juror ──────────
+    // Matches on juryName + juryDept (both required for uniqueness)
     if (action === "verify") {
       var juryName = (e.parameter.juryName || "").trim().toLowerCase();
+      var juryDept = (e.parameter.juryDept || "").trim().toLowerCase();
       if (!juryName) return respond({ status: "error", message: "juryName required" });
 
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -161,8 +163,12 @@ function doGet(e) {
 
       var count = values.filter(function(r) {
         var rowName   = String(r[0] || "").trim().toLowerCase();
+        var rowDept   = String(r[1] || "").trim().toLowerCase();
         var rowStatus = String(r[11] || "").trim();
-        return rowName === juryName && rowStatus === "all_submitted";
+        // If juryDept provided, match both; otherwise match name only
+        var nameMatch = rowName === juryName;
+        var deptMatch = !juryDept || rowDept === juryDept;
+        return nameMatch && deptMatch && rowStatus === "all_submitted";
       }).length;
 
       return respond({ status: "ok", submittedCount: count });

@@ -116,8 +116,20 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
                   </td>
                   <td style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <strong>Group {row.projectId}</strong>
-                    {grp?.desc && <span style={{ display: "block", fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{grp.desc}</span>}
+                    <div
+                      title={grp?.desc ? `Group ${row.projectId} — ${grp.desc}` : `Group ${row.projectId}`}
+                      style={{ cursor: "default" }}
+                    >
+                      <strong>Group {row.projectId}</strong>
+                      {grp?.desc && (
+                        <span style={{
+                          display: "block", fontSize: 11, color: "#94a3b8", fontWeight: 400,
+                          maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                        }}>
+                          {grp.desc}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>{formatTs(row.timestamp)}</td>
                   <td><StatusBadge status={row.status} /></td>
