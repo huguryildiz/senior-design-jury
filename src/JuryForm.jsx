@@ -691,7 +691,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
             <SaveIcon />
             {saveStatus === "saving" && <span>Saving…</span>}
             {saveStatus === "saved"  && <span>✓ Saved</span>}
-            {saveStatus === "idle"   && <span>Save Draft</span>}
+            {saveStatus === "idle"   && <span>Save</span>}
           </button>
         </div>
 
