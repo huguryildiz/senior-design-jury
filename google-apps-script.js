@@ -11,8 +11,6 @@
 //
 // Sheet: "Info"  columns A–D
 //   A  Group No   B  Group Name   C  Group Desc   D  Students
-//   (Students: comma-separated names in one cell)
-//   Created/refreshed via GET ?action=initInfo&pass=X
 //
 // Sheet: "Drafts"  columns A–C
 //   A  DraftKey (juryName__juryDept, lowercase)
@@ -20,18 +18,22 @@
 //   C  UpdatedAt
 //
 // Status values used in Evaluations:
-//   "in_progress"     – juror started, group not fully scored
-//   "group_submitted" – this group fully scored, not final-submitted yet
-//   "all_submitted"   – final submit clicked, all groups locked
+//   "in_progress"
+//   "group_submitted"
+//   "all_submitted"
 //
 // Endpoints:
-//   GET  ?action=export&pass=X          → authenticated JSON dump
-//   GET  ?action=initInfo&pass=X        → create/refresh Info sheet from PROJECTS_DATA
-//   GET  ?action=loadDraft&juryName=X&juryDept=Y → load cloud draft
-//   GET  ?action=verify&juryName=X      → count all_submitted rows for juror
-//   POST body { action:"saveDraft",   juryName, juryDept, draft }
+//   GET  ?action=export&pass=X
+//   GET  ?action=initInfo&pass=X
+//   GET  ?action=loadDraft&juryName=X&juryDept=Y
+//   GET  ?action=verify&juryName=X&juryDept=Y
+//   GET  ?action=myscores&juryName=X&juryDept=Y      // NEW
+//
+//   POST body { action:"saveDraft", juryName, juryDept, draft }
 //   POST body { action:"deleteDraft", juryName, juryDept }
-//   POST body { rows: [...] }           → upsert evaluation rows (default)
+//   POST body { action:"deleteJurorData", juryName, juryDept }
+//   POST body { action:"resetJuror", juryName, juryDept }
+//   POST body { rows: [...] }  → upsert evaluation rows
 // ============================================================
 
 var EVAL_SHEET  = "Evaluations";
@@ -40,14 +42,13 @@ var INFO_SHEET  = "Info";
 var NUM_COLS    = 12;
 
 // ── PROJECTS_DATA: copy from config.js and update each semester ──
-// This is the server-side source of truth for the Info sheet.
 var PROJECTS_DATA = [
-  { id: 1, name: "Group 1", desc: "Göksiper Hava Savunma Sistemi",           students: ["Mustafa Yusuf Ünal", "Ayça Naz Dedeoğlu", "Onur Mesci", "Çağan Erdoğan"] },
+  { id: 1, name: "Group 1", desc: "Göksiper Hava Savunma Sistemi", students: ["Mustafa Yusuf Ünal", "Ayça Naz Dedeoğlu", "Onur Mesci", "Çağan Erdoğan"] },
   { id: 2, name: "Group 2", desc: "Radome and Radar-Absorbing Material Electromagnetic Design Software (REMDET)", students: ["Niyazi Atilla Özer", "Bertan Ünver", "Ada Tatlı", "Nesibe Aydın"] },
-  { id: 3, name: "Group 3", desc: "Smart Crosswalk",                          students: ["Sami Eren Germeç"] },
+  { id: 3, name: "Group 3", desc: "Smart Crosswalk", students: ["Sami Eren Germeç"] },
   { id: 4, name: "Group 4", desc: "Radar Cross Section (RCS) Analysis – Supporting Multi-Purpose Ray Tracing Algorithm", students: ["Ahmet Melih Yavuz", "Yasemin Erciyas"] },
   { id: 5, name: "Group 5", desc: "Monitoring Pilots' Health Status and Cognitive Abilities During Flight", students: ["Aysel Mine Çaylan", "Selimhan Kaynar", "Abdulkadir Sazlı", "Alp Efe İpek"] },
-  { id: 6, name: "Group 6", desc: "AKKE, Smart Command and Control Glove",   students: ["Şevval Kurtulmuş", "Abdullah Esin", "Berk Çakmak", "Ömer Efe Dikici"] }
+  { id: 6, name: "Group 6", desc: "AKKE, Smart Command and Control Glove", students: ["Şevval Kurtulmuş", "Abdullah Esin", "Berk Çakmak", "Ömer Efe Dikici"] }
 ];
 
 // ── Authorization ─────────────────────────────────────────────
@@ -95,14 +96,12 @@ function doGet(e) {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var infoSheet = ss.getSheetByName(INFO_SHEET);
 
-      // Create if not exists
       if (!infoSheet) {
         infoSheet = ss.insertSheet(INFO_SHEET);
       } else {
-        infoSheet.clear(); // clears both content and formatting
+        infoSheet.clear();
       }
 
-      // Header row
       infoSheet.appendRow(["Group No", "Group Name", "Group Desc", "Students"]);
       infoSheet.getRange(1, 1, 1, 4)
         .setFontWeight("bold")
@@ -110,23 +109,15 @@ function doGet(e) {
         .setFontColor("white");
       infoSheet.setFrozenRows(1);
 
-      // Data rows
       PROJECTS_DATA.forEach(function(p) {
-        infoSheet.appendRow([
-          p.id,
-          p.name,
-          p.desc,
-          (p.students || []).join(", ")
-        ]);
+        infoSheet.appendRow([ p.id, p.name, p.desc, (p.students || []).join(", ") ]);
       });
 
-      // Auto-resize columns
       infoSheet.autoResizeColumns(1, 4);
-
       return respond({ status: "ok", message: "Info sheet created/refreshed with " + PROJECTS_DATA.length + " groups." });
     }
 
-    // ── Load draft: returns draft JSON for a juror ────────────
+    // ── Load draft ────────────────────────────────────────────
     if (action === "loaddraft") {
       var juryName = (e.parameter.juryName || "").trim();
       var juryDept = (e.parameter.juryDept || "").trim();
@@ -148,30 +139,104 @@ function doGet(e) {
     }
 
     // ── Verify: count all_submitted rows for a juror ──────────
-    // Matches on juryName + juryDept (both required for uniqueness)
     if (action === "verify") {
-      var juryName = (e.parameter.juryName || "").trim().toLowerCase();
-      var juryDept = (e.parameter.juryDept || "").trim().toLowerCase();
-      if (!juryName) return respond({ status: "error", message: "juryName required" });
+      var juryNameV = (e.parameter.juryName || "").trim().toLowerCase();
+      var juryDeptV = (e.parameter.juryDept || "").trim().toLowerCase();
+      if (!juryNameV) return respond({ status: "error", message: "juryName required" });
 
-      var ss    = SpreadsheetApp.getActiveSpreadsheet();
-      var sheet = ss.getSheetByName(EVAL_SHEET);
-      if (!sheet) return respond({ status: "ok", submittedCount: 0 });
+      var ssV    = SpreadsheetApp.getActiveSpreadsheet();
+      var sheetV = ssV.getSheetByName(EVAL_SHEET);
+      if (!sheetV) return respond({ status: "ok", submittedCount: 0 });
 
-      var values  = sheet.getDataRange().getValues();
-      values.shift();
+      var valuesV = sheetV.getDataRange().getValues();
+      valuesV.shift();
 
-      var count = values.filter(function(r) {
+      var count = valuesV.filter(function(r) {
         var rowName   = String(r[0] || "").trim().toLowerCase();
         var rowDept   = String(r[1] || "").trim().toLowerCase();
         var rowStatus = String(r[11] || "").trim();
-        // If juryDept provided, match both; otherwise match name only
-        var nameMatch = rowName === juryName;
-        var deptMatch = !juryDept || rowDept === juryDept;
+        var nameMatch = rowName === juryNameV;
+        var deptMatch = !juryDeptV || rowDept === juryDeptV;
         return nameMatch && deptMatch && rowStatus === "all_submitted";
       }).length;
 
       return respond({ status: "ok", submittedCount: count });
+    }
+
+    // ── NEW: myscores → latest rows for juror (one per group) ──
+    // Returns {rows:[{projectId, projectName, design, technical, delivery, teamwork, total, comments, status}]}
+    if (action === "myscores") {
+      var juryNameM = (e.parameter.juryName || "").trim().toLowerCase();
+      var juryDeptM = (e.parameter.juryDept || "").trim().toLowerCase();
+      if (!juryNameM) return respond({ status: "error", message: "juryName required" });
+
+      var ssM    = SpreadsheetApp.getActiveSpreadsheet();
+      var sheetM = ssM.getSheetByName(EVAL_SHEET);
+      if (!sheetM) return respond({ status: "ok", rows: [] });
+
+      var lastRowM = sheetM.getLastRow();
+      if (lastRowM < 2) return respond({ status: "ok", rows: [] });
+
+      var valuesM = sheetM.getRange(2, 1, lastRowM - 1, NUM_COLS).getValues();
+
+      // pick latest row per group (by timestamp string; best-effort)
+      // and prefer all_submitted over others if duplicates exist
+      var bestByGroup = {}; // groupNo -> rowValues
+      var pri = { "all_submitted": 3, "group_submitted": 2, "in_progress": 1 };
+
+      valuesM.forEach(function(r) {
+        var rowName = String(r[0] || "").trim().toLowerCase();
+        var rowDept = String(r[1] || "").trim().toLowerCase();
+        var groupNo = String(r[3] || "").trim();
+        if (!groupNo) return;
+
+        var nameMatch = rowName === juryNameM;
+        var deptMatch = !juryDeptM || rowDept === juryDeptM;
+        if (!nameMatch || !deptMatch) return;
+
+        var status = String(r[11] || "").trim();
+        var cur = bestByGroup[groupNo];
+
+        if (!cur) {
+          bestByGroup[groupNo] = r;
+          return;
+        }
+
+        var curStatus = String(cur[11] || "").trim();
+        if ((pri[status] || 0) > (pri[curStatus] || 0)) {
+          bestByGroup[groupNo] = r;
+          return;
+        }
+
+        // If same priority, keep "later" timestamp (best-effort string compare)
+        var curTs = String(cur[2] || "");
+        var newTs = String(r[2] || "");
+        if ((pri[status] || 0) === (pri[curStatus] || 0) && newTs > curTs) {
+          bestByGroup[groupNo] = r;
+        }
+      });
+
+      var rowsOut = Object.keys(bestByGroup)
+        .map(function(g) {
+          var r = bestByGroup[g];
+          return {
+            juryName: r[0],
+            juryDept: r[1],
+            timestamp: r[2],
+            projectId: Number(r[3]),
+            projectName: r[4],
+            design: r[5],
+            technical: r[6],
+            delivery: r[7],
+            teamwork: r[8],
+            total: r[9],
+            comments: r[10],
+            status: r[11]
+          };
+        })
+        .sort(function(a, b) { return (a.projectId || 0) - (b.projectId || 0); });
+
+      return respond({ status: "ok", rows: rowsOut });
     }
 
     // ── Health check ──────────────────────────────────────────
@@ -207,52 +272,97 @@ function doPost(e) {
       return respond({ status: "ok" });
     }
 
+    // ── Delete juror data (draft + ALL evaluations) ───────────
+    if (data.action === "deleteJurorData") {
+      var juryNameD = (data.juryName || "").trim();
+      var juryDeptD = (data.juryDept || "").trim();
+      if (!juryNameD) return respond({ status: "error", message: "juryName required" });
+
+      // 1) Delete draft
+      var draftDeleted = 0;
+      var draftSheetD = getOrCreateDraftSheet();
+      var keyD = makeDraftKey(juryNameD, juryDeptD);
+      var rowIndexD = findDraftRowIndex(draftSheetD, keyD);
+      if (rowIndexD > 0) {
+        draftSheetD.deleteRow(rowIndexD);
+        draftDeleted = 1;
+      }
+
+      // 2) Delete evaluations
+      var evalDeleted = 0;
+      var ssD = SpreadsheetApp.getActiveSpreadsheet();
+      var evalSheetD = ssD.getSheetByName(EVAL_SHEET);
+
+      if (evalSheetD) {
+        var lastRowD = evalSheetD.getLastRow();
+        if (lastRowD >= 2) {
+          var valuesD = evalSheetD.getRange(2, 1, lastRowD - 1, NUM_COLS).getValues();
+          var targetName = juryNameD.trim().toLowerCase();
+          var targetDept = juryDeptD.trim().toLowerCase();
+
+          for (var i = valuesD.length - 1; i >= 0; i--) {
+            var rowName = String(valuesD[i][0] || "").trim().toLowerCase();
+            var rowDept = String(valuesD[i][1] || "").trim().toLowerCase();
+            var nameMatch = rowName === targetName;
+            var deptMatch = !targetDept || rowDept === targetDept;
+            if (nameMatch && deptMatch) {
+              evalSheetD.deleteRow(i + 2);
+              evalDeleted++;
+            }
+          }
+        }
+      }
+
+      return respond({ status: "ok", draftDeleted: draftDeleted, evalDeleted: evalDeleted });
+    }
+
     // ── Delete draft ──────────────────────────────────────────
     if (data.action === "deleteDraft") {
-      var juryName = (data.juryName || "").trim();
-      var juryDept = (data.juryDept || "").trim();
-      if (!juryName) return respond({ status: "error", message: "juryName required" });
+      var juryNameX = (data.juryName || "").trim();
+      var juryDeptX = (data.juryDept || "").trim();
+      if (!juryNameX) return respond({ status: "error", message: "juryName required" });
 
-      var draftSheet  = getOrCreateDraftSheet();
-      var key         = makeDraftKey(juryName, juryDept);
-      var rowIndex    = findDraftRowIndex(draftSheet, key);
-      if (rowIndex > 0) draftSheet.deleteRow(rowIndex);
+      var draftSheetX = getOrCreateDraftSheet();
+      var keyX = makeDraftKey(juryNameX, juryDeptX);
+      var rowIndexX = findDraftRowIndex(draftSheetX, keyX);
+      if (rowIndexX > 0) draftSheetX.deleteRow(rowIndexX);
       return respond({ status: "ok" });
     }
 
-    // ── Reset juror: force all rows back to in_progress ─────────
-    // Used when an all_submitted juror wants to re-submit (#6)
+    // ── Reset juror: force all rows back to in_progress ───────
     if (data.action === "resetJuror") {
-      var juryName = (data.juryName || "").trim().toLowerCase();
-      var juryDept = (data.juryDept || "").trim().toLowerCase();
-      if (!juryName) return respond({ status: "error", message: "juryName required" });
+      var juryNameR = (data.juryName || "").trim().toLowerCase();
+      var juryDeptR = (data.juryDept || "").trim().toLowerCase();
+      if (!juryNameR) return respond({ status: "error", message: "juryName required" });
 
-      var ss    = SpreadsheetApp.getActiveSpreadsheet();
-      var sheet = ss.getSheetByName(EVAL_SHEET);
-      if (!sheet) return respond({ status: "ok", reset: 0 });
+      var ssR = SpreadsheetApp.getActiveSpreadsheet();
+      var sheetR = ssR.getSheetByName(EVAL_SHEET);
+      if (!sheetR) return respond({ status: "ok", reset: 0 });
 
-      var lastRow = sheet.getLastRow();
-      if (lastRow < 2) return respond({ status: "ok", reset: 0 });
+      var lastRowR = sheetR.getLastRow();
+      if (lastRowR < 2) return respond({ status: "ok", reset: 0 });
 
-      var values = sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
-      var reset  = 0;
-      values.forEach(function(r, i) {
+      var valuesR = sheetR.getRange(2, 1, lastRowR - 1, NUM_COLS).getValues();
+      var reset = 0;
+
+      valuesR.forEach(function(r, i) {
         var rowName = String(r[0] || "").trim().toLowerCase();
         var rowDept = String(r[1] || "").trim().toLowerCase();
-        var nameMatch = rowName === juryName;
-        var deptMatch = !juryDept || rowDept === juryDept;
+        var nameMatch = rowName === juryNameR;
+        var deptMatch = !juryDeptR || rowDept === juryDeptR;
+
         if (nameMatch && deptMatch) {
-          // Force status to in_progress and clear scores
-          sheet.getRange(i + 2, 12).setValue("in_progress");
-          sheet.getRange(i + 2, 1, 1, NUM_COLS).setBackground("#fef9c3");
+          sheetR.getRange(i + 2, 12).setValue("in_progress");
+          sheetR.getRange(i + 2, 1, 1, NUM_COLS).setBackground("#fef9c3"); // yellow
           reset++;
         }
       });
+
       return respond({ status: "ok", reset: reset });
     }
 
     // ── Upsert evaluation rows (default POST action) ──────────
-    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(EVAL_SHEET);
 
     if (!sheet) {
@@ -270,7 +380,7 @@ function doPost(e) {
       sheet.setFrozenRows(1);
     }
 
-    var lastRow  = sheet.getLastRow();
+    var lastRow = sheet.getLastRow();
     var existing = lastRow >= 2
       ? sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues()
       : [];
@@ -281,42 +391,44 @@ function doPost(e) {
 
     var index = {};
     existing.forEach(function(r, i) {
-      var key = keyOf(r[0], r[3]);
-      if (key !== "__") index[key] = i + 2;
+      var k = keyOf(r[0], r[3]);
+      if (k !== "__") index[k] = i + 2;
     });
 
+    // keep latest payload per key
     var latestByKey = {};
     (data.rows || []).forEach(function(row) {
-      var key = keyOf(row.juryName, row.projectId);
-      if (key !== "__") latestByKey[key] = row;
+      var k = keyOf(row.juryName, row.projectId);
+      if (k !== "__") latestByKey[k] = row;
     });
 
     var updated = 0, added = 0;
 
-    Object.keys(latestByKey).forEach(function(key) {
-      var row       = latestByKey[key];
+    Object.keys(latestByKey).forEach(function(k) {
+      var row = latestByKey[k];
       var newStatus = String(row.status || "all_submitted");
 
-      var existingRowNum = index[key];
+      // Prevent downgrading status unless sheet already downgraded (resetJuror does that)
+      var existingRowNum = index[k];
       if (existingRowNum) {
         var currentStatus = String(existing[existingRowNum - 2][11] || "");
         var priority = { "all_submitted": 3, "group_submitted": 2, "in_progress": 1 };
-        var curPri   = priority[currentStatus] || 0;
-        var newPri   = priority[newStatus]     || 0;
+        var curPri = priority[currentStatus] || 0;
+        var newPri = priority[newStatus] || 0;
         if (curPri > newPri) newStatus = currentStatus;
       }
 
-      // Color-code row by status
-      var bgColor = newStatus === "in_progress"     ? "#fef9c3"  // yellow
-                  : newStatus === "group_submitted"  ? "#dcfce7"  // green
-                  : newStatus === "all_submitted"    ? "#dcfce7"  // green
-                  : "#ffffff";
+      var bgColor =
+        newStatus === "in_progress"     ? "#fef9c3" :
+        newStatus === "group_submitted" ? "#dcfce7" :
+        newStatus === "all_submitted"   ? "#dcfce7" :
+        "#ffffff";
 
       var values = [
-        row.juryName,    row.juryDept,    row.timestamp,
-        row.projectId,   row.projectName,
-        row.design,      row.technical,   row.delivery, row.teamwork,
-        row.total,       row.comments,    newStatus
+        row.juryName, row.juryDept, row.timestamp,
+        row.projectId, row.projectName,
+        row.design, row.technical, row.delivery, row.teamwork,
+        row.total, row.comments, newStatus
       ];
 
       if (existingRowNum) {
@@ -328,7 +440,7 @@ function doPost(e) {
         sheet.appendRow(values);
         var newRow = sheet.getLastRow();
         sheet.getRange(newRow, 1, 1, NUM_COLS).setBackground(bgColor);
-        index[key] = newRow;
+        index[k] = newRow;
         added++;
       }
     });
@@ -341,9 +453,8 @@ function doPost(e) {
 }
 
 // ── Draft sheet helpers ───────────────────────────────────────
-
 function getOrCreateDraftSheet() {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(DRAFT_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(DRAFT_SHEET);
@@ -359,8 +470,8 @@ function getOrCreateDraftSheet() {
 }
 
 function makeDraftKey(juryName, juryDept) {
-  return String(juryName || "").trim().toLowerCase() +
-    "__" + String(juryDept || "").trim().toLowerCase();
+  return String(juryName || "").trim().toLowerCase()
+    + "__" + String(juryDept || "").trim().toLowerCase();
 }
 
 function findDraftRow(sheet, key) {
