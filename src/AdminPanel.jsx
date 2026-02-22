@@ -114,6 +114,11 @@ export default function AdminPanel({ adminPass, onBack }) {
     data.filter((r) => r.status === "all_submitted"),
     [data]
   );
+  // Completed groups (used for operational tracking / Jurors tab)
+  const completedData = useMemo(() =>
+    data.filter((r) => r.status === "group_submitted" || r.status === "all_submitted"),
+    [data]
+  );
   const projectStats = useMemo(() => {
     return PROJECT_LIST.map((p) => {
       const rows = submittedData.filter((d) => d.projectId === p.id);
@@ -136,15 +141,32 @@ export default function AdminPanel({ adminPass, onBack }) {
   const ranked = useMemo(() => [...projectStats].sort((a, b) => b.totalAvg - a.totalAvg), [projectStats]);
   const jurorStats = useMemo(() => {
     return jurors.map((jury) => {
-      const rows       = data.filter((d) => d.juryName === jury);
-      // For completion logic, only all_submitted counts as fully completed
-      const submitted  = rows.filter((r) => r.status === "all_submitted");
-      const inProgress = rows.filter((r) => r.status === "in_progress");
-      const latestTs   = rows.reduce((mx, r) => r.tsMs > mx ? r.tsMs : mx, 0);
-      const latestRow  = rows.find((r) => r.tsMs === latestTs) || rows[0];
-      const overall    = submitted.length === TOTAL_GROUPS ? "all_submitted"
-                       : submitted.length > 0 || inProgress.length > 0 ? "in_progress" : "not_started";
-      return { jury, rows, submitted, inProgress, latestTs, latestRow, overall };
+      const rows          = data.filter((d) => d.juryName === jury);
+      // Completed groups (filled) vs Final groups (Submit Final pressed)
+      const completed     = rows.filter((r) => r.status === "group_submitted" || r.status === "all_submitted");
+      const finalSubmitted = rows.filter((r) => r.status === "all_submitted");
+      const inProgress    = rows.filter((r) => r.status === "in_progress");
+      const latestTs      = rows.reduce((mx, r) => (r.tsMs > mx ? r.tsMs : mx), 0);
+      const latestRow     = rows.find((r) => r.tsMs === latestTs) || rows[0];
+
+      const overall = finalSubmitted.length === TOTAL_GROUPS
+        ? "all_submitted"
+        : (completed.length > 0 || inProgress.length > 0)
+          ? "in_progress"
+          : "not_started";
+
+      // Keep `submitted` as "completed" for backwards compatibility in JurorsTab
+      return {
+        jury,
+        rows,
+        submitted: completed,
+        completed,
+        finalSubmitted,
+        inProgress,
+        latestTs,
+        latestRow,
+        overall,
+      };
     });
   }, [jurors, data]);
 
@@ -159,7 +181,7 @@ export default function AdminPanel({ adminPass, onBack }) {
         <div>
           <h2>Results Panel</h2>
           <p>
-            {jurors.length} juror{jurors.length !== 1 ? "s" : ""} · {submittedData.length} submitted
+            {jurors.length} juror{jurors.length !== 1 ? "s" : ""} · {completedData.length} completed · {submittedData.length} final
             {inProgressCount > 0 && <span className="live-indicator"> · {inProgressCount} in progress</span>}
           </p>
         </div>

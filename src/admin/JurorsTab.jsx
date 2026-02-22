@@ -81,7 +81,7 @@ export default function JurorsTab({ jurorStats, jurors }) {
                   </div>
                 )}
                 <div style={{ fontSize: 13, color: submitted.length < TOTAL_GROUPS ? "#b45309" : "#166534", fontWeight: 600 }}>
-                  {submitted.length === TOTAL_GROUPS ? "✓ All submitted" : `${submitted.length}/${TOTAL_GROUPS} submitted`}
+                  {submitted.length === TOTAL_GROUPS ? "✓ All completed" : `${submitted.length}/${TOTAL_GROUPS} completed`}
                 </div>
               </div>
             </div>
