@@ -14,7 +14,7 @@
 //         No token:
 //           checkPin(jurorId) → exists=false → createPin → storeToken → "new" PIN screen
 //           checkPin(jurorId) → exists=true  → "entering" PIN screen
-//           verifyPin  → storeToken(token)
+//           verifyPin  → storeToken → proceedAfterPin
 //     → proceedAfterPin()                      ← SINGLE ENTRY POINT
 //         Always fetches myscores from Sheets  ← Sheets is master
 //         Sets sheetProgress state             ← triggers SheetsProgressDialog
@@ -53,7 +53,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────
 const STORAGE_KEY        = "ee492_jury_draft_v1";
-const INSTANT_DELAY      = 800;       // debounce for per-keystroke writes
+const INSTANT_DELAY      = 500;       // debounce for per-keystroke writes
 const EDITING_ROWS_DELAY = 1500;      // wait before writing "group_submitted" in edit mode
 
 // ── Empty-state factories ─────────────────────────────────────
@@ -273,11 +273,25 @@ export default function useJuryState() {
   // ── Score / comment handlers ──────────────────────────────
   const handleScore = useCallback(
     (pid, cid, val) => {
-      const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: val } };
+      const crit = CRITERIA.find((c) => c.id === cid);
+      let nextVal = val;
+
+      // Clamp numeric inputs immediately to avoid writing out-of-range values before blur.
+      if (val !== "" && val !== undefined && crit && typeof crit.max === "number") {
+        const n = parseInt(val, 10);
+        if (Number.isFinite(n)) {
+          nextVal = String(Math.min(Math.max(n, 0), crit.max));
+        } else {
+          nextVal = "0";
+        }
+      }
+
+      const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: nextVal } };
       setScores(newScores);
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
+
       let newGroupSynced = groupSynced;
-      if (val === "" && groupSynced[pid]) {
+      if (nextVal === "" && groupSynced[pid]) {
         newGroupSynced = { ...groupSynced, [pid]: false };
         setGroupSynced(newGroupSynced);
       }
@@ -293,12 +307,18 @@ export default function useJuryState() {
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
       if (val === "" || val === undefined) return;
       const n       = parseInt(val, 10);
-      const clamped = Number.isFinite(n) ? Math.min(Math.max(n, 0), crit.max) : 0;
+      const clamped = Number.isFinite(n) && crit && typeof crit.max === "number"
+        ? Math.min(Math.max(n, 0), crit.max)
+        : 0;
+
       if (String(clamped) !== String(val)) {
-        setScores((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: clamped } }));
+        const nextScores = { ...scores, [pid]: { ...scores[pid], [cid]: String(clamped) } };
+        setScores(nextScores);
+        // Persist corrected value (e.g., Teamwork capped at 10)
+        instantWrite(nextScores, comments, groupSynced);
       }
     },
-    [scores]
+    [scores, comments, groupSynced, instantWrite]
   );
 
   const handleCommentChange = useCallback(
