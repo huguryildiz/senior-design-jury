@@ -106,23 +106,9 @@ body {
 }
 
 .home-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  padding: 10px 18px;        /* küçült */
-  font-size: 15px;           /* biraz küçült */
-  line-height: 1.35;
-
-  border-radius: 20px;       /* daha az oval */
-  border: 1px solid #d7dce3;
-
-  background: #f8fafc;       /* daha soft */
-  color: #4b5563;
-
-  max-width: 520px;          /* aşırı genişlemesin */
-  margin: 20px auto 0;
+  font-size: 12px;
+  color: var(--gray-500);
+  line-height: 1.5;
 }
 
 /* ── BUTTONS ── */
@@ -2267,39 +2253,6 @@ body {
   padding: 10px 14px;
   font-size: 13px;
   margin: 12px 0;
-}
-
-.pin-box-row {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin: 20px 0;
-}
-
-.pin-box {
-  width: 54px;
-  height: 60px;
-
-  text-align: center;
-  font-size: 22px;
-  font-weight: 600;
-
-  border-radius: 14px;
-  border: 1px solid #d7dce3;
-  background: #f8fafc;
-
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.pin-box:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-  background: #ffffff;
-}
-
-.pin-box-row input {
-  display: inline-block;
 }
 
 /* ══════════════════════════════════════════════════════════
