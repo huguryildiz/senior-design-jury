@@ -12,14 +12,12 @@
 import { useState, useRef, useEffect } from "react";
 import { KeyIcon } from "../shared/Icons";
 
-// ── 4-box PIN input with OK button ───────────────────────────
+// 4 individual boxes PIN input
 function PinBoxes({ onComplete, pinError }) {
   const [digits, setDigits] = useState(["", "", "", ""]);
   const inputRefs  = [useRef(null), useRef(null), useRef(null), useRef(null)];
   // Guard: prevent firing onComplete twice if a re-render occurs
   const submitting = useRef(false);
-
-  const allFilled = digits.every((d) => d !== "");
 
   // Reset boxes and allow retry whenever a PIN error is shown
   useEffect(() => {
@@ -39,6 +37,7 @@ function PinBoxes({ onComplete, pinError }) {
   }
 
   function handleChange(i, val) {
+    // Keep only the last numeric character typed
     const d = val.replace(/\D/g, "").slice(-1);
     const next = [...digits];
     next[i] = d;
@@ -49,6 +48,7 @@ function PinBoxes({ onComplete, pinError }) {
 
   function handleKeyDown(i, e) {
     if (e.key === "Backspace") {
+      // Reset submitting guard so the user can retry after a wrong PIN
       submitting.current = false;
       if (digits[i] === "" && i > 0) {
         const next = [...digits];
@@ -63,11 +63,6 @@ function PinBoxes({ onComplete, pinError }) {
     }
     if (e.key === "ArrowLeft"  && i > 0) inputRefs[i - 1].current?.focus();
     if (e.key === "ArrowRight" && i < 3) inputRefs[i + 1].current?.focus();
-    // Allow Enter to submit if all boxes are filled
-    if (e.key === "Enter" && allFilled) {
-      e.preventDefault();
-      tryComplete(digits);
-    }
   }
 
   function handlePaste(e) {
@@ -81,48 +76,32 @@ function PinBoxes({ onComplete, pinError }) {
     e.preventDefault();
   }
 
-  function handleOkClick() {
-    if (allFilled && !submitting.current) {
-      submitting.current = true;
-      onComplete(digits.join(""));
-    }
-  }
+  // When pinError changes (wrong PIN), reset boxes so user can retry
+  // This is handled by resetting submitting on Backspace above.
 
   return (
-    <div className="pin-entry-row">
-      <div className="pin-boxes-row">
-        {digits.map((d, i) => (
-          <input
-            key={i}
-            ref={inputRefs[i]}
-            type="password"
-            inputMode="numeric"
-            maxLength={1}
-            value={d}
-            autoFocus={i === 0}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            data-lpignore="true"
-            data-form-type="other"
-            onChange={(e) => handleChange(i, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(i, e)}
-            onPaste={i === 0 ? handlePaste : undefined}
-            className="pin-box"
-          />
-        ))}
-      </div>
-      {/* OK button — active only when all 4 digits are filled */}
-      <button
-        className={`pin-ok-btn${allFilled ? " pin-ok-btn--active" : ""}`}
-        onClick={handleOkClick}
-        disabled={!allFilled}
-        aria-label="Submit PIN"
-        tabIndex={0}
-      >
-        →
-      </button>
+    <div className="pin-boxes-row">
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={inputRefs[i]}
+          type="password"
+          inputMode="numeric"
+          maxLength={1}
+          value={d}
+          autoFocus={i === 0}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-lpignore="true"
+          data-form-type="other"
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={i === 0 ? handlePaste : undefined}
+          className="pin-box"
+        />
+      ))}
     </div>
   );
 }
@@ -134,7 +113,7 @@ export default function PinStep({
   attemptsLeft,
   juryName,
   onPinSubmit,       // (pin: string) => void
-  onPinAcknowledge,  // () => void — after juror saves their new PIN
+  onPinAcknowledge,  // () => void  — after juror saves their new PIN
 }) {
   // ── New PIN: show once ────────────────────────────────────
   if (pinStep === "new") {
