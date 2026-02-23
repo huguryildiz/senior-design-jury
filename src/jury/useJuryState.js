@@ -53,8 +53,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────
 const STORAGE_KEY        = "ee492_jury_draft_v1";
-const SYNC_INTERVAL      = 30 * 1000; // 30-second background sync
-const INSTANT_DELAY      = 350;       // debounce for per-keystroke writes
+const INSTANT_DELAY      = 800;       // debounce for per-keystroke writes
 const EDITING_ROWS_DELAY = 1500;      // wait before writing "group_submitted" in edit mode
 
 // ── Empty-state factories ─────────────────────────────────────
@@ -240,23 +239,6 @@ export default function useJuryState() {
     }, INSTANT_DELAY);
   }, []);
 
-  // ── 30-second background sync ─────────────────────────────
-  useEffect(() => {
-    if (step !== "eval") return;
-    const id = setInterval(() => {
-      const { juryName: n, juryDept: d, scores: s, comments: c } = stateRef.current;
-      const jid = jurorIdRef.current;
-      if (!n.trim() || !jid || !getToken()) return;
-      const rows = PROJECTS
-        .filter((p) => hasAnyCriteria(s, p.id))
-        .map((p) =>
-          buildRow(n, d, jid, s, c, p, isAllFilled(s, p.id) ? "group_submitted" : "in_progress")
-        );
-      if (rows.length > 0) postToSheet({ rows });
-      saveCloudDraft();
-    }, SYNC_INTERVAL);
-    return () => clearInterval(id);
-  }, [step, saveCloudDraft]);
 
   // ── Auto-upgrade groupSynced ──────────────────────────────
   useEffect(() => {

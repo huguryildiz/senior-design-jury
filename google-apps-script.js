@@ -102,6 +102,29 @@ function respond(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// --- Logging helpers (Logs sheet) ---
+function getOrCreateLogSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName("Logs");
+  if (!sh) {
+    sh = ss.insertSheet("Logs");
+    sh.appendRow(["ts", "where", "message", "raw"]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function logError_(where, err, e) {
+  try {
+    var sh = getOrCreateLogSheet_();
+    var raw = "";
+    try {
+      raw = (e && e.postData && e.postData.contents) ? String(e.postData.contents) : "";
+    } catch (_) {}
+    sh.appendRow([new Date().toISOString(), where, String(err), raw.slice(0, 2000)]);
+  } catch (_) {}
+}
+
 function norm(s) {
   return String(s || "").trim().toLowerCase();
 }
@@ -115,6 +138,44 @@ function formatTs(raw) {
   } catch (_) {
     return String(raw || "");
   }
+}
+
+// --- Robust timestamp parsing/comparison (fixes stale-drop bug) ---
+function tsToMillis(raw) {
+  if (!raw) return NaN;
+
+  if (raw instanceof Date) return raw.getTime();
+
+  var s = String(raw).trim();
+  if (!s) return NaN;
+
+  // ISO-ish: try Date parsing
+  if (s.indexOf("-") >= 0 && s.indexOf("T") >= 0) {
+    var dIso = new Date(s);
+    if (!isNaN(dIso.getTime())) return dIso.getTime();
+  }
+
+  // Display format: dd/MM/yyyy HH:mm
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+  if (m) {
+    var dd = parseInt(m[1], 10);
+    var MM = parseInt(m[2], 10) - 1;
+    var yy = parseInt(m[3], 10);
+    var hh = parseInt(m[4], 10);
+    var mm = parseInt(m[5], 10);
+    var dLocal = new Date(yy, MM, dd, hh, mm, 0, 0);
+    if (!isNaN(dLocal.getTime())) return dLocal.getTime();
+  }
+
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? NaN : d.getTime();
+}
+
+function isStaleIncoming(existingTs, incomingTs) {
+  var ex = tsToMillis(existingTs);
+  var inc = tsToMillis(incomingTs);
+  if (isNaN(ex) || isNaN(inc)) return false; // if unsure, don't drop
+  return inc < ex;
 }
 
 // ── Auth helpers ──────────────────────────────────────────────
@@ -272,7 +333,13 @@ function buildIndexAndDedupe(sheet, jurorId) {
       var pa = pri[String(a.r[12] || "").trim()] || 0;
       var pb = pri[String(b.r[12] || "").trim()] || 0;
       if (pb !== pa) return pb - pa;
-      return String(b.r[3]) > String(a.r[3]) ? 1 : -1;
+
+      var tb = tsToMillis(b.r[3]);
+      var ta = tsToMillis(a.r[3]);
+      if (isNaN(tb) || isNaN(ta)) {
+        return String(b.r[3]) > String(a.r[3]) ? 1 : -1;
+      }
+      return tb - ta;
     });
 
     // Mark all but the first (best) for deletion.
@@ -451,7 +518,6 @@ function doGet(e) {
     if (action === "myscores") {
       // Returns the best row per group for this juror (all statuses included).
       // "Best" = highest priority status, then latest timestamp.
-      // This is the source of truth for restoring scores on a new device.
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(EVAL_SHEET);
       if (!sheet) return respond({ status: "ok", rows: [] });
@@ -468,11 +534,19 @@ function doGet(e) {
         if (!groupNo) return;
         var prev = bestByGroup[groupNo];
         if (!prev) { bestByGroup[groupNo] = r; return; }
+
         var ns = String(r[12]    || "").trim();
         var ps = String(prev[12] || "").trim();
         if ((pri[ns] || 0) > (pri[ps] || 0)) { bestByGroup[groupNo] = r; return; }
-        if ((pri[ns] || 0) === (pri[ps] || 0) && String(r[3]) > String(prev[3])) {
-          bestByGroup[groupNo] = r;
+
+        if ((pri[ns] || 0) === (pri[ps] || 0)) {
+          var tNew = tsToMillis(r[3]);
+          var tOld = tsToMillis(prev[3]);
+          if (!isNaN(tNew) && !isNaN(tOld)) {
+            if (tNew > tOld) bestByGroup[groupNo] = r;
+          } else if (String(r[3]) > String(prev[3])) {
+            bestByGroup[groupNo] = r;
+          }
         }
       });
 
@@ -502,9 +576,27 @@ function doGet(e) {
 // ════════════════════════════════════════════════════════════
 
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  var locked = false;
+
   try {
-    var raw  = (e && e.postData && e.postData.contents) ? e.postData.contents : "{}";
-    var data = JSON.parse(raw);
+    locked = lock.tryLock(15000); // 15 seconds
+    if (!locked) return respond({ status: "error", message: "LOCK_TIMEOUT" });
+
+    // Parse raw body
+    var raw = (e && e.postData && e.postData.contents) ? String(e.postData.contents) : "";
+    var data;
+
+    // Support application/x-www-form-urlencoded: payload=<urlencoded JSON>
+    if (raw && raw.indexOf("payload=") === 0) {
+      var encoded = raw.slice("payload=".length);
+      var jsonStr = decodeURIComponent(encoded);
+      data = JSON.parse(jsonStr || "{}");
+    } else {
+      // Default: raw JSON
+      data = JSON.parse(raw || "{}");
+    }
+
     var identity = verifyToken(data.token || "");
     if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
     var jid = identity.jurorId;
@@ -576,12 +668,6 @@ function doPost(e) {
     }
 
     // ── Default: upsert evaluation rows ──────────────────────
-    // Steps:
-    //   1. Deduplicate existing rows for this juror (removes race-condition
-    //      duplicates created by rapid instantWrite calls from the client).
-    //   2. Build a clean composite-key → row-number index.
-    //   3. For each incoming row, update in place or append.
-
     var ss    = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(EVAL_SHEET);
 
@@ -604,7 +690,6 @@ function doPost(e) {
     // Step 3: collect latest incoming row per group (last one wins if dupes in payload).
     var latestByKey = {};
     (data.rows || []).forEach(function(row) {
-      // Security: silently drop any row whose jurorId doesn't match the token.
       if (String(row.jurorId || "").trim() !== jid) return;
       var k = jid + "__" + String(row.projectId || "").trim();
       latestByKey[k] = row;
@@ -619,18 +704,15 @@ function doPost(e) {
       var existingRN = index[k];
 
       if (existingRN) {
-        var existingIdx    = existingRN - 2;
-        var currentStatus  = String(index[k] ? sheet.getRange(existingRN, 13).getValue() : "") || "";
-        var existingRow    = sheet.getRange(existingRN, 1, 1, NUM_COLS).getValues()[0];
-        var existingTs     = String(existingRow[3] || "");
-        var incomingTs     = String(row.timestamp   || "");
+        var existingRow = sheet.getRange(existingRN, 1, 1, NUM_COLS).getValues()[0];
+        var existingTs  = String(existingRow[3] || "");
+        var incomingTs  = String(row.timestamp || "");
 
         // Skip stale updates (older timestamp than what's already stored).
-        if (existingTs && incomingTs && incomingTs < existingTs) return;
+        if (existingTs && incomingTs && isStaleIncoming(existingTs, incomingTs)) return;
 
-        // Prevent status from being downgraded from all_submitted unless
-        // a reset-unlock window is active for this juror.
-        currentStatus = String(existingRow[12] || "");
+        // Prevent status from being downgraded from all_submitted unless reset-unlock is active.
+        var currentStatus = String(existingRow[12] || "");
         if (currentStatus === "all_submitted" && newStatus !== "all_submitted") {
           if (!isResetUnlockActive(jid)) {
             newStatus = "all_submitted";
@@ -676,7 +758,12 @@ function doPost(e) {
     return respond({ status: "ok", updated: updated, added: added });
 
   } catch (err) {
+    logError_("doPost", err, e);
     return respond({ status: "error", message: String(err) });
+  } finally {
+    if (locked) {
+      try { lock.releaseLock(); } catch (_) {}
+    }
   }
 }
 

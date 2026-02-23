@@ -55,22 +55,23 @@ export async function postToSheet(body) {
   if (!SCRIPT_URL) return;
 
   const token = getToken();
-  const payload = JSON.stringify({ ...body, token });
+  const jsonPayload = JSON.stringify({ ...body, token });
+  const formBody = "payload=" + encodeURIComponent(jsonPayload);
 
-  // ✅ 1) En güvenilir yöntem: sayfa kapanırken bile gider
   if (navigator.sendBeacon) {
-    const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([formBody], {
+      type: "application/x-www-form-urlencoded;charset=utf-8",
+    });
     navigator.sendBeacon(SCRIPT_URL, blob);
     return;
   }
 
-  // ✅ 2) Fallback olarak fetch + keepalive — destekleyen tarayıcılarda sayfa kapanırken bile gider
   try {
     await fetch(SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
-      headers: { "Content-Type": "text/plain;charset=utf-8" }, // JSON ama text/plain gönderiyoruz
-      body: payload,
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+      body: formBody,
       keepalive: true,
     });
   } catch (_) {}
