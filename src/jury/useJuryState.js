@@ -36,7 +36,7 @@ import {
 // ── Constants ─────────────────────────────────────────────────
 const STORAGE_KEY   = "ee492_jury_draft_v1";
 // Session token key — cleared when the browser tab closes.
-const PIN_SESSION_KEY = "ee492_pin_verified";
+const PIN_SESSION_KEY = "ee492_pin_token";
 // How often to sync draft and rows to the cloud (30 s is safe for
 // Apps Script quota and limits draft loss to at most 30 seconds).
 const SYNC_INTERVAL = 30 * 1000;
@@ -95,18 +95,28 @@ function pinSessionKey(juryName, juryDept) {
 // Check if PIN was already verified this session for this identity.
 export function isPinVerifiedInSession(juryName, juryDept) {
   try {
-    return sessionStorage.getItem(pinSessionKey(juryName, juryDept)) === "1";
+    const raw = sessionStorage.getItem(pinSessionKey(juryName, juryDept));
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj?.token) return null;
+    if (obj.expiresAt && Date.now() > obj.expiresAt) return null;
+    return obj;
   } catch {
-    return false;
+    return null;
   }
 }
 
+
 // Mark PIN as verified for this session.
-function markPinVerified(juryName, juryDept) {
+function markPinVerified(juryName, juryDept, token, expiresAt) {
   try {
-    sessionStorage.setItem(pinSessionKey(juryName, juryDept), "1");
+    sessionStorage.setItem(
+      pinSessionKey(juryName, juryDept),
+      JSON.stringify({ token: String(token || ""), expiresAt: Number(expiresAt) || 0 })
+    );
   } catch {}
 }
+
 
 // Convert myscores API rows → { scores, comments } state shape.
 export function rowsToState(rows) {
@@ -168,6 +178,10 @@ export default function useJuryState({ startAtEval = false } = {}) {
   // "idle" | "saving" | "saved" — drives the Save button label
   const [saveStatus, setSaveStatus] = useState("idle");
 
+  // ── Auth token (issued after PIN verification) ───────────
+  const [authToken, setAuthToken] = useState(null);
+  const [authTokenExp, setAuthTokenExp] = useState(0);
+
   // ── PIN state ─────────────────────────────────────────────
   // pinStep: "idle" | "entering" | "new" | "locked"
   const [pinStep,      setPinStep]      = useState("idle");
@@ -183,7 +197,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
   // stateRef holds the latest state values so setInterval callbacks
   // always read fresh values without stale-closure issues.
   const stateRef = useRef({});
-  stateRef.current = { juryName, juryDept, scores, comments, groupSynced, current };
+  stateRef.current = { juryName, juryDept, scores, comments, groupSynced, current, authToken, authTokenExp };
 
   // ── Restore from localStorage on mount ───────────────────
   // Fills in name/dept so the user doesn't have to retype them.
@@ -262,7 +276,9 @@ export default function useJuryState({ startAtEval = false } = {}) {
       stateRef.current;
     if (!n.trim()) return;
     if (showFeedback) setSaveStatus("saving");
+    if (!authToken) { if (showFeedback) setSaveStatus("idle"); return; }
     postToSheet({
+      token:    authToken,
       action:   "saveDraft",
       juryName: n.trim(),
       juryDept: d.trim(),
@@ -278,7 +294,8 @@ export default function useJuryState({ startAtEval = false } = {}) {
   const deleteCloudDraft = useCallback(() => {
     const { juryName: n, juryDept: d } = stateRef.current;
     if (!n.trim()) return;
-    postToSheet({ action: "deleteDraft", juryName: n.trim(), juryDept: d.trim() });
+    if (!authToken) return;
+    postToSheet({ token: authToken, action: "deleteDraft", juryName: n.trim(), juryDept: d.trim() });
   }, []);
 
   // ── Instant rows write ────────────────────────────────────
@@ -296,7 +313,9 @@ export default function useJuryState({ startAtEval = false } = {}) {
           buildRow(n, d, newScores, newComments, p,
             isAllFilled(newScores, p.id) ? "group_submitted" : "in_progress")
         );
-      if (rows.length > 0) postToSheet({ rows });
+      const tok = stateRef.current.authToken;
+      if (!tok) return;
+      if (rows.length > 0) postToSheet({ token: tok, rows });
     }, INSTANT_DELAY);
   }, []);
 
@@ -313,7 +332,9 @@ export default function useJuryState({ startAtEval = false } = {}) {
         .map((p) =>
           buildRow(n, d, s, c, p, isAllFilled(s, p.id) ? "group_submitted" : "in_progress")
         );
-      if (rows.length > 0) postToSheet({ rows });
+      const tok = stateRef.current.authToken;
+      if (!tok) return;
+      if (rows.length > 0) postToSheet({ token: tok, rows });
       saveCloudDraft();
     }, SYNC_INTERVAL);
     return () => clearInterval(id);
@@ -342,7 +363,8 @@ export default function useJuryState({ startAtEval = false } = {}) {
     doneFiredRef.current = true;
     const t = setTimeout(() => {
       const { juryName: n, juryDept: d, scores: s, comments: c } = stateRef.current;
-      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, s, c, p, "all_submitted")) });
+      const tok = stateRef.current.authToken;
+      if (tok) postToSheet({ token: tok, rows: PROJECTS.map((p) => buildRow(n, d, s, c, p, "all_submitted")) });
       deleteCloudDraft();
       localStorage.removeItem(STORAGE_KEY);
       setDoneScores({ ...s });
@@ -404,9 +426,12 @@ export default function useJuryState({ startAtEval = false } = {}) {
   const submitFinal = useCallback(
     (finalScores, finalComments) => {
       const { juryName: n, juryDept: d } = stateRef.current;
-      postToSheet({
-        rows: PROJECTS.map((p) => buildRow(n, d, finalScores, finalComments, p, "all_submitted")),
-      });
+      if (authToken) {
+        postToSheet({
+          token: authToken,
+          rows: PROJECTS.map((p) => buildRow(n, d, finalScores, finalComments, p, "all_submitted")),
+        });
+      }
       deleteCloudDraft();
       localStorage.removeItem(STORAGE_KEY);
       setDoneScores({ ...finalScores });
@@ -430,7 +455,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
     const useComments = doneComments || comments;
 
     if (n.trim()) {
-      postToSheet({ action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
+      if (authToken) postToSheet({ token: authToken, action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
     }
 
     setScores(useScores);
@@ -444,7 +469,9 @@ export default function useJuryState({ startAtEval = false } = {}) {
     // Delayed rows write so resetJuror has time to write EditingFlag first.
     setTimeout(() => {
       if (!n.trim()) return;
+      if (!authToken) return;
       postToSheet({
+        token: authToken,
         rows: PROJECTS.map((p) =>
           buildRow(n, d, useScores, useComments, p, "group_submitted")
         ),
@@ -483,7 +510,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
     } catch (_) {}
 
     if (n.trim()) {
-      postToSheet({ action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
+      if (authToken) postToSheet({ token: authToken, action: "resetJuror", juryName: n.trim(), juryDept: d.trim() });
     }
 
     setScores(useScores);
@@ -499,7 +526,9 @@ export default function useJuryState({ startAtEval = false } = {}) {
     // Same delayed write as handleEditScores.
     setTimeout(() => {
       if (!n.trim()) return;
+      if (!authToken) return;
       postToSheet({
+        token: authToken,
         rows: PROJECTS.map((p) =>
           buildRow(n, d, useScores, useComments, p, "group_submitted")
         ),
@@ -561,7 +590,11 @@ export default function useJuryState({ startAtEval = false } = {}) {
     if (!n.trim() || !d.trim()) return;
 
     // If PIN already verified this session, skip straight to destination.
-    if (isPinVerifiedInSession(n, d)) {
+    const sess = isPinVerifiedInSession(n, d);
+    if (sess?.token) {
+      setAuthToken(sess.token);
+      setAuthTokenExp(sess.expiresAt || 0);
+
       if (alreadySubmitted) { setStep("done"); return; }
       proceedToEval();
       return;
@@ -587,6 +620,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
         const r2 = await createPin(n, d);
         if (r2.status === "ok") {
           setNewPin(r2.pin);
+          if (r2.token) { setAuthToken(r2.token); setAuthTokenExp(r2.expiresAt || 0); }
           setPinStep("new");
           setStep("pin");
         } else {
@@ -617,7 +651,8 @@ export default function useJuryState({ startAtEval = false } = {}) {
 
         if (res.valid) {
           // Cache the verification for this browser session.
-          markPinVerified(n, d);
+          if (res.token) { setAuthToken(res.token); setAuthTokenExp(res.expiresAt || 0); }
+          markPinVerified(n, d, res.token, res.expiresAt);
           setPinStep("idle");
           setPinError("");
           // Now decide where to go based on submission status.
@@ -647,14 +682,15 @@ export default function useJuryState({ startAtEval = false } = {}) {
 
   // Called from PinStep when a new juror acknowledges their PIN.
   const handlePinAcknowledge = useCallback(() => {
-    const { juryName: n, juryDept: d } = stateRef.current;
-    markPinVerified(n, d);
+    const { juryName: n, juryDept: d, authToken: tok, authTokenExp: exp } = stateRef.current;
+    if (tok) markPinVerified(n, d, tok, exp);
     if (alreadySubmitted) {
       setStep("done");
     } else {
       proceedToEval();
     }
   }, [alreadySubmitted, proceedToEval]);
+
 
   // ── Full reset ────────────────────────────────────────────
   const resetAll = useCallback(() => {

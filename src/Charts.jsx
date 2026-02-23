@@ -13,7 +13,7 @@
 // ============================================================
 
 import { useState } from "react";
-import { CRITERIA } from "./config";
+import { CRITERIA, TOTAL_MAX } from "./config";
 
 // Normalize CRITERIA from config
 const CRITERIA_LIST = CRITERIA.map((c) => ({
@@ -49,9 +49,9 @@ export function GroupBarChart({ stats }) {
       <div className="chart-subtitle">Bar = average · Ticks = min / max range</div>
 
       {data.map((p) => {
-        const pct    = (p.totalAvg / 100) * 100;
-        const pctMin = (p.totalMin / 100) * 100;
-        const pctMax = (p.totalMax / 100) * 100;
+        const pct    = (p.totalAvg / TOTAL_MAX) * 100;
+        const pctMin = (p.totalMin / TOTAL_MAX) * 100;
+        const pctMax = (p.totalMax / TOTAL_MAX) * 100;
         return (
           <div key={p.id} className="hbar-row">
             <span className="hbar-label" title={p.desc || p.name}>{p.name}</span>
@@ -68,9 +68,10 @@ export function GroupBarChart({ stats }) {
       })}
 
       <div className="hbar-axis">
-        {[0, 20, 40, 60, 80, 100].map((v) => (
-          <span key={v} style={{ left: `${v}%` }}>{v}</span>
-        ))}
+        {[0, 0.2, 0.4, 0.6, 0.8, 1].map((k) => {
+          const v = Math.round(TOTAL_MAX * k);
+          return <span key={k} style={{ left: `${k * 100}%` }}>{v}</span>;
+        })}
       </div>
     </div>
   );
@@ -260,10 +261,10 @@ export function JurorStrictnessChart({ data }) {
       <div className="chart-subtitle">Avg total score · Bar = ±1 std dev · Dashed = overall mean</div>
 
       {jurorStats.map((j) => {
-        const pct    = (j.mean / 100) * 100;
-        const pctMin = Math.max(0,   ((j.mean - j.sd) / 100) * 100);
-        const pctMax = Math.min(100, ((j.mean + j.sd) / 100) * 100);
-        const gmPct  = (globalMean / 100) * 100;
+        const pct    = (j.mean / TOTAL_MAX) * 100;
+        const pctMin = Math.max(0,   ((j.mean - j.sd) / TOTAL_MAX) * 100);
+        const pctMax = Math.min(100, ((j.mean + j.sd) / TOTAL_MAX) * 100);
+        const gmPct  = (globalMean / TOTAL_MAX) * 100;
         // Show only surname to keep label compact
         const shortName = j.name.trim().split(/\s+/).pop();
         return (
@@ -286,9 +287,10 @@ export function JurorStrictnessChart({ data }) {
       })}
 
       <div className="hbar-axis">
-        {[0, 20, 40, 60, 80, 100].map((v) => (
-          <span key={v} style={{ left: `${v}%` }}>{v}</span>
-        ))}
+        {[0, 0.2, 0.4, 0.6, 0.8, 1].map((k) => {
+          const v = Math.round(TOTAL_MAX * k);
+          return <span key={k} style={{ left: `${k * 100}%` }}>{v}</span>;
+        })}
       </div>
     </div>
   );
@@ -304,12 +306,12 @@ export function ScoreDotPlot({ data }) {
 
   const W = 300, H = 90, PAD = 22;
   const mean  = submitted.reduce((s, r) => s + r.total, 0) / submitted.length;
-  const meanX = PAD + (mean / 100) * (W - PAD * 2);
+  const meanX = PAD + (mean / TOTAL_MAX) * (W - PAD * 2);
 
   // Stack dots that land on the same pixel column vertically
   const stacks = {};
   const dots = submitted.map((r) => {
-    const rawX = PAD + (r.total / 100) * (W - PAD * 2);
+    const rawX = PAD + (r.total / TOTAL_MAX) * (W - PAD * 2);
     const col  = Math.round(rawX);
     stacks[col] = (stacks[col] || 0) + 1;
     return { x: rawX, y: H - 10 - (stacks[col] - 1) * 13, score: r.total, name: r.juryName, group: r.projectName };
@@ -324,8 +326,9 @@ export function ScoreDotPlot({ data }) {
           {/* X axis baseline */}
           <line x1={PAD} y1={H} x2={W - PAD} y2={H} stroke="#e2e8f0" strokeWidth="1" />
           {/* Axis tick marks and labels */}
-          {[0, 20, 40, 60, 80, 100].map((v) => {
-            const x = PAD + (v / 100) * (W - PAD * 2);
+          {[0, 0.2, 0.4, 0.6, 0.8, 1].map((k) => {
+            const v = Math.round(TOTAL_MAX * k);
+            const x = PAD + (k) * (W - PAD * 2);
             return (
               <g key={v}>
                 <line x1={x} y1={H - 2} x2={x} y2={H + 2} stroke="#94a3b8" strokeWidth="1" />
