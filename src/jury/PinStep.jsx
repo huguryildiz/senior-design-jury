@@ -11,18 +11,7 @@
 
 // Updated PIN input section (4-box OTP style)
 
-// src/jury/PinStep.jsx
-// ============================================================
-// PIN authentication screen.
-//
-// pinStep values:
-//   "new"      — First login: display the generated PIN once so
-//                the juror can save it. Continues on acknowledge.
-//   "entering" — Returning juror: enter 4-digit PIN to continue.
-//   "locked"   — Too many failed attempts. Admin must reset.
-// ============================================================
-
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KeyIcon } from "../shared/Icons";
 
 export default function PinStep({
@@ -36,12 +25,9 @@ export default function PinStep({
 }) {
   // OTP-style 4-box PIN input
   const [digits, setDigits] = useState(["", "", "", ""]);
-
-  const pin = digits.join("");
-  const isComplete = pin.length === 4 && digits.every((d) => d !== "");
   const inputsRef = useRef([]);
 
-  const pin = useMemo(() => digits.join(""), [digits]);
+  const pin = digits.join("");
   const isComplete = pin.length === 4 && digits.every((d) => d !== "");
 
   // Clear digits when entering/leaving this screen or switching juror
