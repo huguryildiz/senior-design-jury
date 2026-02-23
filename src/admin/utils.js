@@ -7,8 +7,6 @@
 // ── Numeric coercion ──────────────────────────────────────────
 // Strips surrounding quotes (Sheets sometimes wraps numbers in
 // quotes) and converts to a finite number, defaulting to 0.
-import { CRITERIA, TOTAL_MAX } from "../config";
-
 export function toNum(v) {
   const n = Number(
     String(v ?? "").trim().replace(/^"+|"+$/g, "").replace(",", ".")
@@ -28,14 +26,6 @@ export function tsToMillis(ts) {
 
   const native = Date.parse(s);
   if (Number.isFinite(native)) return native;
-
-  // EU: dd.mm.yyyy HH:mm[:ss]
-  const euDot = s.match(
-    /^([0-3]?\d)\.([0-1]?\d)\.(\d{4}),?\s*([0-2]?\d):([0-5]\d)(?::([0-5]\d))?$/
-  );
-  if (euDot) {
-    return new Date(+euDot[3], +euDot[2] - 1, +euDot[1], +euDot[4], +euDot[5], +(euDot[6] || 0)).getTime() || 0;
-  }
 
   // EU: dd/mm/yyyy HH:mm[:ss]
   const eu = s.match(
@@ -104,8 +94,8 @@ export const jurorDot = (n) => hsl2hex(hashInt(n || "?") % 360, 65, 55);
 export function exportCSV(rows) {
   const headers = [
     "Juror", "Department", "Group No", "Group Name",
-    ...CRITERIA.map((c) => `${c.shortLabel}/${c.max}`),
-    `Total/${TOTAL_MAX}`, "Timestamp", "Comments", "Status",
+    "Design/20", "Technical/40", "Delivery/30", "Teamwork/10",
+    "Total/100", "Timestamp", "Comments", "Status",
   ];
 
   // Escape a value for CSV: wrap in quotes if it contains commas,
@@ -121,7 +111,7 @@ export function exportCSV(rows) {
     ...rows.map((r) =>
       [
         r.juryName, r.juryDept, r.projectId, r.projectName,
-        ...CRITERIA.map((c) => r[c.id]),
+        r.design, r.technical, r.delivery, r.teamwork,
         r.total, r.timestamp, r.comments, r.status,
       ].map(esc).join(",")
     ),

@@ -163,49 +163,6 @@ function generatePin() {
   return pin;
 }
 
-
-// ── Session token helpers ────────────────────────────────────
-// We issue a short-lived token after successful PIN verification.
-// The frontend must include this token in ALL write requests.
-// This prevents PIN-bypass via direct POSTs.
-//
-// PropertiesService keys:
-//   TOKEN__{key}      → token string
-//   TOKENEXP__{key}   → expiry ms since epoch (string integer)
-
-function tokenKey(juryName, juryDept)    { return "TOKEN__"    + jurorKey(juryName, juryDept); }
-function tokenExpKey(juryName, juryDept) { return "TOKENEXP__" + jurorKey(juryName, juryDept); }
-
-function issueToken(juryName, juryDept) {
-  var token = Utilities.getUuid();
-  var exp   = Date.now() + 6 * 60 * 60 * 1000; // 6 hours
-  var props = PropertiesService.getScriptProperties();
-  props.setProperty(tokenKey(juryName, juryDept), token);
-  props.setProperty(tokenExpKey(juryName, juryDept), String(exp));
-  return { token: token, expiresAt: exp };
-}
-
-function clearToken(juryName, juryDept) {
-  var props = PropertiesService.getScriptProperties();
-  props.deleteProperty(tokenKey(juryName, juryDept));
-  props.deleteProperty(tokenExpKey(juryName, juryDept));
-}
-
-function validateToken(juryName, juryDept, token) {
-  var n = (juryName || "").trim();
-  var d = (juryDept || "").trim();
-  if (!n || !d || !token) return false;
-
-  var props = PropertiesService.getScriptProperties();
-  var stored = props.getProperty(tokenKey(n, d));
-  var expStr = props.getProperty(tokenExpKey(n, d));
-  var exp    = parseInt(expStr || "0", 10);
-
-  if (!stored || stored !== String(token)) return false;
-  if (!Number.isFinite(exp) || exp <= Date.now()) return false;
-  return true;
-}
-
 // ════════════════════════════════════════════════════════════
 // GET handler
 // ════════════════════════════════════════════════════════════
@@ -258,7 +215,6 @@ function doGet(e) {
     // Returns a previously saved draft for a juror.
     if (action === "loaddraft") {
       if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-      if (!validateToken(juryName, juryDept, data.token)) return respond({ status: "unauthorized" });
 
       var draftSheet = getOrCreateDraftSheet();
       var row        = findDraftRow(draftSheet, makeDraftKey(juryName, juryDept));
@@ -352,9 +308,7 @@ function doGet(e) {
       if (existing) return respond({ status: "ok", pin: existing });
       var pin = generatePin();
       setPin(juryName, juryDept, pin);
-      clearLock(juryName, juryDept);
-      var tok = issueToken(juryName, juryDept);
-      return respond({ status: "ok", pin: pin, token: tok.token, expiresAt: tok.expiresAt });
+      return respond({ status: "ok", pin: pin });
     }
 
     // ── verifyPin ─────────────────────────────────────────
@@ -370,14 +324,13 @@ function doGet(e) {
 
       var storedPin = getPin(juryName, juryDept);
       if (!storedPin) {
-        // No PIN on record — require PIN creation first.
-        return respond({ status: "ok", valid: false, locked: false, attemptsLeft: MAX_PIN_ATTEMPTS, message: "pin_not_set" });
+        // No PIN on record — let them through (graceful degradation).
+        return respond({ status: "ok", valid: true, locked: false, attemptsLeft: MAX_PIN_ATTEMPTS });
       }
 
       if (enteredPin === storedPin) {
         setAttempts(juryName, juryDept, 0); // reset counter on success
-        var tok = issueToken(juryName, juryDept);
-        return respond({ status: "ok", valid: true, locked: false, attemptsLeft: MAX_PIN_ATTEMPTS, token: tok.token, expiresAt: tok.expiresAt });
+        return respond({ status: "ok", valid: true, locked: false, attemptsLeft: MAX_PIN_ATTEMPTS });
       }
 
       // Wrong PIN — increment counter.
@@ -397,7 +350,6 @@ function doGet(e) {
 
       PropertiesService.getScriptProperties().deleteProperty(pinKey(juryName, juryDept));
       clearLock(juryName, juryDept);
-      clearToken(juryName, juryDept);
       return respond({ status: "ok", message: "PIN cleared for " + juryName });
     }
 
@@ -416,22 +368,11 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
 
-    // Small input validators
-    function clampInt(v, max) {
-      var n = parseInt(v, 10);
-      if (!Number.isFinite(n)) return "";
-      if (n < 0) n = 0;
-      if (n > max) n = max;
-      return n;
-    }
-
-
     // ── saveDraft ─────────────────────────────────────────
     if (data.action === "saveDraft") {
       var juryName  = (data.juryName || "").trim();
       var juryDept  = (data.juryDept || "").trim();
       if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-      if (!validateToken(juryName, juryDept, data.token)) return respond({ status: "unauthorized" });
 
       var draftSheet = getOrCreateDraftSheet();
       var key        = makeDraftKey(juryName, juryDept);
@@ -461,13 +402,11 @@ function doPost(e) {
 
     // ── deleteJurorData ───────────────────────────────────
     // Removes the draft AND all evaluation rows for a juror.
-    // Admin-only: removes the draft AND all evaluation rows for a juror.
+    // Called when the user discards their draft from the home page.
     if (data.action === "deleteJurorData") {
       var juryName = (data.juryName || "").trim();
       var juryDept = (data.juryDept || "").trim();
       if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
-      if (!validateToken(juryName, juryDept, data.token)) return respond({ status: "unauthorized" });
 
       // Remove draft
       var draftSheet = getOrCreateDraftSheet();
@@ -501,8 +440,6 @@ function doPost(e) {
       var juryName = (data.juryName || "").trim();
       var juryDept = (data.juryDept || "").trim();
       if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
-      if (!isAuthorized(String(data.pass || ""))) return respond({ status: "unauthorized" });
 
       markResetUnlock(juryName, juryDept);
 
@@ -569,15 +506,6 @@ function doPost(e) {
     });
 
     var updated = 0, added = 0;
-    // Require a valid session token for ALL writes.
-    // Assume the batch belongs to a single juror (frontend behavior).
-    var firstRow = null;
-    for (var fk in latestByKey) { firstRow = latestByKey[fk]; break; }
-    if (!firstRow) return respond({ status: "ok", updated: 0, added: 0 });
-    if (!validateToken(firstRow.juryName, firstRow.juryDept, data.token)) {
-      return respond({ status: "unauthorized_rows" });
-    }
-
 
     Object.keys(latestByKey).forEach(function(k) {
       var row       = latestByKey[k];
@@ -617,25 +545,11 @@ function doPost(e) {
         newStatus === "all_submitted"   ? "#bbf7d0" :  // medium green
         "#ffffff";
 
-      var jn = (row.juryName || "").trim();
-      var jd = (row.juryDept || "").trim();
-      var pid = parseInt(row.projectId, 10);
-      if (!jn || !jd || !Number.isFinite(pid)) return;
-
-      var dsg = clampInt(row.design, 20);
-      var tec = clampInt(row.technical, 40);
-      var del = clampInt(row.delivery, 30);
-      var tw  = clampInt(row.teamwork, 10);
-      var tot = (parseInt(dsg,10)||0) + (parseInt(tec,10)||0) + (parseInt(del,10)||0) + (parseInt(tw,10)||0);
-
-      var tsIso = new Date().toISOString();
-      var cmt   = String(row.comments || "");
-
       var rowValues = [
-        jn, jd, tsIso,
-        pid, String(row.projectName || ""),
-        dsg, tec, del, tw,
-        tot, cmt, newStatus, newFlag,
+        row.juryName,  row.juryDept,    row.timestamp,
+        row.projectId, row.projectName,
+        row.design,    row.technical,   row.delivery,  row.teamwork,
+        row.total,     row.comments,    newStatus,     newFlag,
       ];
 
       if (existingRowNum) {

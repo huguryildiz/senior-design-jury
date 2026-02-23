@@ -40,7 +40,7 @@ export default function InfoStep({
         </button>
         <div>
           <h2>Evaluation Form</h2>
-          <p>EE 491/492 — Senior Design Poster Day</p>
+          <p>EE 491/492 — Senior Project Poster Day</p>
         </div>
       </div>
 

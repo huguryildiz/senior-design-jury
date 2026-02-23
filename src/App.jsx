@@ -45,12 +45,18 @@ export default function App() {
     }
   }
 
-  // Delete local draft when the user dismisses the banner.
-  // (Cloud drafts are deleted automatically on final submit.)
+  // Delete local draft + Sheets data when the user dismisses the banner.
   function handleClearDraft() {
     const owner = draftOwner;
     localStorage.removeItem(STORAGE_KEY);
     setDraftOwner(null);
+    if (owner?.name) {
+      postToSheet({
+        action:   "deleteJurorData",
+        juryName: owner.name,
+        juryDept: owner.dept || "",
+      });
+    }
   }
 
   // Admin login: store password in ref only, clear the input immediately.
@@ -121,11 +127,11 @@ export default function App() {
           <img className="home-logo" src={teduLogo} alt="TED University" loading="eager" />
         </div>
 
-        <h1>Senior Design<br />Jury Portal</h1>
+        <h1>Senior Project<br />Jury Portal</h1>
 
         <p className="home-sub">
-          TED University · Spring 2025<br />
-          Electrical &amp; Electronics Engineering
+          TED University <br />
+          Dept. of Electrical &amp; Electronics Engineering
         </p>
 
         {/* Local draft resume banner */}
@@ -171,11 +177,11 @@ export default function App() {
 
         <p className="home-hint">
           <span className="home-hint-ico">ℹ️</span>
-          Use the <strong>Evaluation Form</strong> to evaluate each project group.
+          Use the <strong>Evaluation Form</strong> to score each project group.
         </p>
 
         <div className="home-footer">
-          © 2025 · Developed by{" "}
+          © 2026 · Developed by{" "}
           <a
             className="home-footer-link"
             href="https://huguryildiz.com"
