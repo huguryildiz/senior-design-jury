@@ -503,7 +503,8 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    var data     = JSON.parse(e.postData.contents);
+    var raw  = (e && e.postData && e.postData.contents) ? e.postData.contents : "{}";
+    var data = JSON.parse(raw);
     var identity = verifyToken(data.token || "");
     if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
     var jid = identity.jurorId;
