@@ -9,29 +9,47 @@
 //   "locked"   — Too many failed attempts. Admin must reset.
 // ============================================================
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { KeyIcon } from "../shared/Icons";
 
 // 4 individual boxes PIN input
-function PinBoxes({ onComplete }) {
+function PinBoxes({ onComplete, pinError }) {
   const [digits, setDigits] = useState(["", "", "", ""]);
-  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+  const inputRefs  = [useRef(null), useRef(null), useRef(null), useRef(null)];
+  // Guard: prevent firing onComplete twice if a re-render occurs
+  const submitting = useRef(false);
 
-  function handleChange(i, val) {
-    const d = val.replace(/\D/g, "").slice(-1); // keep only last digit
-    const next = [...digits];
-    next[i] = d;
-    setDigits(next);
-    if (d && i < 3) {
-      inputRefs[i + 1].current?.focus();
+  // Reset boxes and allow retry whenever a PIN error is shown
+  useEffect(() => {
+    if (pinError) {
+      submitting.current = false;
+      setDigits(["", "", "", ""]);
+      setTimeout(() => inputRefs[0].current?.focus(), 50);
     }
-    if (next.every((x) => x !== "")) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinError]);
+
+  function tryComplete(next) {
+    if (next.every((x) => x !== "") && !submitting.current) {
+      submitting.current = true;
       onComplete(next.join(""));
     }
   }
 
+  function handleChange(i, val) {
+    // Keep only the last numeric character typed
+    const d = val.replace(/\D/g, "").slice(-1);
+    const next = [...digits];
+    next[i] = d;
+    setDigits(next);
+    if (d && i < 3) inputRefs[i + 1].current?.focus();
+    tryComplete(next);
+  }
+
   function handleKeyDown(i, e) {
     if (e.key === "Backspace") {
+      // Reset submitting guard so the user can retry after a wrong PIN
+      submitting.current = false;
       if (digits[i] === "" && i > 0) {
         const next = [...digits];
         next[i - 1] = "";
@@ -43,19 +61,23 @@ function PinBoxes({ onComplete }) {
         setDigits(next);
       }
     }
-    if (e.key === "ArrowLeft" && i > 0) inputRefs[i - 1].current?.focus();
+    if (e.key === "ArrowLeft"  && i > 0) inputRefs[i - 1].current?.focus();
     if (e.key === "ArrowRight" && i < 3) inputRefs[i + 1].current?.focus();
   }
 
   function handlePaste(e) {
     const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
     if (text.length === 4) {
-      setDigits(text.split(""));
+      const next = text.split("");
+      setDigits(next);
       inputRefs[3].current?.focus();
-      onComplete(text);
+      tryComplete(next);
     }
     e.preventDefault();
   }
+
+  // When pinError changes (wrong PIN), reset boxes so user can retry
+  // This is handled by resetting submitting on Backspace above.
 
   return (
     <div className="pin-boxes-row">
@@ -151,7 +173,7 @@ export default function PinStep({
           Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN to continue.
         </p>
 
-        <PinBoxes onComplete={onPinSubmit} />
+        <PinBoxes onComplete={onPinSubmit} pinError={pinError} />
 
         {pinError && <div className="pin-error-msg">{pinError}</div>}
       </div>

@@ -22,6 +22,7 @@ import DashboardTab  from "./admin/DashboardTab";
 import DetailsTab    from "./admin/DetailsTab";
 import JurorsTab     from "./admin/JurorsTab";
 import MatrixTab     from "./admin/MatrixTab";
+import "./styles/admin.css";
 
 // ── Constants ─────────────────────────────────────────────────
 const PROJECT_LIST = PROJECTS.map((p, i) =>

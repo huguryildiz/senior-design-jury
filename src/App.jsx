@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import JuryForm   from "./JuryForm";
 import AdminPanel from "./AdminPanel";
 import { postToSheet } from "./shared/api";
-import "./App.css";
+import "./styles/home.css";
 
 import teduLogo from "./assets/tedu-logo.png";
 

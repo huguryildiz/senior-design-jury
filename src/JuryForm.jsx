@@ -15,6 +15,7 @@ import InfoStep      from "./jury/InfoStep";
 import PinStep       from "./jury/PinStep";
 import EvalStep      from "./jury/EvalStep";
 import DoneStep      from "./jury/DoneStep";
+import "./styles/jury.css";
 
 export default function JuryForm({ onBack, startAtEval = false }) {
   const {

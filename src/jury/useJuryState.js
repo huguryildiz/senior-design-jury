@@ -86,13 +86,33 @@ export const countFilled = (scores) =>
 export const hasAnyCriteria = (scores, pid) =>
   CRITERIA.some((c) => scores[pid]?.[c.id] !== "");
 
-// Build a session token string that encodes identity so a PIN
-// verified for "Ali Veli" doesn't grant access to "Mehmet Yılmaz".
-function pinSessionKey(juryName, juryDept) {
-  return `${PIN_SESSION_KEY}__${juryName.trim().toLowerCase()}__${juryDept.trim().toLowerCase()}`;
+// ── Tab-unique PIN session ────────────────────────────────────
+// Each browser tab gets a random ID written to sessionStorage
+// on first load. This ID is NOT shared between tabs, so PIN
+// verification in one tab never grants access in another —
+// even when they share the same origin. Closing and re-opening
+// the tab clears sessionStorage, so a new ID is generated and
+// the juror must re-enter their PIN.
+const TAB_ID_KEY = "ee492_tab_id";
+
+function getTabId() {
+  try {
+    let id = sessionStorage.getItem(TAB_ID_KEY);
+    if (!id) {
+      id = Math.random().toString(36).slice(2);
+      sessionStorage.setItem(TAB_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return "fallback";
+  }
 }
 
-// Check if PIN was already verified this session for this identity.
+function pinSessionKey(juryName, juryDept) {
+  return `${PIN_SESSION_KEY}__${getTabId()}__${juryName.trim().toLowerCase()}__${juryDept.trim().toLowerCase()}`;
+}
+
+// Check if PIN was already verified in this specific tab for this identity.
 export function isPinVerifiedInSession(juryName, juryDept) {
   try {
     return sessionStorage.getItem(pinSessionKey(juryName, juryDept)) === "1";
@@ -101,7 +121,7 @@ export function isPinVerifiedInSession(juryName, juryDept) {
   }
 }
 
-// Mark PIN as verified for this session.
+// Mark PIN as verified for this tab session.
 function markPinVerified(juryName, juryDept) {
   try {
     sessionStorage.setItem(pinSessionKey(juryName, juryDept), "1");
@@ -209,8 +229,9 @@ export default function useJuryState({ startAtEval = false } = {}) {
 
   // ── Cloud-draft lookup ────────────────────────────────────
   // Fires when the user types in the info fields (debounced).
-  // Sets cloudDraft or alreadySubmitted so the info screen can
-  // show the appropriate banner.
+  // Only surfaces cloudDraft if it is NEWER than the local draft —
+  // this prevents a stale localStorage draft from being silently
+  // preferred over fresher data the juror entered on another device.
   const lookupCloud = useCallback(async (name, dept) => {
     const n = name.trim(), d = dept.trim();
     if (!n || !d) return;
@@ -224,7 +245,19 @@ export default function useJuryState({ startAtEval = false } = {}) {
         return;
       }
       const json = await getFromSheet({ action: "loadDraft", juryName: n, juryDept: d });
-      if (json.status === "ok" && json.draft) setCloudDraft(json.draft);
+      if (json.status === "ok" && json.draft) {
+        // Compare with local savedAt timestamp to decide which is newer.
+        let localSavedAt = "";
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) localSavedAt = JSON.parse(raw).savedAt || "";
+        } catch (_) {}
+        const cloudSavedAt = json.draft.savedAt || "";
+        // Show cloud draft only when it's strictly newer than local data.
+        if (!localSavedAt || cloudSavedAt > localSavedAt) {
+          setCloudDraft(json.draft);
+        }
+      }
     } catch (_) {
       // Cloud unreachable — silently degrade; user can still work offline.
     } finally {
@@ -250,7 +283,10 @@ export default function useJuryState({ startAtEval = false } = {}) {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ juryName, juryDept, scores, comments, current, groupSynced, step })
+        JSON.stringify({
+          juryName, juryDept, scores, comments, current, groupSynced, step,
+          savedAt: new Date().toISOString(),   // used for stale-draft detection
+        })
       );
     } catch (_) {}
   }, [juryName, juryDept, scores, comments, current, groupSynced, step]);
@@ -266,7 +302,11 @@ export default function useJuryState({ startAtEval = false } = {}) {
       action:   "saveDraft",
       juryName: n.trim(),
       juryDept: d.trim(),
-      draft:    { juryName: n.trim(), juryDept: d.trim(), scores: s, comments: c, current: cur, groupSynced: gs },
+      draft:    {
+        juryName: n.trim(), juryDept: d.trim(),
+        scores: s, comments: c, current: cur, groupSynced: gs,
+        savedAt: new Date().toISOString(),
+      },
     }).then(() => {
       if (showFeedback) {
         setSaveStatus("saved");

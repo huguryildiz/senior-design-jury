@@ -7,13 +7,13 @@
 // ── Sheets layout ────────────────────────────────────────────
 //
 // "Evaluations" (13 columns A–M):
-//   A  Juror Name          H  Delivery (30)
+//   A  Juror Name          H  Oral (30)
 //   B  Department          I  Teamwork (10)
 //   C  Timestamp (ISO)     J  Total (100)
 //   D  Group No            K  Comments
 //   E  Group Name          L  Status
-//   F  Design (20)         M  EditingFlag
-//   G  Technical (40)
+//   F  Written (30)        M  EditingFlag
+//   G  Technical (30)
 //
 // "Drafts" (3 columns A–C):
 //   A  DraftKey (juryName__juryDept, lowercase)
@@ -474,7 +474,7 @@ function doPost(e) {
       sheet.appendRow([
         "Juror Name", "Department / Institution", "Timestamp",
         "Group No", "Group Name",
-        "Design (20)", "Technical (40)", "Delivery (30)", "Teamwork (10)",
+        "Written (30)", "Technical (30)", "Oral (30)", "Teamwork (10)",
         "Total (100)", "Comments", "Status", "EditingFlag",
       ]);
       sheet.getRange(1, 1, 1, NUM_COLS)
@@ -515,6 +515,18 @@ function doPost(e) {
 
       if (existingRowNum) {
         var currentStatus = String(existing[existingRowNum - 2][11] || "");
+
+        // Reject stale writes: if the incoming timestamp is older than what's
+        // already in the sheet, skip this row entirely. This prevents a juror
+        // resuming from a stale localStorage draft from overwriting newer data
+        // they entered on another device. ISO 8601 strings are lexicographically
+        // comparable, so a simple string comparison works correctly.
+        var existingTs = String(existing[existingRowNum - 2][2] || "");
+        var incomingTs = String(row.timestamp || "");
+        if (existingTs && incomingTs && incomingTs < existingTs) {
+          // Incoming data is older — skip silently.
+          return;
+        }
 
         // Block all_submitted → anything else unless the unlock window is open.
         if (currentStatus === "all_submitted" && newStatus !== "all_submitted") {

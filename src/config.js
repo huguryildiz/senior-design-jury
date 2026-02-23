@@ -61,55 +61,65 @@ export const PROJECTS = [
 ];
 
 // ── Evaluation Criteria ───────────────────────────────────────
+// MÜDEK alignment:
+//   written    → 9.2  Written communication
+//   oral       → 9.1  Oral communication
+//   technical  → 1.2 / 2 / 3  Engineering knowledge & design
+//   teamwork   → 8.1 / 8.2  Teamwork
+//
 // Adding a new criterion requires a matching column in Sheets.
 // Changing label / shortLabel / max / rubric is safe at any time.
 export const CRITERIA = [
   {
     id: "design",
-    label: "Poster Design & Organization",
-    shortLabel: "Design",
-    max: 20,
+    label: "Written Communication (Poster)",
+    shortLabel: "Written",
+    mudek: "9.2",
+    max: 30,
     rubric: [
-      { range: "18–20", level: "Excellent",    desc: "Intuitive information flow. Visuals are fully labeled and high quality. Layout is understandable even for non-technical readers." },
-      { range: "14–17", level: "Good",         desc: "Mostly logical flow. Visuals readable with minor gaps. Balanced, easy-to-follow layout." },
-      { range: "9–13",  level: "Developing",   desc: "Occasional gaps in flow. Some missing labels or captions. Acceptable layout, needs improvement." },
-      { range: "0–8",   level: "Insufficient", desc: "Confusing flow. Low-quality or unlabeled visuals. Unbalanced or cluttered layout." },
-    ],
-  },
-  {
-    id: "technical",
-    label: "Technical Content & Clarity",
-    shortLabel: "Technical",
-    max: 40,
-    rubric: [
-      { range: "35–40", level: "Excellent",    desc: "Problem, motivation, and design decisions are clear and well-justified. Engineering depth and originality are evident." },
-      { range: "28–34", level: "Good",         desc: "Design is mostly clear and justified. Technical decisions largely supported." },
-      { range: "18–27", level: "Developing",   desc: "Problem stated but motivation or justification is insufficient." },
-      { range: "0–17",  level: "Insufficient", desc: "Vague problem, unjustified decisions. Superficial technical content." },
+      { range: "27–30", level: "Excellent",    desc: "Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is presented in a way that is accessible to both technical and non-technical readers." },
+      { range: "21–26", level: "Good",         desc: "Layout is mostly logical. Visuals are readable with minor gaps. Technical content is largely clear with small areas for improvement." },
+      { range: "13–20", level: "Developing",   desc: "Occasional gaps in information flow. Some visuals are missing labels or captions. Technical content is only partially communicated." },
+      { range: "0–12",  level: "Insufficient", desc: "Confusing layout. Low-quality or unlabelled visuals. Technical content is unclear or missing." },
     ],
   },
   {
     id: "delivery",
-    label: "Delivery & Q&A",
-    shortLabel: "Delivery",
+    label: "Oral Communication (Presentation & Q&A)",
+    shortLabel: "Oral",
+    mudek: "9.1",
     max: 30,
     rubric: [
-      { range: "27–30", level: "Excellent",    desc: "Presentation consciously adapted for both technical and non-technical jury. Responses accurate and audience-appropriate." },
-      { range: "21–26", level: "Good",         desc: "Presentation mostly clear. Most questions answered correctly." },
-      { range: "13–20", level: "Developing",   desc: "Understandable but inconsistent. Limited audience adaptation. Weak time management." },
+      { range: "27–30", level: "Excellent",    desc: "Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate." },
+      { range: "21–26", level: "Good",         desc: "Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident." },
+      { range: "13–20", level: "Developing",   desc: "Understandable but inconsistent. Limited audience adaptation. Time management or Q&A depth needs improvement." },
       { range: "0–12",  level: "Insufficient", desc: "Unclear or disorganised presentation. Most questions answered incorrectly or not at all." },
+    ],
+  },
+  {
+    id: "technical",
+    label: "Technical & Engineering Content",
+    shortLabel: "Technical",
+    mudek: "1.2 / 2 / 3",
+    max: 30,
+    rubric: [
+      { range: "27–30", level: "Excellent",    desc: "Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident." },
+      { range: "21–26", level: "Good",         desc: "Design is mostly clear and technically justified. Engineering decisions are largely supported." },
+      { range: "13–20", level: "Developing",   desc: "Problem is stated but motivation or technical justification is insufficient." },
+      { range: "0–12",  level: "Insufficient", desc: "Vague problem definition and unjustified decisions. Superficial technical content." },
     ],
   },
   {
     id: "teamwork",
     label: "Teamwork & Professionalism",
     shortLabel: "Teamwork",
+    mudek: "8.1 / 8.2",
     max: 10,
     rubric: [
-      { range: "9–10", level: "Excellent",    desc: "All members participate actively and equally. Professional and ethical conduct observed." },
+      { range: "9–10", level: "Excellent",    desc: "All members participate actively and equally. Professional and ethical conduct observed throughout." },
       { range: "7–8",  level: "Good",         desc: "Most members contribute. Minor knowledge gaps. Professionalism mostly observed." },
-      { range: "4–6",  level: "Developing",   desc: "Uneven participation. Some members are passive." },
-      { range: "0–3",  level: "Insufficient", desc: "Very low participation or limited to one person. Lack of professionalism observed." },
+      { range: "4–6",  level: "Developing",   desc: "Uneven participation. Some members are passive or unprepared." },
+      { range: "0–3",  level: "Insufficient", desc: "Very low participation or dominated by one person. Lack of professionalism observed." },
     ],
   },
 ];

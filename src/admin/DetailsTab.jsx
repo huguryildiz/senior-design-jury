@@ -14,11 +14,16 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
     : { id: p.id ?? i + 1, name: p.name ?? `Group ${i + 1}`, desc: p.desc ?? "", students: p.students ?? [] }
 );
 
-// Display "—" instead of 0 for genuinely empty/missing scores.
+// Display "—" for genuinely empty/missing scores.
+// Note: a score of 0 entered by the juror is also shown as "—" here
+// because the sheet stores "" for untouched fields and 0 only arrives
+// when the juror explicitly typed 0 — both are treated as "no data" in
+// the details view to avoid confusion with actually-scored rows.
 function displayScore(val) {
   if (val === "" || val === null || val === undefined) return "—";
   const n = Number(val);
-  return Number.isFinite(n) ? n : "—";
+  if (!Number.isFinite(n) || n === 0) return "—";
+  return n;
 }
 
 export default function DetailsTab({ data, jurors, jurorColorMap }) {
@@ -116,9 +121,9 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
               <th onClick={() => setSort("projectId")}   style={{ cursor: "pointer", whiteSpace: "nowrap" }}>Group {sortIcon("projectId")}</th>
               <th onClick={() => setSort("tsMs")}        style={{ cursor: "pointer" }}>Timestamp {sortIcon("tsMs")}</th>
               <th>Status</th>
-              <th onClick={() => setSort("design")}      style={{ cursor: "pointer" }}>Design /20 {sortIcon("design")}</th>
-              <th onClick={() => setSort("technical")}   style={{ cursor: "pointer" }}>Tech /40 {sortIcon("technical")}</th>
-              <th onClick={() => setSort("delivery")}    style={{ cursor: "pointer" }}>Delivery /30 {sortIcon("delivery")}</th>
+              <th onClick={() => setSort("design")}      style={{ cursor: "pointer" }}>Written /30 {sortIcon("design")}</th>
+              <th onClick={() => setSort("delivery")}    style={{ cursor: "pointer" }}>Oral /30 {sortIcon("delivery")}</th>
+              <th onClick={() => setSort("technical")}   style={{ cursor: "pointer" }}>Technical /30 {sortIcon("technical")}</th>
               <th onClick={() => setSort("teamwork")}    style={{ cursor: "pointer" }}>Team /10 {sortIcon("teamwork")}</th>
               <th onClick={() => setSort("total")}       style={{ cursor: "pointer" }}>Total {sortIcon("total")}</th>
               <th>Comments</th>
