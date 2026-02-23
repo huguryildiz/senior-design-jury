@@ -2,25 +2,36 @@
 // ============================================================
 // Custom hook — owns ALL state and side-effects for the jury flow.
 //
-// jurorId:
-//   Generated once from generateId(name, dept) — deterministic,
-//   no server round-trip needed.  Stored in stateRef so all
-//   callbacks always read the latest value.
+// ── jurorId ──────────────────────────────────────────────────
+// Derived from generateId(name, dept): deterministic 8-hex hash.
+// Computed once name+dept are entered; stored in jurorIdRef so
+// all async callbacks always read the latest value.
 //
-// Auth flow (single entry point):
-//   InfoStep OK →
-//     checkPin(jurorId)
-//       exists=false → createPin → storeToken → "new" PIN screen
-//       exists=true  → "entering" PIN screen
-//     verifyPin → storeToken(token)
-//   → proceedAfterPin()          ← SINGLE ENTRY POINT
-//       cloud lookup (now that we have a token)
-//       alreadySubmitted? → loadScoresAndShowDone
-//       cloud newer than local? → set cloudDraft (banner in eval)
-//       else → setStep("eval")
+// ── Auth flow ─────────────────────────────────────────────────
+//   InfoStep OK
+//     → handleStart()
+//         Token in sessionStorage? → skip PIN, go to proceedAfterPin()
+//         No token:
+//           checkPin(jurorId) → exists=false → createPin → storeToken → "new" PIN screen
+//           checkPin(jurorId) → exists=true  → "entering" PIN screen
+//           verifyPin  → storeToken(token)
+//     → proceedAfterPin()                      ← SINGLE ENTRY POINT
+//         Always fetches myscores from Sheets  ← Sheets is master
+//         Sets sheetProgress state             ← triggers SheetsProgressDialog
+//         User confirms dialog → setStep("eval") or setStep("done")
 //
-// Home "Resume" banner removed — draft continuity is handled
-// entirely inside proceedAfterPin after PIN verification.
+// ── Persistence ───────────────────────────────────────────────
+//   sessionStorage  : auth token (cleared on tab close)
+//   localStorage    : name, dept, scores, comments (pre-fills InfoStep)
+//   Cloud draft     : Drafts sheet via saveDraft POST (used for cross-device)
+//
+// ── Sheets as master ─────────────────────────────────────────
+//   After PIN verification, myscores is ALWAYS fetched.
+//   The result is shown in a "X/6 groups found" dialog regardless
+//   of all_submitted status. This ensures the user always knows
+//   the server-side state and can decide whether to continue or
+//   start fresh. Local draft is a fallback only when the sheet
+//   has no data at all for this juror.
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -42,10 +53,9 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────
 const STORAGE_KEY        = "ee492_jury_draft_v1";
-const SYNC_INTERVAL      = 30 * 1000;
-const DEBOUNCE_MS        = 400;
-const INSTANT_DELAY      = 350;
-const EDITING_ROWS_DELAY = 1500;
+const SYNC_INTERVAL      = 30 * 1000; // 30-second background sync
+const INSTANT_DELAY      = 350;       // debounce for per-keystroke writes
+const EDITING_ROWS_DELAY = 1500;      // wait before writing "group_submitted" in edit mode
 
 // ── Empty-state factories ─────────────────────────────────────
 
@@ -84,6 +94,7 @@ export const countFilled = (scores) =>
 export const hasAnyCriteria = (scores, pid) =>
   CRITERIA.some((c) => scores[pid]?.[c.id] !== "");
 
+// Convert myscores rows → { scores, comments } state shape.
 export function rowsToState(rows) {
   const scores   = makeEmptyScores();
   const comments = makeEmptyComments();
@@ -111,15 +122,12 @@ export default function useJuryState() {
   // ── Identity ──────────────────────────────────────────────
   const [juryName, setJuryName] = useState("");
   const [juryDept, setJuryDept] = useState("");
-  // jurorId is derived from name+dept; computed and cached in stateRef.
   const jurorIdRef = useRef("");
 
-  // Keep jurorId in sync whenever name or dept changes.
   useEffect(() => {
-    const id = juryName.trim() && juryDept.trim()
+    jurorIdRef.current = juryName.trim() && juryDept.trim()
       ? generateId(juryName, juryDept)
       : "";
-    jurorIdRef.current = id;
   }, [juryName, juryDept]);
 
   // ── Step / navigation ─────────────────────────────────────
@@ -137,11 +145,16 @@ export default function useJuryState() {
   const [doneScores,   setDoneScores]   = useState(null);
   const [doneComments, setDoneComments] = useState(null);
 
-  // ── Cloud state ───────────────────────────────────────────
-  // cloudDraft is shown as a banner inside the eval step
-  // ("Newer data found on another device — restore?").
-  const [cloudDraft,       setCloudDraft]      = useState(null);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  // ── Sheet progress dialog state ───────────────────────────
+  // sheetProgress is set by proceedAfterPin after fetching myscores.
+  // It is always shown as a dialog before entering eval/done so the
+  // juror always knows the server-side state.
+  //
+  // Shape: { rows: [...], filledCount: number, totalCount: number,
+  //          allSubmitted: boolean } | null
+  const [sheetProgress, setSheetProgress] = useState(null);
+
+  // saveStatus drives the Save button feedback in EvalStep.
   const [saveStatus, setSaveStatus] = useState("idle");
 
   // ── PIN state ─────────────────────────────────────────────
@@ -157,8 +170,8 @@ export default function useJuryState() {
   stateRef.current   = { juryName, juryDept, scores, comments, groupSynced, current };
 
   // ── Restore name/dept from localStorage on mount ─────────
-  // We only restore identity fields — scores are loaded from
-  // cloud after PIN verification.
+  // Only identity fields are restored here; scores come from
+  // the Sheets after PIN verification (Sheets is master).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -210,7 +223,7 @@ export default function useJuryState() {
     postToSheet({ action: "deleteDraft" });
   }, []);
 
-  // ── Instant rows write ────────────────────────────────────
+  // ── Instant rows write (debounced) ────────────────────────
   const instantWrite = useCallback((newScores, newComments, newGroupSynced) => {
     clearTimeout(instantRef.current);
     instantRef.current = setTimeout(() => {
@@ -334,77 +347,6 @@ export default function useJuryState() {
     [deleteCloudDraft]
   );
 
-  // ── Load scores from cloud → Done screen ─────────────────
-  const loadScoresAndShowDone = useCallback(async () => {
-    let useScores   = makeEmptyScores();
-    let useComments = makeEmptyComments();
-    try {
-      const rows = await fetchMyScores();
-      if (rows && rows.length) {
-        const st = rowsToState(rows);
-        useScores   = st.scores;
-        useComments = st.comments;
-      }
-    } catch (_) {}
-    setDoneScores(useScores);
-    setDoneComments(useComments);
-    setScores(useScores);
-    setComments(useComments);
-    setStep("done");
-  }, []);
-
-  // ── SINGLE ENTRY POINT after PIN verification ─────────────
-  // Called by handlePinSubmit (valid PIN) and handlePinAcknowledge
-  // (new-PIN screen). Token is already stored at this point.
-  const proceedAfterPin = useCallback(async () => {
-    // 1. Check if already fully submitted.
-    let submitted = false;
-    try {
-      const count = await verifySubmittedCount();
-      if (count >= PROJECTS.length) submitted = true;
-    } catch (_) {}
-
-    if (submitted) {
-      setAlreadySubmitted(true);
-      await loadScoresAndShowDone();
-      return;
-    }
-
-    // 2. Compare cloud draft vs local draft.
-    let cloudNewer = false;
-    try {
-      const json = await getFromSheetAuth({ action: "loadDraft" });
-      if (json.status === "ok" && json.draft) {
-        let localSavedAt = "";
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) localSavedAt = JSON.parse(raw).savedAt || "";
-        } catch (_) {}
-        const cloudSavedAt = json.draft.savedAt || "";
-        if (!localSavedAt || cloudSavedAt > localSavedAt) {
-          setCloudDraft(json.draft);
-          cloudNewer = true;
-        }
-      }
-    } catch (_) {}
-
-    if (!cloudNewer) {
-      // Restore local draft scores if any.
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const saved = JSON.parse(raw);
-          if (saved.scores)      setScores(saved.scores);
-          if (saved.comments)    setComments(saved.comments);
-          if (saved.groupSynced) setGroupSynced(saved.groupSynced);
-          if (typeof saved.current === "number") setCurrent(saved.current);
-        }
-      } catch (_) {}
-    }
-
-    setStep("eval");
-  }, [loadScoresAndShowDone]);
-
   // ── Edit-mode entry ───────────────────────────────────────
   const handleEditScores = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
@@ -442,7 +384,108 @@ export default function useJuryState() {
     submitFinal(scores, comments);
   }, [scores, comments, submitFinal]);
 
-  // ── Re-submit (already-submitted juror) ──────────────────
+  // ── SINGLE ENTRY POINT after PIN verification ─────────────
+  // Always fetches myscores from Sheets (Sheets is master).
+  // Always shows a SheetsProgressDialog so the juror sees the
+  // server-side state before proceeding.
+  //
+  // sheetProgress shape:
+  //   { rows, filledCount, totalCount, allSubmitted }
+  //
+  // The dialog calls either handleConfirmFromSheet (continue with
+  // sheet data) or handleStartFresh (ignore sheet, empty form).
+  const proceedAfterPin = useCallback(async () => {
+    let sheetRows = [];
+    try {
+      sheetRows = await fetchMyScores() || [];
+    } catch (_) {
+      sheetRows = [];
+    }
+
+    const totalCount  = PROJECTS.length;
+    const filledCount = sheetRows.filter((r) =>
+      r.status === "group_submitted" || r.status === "all_submitted"
+    ).length;
+    const allSubmitted = sheetRows.length > 0
+      && sheetRows.every((r) => r.status === "all_submitted")
+      && sheetRows.length >= totalCount;
+
+    // Always show the dialog — Sheets is master.
+    setSheetProgress({
+      rows:         sheetRows,
+      filledCount,
+      totalCount,
+      allSubmitted,
+    });
+  }, []);
+
+  // ── Confirm: load sheet data and proceed ──────────────────
+  // Called when the user clicks "Continue" in SheetsProgressDialog.
+  const handleConfirmFromSheet = useCallback(() => {
+    const prog = sheetProgress;
+    if (!prog) return;
+    setSheetProgress(null);
+
+    if (prog.allSubmitted) {
+      // All groups submitted — restore scores and go to done screen.
+      const { scores: s, comments: c } = rowsToState(prog.rows);
+      setScores(s);
+      setComments(c);
+      setDoneScores(s);
+      setDoneComments(c);
+      setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
+      doneFiredRef.current = true;
+      setStep("done");
+      return;
+    }
+
+    if (prog.rows.length > 0) {
+      // Partial progress found — load sheet data into eval form.
+      const { scores: s, comments: c } = rowsToState(prog.rows);
+      const synced = Object.fromEntries(
+        prog.rows
+          .filter((r) => r.status === "group_submitted" || r.status === "all_submitted")
+          .map((r) => [Number(r.projectId), true])
+      );
+      setScores(s);
+      setComments(c);
+      setGroupSynced(synced);
+
+      // Navigate to the first incomplete group.
+      const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(s, p.id));
+      setCurrent(firstIncomplete >= 0 ? firstIncomplete : 0);
+      doneFiredRef.current = false;
+    } else {
+      // No sheet data — fall back to local draft if available.
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved.scores)      setScores(saved.scores);
+          if (saved.comments)    setComments(saved.comments);
+          if (saved.groupSynced) setGroupSynced(saved.groupSynced);
+          if (typeof saved.current === "number") setCurrent(saved.current);
+        }
+      } catch (_) {}
+    }
+
+    setStep("eval");
+  }, [sheetProgress]);
+
+  // ── Start fresh: ignore sheet data ───────────────────────
+  // Called when the user clicks "Start Fresh" in SheetsProgressDialog.
+  const handleStartFresh = useCallback(() => {
+    setSheetProgress(null);
+    setScores(makeEmptyScores());
+    setComments(makeEmptyComments());
+    setGroupSynced({});
+    setCurrent(0);
+    doneFiredRef.current = false;
+    setEditMode(false);
+    setStep("eval");
+  }, []);
+
+  // ── Resubmit from done screen ─────────────────────────────
   const handleResubmit = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
     const jid = jurorIdRef.current;
@@ -464,7 +507,6 @@ export default function useJuryState() {
     setComments(useComments);
     setDoneScores(useScores);
     setDoneComments(useComments);
-    setAlreadySubmitted(false);
     setEditMode(true);
     doneFiredRef.current = false;
     setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
@@ -480,37 +522,9 @@ export default function useJuryState() {
     }, EDITING_ROWS_DELAY);
   }, []);
 
-  // ── Resume cloud draft (banner inside eval) ───────────────
-  const handleResumeCloud = useCallback(() => {
-    const d = cloudDraft;
-    if (!d) return;
-    if (d.juryName) setJuryName(d.juryName);
-    if (d.juryDept) setJuryDept(d.juryDept);
-    if (d.scores)   setScores(d.scores);
-    if (d.comments) setComments(d.comments);
-    if (typeof d.current === "number") setCurrent(d.current);
-    if (d.groupSynced) setGroupSynced(d.groupSynced);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...d, step: "eval" }));
-    } catch (_) {}
-    setCloudDraft(null);
-  }, [cloudDraft]);
-
-  const handleStartFresh = useCallback(() => {
-    setScores(makeEmptyScores());
-    setComments(makeEmptyComments());
-    setGroupSynced({});
-    doneFiredRef.current = false;
-    setEditMode(false);
-    setCloudDraft(null);
-  }, []);
-
   // ── Start button on InfoStep ──────────────────────────────
-  // Flow:
-  //   Token in session → skip PIN, go directly to proceedAfterPin
-  //   No token:
-  //     checkPin → exists → "entering" screen
-  //              → !exists → createPin → store token → "new" screen
+  // If a valid token is already in session, skip PIN and go
+  // directly to proceedAfterPin. Otherwise run the PIN flow.
   const handleStart = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
     if (!n.trim() || !d.trim()) return;
@@ -586,7 +600,7 @@ export default function useJuryState() {
     [attemptsLeft, proceedAfterPin]
   );
 
-  // Called when new juror acknowledges their PIN display.
+  // Called when new juror clicks "I've saved my PIN".
   const handlePinAcknowledge = useCallback(async () => {
     await proceedAfterPin();
   }, [proceedAfterPin]);
@@ -601,11 +615,10 @@ export default function useJuryState() {
     setComments(makeEmptyComments());
     setTouched(makeEmptyTouched());
     setGroupSynced({});
-    setCloudDraft(null);
+    setSheetProgress(null);
     setEditMode(false);
     setDoneScores(null);
     setDoneComments(null);
-    setAlreadySubmitted(false);
     setSaveStatus("idle");
     setPinStep("idle");
     setPinError("");
@@ -625,7 +638,7 @@ export default function useJuryState() {
   return {
     juryName, setJuryName,
     juryDept, setJuryDept,
-    jurorId:  jurorIdRef.current,
+    jurorId: jurorIdRef.current,
 
     step, setStep,
     current, setCurrent,
@@ -639,14 +652,14 @@ export default function useJuryState() {
     doneScores,   setDoneScores,
     doneComments, setDoneComments,
 
-    cloudDraft, alreadySubmitted,
+    sheetProgress,   // SheetsProgressDialog reads this
     saveStatus,
 
     pinStep, pinError, newPin, attemptsLeft,
     handlePinSubmit, handlePinAcknowledge,
 
     handleStart,
-    handleResumeCloud,
+    handleConfirmFromSheet,
     handleStartFresh,
     handleResubmit,
     handleEditScores,

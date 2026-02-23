@@ -1,20 +1,21 @@
 // src/jury/EvalStep.jsx
 // ============================================================
-// Step 2 — The scoring form.
+// Step 3 — The scoring form.
 //
 // Layout:
-//   Sticky header: home button | project info | save button
-//                  prev | group dropdown | next
-//                  progress bar
-//   Body: one criterion card per CRITERIA entry + comments + total
-//         in edit mode: Submit Final button at the bottom
+//   Sticky header row 1: home btn | project info | juror chip | save btn
+//   Sticky header row 2: prev | group dropdown | next
+//   Sticky header row 3: progress bar
+//   Body: criterion cards + comments + running total
+//         in edit mode: Submit Final button at bottom
 //
 // Design decisions:
-//   - "Edit Name / Department" has been removed. The home button
-//     saves the draft and goes back to the landing page only.
+//   - Juror name + department shown as a small chip in the header
+//     (top-right area, next to the Save button). Always visible
+//     so the juror can confirm they are on the right account.
 //   - Scores are NOT clamped while typing (onChange). Clamping
 //     happens on blur so "23" doesn't snap to "20" mid-keystroke.
-//   - Rubric is toggled per criterion; only one can be open at a time.
+//   - Rubric is toggled per criterion; only one open at a time.
 // ============================================================
 
 import { useState } from "react";
@@ -24,15 +25,16 @@ import { HomeIcon, SaveIcon } from "../shared/Icons";
 
 // Progress bar gradient: red → orange → yellow → green
 function progressGradient(pct) {
-  if (pct === 0)   return "#e2e8f0";
-  if (pct < 34)    return "linear-gradient(90deg,#ef4444,#f97316)";
-  if (pct < 67)    return "linear-gradient(90deg,#f97316,#eab308)";
-  if (pct < 100)   return "linear-gradient(90deg,#eab308,#84cc16)";
+  if (pct === 0)  return "#e2e8f0";
+  if (pct < 34)   return "linear-gradient(90deg,#ef4444,#f97316)";
+  if (pct < 67)   return "linear-gradient(90deg,#f97316,#eab308)";
+  if (pct < 100)  return "linear-gradient(90deg,#eab308,#84cc16)";
   return "linear-gradient(90deg,#84cc16,#22c55e)";
 }
 
 export default function EvalStep({
   juryName,
+  juryDept,
   current, setCurrent,
   scores, comments, touched,
   groupSynced, editMode,
@@ -41,14 +43,14 @@ export default function EvalStep({
   handleScore, handleScoreBlur, handleCommentChange,
   handleFinalSubmit,
   saveCloudDraft,
-  onGoHome,     // save draft + return to landing page
+  onGoHome,
 }) {
   const [showBackMenu, setShowBackMenu] = useState(false);
   const [openRubric,   setOpenRubric]   = useState(null);
 
   const project = PROJECTS[current];
 
-  // Dropdown label: shows completion status and fill count per group.
+  // Dropdown option label: shows completion checkmark + fill count.
   const groupLabel = (p) => {
     const filled = CRITERIA.filter((c) => scores[p.id]?.[c.id] !== "").length;
     return `${isAllFilled(scores, p.id) ? "✅" : "⚠️"} ${p.name} (${filled}/${CRITERIA.length})`;
@@ -57,10 +59,10 @@ export default function EvalStep({
   return (
     <div className="form-screen eval-screen">
 
-      {/* ── Sticky header ──────────────────────────────────── */}
+      {/* ── Sticky header ────────────────────────────────── */}
       <div className="eval-sticky-header">
 
-        {/* Row 1: home | project info | save */}
+        {/* Row 1: home | project info | juror chip | save */}
         <div className="eval-top-row">
           <button
             className="eval-back-btn"
@@ -79,6 +81,15 @@ export default function EvalStep({
               <div className="eval-project-students">
                 👥 {project.students.join(" · ")}
               </div>
+            )}
+          </div>
+
+          {/* Juror identity chip — always visible in the header */}
+          <div className="juror-chip" title={`${juryName} · ${juryDept}`}>
+            <span className="juror-chip-icon">👤</span>
+            <span className="juror-chip-name">{juryName}</span>
+            {juryDept && (
+              <span className="juror-chip-dept">{juryDept}</span>
             )}
           </div>
 
@@ -134,7 +145,7 @@ export default function EvalStep({
         </div>
       </div>
 
-      {/* ── Home confirmation menu ─────────────────────────── */}
+      {/* ── Home confirmation overlay ─────────────────────── */}
       {showBackMenu && (
         <div className="back-menu-overlay" onClick={() => setShowBackMenu(false)}>
           <div className="back-menu" onClick={(e) => e.stopPropagation()}>
@@ -162,7 +173,7 @@ export default function EvalStep({
         </div>
       )}
 
-      {/* ── Body ───────────────────────────────────────────── */}
+      {/* ── Body ─────────────────────────────────────────── */}
       <div className="eval-body">
 
         {/* Status banners */}

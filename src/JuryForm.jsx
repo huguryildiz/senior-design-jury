@@ -1,25 +1,31 @@
 // src/JuryForm.jsx
 // ============================================================
-// Thin orchestrator for the jury evaluation flow.
+// Thin step-router for the jury evaluation flow.
 // All state and business logic lives in useJuryState.
 //
 // Step routing:
-//   "info"  → InfoStep  (identity entry + cloud draft detection)
-//   "pin"   → PinStep   (PIN entry / first-time PIN display)
-//   "eval"  → EvalStep  (scoring form)
-//   "done"  → DoneStep  (confirmation + edit option)
+//   "info"  → InfoStep           (identity entry)
+//   "pin"   → PinStep            (PIN entry / first-time display)
+//   "eval"  → EvalStep           (scoring form)
+//   "done"  → DoneStep           (confirmation + edit option)
+//
+// SheetsProgressDialog is rendered as an overlay on top of the
+// current step whenever sheetProgress is non-null. It is always
+// shown after PIN verification so the juror sees the server-side
+// state before proceeding.
 // ============================================================
 
-import useJuryState  from "./jury/useJuryState";
-import InfoStep      from "./jury/InfoStep";
-import PinStep       from "./jury/PinStep";
-import EvalStep      from "./jury/EvalStep";
-import DoneStep      from "./jury/DoneStep";
+import useJuryState       from "./jury/useJuryState";
+import InfoStep           from "./jury/InfoStep";
+import PinStep            from "./jury/PinStep";
+import EvalStep           from "./jury/EvalStep";
+import DoneStep           from "./jury/DoneStep";
+import SheetsProgressDialog from "./jury/SheetsProgressDialog";
 import "./styles/jury.css";
 
 export default function JuryForm({ onBack }) {
   const {
-    step, setStep,
+    step,
     juryName, setJuryName,
     juryDept, setJuryDept,
     current, setCurrent,
@@ -27,12 +33,12 @@ export default function JuryForm({ onBack }) {
     groupSynced, editMode,
     progressPct, allComplete,
     doneScores, doneComments,
-    cloudDraft, cloudChecking, alreadySubmitted,
+    sheetProgress,
     saveStatus,
     pinStep, pinError, newPin, attemptsLeft,
     handleScore, handleScoreBlur, handleCommentChange,
     handleStart,
-    handleResumeCloud,
+    handleConfirmFromSheet,
     handleStartFresh,
     handleResubmit,
     handleEditScores,
@@ -43,74 +49,99 @@ export default function JuryForm({ onBack }) {
     resetAll,
   } = useJuryState();
 
-  // ── Done ──────────────────────────────────────────────────
+  // ── Done ────────────────────────────────────────────────
   if (step === "done") {
     return (
-      <DoneStep
-        doneScores={doneScores}
-        doneComments={doneComments}
-        scores={scores}
-        comments={comments}
-        onEditScores={handleEditScores}
-        onBack={() => { resetAll(); onBack(); }}
-      />
+      <>
+        <DoneStep
+          doneScores={doneScores}
+          doneComments={doneComments}
+          scores={scores}
+          comments={comments}
+          onEditScores={handleEditScores}
+          onBack={() => { resetAll(); onBack(); }}
+        />
+        {/* Dialog may appear over the done screen too (e.g. on reload) */}
+        <SheetsProgressDialog
+          progress={sheetProgress}
+          onConfirm={handleConfirmFromSheet}
+          onFresh={handleStartFresh}
+        />
+      </>
     );
   }
 
-  // ── PIN ───────────────────────────────────────────────────
+  // ── PIN ──────────────────────────────────────────────────
   if (step === "pin") {
     return (
-      <PinStep
-        pinStep={pinStep}
-        pinError={pinError}
-        newPin={newPin}
-        attemptsLeft={attemptsLeft}
-        juryName={juryName}
-        onPinSubmit={handlePinSubmit}
-        onPinAcknowledge={handlePinAcknowledge}
-      />
+      <>
+        <PinStep
+          pinStep={pinStep}
+          pinError={pinError}
+          newPin={newPin}
+          attemptsLeft={attemptsLeft}
+          juryName={juryName}
+          onPinSubmit={handlePinSubmit}
+          onPinAcknowledge={handlePinAcknowledge}
+        />
+        <SheetsProgressDialog
+          progress={sheetProgress}
+          onConfirm={handleConfirmFromSheet}
+          onFresh={handleStartFresh}
+        />
+      </>
     );
   }
 
-  // ── Eval ──────────────────────────────────────────────────
+  // ── Eval ─────────────────────────────────────────────────
   if (step === "eval") {
     return (
-      <EvalStep
-        juryName={juryName}
-        current={current}
-        setCurrent={setCurrent}
-        scores={scores}
-        comments={comments}
-        touched={touched}
-        groupSynced={groupSynced}
-        editMode={editMode}
-        progressPct={progressPct}
-        allComplete={allComplete}
-        saveStatus={saveStatus}
-        handleScore={handleScore}
-        handleScoreBlur={handleScoreBlur}
-        handleCommentChange={handleCommentChange}
-        handleFinalSubmit={handleFinalSubmit}
-        saveCloudDraft={saveCloudDraft}
-        onGoHome={() => { saveCloudDraft(); onBack(); }}
-      />
+      <>
+        <EvalStep
+          juryName={juryName}
+          juryDept={juryDept}
+          current={current}
+          setCurrent={setCurrent}
+          scores={scores}
+          comments={comments}
+          touched={touched}
+          groupSynced={groupSynced}
+          editMode={editMode}
+          progressPct={progressPct}
+          allComplete={allComplete}
+          saveStatus={saveStatus}
+          handleScore={handleScore}
+          handleScoreBlur={handleScoreBlur}
+          handleCommentChange={handleCommentChange}
+          handleFinalSubmit={handleFinalSubmit}
+          saveCloudDraft={saveCloudDraft}
+          onGoHome={() => { saveCloudDraft(); onBack(); }}
+        />
+        <SheetsProgressDialog
+          progress={sheetProgress}
+          onConfirm={handleConfirmFromSheet}
+          onFresh={handleStartFresh}
+        />
+      </>
     );
   }
 
   // ── Info (default) ────────────────────────────────────────
   return (
-    <InfoStep
-      juryName={juryName}
-      setJuryName={setJuryName}
-      juryDept={juryDept}
-      setJuryDept={setJuryDept}
-      cloudChecking={cloudChecking}
-      cloudDraft={cloudDraft}
-      alreadySubmitted={alreadySubmitted}
-      onStart={handleStart}
-      onResumeCloud={handleResumeCloud}
-      onStartFresh={handleStartFresh}
-      onBack={onBack}
-    />
+    <>
+      <InfoStep
+        juryName={juryName}
+        setJuryName={setJuryName}
+        juryDept={juryDept}
+        setJuryDept={setJuryDept}
+        onStart={handleStart}
+        onBack={onBack}
+      />
+      <SheetsProgressDialog
+        progress={sheetProgress}
+        onConfirm={handleConfirmFromSheet}
+        onFresh={handleStartFresh}
+      />
+    </>
   );
 }
