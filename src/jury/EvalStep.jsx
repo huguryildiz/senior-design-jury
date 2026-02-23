@@ -3,25 +3,25 @@
 // Step 3 — The scoring form.
 //
 // Layout:
-//   Sticky header row 1: home btn | project info | juror chip | save btn
+//   Sticky header row 1:
+//     [home btn]  [project info]  [juror identity card]
+//      34×34px     flex:1          fixed width, same height as home btn
+//
+//   The juror identity card replaces the old Save button.
+//   It shows name + dept and a passive "auto-saving" indicator.
+//   No explicit save action — every score change is written to
+//   Sheets automatically (350 ms debounce + 30 s background sync).
+//
 //   Sticky header row 2: prev | group dropdown | next
 //   Sticky header row 3: progress bar
 //   Body: criterion cards + comments + running total
 //         in edit mode: Submit Final button at bottom
-//
-// Design decisions:
-//   - Juror name + department shown as a small chip in the header
-//     (top-right area, next to the Save button). Always visible
-//     so the juror can confirm they are on the right account.
-//   - Scores are NOT clamped while typing (onChange). Clamping
-//     happens on blur so "23" doesn't snap to "20" mid-keystroke.
-//   - Rubric is toggled per criterion; only one open at a time.
 // ============================================================
 
 import { useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "../config";
 import { isAllFilled, countFilled } from "./useJuryState";
-import { HomeIcon, SaveIcon } from "../shared/Icons";
+import { HomeIcon } from "../shared/Icons";
 
 // Progress bar gradient: red → orange → yellow → green
 function progressGradient(pct) {
@@ -30,6 +30,13 @@ function progressGradient(pct) {
   if (pct < 67)   return "linear-gradient(90deg,#f97316,#eab308)";
   if (pct < 100)  return "linear-gradient(90deg,#eab308,#84cc16)";
   return "linear-gradient(90deg,#84cc16,#22c55e)";
+}
+
+// Passive save indicator label — driven by saveStatus prop.
+function SaveIndicator({ saveStatus }) {
+  if (saveStatus === "saving") return <span className="autosave-dot saving">⏳ Saving…</span>;
+  if (saveStatus === "saved")  return <span className="autosave-dot saved">✓ Saved</span>;
+  return <span className="autosave-dot idle">● Auto-saving</span>;
 }
 
 export default function EvalStep({
@@ -42,7 +49,6 @@ export default function EvalStep({
   saveStatus,
   handleScore, handleScoreBlur, handleCommentChange,
   handleFinalSubmit,
-  saveCloudDraft,
   onGoHome,
 }) {
   const [showBackMenu, setShowBackMenu] = useState(false);
@@ -50,7 +56,7 @@ export default function EvalStep({
 
   const project = PROJECTS[current];
 
-  // Dropdown option label: shows completion checkmark + fill count.
+  // Dropdown option label: completion checkmark + fill count.
   const groupLabel = (p) => {
     const filled = CRITERIA.filter((c) => scores[p.id]?.[c.id] !== "").length;
     return `${isAllFilled(scores, p.id) ? "✅" : "⚠️"} ${p.name} (${filled}/${CRITERIA.length})`;
@@ -62,8 +68,10 @@ export default function EvalStep({
       {/* ── Sticky header ────────────────────────────────── */}
       <div className="eval-sticky-header">
 
-        {/* Row 1: home | project info | juror chip | save */}
+        {/* Row 1: home btn | project info | juror card */}
         <div className="eval-top-row">
+
+          {/* Home button — 34×34, same height as juror card */}
           <button
             className="eval-back-btn"
             onClick={() => setShowBackMenu(true)}
@@ -72,6 +80,7 @@ export default function EvalStep({
             <HomeIcon />
           </button>
 
+          {/* Project name + desc + students */}
           <div className="eval-project-info">
             <div className="eval-project-name">{project.name}</div>
             {project.desc && (
@@ -84,26 +93,19 @@ export default function EvalStep({
             )}
           </div>
 
-          {/* Juror identity chip — always visible in the header */}
-          <div className="juror-chip" title={`${juryName} · ${juryDept}`}>
-            <span className="juror-chip-icon">👤</span>
-            <span className="juror-chip-name">{juryName}</span>
+          {/* Juror identity card — same height as home button,
+              stretches to fill available width on the right side.
+              Shows name, dept, and a passive auto-save indicator. */}
+          <div className="juror-card">
+            <div className="juror-card-top">
+              <span className="juror-card-icon">👤</span>
+              <span className="juror-card-name">{juryName}</span>
+            </div>
             {juryDept && (
-              <span className="juror-chip-dept">{juryDept}</span>
+              <div className="juror-card-dept">{juryDept}</div>
             )}
+            <SaveIndicator saveStatus={saveStatus} />
           </div>
-
-          <button
-            className={`save-draft-btn ${saveStatus === "saved" ? "saved" : ""}`}
-            onClick={() => saveCloudDraft(true)}
-            disabled={saveStatus === "saving"}
-            title="Save progress to cloud"
-          >
-            <SaveIcon />
-            <span>
-              {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "✓ Saved" : "Save"}
-            </span>
-          </button>
         </div>
 
         {/* Row 2: prev | group selector | next */}
@@ -151,15 +153,11 @@ export default function EvalStep({
           <div className="back-menu" onClick={(e) => e.stopPropagation()}>
             <p className="back-menu-title">Leave evaluation?</p>
             <p className="back-menu-sub">
-              Your progress is saved and you can resume any time.
+              Your progress is auto-saved and you can resume any time.
             </p>
             <button
               className="back-menu-btn primary"
-              onClick={() => {
-                saveCloudDraft();
-                setShowBackMenu(false);
-                onGoHome();
-              }}
+              onClick={() => { setShowBackMenu(false); onGoHome(); }}
             >
               🏠 Go to Home
             </button>

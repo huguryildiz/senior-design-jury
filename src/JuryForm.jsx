@@ -114,8 +114,7 @@ export default function JuryForm({ onBack }) {
           handleScoreBlur={handleScoreBlur}
           handleCommentChange={handleCommentChange}
           handleFinalSubmit={handleFinalSubmit}
-          saveCloudDraft={saveCloudDraft}
-          onGoHome={() => { saveCloudDraft(); onBack(); }}
+          onGoHome={onBack}
         />
         <SheetsProgressDialog
           progress={sheetProgress}

@@ -525,12 +525,17 @@ export default function useJuryState() {
   // ── Start button on InfoStep ──────────────────────────────
   // If a valid token is already in session, skip PIN and go
   // directly to proceedAfterPin. Otherwise run the PIN flow.
+  //
+  // INVARIANT: proceedAfterPin() is NEVER called from here unless
+  // a valid token is already stored in sessionStorage. Token-less
+  // paths always end at the PIN screen, never at eval/done.
   const handleStart = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
     if (!n.trim() || !d.trim()) return;
     const jid = generateId(n, d);
     jurorIdRef.current = jid;
 
+    // Token already in session (same tab, navigated back) → skip PIN.
     if (getToken()) {
       await proceedAfterPin();
       return;
@@ -538,29 +543,42 @@ export default function useJuryState() {
 
     try {
       const res = await checkPin(jid);
+
       if (res.status !== "ok") {
-        await proceedAfterPin();
+        // API secret wrong, network error, or GAS returned an error.
+        // Show PIN entry so the juror can retry — do not proceed without a token.
+        setPinError("Could not reach the server. Please try again.");
+        setPinStep("entering");
+        setStep("pin");
         return;
       }
 
       if (res.exists) {
+        // PIN already set — show the entry screen.
         setPinStep("entering");
         setPinError("");
         setAttemptsLeft(3);
         setStep("pin");
       } else {
+        // First time — create a PIN and issue a token.
         const r2 = await createPin(jid, n, d);
         if (r2.status === "ok") {
-          storeToken(r2.token);
+          storeToken(r2.token); // token stored BEFORE any navigation
           setNewPin(r2.pin);
           setPinStep("new");
           setStep("pin");
         } else {
-          await proceedAfterPin();
+          // createPin failed — show entry screen, do not proceed.
+          setPinError("Could not create a PIN. Please try again.");
+          setPinStep("entering");
+          setStep("pin");
         }
       }
     } catch (_) {
-      await proceedAfterPin();
+      // Network or parse error — show PIN screen, do not proceed.
+      setPinError("Connection error. Please check your network and try again.");
+      setPinStep("entering");
+      setStep("pin");
     }
   }, [proceedAfterPin]);
 
