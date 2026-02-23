@@ -2277,20 +2277,29 @@ body {
 }
 
 .pin-box {
-  width: 52px;
-  height: 58px;
+  width: 54px;
+  height: 60px;
+
   text-align: center;
   font-size: 22px;
+  font-weight: 600;
+
   border-radius: 14px;
   border: 1px solid #d7dce3;
   background: #f8fafc;
+
   outline: none;
   transition: all 0.2s ease;
 }
 
 .pin-box:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background: #ffffff;
+}
+
+.pin-box-row input {
+  display: inline-block;
 }
 
 /* ══════════════════════════════════════════════════════════
