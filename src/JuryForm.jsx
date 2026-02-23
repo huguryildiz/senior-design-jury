@@ -17,7 +17,7 @@ import EvalStep      from "./jury/EvalStep";
 import DoneStep      from "./jury/DoneStep";
 import "./styles/jury.css";
 
-export default function JuryForm({ onBack, startAtEval = false }) {
+export default function JuryForm({ onBack }) {
   const {
     step, setStep,
     juryName, setJuryName,
@@ -41,7 +41,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
     handlePinAcknowledge,
     saveCloudDraft,
     resetAll,
-  } = useJuryState({ startAtEval });
+  } = useJuryState();
 
   // ── Done ──────────────────────────────────────────────────
   if (step === "done") {

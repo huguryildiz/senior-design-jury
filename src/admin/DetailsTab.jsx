@@ -121,9 +121,9 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
               <th onClick={() => setSort("projectId")}   style={{ cursor: "pointer", whiteSpace: "nowrap" }}>Group {sortIcon("projectId")}</th>
               <th onClick={() => setSort("tsMs")}        style={{ cursor: "pointer" }}>Timestamp {sortIcon("tsMs")}</th>
               <th>Status</th>
+              <th onClick={() => setSort("technical")}   style={{ cursor: "pointer" }}>Technical /30 {sortIcon("technical")}</th>
               <th onClick={() => setSort("design")}      style={{ cursor: "pointer" }}>Written /30 {sortIcon("design")}</th>
               <th onClick={() => setSort("delivery")}    style={{ cursor: "pointer" }}>Oral /30 {sortIcon("delivery")}</th>
-              <th onClick={() => setSort("technical")}   style={{ cursor: "pointer" }}>Technical /30 {sortIcon("technical")}</th>
               <th onClick={() => setSort("teamwork")}    style={{ cursor: "pointer" }}>Team /10 {sortIcon("teamwork")}</th>
               <th onClick={() => setSort("total")}       style={{ cursor: "pointer" }}>Total {sortIcon("total")}</th>
               <th>Comments</th>
@@ -183,8 +183,8 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
                   </td>
                   {/* Pass editingFlag so the badge shows "✏️ Editing" when applicable */}
                   <td><StatusBadge status={row.status} editingFlag={row.editingFlag} /></td>
-                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.design)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.technical)}</td>
+                  <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.design)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.delivery)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.teamwork)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>

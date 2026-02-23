@@ -1,38 +1,70 @@
 // src/shared/api.js
 // ============================================================
-// Single source of truth for all Google Apps Script communication.
+// Single source of truth for all GAS communication.
 //
-// Rule: no other file should call fetch() directly.
+// generateId(name, dept)
+//   Deterministic 8-hex-char jurorId via djb2 hash.
+//   Same name+dept → same ID on every device/session.
 //
-// POST uses no-cors (Apps Script doesn't return CORS headers on
-// POST requests). This means we cannot read the response — errors
-// are silently ignored. Use GET (getFromSheet) when you need a
-// response.
+// Token model:
+//   createPin / verifyPin → server returns token.
+//   Token stored in sessionStorage, injected automatically.
+//   All write endpoints + token-gated reads require a valid token.
+//
+// apiSecret:
+//   Shared secret read from VITE_API_SECRET env var.
+//   Sent as ?secret=X on public PIN endpoints (checkPin,
+//   createPin, verifyPin) so the GAS URL alone isn't enough
+//   to call the API.
 // ============================================================
 
 import { APP_CONFIG, PROJECTS, CRITERIA } from "../config";
 
 const SCRIPT_URL = APP_CONFIG?.scriptUrl;
+const API_SECRET = APP_CONFIG?.apiSecret || "";
+
+// ── Deterministic juror ID ────────────────────────────────────
+// djb2 hash of norm(name) + "__" + norm(dept), returns 8 hex chars.
+export function generateId(name, dept) {
+  const input = name.trim().toLowerCase() + "__" + dept.trim().toLowerCase();
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
+    hash = hash >>> 0; // keep 32-bit unsigned
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+// ── Token storage ─────────────────────────────────────────────
+const TOKEN_KEY = "ee492_jury_token";
+
+export function storeToken(token) {
+  try { sessionStorage.setItem(TOKEN_KEY, token); } catch (_) {}
+}
+
+export function getToken() {
+  try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (_) { return ""; }
+}
+
+export function clearToken() {
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch (_) {}
+}
 
 // ── Fire-and-forget POST ──────────────────────────────────────
-// Used for writes: upsert rows, save draft, reset juror, etc.
 export async function postToSheet(body) {
   if (!SCRIPT_URL) return;
+  const token = getToken();
   try {
     await fetch(SCRIPT_URL, {
       method:  "POST",
       mode:    "no-cors",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
+      body:    JSON.stringify({ ...body, token }),
     });
-  } catch (_) {
-    // Network errors are expected in no-cors mode; swallow silently.
-  }
+  } catch (_) {}
 }
 
 // ── Authenticated GET ─────────────────────────────────────────
-// Used for reads and PIN operations that return data.
-// Throws on HTTP error, HTML response, or invalid JSON.
 export async function getFromSheet(params) {
   if (!SCRIPT_URL) throw new Error("scriptUrl is not configured in config.js.");
   const qs  = new URLSearchParams(params).toString();
@@ -49,18 +81,24 @@ export async function getFromSheet(params) {
   }
 }
 
+// ── Token-gated GET ───────────────────────────────────────────
+export async function getFromSheetAuth(params) {
+  return getFromSheet({ ...params, token: getToken() });
+}
+
 // ── Row builder ───────────────────────────────────────────────
-// Builds a single evaluation row payload.
-// Uses ISO 8601 timestamps to avoid locale-parsing fragility.
-export function buildRow(juryName, juryDept, scores, comments, project, status) {
+// Column order sent to GAS must match the sheet layout:
+//   technical, design (written), delivery (oral), teamwork
+export function buildRow(juryName, juryDept, jurorId, scores, comments, project, status) {
   return {
     juryName,
     juryDept,
+    jurorId,
     timestamp:   new Date().toISOString(),
     projectId:   project.id,
     projectName: project.name,
-    design:      scores[project.id]?.design    ?? "",
     technical:   scores[project.id]?.technical ?? "",
+    design:      scores[project.id]?.design    ?? "",
     delivery:    scores[project.id]?.delivery  ?? "",
     teamwork:    scores[project.id]?.teamwork  ?? "",
     total:       calcRowTotal(scores, project.id),
@@ -69,12 +107,10 @@ export function buildRow(juryName, juryDept, scores, comments, project, status) 
   };
 }
 
-// ── Criterion total for a single project ─────────────────────
 export function calcRowTotal(scores, pid) {
   return CRITERIA.reduce((s, c) => s + (parseInt(scores[pid]?.[c.id], 10) || 0), 0);
 }
 
-// ── Clamp a score value to [0, max] ──────────────────────────
 export function clampScore(val, max) {
   if (val === "" || val === null || val === undefined) return "";
   const n = parseInt(val, 10);
@@ -84,57 +120,39 @@ export function clampScore(val, max) {
 
 // ── PIN API ───────────────────────────────────────────────────
 
-// Check whether a PIN already exists for this juror.
-// Returns { status, exists }.
-export async function checkPin(juryName, juryDept) {
+export async function checkPin(jurorId) {
+  return getFromSheet({ action: "checkPin", jurorId, secret: API_SECRET });
+}
+
+export async function createPin(jurorId, juryName, juryDept) {
   return getFromSheet({
-    action:   "checkPin",
+    action: "createPin",
+    jurorId,
     juryName: juryName.trim(),
     juryDept: juryDept.trim(),
+    secret:   API_SECRET,
   });
 }
 
-// Create a new PIN for a first-time juror. Server generates and
-// stores the PIN; returns { status, pin } so we can show it once.
-export async function createPin(juryName, juryDept) {
+export async function verifyPin(jurorId, pin) {
   return getFromSheet({
-    action:   "createPin",
-    juryName: juryName.trim(),
-    juryDept: juryDept.trim(),
+    action:  "verifyPin",
+    jurorId,
+    pin:     String(pin).trim(),
+    secret:  API_SECRET,
   });
 }
 
-// Verify an entered PIN.
-// Returns { status, valid, locked, attemptsLeft }.
-export async function verifyPin(juryName, juryDept, pin) {
-  return getFromSheet({
-    action:   "verifyPin",
-    juryName: juryName.trim(),
-    juryDept: juryDept.trim(),
-    pin:      String(pin).trim(),
-  });
-}
+// ── Juror data fetchers (token-gated) ─────────────────────────
 
-// ── Juror data fetchers ───────────────────────────────────────
-
-// Returns the best (latest / highest-status) row per group for a juror.
-export async function fetchMyScores(juryName, juryDept) {
-  const json = await getFromSheet({
-    action:   "myscores",
-    juryName: juryName.trim(),
-    juryDept: juryDept.trim(),
-  });
+export async function fetchMyScores() {
+  const json = await getFromSheetAuth({ action: "myscores" });
   if (json.status !== "ok") return null;
   return json.rows || [];
 }
 
-// Returns how many groups have status = all_submitted for a juror.
-export async function verifySubmittedCount(juryName, juryDept) {
-  const json = await getFromSheet({
-    action:   "verify",
-    juryName: juryName.trim(),
-    juryDept: juryDept.trim(),
-  });
+export async function verifySubmittedCount() {
+  const json = await getFromSheetAuth({ action: "verify" });
   if (json.status !== "ok") return 0;
   return json.submittedCount || 0;
 }

@@ -1,26 +1,27 @@
 // src/config.js
 // ============================================================
 // SINGLE SOURCE OF TRUTH — update this file each semester.
-// No other file needs to change when groups or criteria rotate.
+//
+// Environment variables (define in .env.local):
+//   VITE_SCRIPT_URL   — Google Apps Script deployment URL
+//   VITE_API_SECRET   — Shared secret checked by GAS on every
+//                        public PIN endpoint. Set the same value
+//                        as the GAS "API_SECRET" script property.
 // ============================================================
 
 export const APP_CONFIG = {
-  // Displayed in the browser tab and home screen
-  appTitle:    "Senior ProjectJury Portal",
+  appTitle:    "Senior Project Jury Portal",
   courseName:  "EE 491 / EE 492 — Senior Project",
   department:  "Electrical & Electronics Engineering",
   university:  "TED University",
 
-  // Google Apps Script Web App deployment URL
-  scriptUrl: "https://script.google.com/macros/s/AKfycbyQK792Cd5-3X7mpqd-LwOuFlvB8MbreTXDqY9KLgTTl7hw9GBCzNtZ3C1aS89R9lARCA/exec",
+  scriptUrl:   import.meta.env.VITE_SCRIPT_URL  || "",
+  apiSecret:   import.meta.env.VITE_API_SECRET  || "",
 
-  // Whether to display student names on jury cards and admin panel
   showStudents: true,
 };
 
 // ── Groups / Projects ─────────────────────────────────────────
-// Keep `id` values stable across semesters — they are used as
-// the primary key in Google Sheets. Safe to update name/desc/students.
 export const PROJECTS = [
   {
     id: 1,
@@ -61,15 +62,22 @@ export const PROJECTS = [
 ];
 
 // ── Evaluation Criteria ───────────────────────────────────────
-// MÜDEK alignment:
-//   written    → 9.2  Written communication
-//   oral       → 9.1  Oral communication
-//   technical  → 1.2 / 2 / 3  Engineering knowledge & design
-//   teamwork   → 8.1 / 8.2  Teamwork
-//
-// Adding a new criterion requires a matching column in Sheets.
-// Changing label / shortLabel / max / rubric is safe at any time.
+// Order here controls display order in jury form AND admin panel.
+// Sheet column order (G–J): Technical / Written / Oral / Teamwork
 export const CRITERIA = [
+  {
+    id: "technical",
+    label: "Technical & Engineering Content",
+    shortLabel: "Technical",
+    mudek: "1.2 / 2 / 3",
+    max: 30,
+    rubric: [
+      { range: "27–30", level: "Excellent",    desc: "Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident." },
+      { range: "21–26", level: "Good",         desc: "Design is mostly clear and technically justified. Engineering decisions are largely supported." },
+      { range: "13–20", level: "Developing",   desc: "Problem is stated but motivation or technical justification is insufficient." },
+      { range: "0–12",  level: "Insufficient", desc: "Vague problem definition and unjustified decisions. Superficial technical content." },
+    ],
+  },
   {
     id: "design",
     label: "Written Communication (Poster)",
@@ -94,19 +102,6 @@ export const CRITERIA = [
       { range: "21–26", level: "Good",         desc: "Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident." },
       { range: "13–20", level: "Developing",   desc: "Understandable but inconsistent. Limited audience adaptation. Time management or Q&A depth needs improvement." },
       { range: "0–12",  level: "Insufficient", desc: "Unclear or disorganised presentation. Most questions answered incorrectly or not at all." },
-    ],
-  },
-  {
-    id: "technical",
-    label: "Technical & Engineering Content",
-    shortLabel: "Technical",
-    mudek: "1.2 / 2 / 3",
-    max: 30,
-    rubric: [
-      { range: "27–30", level: "Excellent",    desc: "Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident." },
-      { range: "21–26", level: "Good",         desc: "Design is mostly clear and technically justified. Engineering decisions are largely supported." },
-      { range: "13–20", level: "Developing",   desc: "Problem is stated but motivation or technical justification is insufficient." },
-      { range: "0–12",  level: "Insufficient", desc: "Vague problem definition and unjustified decisions. Superficial technical content." },
     ],
   },
   {

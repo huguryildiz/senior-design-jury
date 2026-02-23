@@ -5,64 +5,60 @@
 // pinStep values:
 //   "new"      — First login: display the generated PIN once so
 //                the juror can save it. Continues on acknowledge.
-//   "entering" — Returning juror: enter 4-digit PIN to continue.
+//   "entering" — Returning juror: enter 4-digit PIN, then press
+//                the OK button to submit.  Auto-submit on the
+//                4th digit is intentionally removed — it caused
+//                unintended submissions when users mis-typed and
+//                quickly corrected the last digit.
 //   "locked"   — Too many failed attempts. Admin must reset.
 // ============================================================
 
 import { useState, useRef, useEffect } from "react";
 import { KeyIcon } from "../shared/Icons";
 
-// 4 individual boxes PIN input
-function PinBoxes({ onComplete, pinError }) {
+// ── 4-box PIN input with explicit OK button ───────────────────
+function PinBoxes({ onSubmit, pinError }) {
   const [digits, setDigits] = useState(["", "", "", ""]);
-  const inputRefs  = [useRef(null), useRef(null), useRef(null), useRef(null)];
-  // Guard: prevent firing onComplete twice if a re-render occurs
-  const submitting = useRef(false);
+  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
-  // Reset boxes and allow retry whenever a PIN error is shown
+  // Reset boxes whenever an error is shown so the user can retry cleanly.
   useEffect(() => {
     if (pinError) {
-      submitting.current = false;
       setDigits(["", "", "", ""]);
       setTimeout(() => inputRefs[0].current?.focus(), 50);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinError]);
 
-  function tryComplete(next) {
-    if (next.every((x) => x !== "") && !submitting.current) {
-      submitting.current = true;
-      onComplete(next.join(""));
-    }
-  }
-
   function handleChange(i, val) {
-    // Keep only the last numeric character typed
-    const d = val.replace(/\D/g, "").slice(-1);
+    const d    = val.replace(/\D/g, "").slice(-1);
     const next = [...digits];
-    next[i] = d;
+    next[i]    = d;
     setDigits(next);
     if (d && i < 3) inputRefs[i + 1].current?.focus();
-    tryComplete(next);
+    // No auto-submit — user must press OK.
   }
 
   function handleKeyDown(i, e) {
     if (e.key === "Backspace") {
-      // Reset submitting guard so the user can retry after a wrong PIN
-      submitting.current = false;
       if (digits[i] === "" && i > 0) {
-        const next = [...digits];
+        const next  = [...digits];
         next[i - 1] = "";
         setDigits(next);
         inputRefs[i - 1].current?.focus();
       } else {
         const next = [...digits];
-        next[i] = "";
+        next[i]    = "";
         setDigits(next);
       }
     }
     if (e.key === "ArrowLeft"  && i > 0) inputRefs[i - 1].current?.focus();
     if (e.key === "ArrowRight" && i < 3) inputRefs[i + 1].current?.focus();
+    // Enter key triggers submit if all boxes filled
+    if (e.key === "Enter") {
+      const pin = digits.join("");
+      if (pin.length === 4) onSubmit(pin);
+    }
   }
 
   function handlePaste(e) {
@@ -71,37 +67,49 @@ function PinBoxes({ onComplete, pinError }) {
       const next = text.split("");
       setDigits(next);
       inputRefs[3].current?.focus();
-      tryComplete(next);
     }
     e.preventDefault();
   }
 
-  // When pinError changes (wrong PIN), reset boxes so user can retry
-  // This is handled by resetting submitting on Backspace above.
+  function handleOk() {
+    const pin = digits.join("");
+    if (pin.length === 4) onSubmit(pin);
+  }
+
+  const isComplete = digits.every((d) => d !== "");
 
   return (
-    <div className="pin-boxes-row">
-      {digits.map((d, i) => (
-        <input
-          key={i}
-          ref={inputRefs[i]}
-          type="password"
-          inputMode="numeric"
-          maxLength={1}
-          value={d}
-          autoFocus={i === 0}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          data-lpignore="true"
-          data-form-type="other"
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          onPaste={i === 0 ? handlePaste : undefined}
-          className="pin-box"
-        />
-      ))}
+    <div className="pin-input-group">
+      <div className="pin-boxes-row">
+        {digits.map((d, i) => (
+          <input
+            key={i}
+            ref={inputRefs[i]}
+            type="password"
+            inputMode="numeric"
+            maxLength={1}
+            value={d}
+            autoFocus={i === 0}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-lpignore="true"
+            data-form-type="other"
+            onChange={(e) => handleChange(i, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            onPaste={i === 0 ? handlePaste : undefined}
+            className="pin-box"
+          />
+        ))}
+      </div>
+      <button
+        className="btn-primary pin-ok-btn"
+        onClick={handleOk}
+        disabled={!isComplete}
+      >
+        OK →
+      </button>
     </div>
   );
 }
@@ -113,7 +121,7 @@ export default function PinStep({
   attemptsLeft,
   juryName,
   onPinSubmit,       // (pin: string) => void
-  onPinAcknowledge,  // () => void  — after juror saves their new PIN
+  onPinAcknowledge,  // () => void
 }) {
   // ── New PIN: show once ────────────────────────────────────
   if (pinStep === "new") {
@@ -170,10 +178,10 @@ export default function PinStep({
         </div>
         <h3>Enter Your PIN</h3>
         <p className="pin-intro">
-          Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN to continue.
+          Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN and press OK to continue.
         </p>
 
-        <PinBoxes onComplete={onPinSubmit} pinError={pinError} />
+        <PinBoxes onSubmit={onPinSubmit} pinError={pinError} />
 
         {pinError && <div className="pin-error-msg">{pinError}</div>}
       </div>

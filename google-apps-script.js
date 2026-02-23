@@ -6,17 +6,25 @@
 //
 // ── Sheets layout ────────────────────────────────────────────
 //
-// "Evaluations" (13 columns A–M):
-//   A  Juror Name          H  Oral (30)
-//   B  Department          I  Teamwork (10)
-//   C  Timestamp (ISO)     J  Total (100)
-//   D  Group No            K  Comments
-//   E  Group Name          L  Status
-//   F  Written (30)        M  EditingFlag
+// "Evaluations" (15 columns A–O):
+//   A  Juror Name
+//   B  Department / Institution
+//   C  Juror ID          ← deterministic hash (8 hex chars)
+//   D  Timestamp (ISO)
+//   E  Group No
+//   F  Group Name
 //   G  Technical (30)
+//   H  Written (30)
+//   I  Oral (30)
+//   J  Teamwork (10)
+//   K  Total (100)
+//   L  Comments
+//   M  Status
+//   N  EditingFlag
+//   O  Secret
 //
 // "Drafts" (3 columns A–C):
-//   A  DraftKey (juryName__juryDept, lowercase)
+//   A  DraftKey (jurorId)
 //   B  DraftJSON
 //   C  UpdatedAt (ISO)
 //
@@ -25,54 +33,54 @@
 //
 // ── PropertiesService keys ───────────────────────────────────
 //   ADMIN_PASSWORD          → plaintext admin password
+//   API_SECRET              → shared secret checked on every request
 //   PIN__{key}              → 4-digit PIN for a juror
 //   LOCKED__{key}           → "1" when account is brute-force locked
 //   ATTEMPTS__{key}         → failed attempt count (string integer)
 //   RESET_UNLOCK__{key}     → ms timestamp of last resetJuror call
+//   SECRET__{key}           → per-juror token secret
 //
-// ── Status values (Evaluations col L) ───────────────────────
-//   "in_progress"      — juror has started but not finished a group
-//   "group_submitted"  — all criteria for a group are filled
+// ── Token format ─────────────────────────────────────────────
+//   token = base64( jurorId + "__" + perJurorSecret )
+//
+// ── Status values (col M) ───────────────────────────────────
+//   "in_progress"      — started but not finished
+//   "group_submitted"  — all criteria for a group filled
 //   "all_submitted"    — juror pressed Submit Final
 //
-// ── EditingFlag values (Evaluations col M) ──────────────────
-//   "editing"  — resetJuror was called; juror is actively editing
-//   ""         — normal; cleared when all_submitted is written
+// ── EditingFlag values (col N) ──────────────────────────────
+//   "editing"  — resetJuror called; juror is actively re-editing
+//   ""         — normal
 //
 // ── GET endpoints ────────────────────────────────────────────
 //   ?action=export&pass=X
 //   ?action=initInfo&pass=X
-//   ?action=loadDraft&juryName=X&juryDept=Y
-//   ?action=verify&juryName=X&juryDept=Y
-//   ?action=myscores&juryName=X&juryDept=Y
-//   ?action=checkPin&juryName=X&juryDept=Y
-//   ?action=createPin&juryName=X&juryDept=Y
-//   ?action=verifyPin&juryName=X&juryDept=Y&pin=XXXX
-//   ?action=resetPin&juryName=X&juryDept=Y&pass=ADMINPASS
+//   ?action=checkPin&jurorId=X                    (public)
+//   ?action=createPin&jurorId=X&juryName=X&juryDept=X
+//   ?action=verifyPin&jurorId=X&pin=X
+//   ?action=resetPin&jurorId=X&pass=X
+//   — token-gated —
+//   ?action=loadDraft&token=X
+//   ?action=verify&token=X
+//   ?action=myscores&token=X
 //
 // ── POST body shapes ─────────────────────────────────────────
-//   { action: "saveDraft",       juryName, juryDept, draft }
-//   { action: "deleteDraft",     juryName, juryDept }
-//   { action: "deleteJurorData", juryName, juryDept }
-//   { action: "resetJuror",      juryName, juryDept }
-//   { rows: [ ...rowObjects ] }   → upsert evaluation rows
+//   { action:"saveDraft",       token, draft }
+//   { action:"deleteDraft",     token }
+//   { action:"deleteJurorData", token }
+//   { action:"resetJuror",      token }
+//   { rows:[...], token }
 // ============================================================
 
 var EVAL_SHEET  = "Evaluations";
 var DRAFT_SHEET = "Drafts";
 var INFO_SHEET  = "Info";
-var NUM_COLS    = 13; // A–M including EditingFlag
+var NUM_COLS    = 15; // A–O
 
-// Unlock window after resetJuror: allows all_submitted → in_progress
-// downgrades for this many minutes.
 var RESET_UNLOCK_MINUTES = 20;
+var MAX_PIN_ATTEMPTS     = 3;
 
-// Maximum wrong PIN attempts before an account is locked.
-var MAX_PIN_ATTEMPTS = 3;
-
-// ── Group definitions (mirror of src/config.js PROJECTS) ─────
-// Update name / desc / students each semester.
-// Keep `id` values stable — they are the Sheets primary key.
+// ── Group definitions ─────────────────────────────────────────
 var PROJECTS_DATA = [
   { id: 1, name: "Group 1", desc: "Göksiper Hava Savunma Sistemi",
     students: ["Mustafa Yusuf Ünal", "Ayça Naz Dedeoğlu", "Onur Mesci", "Çağan Erdoğan"] },
@@ -92,42 +100,78 @@ var PROJECTS_DATA = [
 // Shared helpers
 // ════════════════════════════════════════════════════════════
 
-// Wrap any object in a JSON text output (required return type).
 function respond(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Check admin password against the stored property.
+function norm(s) {
+  return String(s || "").trim().toLowerCase();
+}
+
+// ── API secret guard ──────────────────────────────────────────
+// Every public endpoint (non-admin) must pass the shared secret.
+// Set the "API_SECRET" script property in GAS project settings.
+function checkApiSecret(secret) {
+  var stored = PropertiesService.getScriptProperties().getProperty("API_SECRET") || "";
+  return stored.length > 0 && secret === stored;
+}
+
 function isAuthorized(pass) {
   var stored = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD") || "";
   return stored.length > 0 && pass === stored;
 }
 
-// Normalise a string for case-insensitive comparison / key building.
-function norm(s) {
-  return String(s || "").trim().toLowerCase();
+// ── Token helpers ─────────────────────────────────────────────
+
+function secretPropKey(jurorId) { return "SECRET__" + jurorId; }
+
+function getPerJurorSecret(jurorId) {
+  return PropertiesService.getScriptProperties().getProperty(secretPropKey(jurorId));
+}
+function setPerJurorSecret(jurorId, secret) {
+  PropertiesService.getScriptProperties().setProperty(secretPropKey(jurorId), secret);
 }
 
-// Build a stable key from juryName + juryDept.
-// Used as a namespace prefix for PropertiesService keys.
-function jurorKey(juryName, juryDept) {
-  return norm(juryName) + "__" + norm(juryDept);
+function generateSecret() {
+  var bytes = "";
+  for (var i = 0; i < 16; i++) bytes += ("0" + Math.floor(Math.random() * 256).toString(16)).slice(-2);
+  return bytes;
+}
+
+// token = base64( jurorId + "__" + perJurorSecret )
+function buildToken(jurorId, secret) {
+  return Utilities.base64Encode(jurorId + "__" + secret);
+}
+
+// Returns { jurorId } or null.
+function verifyToken(token) {
+  if (!token) return null;
+  try {
+    var payload = Utilities.newBlob(Utilities.base64Decode(token)).getDataAsString();
+    var sep     = payload.indexOf("__");
+    if (sep < 0) return null;
+    var jurorId = payload.slice(0, sep);
+    var secret  = payload.slice(sep + 2);
+    var stored  = getPerJurorSecret(jurorId);
+    if (!stored || stored !== secret) return null;
+    return { jurorId: jurorId };
+  } catch (_) {
+    return null;
+  }
 }
 
 // ── Reset-unlock helpers ──────────────────────────────────────
-// After resetJuror is called, the upsert handler allows
-// all_submitted rows to be downgraded for RESET_UNLOCK_MINUTES.
 
-function markResetUnlock(juryName, juryDept) {
+function markResetUnlock(jurorId) {
   PropertiesService.getScriptProperties()
-    .setProperty("RESET_UNLOCK__" + jurorKey(juryName, juryDept), String(Date.now()));
+    .setProperty("RESET_UNLOCK__" + jurorId, String(Date.now()));
 }
 
-function isResetUnlockActive(juryName, juryDept) {
+function isResetUnlockActive(jurorId) {
   var v = PropertiesService.getScriptProperties()
-    .getProperty("RESET_UNLOCK__" + jurorKey(juryName, juryDept));
+    .getProperty("RESET_UNLOCK__" + jurorId);
   if (!v) return false;
   var ts = parseInt(v, 10);
   return Number.isFinite(ts) && (Date.now() - ts) <= RESET_UNLOCK_MINUTES * 60 * 1000;
@@ -135,32 +179,49 @@ function isResetUnlockActive(juryName, juryDept) {
 
 // ── PIN helpers ───────────────────────────────────────────────
 
-function pinKey(juryName, juryDept)      { return "PIN__"      + jurorKey(juryName, juryDept); }
-function lockedKey(juryName, juryDept)   { return "LOCKED__"   + jurorKey(juryName, juryDept); }
-function attemptsKey(juryName, juryDept) { return "ATTEMPTS__" + jurorKey(juryName, juryDept); }
+function pinKey(jurorId)      { return "PIN__"      + jurorId; }
+function lockedKey(jurorId)   { return "LOCKED__"   + jurorId; }
+function attemptsKey(jurorId) { return "ATTEMPTS__" + jurorId; }
 
-function getPin(n, d)       { return PropertiesService.getScriptProperties().getProperty(pinKey(n, d)); }
-function setPin(n, d, pin)  { PropertiesService.getScriptProperties().setProperty(pinKey(n, d), pin); }
-function isLocked(n, d)     { return PropertiesService.getScriptProperties().getProperty(lockedKey(n, d)) === "1"; }
-function lockAccount(n, d)  { PropertiesService.getScriptProperties().setProperty(lockedKey(n, d), "1"); }
+function getPin(id)       { return PropertiesService.getScriptProperties().getProperty(pinKey(id)); }
+function setPin(id, pin)  { PropertiesService.getScriptProperties().setProperty(pinKey(id), pin); }
+function isLocked(id)     { return PropertiesService.getScriptProperties().getProperty(lockedKey(id)) === "1"; }
+function lockAccount(id)  { PropertiesService.getScriptProperties().setProperty(lockedKey(id), "1"); }
 
-function getAttempts(n, d) {
-  return parseInt(PropertiesService.getScriptProperties().getProperty(attemptsKey(n, d)) || "0", 10);
+function getAttempts(id) {
+  return parseInt(PropertiesService.getScriptProperties().getProperty(attemptsKey(id)) || "0", 10);
 }
-function setAttempts(n, d, count) {
-  PropertiesService.getScriptProperties().setProperty(attemptsKey(n, d), String(count));
+function setAttempts(id, count) {
+  PropertiesService.getScriptProperties().setProperty(attemptsKey(id), String(count));
 }
-function clearLock(n, d) {
+function clearLock(id) {
   var props = PropertiesService.getScriptProperties();
-  props.deleteProperty(lockedKey(n, d));
-  props.deleteProperty(attemptsKey(n, d));
+  props.deleteProperty(lockedKey(id));
+  props.deleteProperty(attemptsKey(id));
 }
 
-// Generate a random 4-digit PIN string ("0000"–"9999").
 function generatePin() {
   var pin = "";
   for (var i = 0; i < 4; i++) pin += String(Math.floor(Math.random() * 10));
   return pin;
+}
+
+// ── jurorId → juryName / juryDept lookup ─────────────────────
+// We store name+dept at createPin time so myscores etc. can
+// filter the sheet without the client re-sending them.
+
+function jurorMetaKey(jurorId) { return "META__" + jurorId; }
+
+function setJurorMeta(jurorId, juryName, juryDept) {
+  PropertiesService.getScriptProperties()
+    .setProperty(jurorMetaKey(jurorId), juryName + "||" + juryDept);
+}
+
+function getJurorMeta(jurorId) {
+  var v = PropertiesService.getScriptProperties().getProperty(jurorMetaKey(jurorId));
+  if (!v) return null;
+  var parts = v.split("||");
+  return { juryName: parts[0] || "", juryDept: parts[1] || "" };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -170,19 +231,16 @@ function generatePin() {
 function doGet(e) {
   try {
     var action   = norm(e.parameter.action || "");
-    var juryName = (e.parameter.juryName || "").trim();
-    var juryDept = (e.parameter.juryDept || "").trim();
+    var token    = (e.parameter.token    || "").trim();
+    var jurorId  = (e.parameter.jurorId  || "").trim();
+    var apiSec   = (e.parameter.secret   || "").trim();
 
-    // ── export ────────────────────────────────────────────
-    // Returns all rows from the Evaluations sheet.
-    // Used exclusively by the admin panel.
+    // ── Admin endpoints (password-only, no apiSecret required) ─
     if (action === "export") {
       if (!isAuthorized(e.parameter.pass || "")) return respond({ status: "unauthorized" });
-
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(EVAL_SHEET);
       if (!sheet) return respond({ status: "ok", rows: [] });
-
       var values  = sheet.getDataRange().getValues();
       var headers = values.shift();
       var rows = values.map(function(r) {
@@ -193,11 +251,8 @@ function doGet(e) {
       return respond({ status: "ok", rows: rows });
     }
 
-    // ── initInfo ──────────────────────────────────────────
-    // Creates / refreshes the Info sheet from PROJECTS_DATA.
     if (action === "initinfo") {
       if (!isAuthorized(e.parameter.pass || "")) return respond({ status: "unauthorized" });
-
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var infoSheet = ss.getSheetByName(INFO_SHEET) || ss.insertSheet(INFO_SHEET);
       infoSheet.clear();
@@ -211,15 +266,89 @@ function doGet(e) {
       return respond({ status: "ok", message: "Info sheet refreshed with " + PROJECTS_DATA.length + " groups." });
     }
 
-    // ── loadDraft ─────────────────────────────────────────
-    // Returns a previously saved draft for a juror.
+    if (action === "resetpin") {
+      if (!isAuthorized(e.parameter.pass || "")) return respond({ status: "unauthorized" });
+      if (!jurorId) return respond({ status: "error", message: "jurorId required" });
+      PropertiesService.getScriptProperties().deleteProperty(pinKey(jurorId));
+      PropertiesService.getScriptProperties().deleteProperty(secretPropKey(jurorId));
+      clearLock(jurorId);
+      return respond({ status: "ok", message: "PIN cleared for " + jurorId });
+    }
+
+    // ── Public PIN endpoints (apiSecret required) ─────────────
+
+    if (action === "checkpin") {
+      if (!checkApiSecret(apiSec)) return respond({ status: "unauthorized" });
+      if (!jurorId) return respond({ status: "error", message: "jurorId required" });
+      return respond({ status: "ok", exists: getPin(jurorId) !== null });
+    }
+
+    if (action === "createpin") {
+      if (!checkApiSecret(apiSec)) return respond({ status: "unauthorized" });
+      if (!jurorId) return respond({ status: "error", message: "jurorId required" });
+      var juryName = (e.parameter.juryName || "").trim();
+      var juryDept = (e.parameter.juryDept || "").trim();
+
+      var existingPin = getPin(jurorId);
+      var pin, perSecret;
+      if (existingPin) {
+        pin       = existingPin;
+        perSecret = getPerJurorSecret(jurorId) || generateSecret();
+        setPerJurorSecret(jurorId, perSecret);
+      } else {
+        pin       = generatePin();
+        perSecret = generateSecret();
+        setPin(jurorId, pin);
+        setPerJurorSecret(jurorId, perSecret);
+      }
+      if (juryName) setJurorMeta(jurorId, juryName, juryDept);
+      var tok = buildToken(jurorId, perSecret);
+      return respond({ status: "ok", pin: pin, token: tok });
+    }
+
+    if (action === "verifypin") {
+      if (!checkApiSecret(apiSec)) return respond({ status: "unauthorized" });
+      if (!jurorId) return respond({ status: "error", message: "jurorId required" });
+      var enteredPin = String(e.parameter.pin || "").trim();
+
+      if (isLocked(jurorId)) {
+        return respond({ status: "ok", valid: false, locked: true, attemptsLeft: 0 });
+      }
+
+      var storedPin = getPin(jurorId);
+      if (!storedPin) {
+        // No PIN on record — graceful degradation: issue token.
+        var sec  = getPerJurorSecret(jurorId) || generateSecret();
+        setPerJurorSecret(jurorId, sec);
+        return respond({ status: "ok", valid: true, locked: false,
+          attemptsLeft: MAX_PIN_ATTEMPTS, token: buildToken(jurorId, sec) });
+      }
+
+      if (enteredPin === storedPin) {
+        setAttempts(jurorId, 0);
+        var sec2 = getPerJurorSecret(jurorId) || generateSecret();
+        setPerJurorSecret(jurorId, sec2);
+        return respond({ status: "ok", valid: true, locked: false,
+          attemptsLeft: MAX_PIN_ATTEMPTS, token: buildToken(jurorId, sec2) });
+      }
+
+      var attempts = getAttempts(jurorId) + 1;
+      setAttempts(jurorId, attempts);
+      var left = Math.max(0, MAX_PIN_ATTEMPTS - attempts);
+      if (left === 0) lockAccount(jurorId);
+      return respond({ status: "ok", valid: false, locked: left === 0, attemptsLeft: left });
+    }
+
+    // ── Token-gated GET endpoints ─────────────────────────────
+    var identity = verifyToken(token);
+    if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
+    var jid = identity.jurorId;
+    var meta = getJurorMeta(jid) || { juryName: "", juryDept: "" };
+
     if (action === "loaddraft") {
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
       var draftSheet = getOrCreateDraftSheet();
-      var row        = findDraftRow(draftSheet, makeDraftKey(juryName, juryDept));
+      var row        = findDraftRow(draftSheet, jid);
       if (!row) return respond({ status: "not_found" });
-
       try {
         return respond({ status: "ok", draft: JSON.parse(row[1]) });
       } catch (_) {
@@ -227,36 +356,24 @@ function doGet(e) {
       }
     }
 
-    // ── verify ────────────────────────────────────────────
-    // Returns how many groups a juror has all_submitted.
     if (action === "verify") {
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(EVAL_SHEET);
       if (!sheet) return respond({ status: "ok", submittedCount: 0 });
-
       var values = sheet.getDataRange().getValues();
-      values.shift(); // remove header
-
+      values.shift();
       var count = values.filter(function(r) {
-        return norm(r[0]) === norm(juryName)
-            && norm(r[1]) === norm(juryDept)
-            && String(r[11] || "").trim() === "all_submitted";
+        // col C (index 2) = jurorId
+        return String(r[2]).trim() === jid
+            && String(r[12] || "").trim() === "all_submitted"; // col M = index 12
       }).length;
-
       return respond({ status: "ok", submittedCount: count });
     }
 
-    // ── myscores ──────────────────────────────────────────
-    // Returns the best row per group for a juror.
     if (action === "myscores") {
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(EVAL_SHEET);
       if (!sheet) return respond({ status: "ok", rows: [] });
-
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return respond({ status: "ok", rows: [] });
 
@@ -265,92 +382,31 @@ function doGet(e) {
       var bestByGroup = {};
 
       values.forEach(function(r) {
-        if (norm(r[0]) !== norm(juryName) || norm(r[1]) !== norm(juryDept)) return;
-        var groupNo = String(r[3] || "").trim();
+        if (String(r[2]).trim() !== jid) return; // col C = jurorId
+        var groupNo = String(r[4] || "").trim();  // col E
         if (!groupNo) return;
         var prev = bestByGroup[groupNo];
         if (!prev) { bestByGroup[groupNo] = r; return; }
-        var newStatus  = String(r[11]    || "").trim();
-        var prevStatus = String(prev[11] || "").trim();
-        if ((pri[newStatus] || 0) > (pri[prevStatus] || 0)) { bestByGroup[groupNo] = r; return; }
-        if ((pri[newStatus] || 0) === (pri[prevStatus] || 0) && String(r[2]) > String(prev[2])) {
-          bestByGroup[groupNo] = r;
+        var ns = String(r[12]    || "").trim();   // col M = status
+        var ps = String(prev[12] || "").trim();
+        if ((pri[ns] || 0) > (pri[ps] || 0)) { bestByGroup[groupNo] = r; return; }
+        if ((pri[ns] || 0) === (pri[ps] || 0) && String(r[3]) > String(prev[3])) {
+          bestByGroup[groupNo] = r; // col D = timestamp
         }
       });
 
       var out = Object.keys(bestByGroup).map(function(g) {
         var r = bestByGroup[g];
         return {
-          juryName:    r[0],  juryDept:    r[1],  timestamp:   r[2],
-          projectId:   Number(r[3]),  projectName: r[4],
-          design:      r[5],  technical:   r[6],  delivery:    r[7],
-          teamwork:    r[8],  total:       r[9],  comments:    r[10],
-          status:      r[11], editingFlag: r[12] || "",
+          juryName:    r[0],  juryDept:    r[1],  jurorId:     r[2],
+          timestamp:   r[3],  projectId:   Number(r[4]),  projectName: r[5],
+          technical:   r[6],  design:      r[7],  delivery:    r[8],
+          teamwork:    r[9],  total:       r[10], comments:    r[11],
+          status:      r[12], editingFlag: r[13] || "",
         };
       }).sort(function(a, b) { return (a.projectId || 0) - (b.projectId || 0); });
 
       return respond({ status: "ok", rows: out });
-    }
-
-    // ── checkPin ──────────────────────────────────────────
-    // Returns { exists: true|false } — does a PIN exist for this juror?
-    if (action === "checkpin") {
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-      return respond({ status: "ok", exists: getPin(juryName, juryDept) !== null });
-    }
-
-    // ── createPin ─────────────────────────────────────────
-    // Generates and stores a new PIN for a first-time juror.
-    // Idempotent: if a PIN already exists it is returned unchanged.
-    if (action === "createpin") {
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-      var existing = getPin(juryName, juryDept);
-      if (existing) return respond({ status: "ok", pin: existing });
-      var pin = generatePin();
-      setPin(juryName, juryDept, pin);
-      return respond({ status: "ok", pin: pin });
-    }
-
-    // ── verifyPin ─────────────────────────────────────────
-    // Checks the entered PIN. Tracks failed attempts and locks
-    // the account after MAX_PIN_ATTEMPTS consecutive failures.
-    if (action === "verifypin") {
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-      var enteredPin = String(e.parameter.pin || "").trim();
-
-      if (isLocked(juryName, juryDept)) {
-        return respond({ status: "ok", valid: false, locked: true, attemptsLeft: 0 });
-      }
-
-      var storedPin = getPin(juryName, juryDept);
-      if (!storedPin) {
-        // No PIN on record — let them through (graceful degradation).
-        return respond({ status: "ok", valid: true, locked: false, attemptsLeft: MAX_PIN_ATTEMPTS });
-      }
-
-      if (enteredPin === storedPin) {
-        setAttempts(juryName, juryDept, 0); // reset counter on success
-        return respond({ status: "ok", valid: true, locked: false, attemptsLeft: MAX_PIN_ATTEMPTS });
-      }
-
-      // Wrong PIN — increment counter.
-      var attempts = getAttempts(juryName, juryDept) + 1;
-      setAttempts(juryName, juryDept, attempts);
-      var left = Math.max(0, MAX_PIN_ATTEMPTS - attempts);
-      if (left === 0) lockAccount(juryName, juryDept);
-      return respond({ status: "ok", valid: false, locked: left === 0, attemptsLeft: left });
-    }
-
-    // ── resetPin ──────────────────────────────────────────
-    // Admin-only: clears the PIN, lock, and attempt counter for
-    // a juror. They will receive a new PIN on their next login.
-    if (action === "resetpin") {
-      if (!isAuthorized(e.parameter.pass || "")) return respond({ status: "unauthorized" });
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
-      PropertiesService.getScriptProperties().deleteProperty(pinKey(juryName, juryDept));
-      clearLock(juryName, juryDept);
-      return respond({ status: "ok", message: "PIN cleared for " + juryName });
     }
 
     return respond({ status: "ok" });
@@ -368,61 +424,45 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
 
-    // ── saveDraft ─────────────────────────────────────────
-    if (data.action === "saveDraft") {
-      var juryName  = (data.juryName || "").trim();
-      var juryDept  = (data.juryDept || "").trim();
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
+    var identity = verifyToken(data.token || "");
+    if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
+    var jid  = identity.jurorId;
+    var meta = getJurorMeta(jid) || { juryName: "", juryDept: "" };
 
+    if (data.action === "saveDraft") {
       var draftSheet = getOrCreateDraftSheet();
-      var key        = makeDraftKey(juryName, juryDept);
       var json       = JSON.stringify(data.draft || {});
       var now        = new Date().toISOString();
-      var rowIdx     = findDraftRowIndex(draftSheet, key);
-
+      var rowIdx     = findDraftRowIndex(draftSheet, jid);
       if (rowIdx > 0) {
         draftSheet.getRange(rowIdx, 2, 1, 2).setValues([[json, now]]);
       } else {
-        draftSheet.appendRow([key, json, now]);
+        draftSheet.appendRow([jid, json, now]);
       }
       return respond({ status: "ok" });
     }
 
-    // ── deleteDraft ───────────────────────────────────────
     if (data.action === "deleteDraft") {
-      var juryName = (data.juryName || "").trim();
-      var juryDept = (data.juryDept || "").trim();
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
       var draftSheet = getOrCreateDraftSheet();
-      var rowIdx     = findDraftRowIndex(draftSheet, makeDraftKey(juryName, juryDept));
+      var rowIdx     = findDraftRowIndex(draftSheet, jid);
       if (rowIdx > 0) draftSheet.deleteRow(rowIdx);
       return respond({ status: "ok" });
     }
 
-    // ── deleteJurorData ───────────────────────────────────
-    // Removes the draft AND all evaluation rows for a juror.
-    // Called when the user discards their draft from the home page.
     if (data.action === "deleteJurorData") {
-      var juryName = (data.juryName || "").trim();
-      var juryDept = (data.juryDept || "").trim();
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
-      // Remove draft
       var draftSheet = getOrCreateDraftSheet();
-      var draftIdx   = findDraftRowIndex(draftSheet, makeDraftKey(juryName, juryDept));
+      var draftIdx   = findDraftRowIndex(draftSheet, jid);
       if (draftIdx > 0) draftSheet.deleteRow(draftIdx);
 
-      // Remove evaluation rows (iterate backwards to preserve row indices)
       var ss        = SpreadsheetApp.getActiveSpreadsheet();
       var evalSheet = ss.getSheetByName(EVAL_SHEET);
       var deleted   = 0;
       if (evalSheet) {
         var lastRow = evalSheet.getLastRow();
         if (lastRow >= 2) {
-          var values = evalSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+          var values = evalSheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
           for (var i = values.length - 1; i >= 0; i--) {
-            if (norm(values[i][0]) === norm(juryName) && norm(values[i][1]) === norm(juryDept)) {
+            if (String(values[i][2]).trim() === jid) { // col C
               evalSheet.deleteRow(i + 2);
               deleted++;
             }
@@ -432,50 +472,37 @@ function doPost(e) {
       return respond({ status: "ok", deleted: deleted });
     }
 
-    // ── resetJuror ────────────────────────────────────────
-    // Sets all rows for a juror → in_progress and writes
-    // EditingFlag = "editing". Also opens the downgrade unlock
-    // window so subsequent POSTs can downgrade all_submitted rows.
     if (data.action === "resetJuror") {
-      var juryName = (data.juryName || "").trim();
-      var juryDept = (data.juryDept || "").trim();
-      if (!juryName || !juryDept) return respond({ status: "error", message: "juryName and juryDept required" });
-
-      markResetUnlock(juryName, juryDept);
-
+      markResetUnlock(jid);
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(EVAL_SHEET);
       if (!sheet) return respond({ status: "ok", reset: 0 });
-
       var lastRow = sheet.getLastRow();
       if (lastRow < 2) return respond({ status: "ok", reset: 0 });
-
       var values = sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
       var reset  = 0;
-
       values.forEach(function(r, i) {
-        if (norm(r[0]) !== norm(juryName) || norm(r[1]) !== norm(juryDept)) return;
+        if (String(r[2]).trim() !== jid) return; // col C
         var rowNum = i + 2;
-        sheet.getRange(rowNum, 12).setValue("in_progress"); // Status column
-        sheet.getRange(rowNum, 13).setValue("editing");     // EditingFlag column
-        sheet.getRange(rowNum, 1, 1, NUM_COLS).setBackground("#fef9c3"); // yellow
+        sheet.getRange(rowNum, 13).setValue("in_progress"); // col M
+        sheet.getRange(rowNum, 14).setValue("editing");     // col N
+        sheet.getRange(rowNum, 1, 1, NUM_COLS).setBackground("#fef9c3");
         reset++;
       });
-
       return respond({ status: "ok", reset: reset });
     }
 
-    // ── Default: upsert evaluation rows ──────────────────
+    // ── Default: upsert evaluation rows ──────────────────────
     var ss    = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(EVAL_SHEET);
 
     if (!sheet) {
       sheet = ss.insertSheet(EVAL_SHEET);
       sheet.appendRow([
-        "Juror Name", "Department / Institution", "Timestamp",
+        "Juror Name", "Department / Institution", "Juror ID", "Timestamp",
         "Group No", "Group Name",
-        "Written (30)", "Technical (30)", "Oral (30)", "Teamwork (10)",
-        "Total (100)", "Comments", "Status", "EditingFlag",
+        "Technical (30)", "Written (30)", "Oral (30)", "Teamwork (10)",
+        "Total (100)", "Comments", "Status", "EditingFlag", "Secret",
       ]);
       sheet.getRange(1, 1, 1, NUM_COLS)
         .setFontWeight("bold").setBackground("#1d4ed8").setFontColor("white");
@@ -487,22 +514,22 @@ function doPost(e) {
       ? sheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues()
       : [];
 
-    // Build a row-index lookup: composite key → 1-based row number
-    function compositeKey(name, dept, groupNo) {
-      return norm(name) + "__" + norm(dept) + "__" + String(groupNo || "").trim();
+    // Upsert key: jurorId + groupNo (cols C + E → indices 2 + 4)
+    function compositeKey(jurorId, groupNo) {
+      return jurorId + "__" + String(groupNo || "").trim();
     }
     var index = {};
     existing.forEach(function(r, i) {
-      var k = compositeKey(r[0], r[1], r[3]);
-      if (k !== "____") index[k] = i + 2;
+      var k = compositeKey(String(r[2]).trim(), r[4]);
+      if (k !== "__") index[k] = i + 2;
     });
 
-    // Deduplicate incoming rows — keep the last one per key
-    // (the frontend may send the same group twice in one flush).
     var latestByKey = {};
     (data.rows || []).forEach(function(row) {
-      var k = compositeKey(row.juryName, row.juryDept, row.projectId);
-      if (k !== "____") latestByKey[k] = row;
+      // Security: only accept rows whose jurorId matches the token.
+      if (String(row.jurorId || "").trim() !== jid) return;
+      var k = compositeKey(jid, row.projectId);
+      latestByKey[k] = row;
     });
 
     var updated = 0, added = 0;
@@ -514,54 +541,40 @@ function doPost(e) {
       var existingRowNum = index[k];
 
       if (existingRowNum) {
-        var currentStatus = String(existing[existingRowNum - 2][11] || "");
+        var currentStatus = String(existing[existingRowNum - 2][12] || ""); // col M
+        var existingTs    = String(existing[existingRowNum - 2][3]  || ""); // col D
+        var incomingTs    = String(row.timestamp || "");
+        if (existingTs && incomingTs && incomingTs < existingTs) return;
 
-        // Reject stale writes: if the incoming timestamp is older than what's
-        // already in the sheet, skip this row entirely. This prevents a juror
-        // resuming from a stale localStorage draft from overwriting newer data
-        // they entered on another device. ISO 8601 strings are lexicographically
-        // comparable, so a simple string comparison works correctly.
-        var existingTs = String(existing[existingRowNum - 2][2] || "");
-        var incomingTs = String(row.timestamp || "");
-        if (existingTs && incomingTs && incomingTs < existingTs) {
-          // Incoming data is older — skip silently.
-          return;
-        }
-
-        // Block all_submitted → anything else unless the unlock window is open.
         if (currentStatus === "all_submitted" && newStatus !== "all_submitted") {
-          if (!isResetUnlockActive(row.juryName, row.juryDept)) {
+          if (!isResetUnlockActive(jid)) {
             newStatus = "all_submitted";
           }
         }
 
-        // EditingFlag carry-over:
-        //   all_submitted  → always clear the flag (editing session ended)
-        //   unlock active  → force "editing" (handles race condition where
-        //                     the rows POST arrives before resetJuror writes
-        //                     the flag into the sheet)
-        //   otherwise      → carry over whatever is in the sheet
         if (newStatus === "all_submitted") {
           newFlag = "";
-        } else if (isResetUnlockActive(row.juryName, row.juryDept)) {
+        } else if (isResetUnlockActive(jid)) {
           newFlag = "editing";
         } else {
-          newFlag = String(existing[existingRowNum - 2][12] || "");
+          newFlag = String(existing[existingRowNum - 2][13] || ""); // col N
         }
       }
 
-      // Background colour by status
       var bgColor =
-        newStatus === "in_progress"     ? "#fef9c3" :  // amber
-        newStatus === "group_submitted" ? "#dcfce7" :  // light green
-        newStatus === "all_submitted"   ? "#bbf7d0" :  // medium green
+        newStatus === "in_progress"     ? "#fef9c3" :
+        newStatus === "group_submitted" ? "#dcfce7" :
+        newStatus === "all_submitted"   ? "#bbf7d0" :
         "#ffffff";
 
+      var rowSecret = getPerJurorSecret(jid) || "";
+
+      // Column order: A B C D E F G H I J K L M N O
       var rowValues = [
-        row.juryName,  row.juryDept,    row.timestamp,
-        row.projectId, row.projectName,
-        row.design,    row.technical,   row.delivery,  row.teamwork,
-        row.total,     row.comments,    newStatus,     newFlag,
+        row.juryName,   row.juryDept,    jid,             row.timestamp,
+        row.projectId,  row.projectName,
+        row.technical,  row.design,      row.delivery,    row.teamwork,
+        row.total,      row.comments,    newStatus,       newFlag,      rowSecret,
       ];
 
       if (existingRowNum) {
@@ -573,7 +586,7 @@ function doPost(e) {
         sheet.appendRow(rowValues);
         var newRowNum = sheet.getLastRow();
         sheet.getRange(newRowNum, 1, 1, NUM_COLS).setBackground(bgColor);
-        index[k] = newRowNum; // update index for any subsequent rows in this batch
+        index[k] = newRowNum;
         added++;
       }
     });
@@ -601,10 +614,6 @@ function getOrCreateDraftSheet() {
     sheet.setColumnWidth(2, 420);
   }
   return sheet;
-}
-
-function makeDraftKey(juryName, juryDept) {
-  return norm(juryName) + "__" + norm(juryDept);
 }
 
 function findDraftRow(sheet, key) {
