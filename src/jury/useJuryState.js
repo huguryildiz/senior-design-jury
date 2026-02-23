@@ -465,6 +465,27 @@ export default function useJuryState({ startAtEval = false } = {}) {
     submitFinal(scores, comments);
   }, [scores, comments, submitFinal]);
 
+  // ── Load scores from cloud and show Done screen ───────────
+  // Used after PIN verification for already-submitted jurors.
+  // Fetches real scores so Done screen and Edit mode work correctly.
+  const loadScoresAndShowDone = useCallback(async (n, d) => {
+    let useScores   = makeEmptyScores();
+    let useComments = makeEmptyComments();
+    try {
+      const rows = await fetchMyScores(n, d);
+      if (rows && rows.length) {
+        const st = rowsToState(rows);
+        useScores   = st.scores;
+        useComments = st.comments;
+      }
+    } catch (_) {}
+    setDoneScores(useScores);
+    setDoneComments(useComments);
+    setScores(useScores);
+    setComments(useComments);
+    setStep("done");
+  }, []);
+
   // ── Re-submit from info screen (already-submitted juror) ──
   // Fetches the existing scores from Sheets, then enters edit mode.
   const handleResubmit = useCallback(async () => {
@@ -562,7 +583,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
 
     // If PIN already verified this session, skip straight to destination.
     if (isPinVerifiedInSession(n, d)) {
-      if (alreadySubmitted) { setStep("done"); return; }
+      if (alreadySubmitted) { loadScoresAndShowDone(n, d); return; }
       proceedToEval();
       return;
     }
@@ -571,7 +592,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
       const res = await checkPin(n, d);
       if (res.status !== "ok") {
         // Server error — degrade gracefully.
-        if (alreadySubmitted) { setStep("done"); return; }
+        if (alreadySubmitted) { loadScoresAndShowDone(n, d); return; }
         proceedToEval();
         return;
       }
@@ -591,16 +612,16 @@ export default function useJuryState({ startAtEval = false } = {}) {
           setStep("pin");
         } else {
           // PIN creation failed — proceed without PIN.
-          if (alreadySubmitted) { setStep("done"); return; }
+          if (alreadySubmitted) { loadScoresAndShowDone(n, d); return; }
           proceedToEval();
         }
       }
     } catch (_) {
       // Network unreachable — proceed without PIN.
-      if (alreadySubmitted) { setStep("done"); return; }
+      if (alreadySubmitted) { loadScoresAndShowDone(n, d); return; }
       proceedToEval();
     }
-  }, [alreadySubmitted, proceedToEval]);
+  }, [alreadySubmitted, proceedToEval, loadScoresAndShowDone]);
 
   // ── PIN submit ────────────────────────────────────────────
   const handlePinSubmit = useCallback(
@@ -622,7 +643,8 @@ export default function useJuryState({ startAtEval = false } = {}) {
           setPinError("");
           // Now decide where to go based on submission status.
           if (alreadySubmitted) {
-            setStep("done");
+            // Load scores from cloud so Done screen & Edit mode have real values.
+            loadScoresAndShowDone(n, d);
           } else {
             proceedToEval();
           }
@@ -642,7 +664,7 @@ export default function useJuryState({ startAtEval = false } = {}) {
         setPinError("Could not verify PIN. Please try again.");
       }
     },
-    [alreadySubmitted, attemptsLeft, proceedToEval]
+    [alreadySubmitted, attemptsLeft, proceedToEval, loadScoresAndShowDone]
   );
 
   // Called from PinStep when a new juror acknowledges their PIN.
@@ -650,11 +672,11 @@ export default function useJuryState({ startAtEval = false } = {}) {
     const { juryName: n, juryDept: d } = stateRef.current;
     markPinVerified(n, d);
     if (alreadySubmitted) {
-      setStep("done");
+      loadScoresAndShowDone(n, d);
     } else {
       proceedToEval();
     }
-  }, [alreadySubmitted, proceedToEval]);
+  }, [alreadySubmitted, proceedToEval, loadScoresAndShowDone]);
 
   // ── Full reset ────────────────────────────────────────────
   const resetAll = useCallback(() => {

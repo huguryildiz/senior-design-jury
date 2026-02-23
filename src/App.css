@@ -1017,20 +1017,17 @@ body {
     drop-shadow(0 0 36px rgba(59,130,246,.50));
 }
 
-/* Hint as an info chip */
+/* Hint as plain text line */
 .home-hint{
   margin-top:18px;
-  display:inline-flex;
+  display:flex;
   align-items:center;
-  gap:10px;
-  padding:10px 14px;
-  border-radius:999px;
-  background: rgba(255,255,255,0.55);
-  border: 1px solid rgba(148,163,184,0.35);
-  color: rgba(15,23,42,0.72);
-  font-size:14px;
-  line-height:1.3;
+  gap:6px;
+  color: rgba(15,23,42,0.60);
+  font-size:13px;
+  line-height:1.5;
   justify-content:center;
+  text-align:center;
 }
 
 .home-hint-ico{ opacity:.85; font-size:15px; }
@@ -2221,26 +2218,30 @@ body {
   margin-bottom: 20px;
 }
 
-/* PIN entry input */
-.pin-input-row {
-  margin: 16px 0;
+/* PIN entry — 4 individual boxes */
+.pin-boxes-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 20px 0 8px;
 }
 
-.pin-input {
-  width: 140px;
-  height: 56px;
+.pin-box {
+  width: 56px;
+  height: 64px;
   text-align: center;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: 0.3em;
   border: 2px solid var(--gray-200);
   border-radius: 12px;
   outline: none;
   font-family: 'DM Mono', monospace;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: #fff;
+  caret-color: transparent;
 }
 
-.pin-input:focus {
+.pin-box:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
 }

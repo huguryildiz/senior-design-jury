@@ -9,8 +9,80 @@
 //   "locked"   — Too many failed attempts. Admin must reset.
 // ============================================================
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { KeyIcon } from "../shared/Icons";
+
+// 4 individual boxes PIN input
+function PinBoxes({ onComplete }) {
+  const [digits, setDigits] = useState(["", "", "", ""]);
+  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+
+  function handleChange(i, val) {
+    const d = val.replace(/\D/g, "").slice(-1); // keep only last digit
+    const next = [...digits];
+    next[i] = d;
+    setDigits(next);
+    if (d && i < 3) {
+      inputRefs[i + 1].current?.focus();
+    }
+    if (next.every((x) => x !== "")) {
+      onComplete(next.join(""));
+    }
+  }
+
+  function handleKeyDown(i, e) {
+    if (e.key === "Backspace") {
+      if (digits[i] === "" && i > 0) {
+        const next = [...digits];
+        next[i - 1] = "";
+        setDigits(next);
+        inputRefs[i - 1].current?.focus();
+      } else {
+        const next = [...digits];
+        next[i] = "";
+        setDigits(next);
+      }
+    }
+    if (e.key === "ArrowLeft" && i > 0) inputRefs[i - 1].current?.focus();
+    if (e.key === "ArrowRight" && i < 3) inputRefs[i + 1].current?.focus();
+  }
+
+  function handlePaste(e) {
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (text.length === 4) {
+      setDigits(text.split(""));
+      inputRefs[3].current?.focus();
+      onComplete(text);
+    }
+    e.preventDefault();
+  }
+
+  return (
+    <div className="pin-boxes-row">
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={inputRefs[i]}
+          type="password"
+          inputMode="numeric"
+          maxLength={1}
+          value={d}
+          autoFocus={i === 0}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-lpignore="true"
+          data-form-type="other"
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={i === 0 ? handlePaste : undefined}
+          className="pin-box"
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function PinStep({
   pinStep,
@@ -21,8 +93,6 @@ export default function PinStep({
   onPinSubmit,       // (pin: string) => void
   onPinAcknowledge,  // () => void  — after juror saves their new PIN
 }) {
-  const [inputPin, setInputPin] = useState("");
-
   // ── New PIN: show once ────────────────────────────────────
   if (pinStep === "new") {
     return (
@@ -81,33 +151,9 @@ export default function PinStep({
           Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN to continue.
         </p>
 
-        <div className="pin-input-row">
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="••••"
-            value={inputPin}
-            onChange={(e) =>
-              setInputPin(e.target.value.replace(/\D/g, "").slice(0, 4))
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && inputPin.length === 4) onPinSubmit(inputPin);
-            }}
-            className="pin-input"
-            autoFocus
-          />
-        </div>
+        <PinBoxes onComplete={onPinSubmit} />
 
         {pinError && <div className="pin-error-msg">{pinError}</div>}
-
-        <button
-          className="btn-primary"
-          disabled={inputPin.length !== 4}
-          onClick={() => onPinSubmit(inputPin)}
-        >
-          Verify PIN
-        </button>
       </div>
     </div>
   );
