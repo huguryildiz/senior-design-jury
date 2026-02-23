@@ -2,34 +2,29 @@
 // ============================================================
 // Step 1 — Juror identity form.
 //
-// Design decisions:
-//   - Name and department cannot be changed once the juror
-//     starts scoring. A permanent static warning makes this clear
-//     upfront. There is no "Edit Name / Department" option anywhere.
-//   - The Start button always triggers PIN verification (even for
-//     already-submitted jurors — they must prove identity first).
-//   - Cloud draft and already-submitted banners show conditionally
-//     after the cloud lookup completes.
+// In the single-entry-point flow, this screen only collects
+// name and department. All cloud-draft decisions happen AFTER
+// PIN verification (see useJuryState.checkDraftAfterPin).
+//
+// Design:
+//   - Name and department cannot be changed once evaluation begins.
+//   - The Start button always triggers PIN verification.
+//   - No cloud draft banner here — shown post-PIN on cloudChoice step.
 // ============================================================
 
-import { PROJECTS } from "../config";
-import { isAllFilled } from "./useJuryState";
 import { HomeIcon } from "../shared/Icons";
 
 export default function InfoStep({
   juryName, setJuryName,
   juryDept, setJuryDept,
-  cloudChecking,
-  cloudDraft,
-  alreadySubmitted,
   onStart,
-  onResumeCloud,
-  onStartFresh,
-  onBack,         // back to landing page
+  onBack,
 }) {
-  const canStart = juryName.trim().length > 0
-                && juryDept.trim().length > 0
-                && !cloudChecking;
+  const canStart = juryName.trim().length > 0 && juryDept.trim().length > 0;
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && canStart) onStart();
+  }
 
   return (
     <div className="form-screen">
@@ -59,6 +54,7 @@ export default function InfoStep({
             id="jury-name"
             value={juryName}
             onChange={(e) => setJuryName(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="e.g. Prof. Dr. Jane Smith"
             autoComplete="name"
             autoFocus
@@ -71,65 +67,24 @@ export default function InfoStep({
             id="jury-dept"
             value={juryDept}
             onChange={(e) => setJuryDept(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="e.g. EEE Dept. / TED University"
           />
         </div>
 
-        {/* Cloud status indicators */}
-        {cloudChecking && (
-          <div className="cloud-checking">
-            🔍 Checking for saved progress…
-          </div>
-        )}
+        <p className="draft-device-note">
+          ℹ️ Your progress is saved automatically every 30 seconds. You can
+          continue from any device — just enter the same name and department.
+          A PIN will be assigned on first login to protect your evaluations.
+        </p>
 
-        {/* Already-submitted banner */}
-        {!cloudChecking && alreadySubmitted && (
-          <div className="cloud-draft-banner banner-done">
-            <div className="cloud-draft-title">✅ All evaluations submitted</div>
-            <div className="cloud-draft-sub">
-              {PROJECTS.length} / {PROJECTS.length} groups completed
-            </div>
-            <div className="cloud-draft-actions">
-              {/* Both actions go through onStart → PIN check first */}
-              <button className="btn-primary" onClick={onStart}>
-                View / Edit My Scores
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* In-progress cloud draft banner */}
-        {!cloudChecking && !alreadySubmitted && cloudDraft && (
-          <div className="cloud-draft-banner banner-draft">
-            <div className="cloud-draft-title">☁️ Saved progress found</div>
-            <div className="cloud-draft-sub">
-              {PROJECTS.filter((p) => isAllFilled(cloudDraft.scores || {}, p.id)).length}
-              {" / "}{PROJECTS.length} groups completed
-            </div>
-            <div className="cloud-draft-actions">
-              <button className="btn-primary"   onClick={onResumeCloud}>Resume</button>
-              <button className="btn-secondary" onClick={onStartFresh}>Start Fresh</button>
-            </div>
-          </div>
-        )}
-
-        {/* Normal start — shown when no draft/submitted state */}
-        {!alreadySubmitted && !cloudChecking && !cloudDraft && (
-          <>
-            <p className="draft-device-note">
-              ℹ️ Your progress is auto-saved every 30 seconds. You can continue from
-              any device using the same name and department. A PIN will be assigned
-              on first login to protect your evaluations.
-            </p>
-            <button
-              className="btn-primary"
-              disabled={!canStart}
-              onClick={onStart}
-            >
-              {cloudChecking ? "Checking…" : "Start Evaluation →"}
-            </button>
-          </>
-        )}
+        <button
+          className="btn-primary"
+          disabled={!canStart}
+          onClick={onStart}
+        >
+          Start Evaluation →
+        </button>
       </div>
     </div>
   );

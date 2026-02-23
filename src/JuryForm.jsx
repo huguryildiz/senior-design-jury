@@ -4,22 +4,56 @@
 // All state and business logic lives in useJuryState.
 //
 // Step routing:
-//   "info"  → InfoStep  (identity entry + cloud draft detection)
-//   "pin"   → PinStep   (PIN entry / first-time PIN display)
-//   "eval"  → EvalStep  (scoring form)
-//   "done"  → DoneStep  (confirmation + edit option)
+//   "info"        → InfoStep        (identity entry)
+//   "pin"         → PinStep         (PIN entry / first-time PIN display)
+//   "cloudChoice" → CloudChoiceStep (cloud vs local draft decision)
+//   "eval"        → EvalStep        (scoring form)
+//   "done"        → DoneStep        (confirmation + edit option)
 // ============================================================
 
-import useJuryState  from "./jury/useJuryState";
-import InfoStep      from "./jury/InfoStep";
-import PinStep       from "./jury/PinStep";
-import EvalStep      from "./jury/EvalStep";
-import DoneStep      from "./jury/DoneStep";
+import useJuryState from "./jury/useJuryState";
+import InfoStep     from "./jury/InfoStep";
+import PinStep      from "./jury/PinStep";
+import EvalStep     from "./jury/EvalStep";
+import DoneStep     from "./jury/DoneStep";
+import { PROJECTS, CRITERIA } from "./config";
+import { isAllFilled } from "./jury/useJuryState";
 import "./styles/jury.css";
 
-export default function JuryForm({ onBack, startAtEval = false }) {
+// ── Cloud vs local choice step ────────────────────────────────
+// Shown inline (not a separate file) because it's small and only
+// rendered from one place.
+function CloudChoiceStep({ juryName, cloudDraft, onResume, onFresh }) {
+  const completedCount = PROJECTS.filter((p) =>
+    isAllFilled(cloudDraft?.scores || {}, p.id)
+  ).length;
+
+  return (
+    <div className="form-screen">
+      <div className="info-card">
+        <h3>Resume Progress?</h3>
+        <p className="pin-intro">
+          We found a more recent save from another device for{" "}
+          <strong>{juryName}</strong>.
+        </p>
+        <div className="cloud-draft-banner banner-draft" style={{ marginTop: "1rem" }}>
+          <div className="cloud-draft-title">☁️ Cloud save</div>
+          <div className="cloud-draft-sub">
+            {completedCount} / {PROJECTS.length} groups completed
+          </div>
+          <div className="cloud-draft-actions">
+            <button className="btn-primary"   onClick={onResume}>Resume from cloud</button>
+            <button className="btn-secondary" onClick={onFresh}>Start fresh</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function JuryForm({ onBack }) {
   const {
-    step, setStep,
+    step,
     juryName, setJuryName,
     juryDept, setJuryDept,
     current, setCurrent,
@@ -27,7 +61,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
     groupSynced, editMode,
     progressPct, allComplete,
     doneScores, doneComments,
-    cloudDraft, cloudChecking, alreadySubmitted,
+    cloudDraft, alreadySubmitted,
     saveStatus,
     pinStep, pinError, newPin, attemptsLeft,
     handleScore, handleScoreBlur, handleCommentChange,
@@ -41,7 +75,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
     handlePinAcknowledge,
     saveCloudDraft,
     resetAll,
-  } = useJuryState({ startAtEval });
+  } = useJuryState();
 
   // ── Done ──────────────────────────────────────────────────
   if (step === "done") {
@@ -68,6 +102,18 @@ export default function JuryForm({ onBack, startAtEval = false }) {
         juryName={juryName}
         onPinSubmit={handlePinSubmit}
         onPinAcknowledge={handlePinAcknowledge}
+      />
+    );
+  }
+
+  // ── Cloud vs local choice ─────────────────────────────────
+  if (step === "cloudChoice") {
+    return (
+      <CloudChoiceStep
+        juryName={juryName}
+        cloudDraft={cloudDraft}
+        onResume={handleResumeCloud}
+        onFresh={handleStartFresh}
       />
     );
   }
@@ -104,12 +150,7 @@ export default function JuryForm({ onBack, startAtEval = false }) {
       setJuryName={setJuryName}
       juryDept={juryDept}
       setJuryDept={setJuryDept}
-      cloudChecking={cloudChecking}
-      cloudDraft={cloudDraft}
-      alreadySubmitted={alreadySubmitted}
       onStart={handleStart}
-      onResumeCloud={handleResumeCloud}
-      onStartFresh={handleStartFresh}
       onBack={onBack}
     />
   );
