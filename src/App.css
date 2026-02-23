@@ -2269,6 +2269,30 @@ body {
   margin: 12px 0;
 }
 
+.pin-box-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.pin-box {
+  width: 52px;
+  height: 58px;
+  text-align: center;
+  font-size: 22px;
+  border-radius: 14px;
+  border: 1px solid #d7dce3;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.pin-box:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
 /* ══════════════════════════════════════════════════════════
    EDITING FLAG STYLES (admin panel)
    ══════════════════════════════════════════════════════════ */

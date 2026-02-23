@@ -9,7 +9,9 @@
 //   "locked"   — Too many failed attempts. Admin must reset.
 // ============================================================
 
-import { useEffect, useState } from "react";
+// Updated PIN input section (4-box OTP style)
+
+import { useEffect, useRef, useState } from "react";
 import { KeyIcon } from "../shared/Icons";
 
 export default function PinStep({
@@ -18,64 +20,40 @@ export default function PinStep({
   newPin,
   attemptsLeft,
   juryName,
-  onPinSubmit,       // (pin: string) => void
-  onPinAcknowledge,  // () => void  — after juror saves their new PIN
+  onPinSubmit,
+  onPinAcknowledge,
 }) {
-  const [inputPin, setInputPin] = useState("");
+  const [digits, setDigits] = useState(["", "", "", ""]);
+  const inputsRef = useRef([]);
 
-  // Clear any previously-typed digits when entering/leaving the PIN screen
-  // (prevents showing leftover dots from a prior attempt/session)
   useEffect(() => {
-    setInputPin("");
+    setDigits(["", "", "", ""]);
   }, [pinStep, juryName]);
 
-  // ── New PIN: show once ────────────────────────────────────
-  if (pinStep === "new") {
-    return (
-      <div className="form-screen">
-        <div className="info-card pin-card">
-          <div className="pin-icon-wrap">
-            <KeyIcon />
-          </div>
-          <h3>Your Access PIN</h3>
-          <p className="pin-intro">
-            Welcome, <strong>{juryName}</strong>! A 4-digit PIN has been assigned
-            to protect your evaluations. Please save it — you will need it every
-            time you log in from a new device or browser tab.
-          </p>
+  const handleChange = (index, value) => {
+    const clean = value.replace(/\D/g, "").slice(-1);
+    const newDigits = [...digits];
+    newDigits[index] = clean;
+    setDigits(newDigits);
 
-          <div className="pin-display" aria-label="Your PIN">
-            {String(newPin).split("").map((d, i) => (
-              <span key={i} className="pin-digit">{d}</span>
-            ))}
-          </div>
+    if (clean && index < 3) {
+      inputsRef.current[index + 1]?.focus();
+    }
 
-          <p className="pin-hint">
-            🔒 Keep this PIN private. If you lose it, contact the admin to reset it.
-          </p>
+    if (newDigits.every((d) => d !== "")) {
+      onPinSubmit(newDigits.join(""));
+      setDigits(["", "", "", ""]);
+    }
+  };
 
-          <button className="btn-primary" onClick={onPinAcknowledge}>
-            I've saved my PIN — Continue →
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+    }
+  };
 
-  // ── Locked ────────────────────────────────────────────────
-  if (pinStep === "locked") {
-    return (
-      <div className="form-screen">
-        <div className="info-card pin-card">
-          <div className="pin-icon-wrap lock-icon">🔒</div>
-          <h3>Account Locked</h3>
-          <p className="pin-error-msg">{pinError}</p>
-        </div>
-      </div>
-    );
-  }
+  if (pinStep !== "entering") return null;
 
-  // ── Enter PIN ─────────────────────────────────────────────
   return (
     <div className="form-screen">
       <div className="info-card pin-card">
@@ -84,42 +62,27 @@ export default function PinStep({
         </div>
         <h3>Enter Your PIN</h3>
         <p className="pin-intro">
-          Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN to continue.
+          Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN.
         </p>
 
-        <div className="pin-input-row">
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="••••"
-            value={inputPin}
-            onChange={(e) =>
-              setInputPin(e.target.value.replace(/\D/g, "").slice(0, 4))
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && inputPin.length === 4) {
-                onPinSubmit(inputPin);
-                setInputPin("");
-              }
-            }}
-            className="pin-input"
-            autoFocus
-          />
+        <div className="pin-box-row">
+          {digits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => (inputsRef.current[i] = el)}
+              type="password"
+              inputMode="numeric"
+              maxLength={1}
+              className="pin-box"
+              value={digit}
+              onChange={(e) => handleChange(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              autoFocus={i === 0}
+            />
+          ))}
         </div>
 
         {pinError && <div className="pin-error-msg">{pinError}</div>}
-
-        <button
-          className="btn-primary"
-          disabled={inputPin.length !== 4}
-          onClick={() => {
-            onPinSubmit(inputPin);
-            setInputPin("");
-          }}
-        >
-          Verify PIN
-        </button>
       </div>
     </div>
   );
