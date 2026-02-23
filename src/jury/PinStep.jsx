@@ -9,7 +9,7 @@
 //   "locked"   — Too many failed attempts. Admin must reset.
 // ============================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyIcon } from "../shared/Icons";
 
 export default function PinStep({
@@ -22,6 +22,12 @@ export default function PinStep({
   onPinAcknowledge,  // () => void  — after juror saves their new PIN
 }) {
   const [inputPin, setInputPin] = useState("");
+
+  // Clear any previously-typed digits when entering/leaving the PIN screen
+  // (prevents showing leftover dots from a prior attempt/session)
+  useEffect(() => {
+    setInputPin("");
+  }, [pinStep, juryName]);
 
   // ── New PIN: show once ────────────────────────────────────
   if (pinStep === "new") {
@@ -92,7 +98,10 @@ export default function PinStep({
               setInputPin(e.target.value.replace(/\D/g, "").slice(0, 4))
             }
             onKeyDown={(e) => {
-              if (e.key === "Enter" && inputPin.length === 4) onPinSubmit(inputPin);
+              if (e.key === "Enter" && inputPin.length === 4) {
+                onPinSubmit(inputPin);
+                setInputPin("");
+              }
             }}
             className="pin-input"
             autoFocus
@@ -104,7 +113,10 @@ export default function PinStep({
         <button
           className="btn-primary"
           disabled={inputPin.length !== 4}
-          onClick={() => onPinSubmit(inputPin)}
+          onClick={() => {
+            onPinSubmit(inputPin);
+            setInputPin("");
+          }}
         >
           Verify PIN
         </button>
