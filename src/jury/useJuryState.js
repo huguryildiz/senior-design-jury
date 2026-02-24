@@ -138,10 +138,18 @@ export default function useJuryState() {
   const [attemptsLeft, setAttemptsLeft] = useState(3);
 
   // ── Refs ──────────────────────────────────────────────────
-  const doneFiredRef = useRef(false);
-  const instantRef   = useRef(null);
-  const stateRef     = useRef({});
-  stateRef.current   = { juryName, juryDept, scores, comments, groupSynced, current };
+  const doneFiredRef       = useRef(false);
+  const instantRef         = useRef(null);
+  const stateRef           = useRef({});
+  stateRef.current         = { juryName, juryDept, scores, comments, groupSynced, current };
+
+  // pendingScoresRef / pendingCommentsRef: updated synchronously inside handlers
+  // BEFORE React batches the state update. This prevents handleScoreBlur from
+  // reading stale closure values when onChange and onBlur fire in rapid succession.
+  const pendingScoresRef   = useRef(scores);
+  const pendingCommentsRef = useRef(comments);
+  pendingScoresRef.current   = scores;   // keep in sync on every render
+  pendingCommentsRef.current = comments;
 
   // ── Core write function ───────────────────────────────────
   // Builds rows from current scores and posts to Sheets.
@@ -209,7 +217,10 @@ export default function useJuryState() {
   // ── Score / comment handlers ──────────────────────────────
   const handleScore = useCallback(
     (pid, cid, val) => {
-      const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: val } };
+      const newScores = { ...pendingScoresRef.current, [pid]: { ...pendingScoresRef.current[pid], [cid]: val } };
+      // Update ref immediately so handleScoreBlur always sees the latest value,
+      // even if React hasn't re-rendered yet (onChange → onBlur race condition).
+      pendingScoresRef.current = newScores;
       setScores(newScores);
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
       let newGroupSynced = groupSynced;
@@ -217,41 +228,46 @@ export default function useJuryState() {
         newGroupSynced = { ...groupSynced, [pid]: false };
         setGroupSynced(newGroupSynced);
       }
-      instantWrite(newScores, comments);
+      instantWrite(newScores, pendingCommentsRef.current);
     },
-    [scores, comments, groupSynced, instantWrite]
+    [groupSynced, instantWrite]
   );
 
   const handleScoreBlur = useCallback(
     (pid, cid) => {
       const crit = CRITERIA.find((c) => c.id === cid);
-      const val  = scores[pid]?.[cid];
+      // Use pendingScoresRef — always has the latest value even if React
+      // hasn't committed the state update from the preceding onChange yet.
+      const latestScores = pendingScoresRef.current;
+      const val = latestScores[pid]?.[cid];
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
 
       // Clamp value to valid range.
-      let finalScores = scores;
+      let finalScores = latestScores;
       if (val !== "" && val !== undefined) {
         const n       = parseInt(val, 10);
         const clamped = Number.isFinite(n) ? Math.min(Math.max(n, 0), crit.max) : 0;
         if (String(clamped) !== String(val)) {
-          finalScores = { ...scores, [pid]: { ...scores[pid], [cid]: clamped } };
+          finalScores = { ...latestScores, [pid]: { ...latestScores[pid], [cid]: clamped } };
+          pendingScoresRef.current = finalScores;
           setScores(finalScores);
         }
       }
 
       // Guaranteed write: cancel pending debounce, write right now.
-      flushWrite(finalScores, comments);
+      flushWrite(finalScores, pendingCommentsRef.current);
     },
-    [scores, comments, flushWrite]
+    [flushWrite]
   );
 
   const handleCommentChange = useCallback(
     (pid, val) => {
-      const nc = { ...comments, [pid]: val };
+      const nc = { ...pendingCommentsRef.current, [pid]: val };
+      pendingCommentsRef.current = nc;
       setComments(nc);
-      instantWrite(scores, nc);
+      instantWrite(pendingScoresRef.current, nc);
     },
-    [scores, comments, instantWrite]
+    [instantWrite]
   );
 
   // ── Final submit ──────────────────────────────────────────
