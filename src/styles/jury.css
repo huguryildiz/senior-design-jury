@@ -1,9 +1,23 @@
 /* =============================================================
-   jury.css — Jury evaluation flow: info step, PIN step,
-   eval step, and done screen. Imported by JuryForm.jsx.
+   jury.css — FULL FEATURE PRODUCTION CLEAN
+   Architecture:
+   1. Layout Shell
+   2. Info Step
+   3. PIN Step
+   4. Eval Sticky Header
+   5. Navigation + Progress
+   6. Criteria Cards
+   7. Validation & Banners
+   8. Dialogs & Overlays
+   9. Done Screen
+   10. Responsive
    ============================================================= */
 
-/* ── Shared form screen shell ───────────────────────────────── */
+
+/* =============================================================
+   1. Layout Shell
+   ============================================================= */
+
 .form-screen {
   min-height: 100vh;
   background: var(--gray-50);
@@ -13,9 +27,18 @@
   margin: 0 auto;
 }
 
-/* Sticky header bar (used by InfoStep) */
+.eval-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* =============================================================
+   2. Info Step
+   ============================================================= */
+
 .form-header {
-  background: white;
+  background: #fff;
   border-bottom: 1px solid var(--gray-200);
   padding: 16px 20px;
   display: flex;
@@ -23,32 +46,28 @@
   gap: 16px;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 20;
 }
-.form-header h2  { font-size: 18px; font-weight: 700; line-height: 1.2; }
-.form-header p   { font-size: 13px; color: var(--gray-500); }
+
+.form-header h2 { font-size: 18px; font-weight: 700; }
+.form-header p  { font-size: 13px; color: var(--gray-500); }
 .form-header > div:nth-child(2) { flex: 1; }
 
-/* Back / home icon button */
 .back-btn {
-  background: var(--gray-100);
-  border: none;
-  border-radius: 8px;
   width: 36px;
   height: 36px;
-  font-size: 18px;
+  border-radius: 8px;
+  background: var(--gray-100);
+  border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gray-700);
-  flex-shrink: 0;
 }
 .back-btn:hover { background: var(--gray-200); }
 
-/* ── Info card (identity form, PIN card) ────────────────────── */
 .info-card {
-  background: white;
+  background: #fff;
   margin: 20px;
   border-radius: var(--radius);
   padding: 28px;
@@ -57,26 +76,34 @@
   flex-direction: column;
   gap: 16px;
 }
-.info-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
 
-/* Labelled input field */
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
 .field input {
   padding: 11px 14px;
   border: 2px solid var(--gray-200);
   border-radius: var(--radius);
   font-size: 15px;
-  font-family: 'DM Sans', sans-serif;
   outline: none;
 }
+
 .field input:focus { border-color: var(--blue); }
+
 .field input.invalid {
-  border-color: rgba(220,38,38,0.75) !important;
-  background: rgba(254,226,226,0.55);
+  border-color: rgba(220,38,38,.75);
+  background: rgba(254,226,226,.55);
 }
 
-/* Identity lock warning */
 .identity-warning {
   background: #fef3c7;
   border: 1px solid #fcd34d;
@@ -84,14 +111,11 @@
   padding: 10px 14px;
   font-size: 13px;
   color: #92400e;
-  line-height: 1.5;
 }
 
-/* Cloud status indicators on InfoStep */
-.cloud-checking   { font-size: 13px; color: #64748b; padding: 8px 0; }
-.draft-device-note { font-size: 12px; color: #94a3b8; margin-bottom: 14px; line-height: 1.5; }
 
-/* Cloud draft banner (in-progress progress found) */
+/* Cloud Draft Banner */
+
 .cloud-draft-banner {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
@@ -99,100 +123,65 @@
   padding: 14px 16px;
   margin-bottom: 14px;
 }
-.cloud-draft-title  { font-size: 14px; font-weight: 700; color: #1e40af; margin-bottom: 4px; }
-.cloud-draft-sub    { font-size: 12px; color: #3b82f6; margin-bottom: 12px; }
-.cloud-draft-actions { display: flex; gap: 10px; }
 
-/* Banner variant — all submitted (green) */
-.banner-done                            { background: var(--green-light) !important; border-color: #86efac !important; }
-.banner-done .cloud-draft-title,
-.banner-done .cloud-draft-sub          { color: var(--green) !important; }
-/* Banner variant — draft found (blue) */
-.banner-draft                           { background: #eff6ff; border-color: #bfdbfe; }
+.banner-done {
+  background: var(--green-light);
+  border-color: #86efac;
+}
 
-/* ── PIN step ───────────────────────────────────────────────── */
+.banner-draft {
+  background: #eff6ff;
+}
+
+
+/* =============================================================
+   3. PIN Step
+   ============================================================= */
+
 .pin-card {
   text-align: center;
   max-width: 380px;
   margin: 40px auto;
 }
 
-.pin-icon-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--blue-light);
-  color: var(--blue);
-  margin: 0 auto 16px;
-  font-size: 24px;
-}
-
-.pin-intro {
-  color: var(--gray-500);
-  font-size: 14px;
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-
-/* PIN shown once on first registration */
 .pin-display {
   display: flex;
   gap: 10px;
   justify-content: center;
   margin: 20px 0 16px;
 }
+
 .pin-digit {
   width: 52px;
   height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--blue);
-  color: white;
+  color: #fff;
   font-size: 28px;
   font-weight: 700;
   border-radius: 10px;
-  font-family: 'DM Mono', monospace;
-  box-shadow: 0 4px 12px rgba(29,78,216,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.pin-hint {
-  font-size: 13px;
-  color: var(--gray-500);
-  background: var(--amber-light);
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 20px;
-}
-
-/* 4-box PIN entry */
 .pin-boxes-row {
   display: flex;
   gap: 12px;
   justify-content: center;
-  margin: 20px 0 8px;
 }
+
 .pin-box {
   width: 56px;
   height: 64px;
-  text-align: center;
   font-size: 26px;
   font-weight: 700;
   border: 2px solid var(--gray-200);
   border-radius: 12px;
-  outline: none;
-  font-family: 'DM Mono', monospace;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  background: #fff;
-  caret-color: transparent;
+  text-align: center;
 }
+
 .pin-box:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
 }
 
 .pin-error-msg {
@@ -205,246 +194,156 @@
   margin: 12px 0;
 }
 
-/* ── Eval step — sticky combined header ─────────────────────── */
-.eval-screen { display: flex; flex-direction: column; }
+
+/* =============================================================
+   4. Eval Sticky Header (Current Design)
+   ============================================================= */
 
 .eval-sticky-header {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,.98);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 2px 10px rgba(15,23,42,0.07);
+  box-shadow: 0 2px 12px rgba(15,23,42,.06);
   padding: 10px 14px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-/* ── Row 1: Full-width juror identity bar ─────────────────── */
+/* Row 1 */
+
 .eval-identity-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 0 2px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #f1f5f9;
-  min-width: 0;
 }
-.eval-identity-icon { font-size: 14px; flex-shrink: 0; }
+
 .eval-identity-name {
   font-size: 13px;
   font-weight: 700;
   color: #0f172a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
 .eval-identity-dept {
   font-size: 12px;
   color: #64748b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
 .eval-identity-save {
   margin-left: auto;
-  flex-shrink: 0;
 }
 
-/* ── Row 2: [home btn] [group info card] ────────────────────── */
-.eval-top-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-/* Home / back button — 44×44 touch target, vertically centred with project card */
-.eval-back-btn {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #475569;
-  flex-shrink: 0;
-}
-.eval-back-btn:hover  { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
-.eval-back-btn:active { background: #dbeafe; }
-
-/* Group info card — fills remaining width */
-.eval-project-info {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 8px 12px;
-}
-.eval-project-name     { font-size: 15px; font-weight: 800; color: #0f172a; line-height: 1.2; }
-.eval-project-desc     { font-size: 12px; color: #475569; font-weight: 500; line-height: 1.3; }
-.eval-project-students { font-size: 11px; color: #94a3b8; line-height: 1.4; }
-
-/* Passive auto-save indicator */
 .autosave-dot {
   font-size: 10px;
   font-weight: 600;
-  white-space: nowrap;
-  line-height: 1.4;
 }
 .autosave-dot.idle   { color: #86efac; }
 .autosave-dot.saving { color: #f59e0b; }
 .autosave-dot.saved  { color: #166534; }
 
-/* Row 3: [← prev]  [group dropdown]  [next →]
-   Buttons are equal width (22% each), dropdown takes the rest.
-   box-sizing: border-box prevents overflow on narrow screens.   */
-.eval-nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  box-sizing: border-box;
-}
+/* Row 2 */
 
-/* Left side: prev / select / next */
-.eval-nav-row .nav-controls {
+.eval-top-row {
   display: flex;
-  align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
-/* Make buttons fixed width again inside combined layout */
-.eval-nav-row .group-nav-btn {
-  flex: 0 0 44px;
+.eval-back-btn {
   width: 44px;
-}
-
-.eval-nav-row .group-nav-select {
-  flex: 1 1 auto;
-}
-
-/* Right side: compact progress */
-.eval-nav-row .nav-progress {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.eval-progress-track.compact {
-  height: 10px;
-  width: 120px;
-  background: #f1f5f9;
-  border-radius: 999px;
-  position: relative;
-  overflow: hidden;
+.eval-project-info {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
 }
 
-.eval-progress-label.compact {
-  position: static;
+.eval-project-name {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.eval-project-desc {
+  font-size: 12px;
+  color: #475569;
+}
+
+.eval-project-students {
   font-size: 11px;
-  font-weight: 700;
-  color: #334155;
-  text-shadow: none;
+  color: #94a3b8;
+}
+
+
+/* =============================================================
+   5. Navigation + Progress
+   ============================================================= */
+
+.eval-nav-row {
+  display: grid;
+  grid-template-columns: 25% 50% 25%;
+  gap: 8px;
+  align-items: center;
 }
 
 .group-nav-btn {
-  flex: 0 0 22%;
-  width: 22%;
+  width: 100%;
   height: 48px;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   font-size: 22px;
   font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  box-sizing: border-box;
-  transition: background 0.12s, border-color 0.12s;
-  /* Prevent text overflow / wrapping on narrow screens */
-  overflow: hidden;
-  min-width: 0;
-}
-.group-nav-btn:hover:not(:disabled) { background: #eff6ff; border-color: #93c5fd; }
-.group-nav-btn:active:not(:disabled){ background: #dbeafe; }
-.group-nav-btn:disabled             { opacity: 0.35; cursor: not-allowed; }
-
-.group-nav-select {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 48px;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  padding: 0 12px;
-  font-weight: 700;
-  font-size: 14px;
-  color: #0f172a;
-  outline: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  box-sizing: border-box;
-  cursor: pointer;
-}
-.group-nav-select:focus {
-  border-color: rgba(29,78,216,0.55);
-  box-shadow: 0 0 0 3px rgba(29,78,216,0.10);
-}
-
-/* Segment progress bar row */
-.eval-seg-bar { display: flex; align-items: center; gap: 3px; }
-.eval-seg {
-  width: 28px;
-  height: 26px;
-  border-radius: 6px;
-  border: 1.5px solid #e2e8f0;
-  background: #f8fafc;
-  font-size: 11px;
-  font-weight: 700;
-  color: #94a3b8;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 140ms;
+  cursor: pointer;
 }
-.eval-seg.active           { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
-.eval-seg.done             { border-color: #22c55e; background: #dcfce7; color: #166534; }
-.eval-seg.done.active      { border-color: #16a34a; background: #bbf7d0; }
-.eval-seg-count            { font-size: 11px; font-weight: 700; color: #64748b; margin-left: 4px; white-space: nowrap; }
 
-/* Overall progress bar */
-.eval-progress-wrap  { padding: 2px 0 4px; }
+.group-nav-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.group-nav-select {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 0 12px;
+  font-weight: 700;
+}
+
+.eval-progress-wrap { padding-top: 4px; }
+
 .eval-progress-track {
-  position: relative;
   height: 22px;
   background: #f1f5f9;
   border-radius: 999px;
+  position: relative;
   overflow: hidden;
 }
+
 .eval-progress-fill {
   height: 100%;
+  transition: width .4s ease;
   border-radius: 999px;
-  transition: width 400ms ease, background 400ms ease;
-  position: absolute;
-  top: 0; left: 0;
 }
+
 .eval-progress-label {
   position: absolute;
   inset: 0;
@@ -453,16 +352,13 @@
   justify-content: center;
   font-size: 11px;
   font-weight: 800;
-  color: #1e293b;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.7);
 }
 
-/* Hide segment buttons on small screens */
-@media (max-width: 640px) { .desktop-only { display: none !important; } }
 
-/* ── Eval step — criteria cards ─────────────────────────────── */
+/* =============================================================
+   6. Criteria Cards
+   ============================================================= */
+
 .eval-body {
   padding: 12px 20px 32px;
   display: flex;
@@ -471,66 +367,34 @@
 }
 
 .crit-card {
-  background: white;
+  background: #fff;
   border-radius: var(--radius);
   padding: 18px;
   box-shadow: var(--shadow);
 }
+
 .crit-card.invalid {
-  border: 2px solid rgba(220,38,38,0.55);
-  background: rgba(254,242,242,0.55);
+  border: 2px solid rgba(220,38,38,.55);
+  background: rgba(254,242,242,.55);
 }
-.crit-card.invalid .crit-label { color: #991b1b; }
 
 .crit-header {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.crit-label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.score-input-row {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
 }
-.crit-label { font-size: 15px; font-weight: 700; color: var(--gray-900); }
-.crit-max   { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
 
-/* Rubric toggle button */
-.rubric-btn {
-  background: var(--blue-light);
-  color: var(--blue);
-  border: none;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.rubric-btn:hover { background: #bfdbfe; }
-
-/* Rubric table */
-.rubric-table {
-  background: var(--gray-50);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 12px;
-  border: 1px solid var(--gray-200);
-}
-.rubric-row {
-  display: grid;
-  grid-template-columns: 60px 80px 1fr;
-  gap: 0;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--gray-200);
-  font-size: 12.5px;
-  align-items: start;
-}
-.rubric-row:last-child { border-bottom: none; }
-.rubric-range          { font-family: 'DM Mono', monospace; font-weight: 500; color: var(--blue); }
-.rubric-level          { font-weight: 700; color: var(--gray-700); }
-.rubric-desc           { color: var(--gray-500); line-height: 1.4; }
-
-/* Score input + bar */
-.score-input-row { display: flex; align-items: center; gap: 12px; }
 .score-input {
   width: 72px;
   padding: 10px;
@@ -539,74 +403,32 @@
   font-size: 18px;
   font-weight: 700;
   text-align: center;
-  font-family: 'DM Mono', monospace;
-  outline: none;
-  flex-shrink: 0;
 }
-.score-input:focus   { border-color: var(--blue); }
-.score-input.invalid { border-color: rgba(220,38,38,0.75) !important; background: rgba(254,226,226,0.55); }
 
-.score-bar-wrap { flex: 1; height: 8px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
-.score-bar      { display: block; height: 100%; background: linear-gradient(90deg, var(--blue) 0%, #6366f1 100%); border-radius: 99px; transition: width .3s ease; }
+.score-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--gray-100);
+  border-radius: 99px;
+  overflow: hidden;
+}
 
-.score-pct { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--gray-500); min-width: 60px; text-align: right; }
+.score-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), #6366f1);
+}
 
-/* Validation hint */
 .required-hint {
-  margin-top: 8px;
   font-size: 12px;
-  color: rgba(220,38,38,0.9);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.required-hint::before { content: "⚠️"; font-size: 13px; line-height: 1; }
-
-/* Comment textarea */
-.comment-card textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 2px solid var(--gray-200);
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: 'DM Sans', sans-serif;
-  resize: vertical;
-  outline: none;
-  margin-top: 10px;
-  color: var(--gray-900);
-}
-.comment-card textarea:focus   { border-color: var(--blue); }
-.comment-card textarea.invalid { border-color: rgba(220,38,38,0.75) !important; background: rgba(254,226,226,0.55); }
-
-/* Running total bar */
-.total-bar { background: var(--gray-900); color: white; border-radius: var(--radius); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
-.total-score      { font-size: 22px; font-family: 'DM Mono', monospace; font-weight: 700; }
-.total-score.high { color: #4ade80; }
-.total-score.mid  { color: #fbbf24; }
-
-/* Submit incomplete warning */
-.submit-warning {
-  margin-top: 10px;
-  background: rgba(254,226,226,0.7);
-  border: 1px solid rgba(220,38,38,0.35);
-  color: #991b1b;
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.submit-warning::before { content: "⚠️"; font-size: 14px; line-height: 1; }
-
-/* Edit mode amber banner */
-.edit-mode-banner {
-  background: #fef3c7 !important;
-  border-color: #f59e0b !important;
-  color: #92400e !important;
+  color: rgba(220,38,38,.9);
+  margin-top: 8px;
 }
 
-/* Group completed banner */
+
+/* =============================================================
+   7. Banners & Validation
+   ============================================================= */
+
 .group-done-banner {
   background: #dcfce7;
   border: 1px solid #86efac;
@@ -614,63 +436,67 @@
   padding: 10px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: #166534;
-  margin-bottom: 4px;
 }
 
-/* Back menu overlay (exit confirmation) */
+.edit-mode-banner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+}
+
+.submit-warning {
+  background: rgba(254,226,226,.7);
+  border: 1px solid rgba(220,38,38,.35);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+
+/* =============================================================
+   8. Overlays & Dialogs
+   ============================================================= */
+
 .back-menu-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15,23,42,0.45);
+  background: rgba(15,23,42,.45);
   backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 0 0 24px;
 }
+
 .back-menu {
   background: #fff;
   border-radius: 20px;
-  padding: 24px 20px 20px;
+  padding: 24px 20px;
   width: min(420px, 96vw);
+}
+
+.spd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(6px);
+  z-index: 300;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 20px 60px rgba(15,23,42,0.25);
-}
-.back-menu-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
-.back-menu-sub   { font-size: 13px; color: #64748b; margin: 0 0 6px; }
-.back-menu-btn {
-  width: 100%;
-  padding: 13px 16px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  text-align: left;
-}
-.back-menu-btn.primary   { background: #0f172a; color: #fff; }
-.back-menu-btn.primary:hover  { background: #1e293b; }
-.back-menu-btn.secondary { background: #f1f5f9; color: #0f172a; }
-.back-menu-btn.secondary:hover { background: #e2e8f0; }
-.back-menu-btn.ghost     { background: transparent; color: #64748b; font-weight: 500; text-align: center; }
-.back-menu-btn.ghost:hover { color: #0f172a; }
-
-/* Submit error */
-.submit-error-msg {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #991b1b;
-  margin-bottom: 10px;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ── Done screen ────────────────────────────────────────────── */
+.spd-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: min(440px, 100%);
+}
+
+
+/* =============================================================
+   9. Done Screen
+   ============================================================= */
+
 .done-screen {
   min-height: 100vh;
   background: var(--gray-50);
@@ -679,136 +505,35 @@
   justify-content: center;
   padding: 24px;
 }
+
 .done-card {
-  background: white;
+  background: #fff;
   border-radius: 20px;
   padding: 40px;
   max-width: 440px;
   width: 100%;
   text-align: center;
   box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
-.done-icon     { font-size: 48px; filter: drop-shadow(0 6px 14px rgba(34,197,94,.35)); }
-.done-card h2  { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-.done-subtitle { font-size: 14px; color: var(--gray-500); line-height: 1.5; }
-.done-note     { margin-top: 6px; font-size: 13px; color: rgba(100,116,139,.95); }
 
-.done-summary {
-  background: var(--gray-50);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 4px 0;
-}
-.done-row          { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; border-bottom: 1px solid var(--gray-200); }
-.done-row:last-child { border-bottom: none; }
-.done-row-left     { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.done-row-name     { font-size: 13px; font-weight: 600; color: var(--gray-900); text-align: left; }
-.done-row-desc     { font-size: 11px; color: #94a3b8; text-align: left; }
-.done-score        { font-weight: 700; color: var(--blue); font-family: 'DM Mono', monospace; }
-.done-actions      { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
 
-/* Done screen cloud verify states */
-.done-verify-pending { font-size: 13px; color: #64748b; margin: 6px 0; }
-.done-verify-ok      { font-size: 13px; color: #166534; font-weight: 600; margin: 6px 0; }
-.done-verify-warn    { font-size: 12px; color: #b45309; margin: 6px 0; line-height: 1.5; }
+/* =============================================================
+   10. Responsive
+   ============================================================= */
 
-/* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .eval-body     { padding: 12px 12px 28px; }
-  .rubric-row    { grid-template-columns: 50px 70px 1fr; font-size: 11.5px; }
-  .group-nav-btn    { height: 44px; border-radius: 12px; font-size: 20px; }
-  .group-nav-select { height: 44px; border-radius: 12px; font-size: 13px; padding: 0 10px; }
-}
 
+  .eval-body {
+    padding: 12px;
+  }
 
+  .group-nav-btn {
+    height: 44px;
+    font-size: 20px;
+  }
 
-/* ── SheetsProgressDialog ───────────────────────────────────── */
-/* Full-screen modal overlay shown after PIN verification.       */
-/* Always displayed so the juror sees the server-side state.     */
-.spd-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(6px);
-  z-index: 300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.spd-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 28px 24px 24px;
-  width: min(440px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
-}
-
-.spd-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.spd-icon  { font-size: 32px; line-height: 1; flex-shrink: 0; }
-.spd-title { font-size: 17px; font-weight: 700; color: #0f172a; }
-.spd-sub   { font-size: 13px; color: #64748b; margin-top: 3px; }
-
-/* Per-group status rows */
-.spd-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 12px 14px;
-  border: 1px solid #e2e8f0;
-}
-.spd-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-.spd-row-name  { flex: 1; font-weight: 600; color: #1e293b; }
-.spd-row-total { font-family: 'DM Mono', monospace; font-size: 12px; color: #64748b; min-width: 48px; text-align: right; }
-.spd-chip {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.spd-empty {
-  font-size: 13px;
-  color: #64748b;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px 14px;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.spd-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.spd-actions .btn-primary,
-.spd-actions .btn-secondary {
-  width: 100%;
-  padding: 13px;
-  font-size: 15px;
-  border-radius: 12px;
+  .group-nav-select {
+    height: 44px;
+    font-size: 13px;
+  }
 }

@@ -86,59 +86,63 @@ export default function EvalStep({
           </span>
         </div>
 
-        {/* Row 2: group info */}
+        {/* Row 2: group label + project name (single line, scrollable) */}
         <div className="eval-project-info">
-          <div className="eval-project-name">{project.name}</div>
-          {project.desc && (
-            <div className="eval-project-desc">{project.desc}</div>
-          )}
-          {APP_CONFIG.showStudents && project.students?.length > 0 && (
-            <div className="eval-project-students">
-              👥 {project.students.join(" · ")}
-            </div>
-          )}
+          <span className="eval-project-label">
+            Group {current + 1}
+          </span>
+
+          <span className="eval-project-name">
+            {project.name}
+          </span>
         </div>
 
-        {/* Row 3: prev | dropdown | next + progress */}
-        <div className="eval-nav-row combined">
-          <div className="nav-controls">
-            <button
-              className="group-nav-btn"
-              onClick={goPrev}
-              disabled={current === 0}
-              aria-label="Previous group"
-            >
-              ←
-            </button>
-
-            <select
-              className="group-nav-select"
-              value={current}
-              onChange={(e) => onNavigate(Number(e.target.value))}
-            >
-              {PROJECTS.map((p, i) => (
-                <option key={p.id} value={i}>{groupLabel(p, i)}</option>
-              ))}
-            </select>
-
-            <button
-              className="group-nav-btn"
-              onClick={goNext}
-              disabled={current === PROJECTS.length - 1}
-              aria-label="Next group"
-            >
-              →
-            </button>
+        {/* Row 2b: students (separate scroll row) */}
+        {APP_CONFIG.showStudents && project.students?.length > 0 && (
+          <div className="eval-project-students">
+            👥 {project.students.join(" · ")}
           </div>
+        )}
 
-          <div className="nav-progress">
-            <div className="eval-progress-track compact">
-              <div
-                className="eval-progress-fill"
-                style={{ width: `${progressPct}%`, background: progressGradient(progressPct) }}
-              />
-            </div>
-            <span className="eval-progress-label compact">{progressPct}%</span>
+        {/* Row 3: prev | dropdown | next (25% / 50% / 25%) */}
+        <div className="eval-nav-row">
+          <button
+            className="group-nav-btn"
+            onClick={goPrev}
+            disabled={current === 0}
+            aria-label="Previous group"
+          >
+            ←
+          </button>
+
+          <select
+            className="group-nav-select"
+            value={current}
+            onChange={(e) => onNavigate(Number(e.target.value))}
+          >
+            {PROJECTS.map((p, i) => (
+              <option key={p.id} value={i}>{groupLabel(p, i)}</option>
+            ))}
+          </select>
+
+          <button
+            className="group-nav-btn"
+            onClick={goNext}
+            disabled={current === PROJECTS.length - 1}
+            aria-label="Next group"
+          >
+            →
+          </button>
+        </div>
+
+        {/* Row 4: progress bar (full width) */}
+        <div className="eval-progress-wrap">
+          <div className="eval-progress-track">
+            <div
+              className="eval-progress-fill"
+              style={{ width: `${progressPct}%`, background: progressGradient(progressPct) }}
+            />
+            <span className="eval-progress-label">{progressPct}%</span>
           </div>
         </div>
 
