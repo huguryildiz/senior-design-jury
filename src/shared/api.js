@@ -51,31 +51,17 @@ export function clearToken() {
 }
 
 // ── Fire-and-forget POST ──────────────────────────────────────
-// ── Fire-and-forget POST ──────────────────────────────────────
 export async function postToSheet(body) {
   if (!SCRIPT_URL) return;
-
   const token = getToken();
-  const payload = JSON.stringify({ ...body, token });
-
   try {
-    // Prefer sendBeacon: more reliable for instant writes (tab switch / close).
-    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-      const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
-      navigator.sendBeacon(SCRIPT_URL, blob);
-      return;
-    }
-
-    // Fallback: fire-and-forget POST. Keep it a "simple" request.
     await fetch(SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: payload,
+      method:  "POST",
+      mode:    "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ ...body, token }),
     });
-  } catch (_) {
-    // swallow errors (fire-and-forget)
-  }
+  } catch (_) {}
 }
 
 // ── Authenticated GET ─────────────────────────────────────────
@@ -97,12 +83,7 @@ export async function getFromSheet(params) {
 
 // ── Token-gated GET ───────────────────────────────────────────
 export async function getFromSheetAuth(params) {
-  const json = await getFromSheet({ ...params, token: getToken() });
-  if (json && json.status === "unauthorized") {
-    clearToken();
-    throw new Error("unauthorized");
-  }
-  return json;
+  return getFromSheet({ ...params, token: getToken() });
 }
 
 // ── Row builder ───────────────────────────────────────────────

@@ -188,6 +188,19 @@
 .comment-cell              { font-size: 12px; color: var(--gray-500); max-width: 200px; }
 
 /* ── Jurors tab ─────────────────────────────────────────────── */
+.jurors-tab-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+
+.jurors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+  min-width: 320px;
+}
+
 .juror-filter-bar {
   display: flex;
   gap: 10px;
@@ -230,36 +243,36 @@
   padding: 2px 4px;
 }
 
-.admin-screen .juror-card {
+.juror-card {
   background: white;
   border-radius: var(--radius);
   padding: 18px;
   box-shadow: var(--shadow);
 }
-.admin-screen .juror-card-editing { border: 1.5px solid #fcd34d !important; background: #fffbeb !important; }
-.admin-screen .juror-card-header  { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
-.admin-screen .juror-name         { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+.juror-card-editing { border: 1.5px solid #fcd34d !important; background: #fffbeb !important; }
+.juror-card-header  { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.juror-name         { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
 .juror-dept         { font-size: 13px; color: var(--gray-500); margin-bottom: 12px; }
-.admin-screen .juror-dept-inline  { font-size: 13px; color: #94a3b8; font-weight: 400; margin-left: 4px; }
-.admin-screen .juror-meta         { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-.admin-screen .juror-last-submit       { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.admin-screen .juror-last-submit-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
-.admin-screen .juror-last-submit-time  { font-size: 12px; color: #475569; font-weight: 600; font-variant-numeric: tabular-nums; }
-.admin-screen .juror-progress-wrap     { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.admin-screen .juror-progress-bar-bg   { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
-.admin-screen .juror-progress-bar-fill { height: 100%; border-radius: 999px; transition: width 300ms; }
-.admin-screen .juror-progress-label    { font-size: 12px; font-weight: 700; color: #475569; min-width: 34px; text-align: right; }
+.juror-dept-inline  { font-size: 13px; color: #94a3b8; font-weight: 400; margin-left: 4px; }
+.juror-meta         { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.juror-last-submit       { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.juror-last-submit-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+.juror-last-submit-time  { font-size: 12px; color: #475569; font-weight: 600; font-variant-numeric: tabular-nums; }
+.juror-progress-wrap     { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.juror-progress-bar-bg   { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.juror-progress-bar-fill { height: 100%; border-radius: 999px; transition: width 300ms; }
+.juror-progress-label    { font-size: 12px; font-weight: 700; color: #475569; min-width: 34px; text-align: right; }
 
-.admin-screen .juror-projects  { display: flex; flex-direction: column; gap: 6px; }
-.admin-screen .juror-row       { display: flex; align-items: center; gap: 8px; }
-.admin-screen .juror-row span:first-child { flex: 1; }
-.admin-screen .juror-row-main  { flex: 1; display: flex; flex-direction: column; gap: 1px; }
-.admin-screen .juror-row-name  { font-size: 13px; font-weight: 600; color: #0f172a; }
-.admin-screen .juror-row-desc  { font-size: 11px; color: #64748b; }
-.admin-screen .juror-score     { font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); }
+.juror-projects  { display: flex; flex-direction: column; gap: 6px; }
+.juror-row       { display: flex; align-items: center; gap: 8px; }
+.juror-row span:first-child { flex: 1; }
+.juror-row-main  { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.juror-row-name  { font-size: 13px; font-weight: 600; color: #0f172a; }
+.juror-row-desc  { font-size: 11px; color: #64748b; }
+.juror-score     { font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); }
 
 /* PIN reset button in juror cards */
-.admin-screen .pin-reset-btn {
+.pin-reset-btn {
   margin-top: 6px;
   padding: 4px 10px;
   font-size: 12px;
@@ -272,7 +285,7 @@
   transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
-.admin-screen .pin-reset-btn:hover { background: var(--amber-light); border-color: #fcd34d; color: var(--amber); }
+.pin-reset-btn:hover { background: var(--amber-light); border-color: #fcd34d; color: var(--amber); }
 
 /* PIN reset toast */
 .pin-reset-toast {
@@ -399,30 +412,4 @@
   .rank-card { flex-wrap: wrap; }
   .juror-filter-bar { flex-direction: column; }
   .juror-filter-select, .juror-search-wrap { width: 100%; }
-}
-
-/* v8: Jurors tab responsive fix */
-@media (max-width: 640px) {
-  .admin-screen .juror-card-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .admin-screen .juror-meta {
-    align-items: flex-start;
-  }
-  .admin-screen .juror-progress-wrap {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .admin-screen .juror-progress-label {
-    text-align: left;
-    min-width: 0;
-  }
-  .admin-screen .juror-row {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .admin-screen .juror-row-main {
-    min-width: 220px;
-  }
 }

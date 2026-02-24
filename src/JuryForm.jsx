@@ -34,6 +34,7 @@ export default function JuryForm({ onBack }) {
     progressPct, allComplete,
     doneScores, doneComments,
     sheetProgress,
+    saveStatus,
     pinStep, pinError, newPin, attemptsLeft,
     handleScore, handleScoreBlur, handleCommentChange,
     handleStart,
@@ -43,7 +44,8 @@ export default function JuryForm({ onBack }) {
     handleEditScores,
     handleFinalSubmit,
     handlePinSubmit,
-    handlePinAcknowledge,    resetAll,
+    handlePinAcknowledge,
+    resetAll,
   } = useJuryState();
 
   // ── Done ────────────────────────────────────────────────
@@ -105,7 +107,9 @@ export default function JuryForm({ onBack }) {
           groupSynced={groupSynced}
           editMode={editMode}
           progressPct={progressPct}
-          allComplete={allComplete}          handleScore={handleScore}
+          allComplete={allComplete}
+          saveStatus={saveStatus}
+          handleScore={handleScore}
           handleScoreBlur={handleScoreBlur}
           handleCommentChange={handleCommentChange}
           handleFinalSubmit={handleFinalSubmit}

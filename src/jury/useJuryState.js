@@ -2,36 +2,16 @@
 // ============================================================
 // Custom hook — owns ALL state and side-effects for the jury flow.
 //
-// ── jurorId ──────────────────────────────────────────────────
-// Derived from generateId(name, dept): deterministic 8-hex hash.
-// Computed once name+dept are entered; stored in jurorIdRef so
-// all async callbacks always read the latest value.
-//
-// ── Auth flow ─────────────────────────────────────────────────
-//   InfoStep OK
-//     → handleStart()
-//         Token in sessionStorage? → skip PIN, go to proceedAfterPin()
-//         No token:
-//           checkPin(jurorId) → exists=false → createPin → storeToken → "new" PIN screen
-//           checkPin(jurorId) → exists=true  → "entering" PIN screen
-//           verifyPin  → storeToken(token)
-//     → proceedAfterPin()                      ← SINGLE ENTRY POINT
-//         Always fetches myscores from Sheets  ← Sheets is master
-//         Sets sheetProgress state             ← triggers SheetsProgressDialog
-//         User confirms dialog → setStep("eval") or setStep("done")
-//
 // ── Persistence ───────────────────────────────────────────────
-//   sessionStorage  : auth token (cleared on tab close)
-//   localStorage    : name, dept, scores, comments (pre-fills InfoStep)
-//   Cloud draft     : Drafts sheet via saveDraft POST (used for cross-device)
+//   sessionStorage  : auth token only (cleared on tab close)
+//   Google Sheets   : single source of truth for all score data
+//   NO localStorage : removed — Sheets is master, no local fallback needed
+//   NO cloud draft  : removed — instant writes replace draft mechanism
 //
-// ── Sheets as master ─────────────────────────────────────────
-//   After PIN verification, myscores is ALWAYS fetched.
-//   The result is shown in a "X/6 groups found" dialog regardless
-//   of all_submitted status. This ensures the user always knows
-//   the server-side state and can decide whether to continue or
-//   start fresh. Local draft is a fallback only when the sheet
-//   has no data at all for this juror.
+// ── Write strategy ───────────────────────────────────────────
+//   Single mechanism: instantWrite (500ms debounce).
+//   On blur: pending debounce is cancelled and write fires immediately.
+//   No 30-second background sync. No manual save button. No cloud draft.
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -52,8 +32,8 @@ import {
 } from "../shared/api";
 
 // ── Constants ─────────────────────────────────────────────────
-const INSTANT_DELAY      = 500;       // debounce for per-keystroke writes
-const EDITING_ROWS_DELAY = 1500;      // wait before writing "group_submitted" in edit mode      // wait before writing "group_submitted" in edit mode
+const INSTANT_DELAY      = 500;   // debounce for per-keystroke writes (ms)
+const EDITING_ROWS_DELAY = 1500;  // wait before writing "group_submitted" in edit mode
 
 // ── Empty-state factories ─────────────────────────────────────
 
@@ -144,13 +124,12 @@ export default function useJuryState() {
   const [doneComments, setDoneComments] = useState(null);
 
   // ── Sheet progress dialog state ───────────────────────────
-  // sheetProgress is set by proceedAfterPin after fetching myscores.
-  // It is always shown as a dialog before entering eval/done so the
-  // juror always knows the server-side state.
-  //
   // Shape: { rows: [...], filledCount: number, totalCount: number,
   //          allSubmitted: boolean } | null
   const [sheetProgress, setSheetProgress] = useState(null);
+
+  // saveStatus drives the auto-save indicator in EvalStep.
+  const [saveStatus, setSaveStatus] = useState("idle");
 
   // ── PIN state ─────────────────────────────────────────────
   const [pinStep,      setPinStep]      = useState("idle");
@@ -164,22 +143,40 @@ export default function useJuryState() {
   const stateRef     = useRef({});
   stateRef.current   = { juryName, juryDept, scores, comments, groupSynced, current };
 
-  // ── Instant rows write (debounced) — ONLY write mechanism ──────────
-  const instantWrite = useCallback((newScores, newComments, newGroupSynced) => {
-    clearTimeout(instantRef.current);
-    instantRef.current = setTimeout(() => {
-      const { juryName: n, juryDept: d } = stateRef.current;
-      const jid = jurorIdRef.current;
-      if (!n.trim() || !jid || !getToken()) return;
-      const rows = PROJECTS
-        .filter((p) => hasAnyCriteria(newScores, p.id))
-        .map((p) =>
-          buildRow(n, d, jid, newScores, newComments, p,
-            isAllFilled(newScores, p.id) ? "group_submitted" : "in_progress")
-        );
-      if (rows.length > 0) postToSheet({ rows });
-    }, INSTANT_DELAY);
+  // ── Core write function ───────────────────────────────────
+  // Builds rows from current scores and posts to Sheets.
+  // Called by both instantWrite (debounced) and flushWrite (immediate).
+  const doWrite = useCallback((newScores, newComments) => {
+    const { juryName: n, juryDept: d } = stateRef.current;
+    const jid = jurorIdRef.current;
+    if (!n.trim() || !jid || !getToken()) return;
+    const rows = PROJECTS
+      .filter((p) => hasAnyCriteria(newScores, p.id))
+      .map((p) =>
+        buildRow(n, d, jid, newScores, newComments, p,
+          isAllFilled(newScores, p.id) ? "group_submitted" : "in_progress")
+      );
+    if (rows.length > 0) {
+      setSaveStatus("saving");
+      postToSheet({ rows }).then(() => {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      });
+    }
   }, []);
+
+  // Debounced write — fires after INSTANT_DELAY ms of inactivity.
+  const instantWrite = useCallback((newScores, newComments) => {
+    clearTimeout(instantRef.current);
+    instantRef.current = setTimeout(() => doWrite(newScores, newComments), INSTANT_DELAY);
+  }, [doWrite]);
+
+  // Guaranteed write — cancels pending debounce and fires immediately.
+  // Used on blur so navigating away never loses a score.
+  const flushWrite = useCallback((newScores, newComments) => {
+    clearTimeout(instantRef.current);
+    doWrite(newScores, newComments);
+  }, [doWrite]);
 
   // ── Auto-upgrade groupSynced ──────────────────────────────
   useEffect(() => {
@@ -201,7 +198,8 @@ export default function useJuryState() {
     const t = setTimeout(() => {
       const { juryName: n, juryDept: d, scores: s, comments: c } = stateRef.current;
       const jid = jurorIdRef.current;
-      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, jid, s, c, p, "all_submitted")) });      setDoneScores({ ...s });
+      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, jid, s, c, p, "all_submitted")) });
+      setDoneScores({ ...s });
       setDoneComments({ ...c });
       setStep("done");
     }, 800);
@@ -211,29 +209,15 @@ export default function useJuryState() {
   // ── Score / comment handlers ──────────────────────────────
   const handleScore = useCallback(
     (pid, cid, val) => {
-      const crit = CRITERIA.find((c) => c.id === cid);
-      let nextVal = val;
-
-      // Clamp immediately so we never write out-of-range values to Sheets.
-      if (val !== "" && val !== undefined && crit && typeof crit.max === "number") {
-        const n = parseInt(val, 10);
-        if (Number.isFinite(n)) {
-          nextVal = String(Math.min(Math.max(n, 0), crit.max));
-        } else {
-          nextVal = "0";
-        }
-      }
-
-      const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: nextVal } };
+      const newScores = { ...scores, [pid]: { ...scores[pid], [cid]: val } };
       setScores(newScores);
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
-
       let newGroupSynced = groupSynced;
-      if (nextVal === "" && groupSynced[pid]) {
+      if (val === "" && groupSynced[pid]) {
         newGroupSynced = { ...groupSynced, [pid]: false };
         setGroupSynced(newGroupSynced);
       }
-      instantWrite(newScores, comments, newGroupSynced);
+      instantWrite(newScores, comments);
     },
     [scores, comments, groupSynced, instantWrite]
   );
@@ -243,31 +227,31 @@ export default function useJuryState() {
       const crit = CRITERIA.find((c) => c.id === cid);
       const val  = scores[pid]?.[cid];
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
-      if (val === "" || val === undefined) return;
-      const n = parseInt(val, 10);
-      const clamped =
-        Number.isFinite(n) && crit && typeof crit.max === "number"
-          ? Math.min(Math.max(n, 0), crit.max)
-          : 0;
-      if (String(clamped) !== String(val)) {
-        const nextScores = { ...scores, [pid]: { ...scores[pid], [cid]: String(clamped) } };
-        setScores(nextScores);
-        instantWrite(nextScores, comments, groupSynced);
-      } else {
-        // Guarantee a write on blur (even if debounce hasn't fired yet).
-        instantWrite(scores, comments, groupSynced);
+
+      // Clamp value to valid range.
+      let finalScores = scores;
+      if (val !== "" && val !== undefined) {
+        const n       = parseInt(val, 10);
+        const clamped = Number.isFinite(n) ? Math.min(Math.max(n, 0), crit.max) : 0;
+        if (String(clamped) !== String(val)) {
+          finalScores = { ...scores, [pid]: { ...scores[pid], [cid]: clamped } };
+          setScores(finalScores);
+        }
       }
+
+      // Guaranteed write: cancel pending debounce, write right now.
+      flushWrite(finalScores, comments);
     },
-    [scores, comments, groupSynced, instantWrite]
+    [scores, comments, flushWrite]
   );
 
   const handleCommentChange = useCallback(
     (pid, val) => {
       const nc = { ...comments, [pid]: val };
       setComments(nc);
-      instantWrite(scores, nc, groupSynced);
+      instantWrite(scores, nc);
     },
-    [scores, comments, groupSynced, instantWrite]
+    [scores, comments, instantWrite]
   );
 
   // ── Final submit ──────────────────────────────────────────
@@ -277,7 +261,8 @@ export default function useJuryState() {
       const jid = jurorIdRef.current;
       postToSheet({
         rows: PROJECTS.map((p) => buildRow(n, d, jid, finalScores, finalComments, p, "all_submitted")),
-      });      setDoneScores({ ...finalScores });
+      });
+      setDoneScores({ ...finalScores });
       setDoneComments({ ...finalComments });
       setEditMode(false);
       doneFiredRef.current = true;
@@ -325,14 +310,7 @@ export default function useJuryState() {
 
   // ── SINGLE ENTRY POINT after PIN verification ─────────────
   // Always fetches myscores from Sheets (Sheets is master).
-  // Always shows a SheetsProgressDialog so the juror sees the
-  // server-side state before proceeding.
-  //
-  // sheetProgress shape:
-  //   { rows, filledCount, totalCount, allSubmitted }
-  //
-  // The dialog calls either handleConfirmFromSheet (continue with
-  // sheet data) or handleStartFresh (ignore sheet, empty form).
+  // Always shows SheetsProgressDialog so the juror sees server-side state.
   const proceedAfterPin = useCallback(async () => {
     let sheetRows = [];
     try {
@@ -349,7 +327,6 @@ export default function useJuryState() {
       && sheetRows.every((r) => r.status === "all_submitted")
       && sheetRows.length >= totalCount;
 
-    // Always show the dialog — Sheets is master.
     setSheetProgress({
       rows:         sheetRows,
       filledCount,
@@ -359,56 +336,44 @@ export default function useJuryState() {
   }, []);
 
   // ── Confirm: load sheet data and proceed ──────────────────
-  // Called when the user clicks "Continue" in SheetsProgressDialog.
   const handleConfirmFromSheet = useCallback(() => {
-  const prog = sheetProgress;
-  if (!prog) return;
-  setSheetProgress(null);
+    const prog = sheetProgress;
+    if (!prog) return;
+    setSheetProgress(null);
 
-  if (prog.allSubmitted) {
-    // All groups submitted — restore scores and go to done screen.
-    const { scores: s, comments: c } = rowsToState(prog.rows);
-    setScores(s);
-    setComments(c);
-    setDoneScores(s);
-    setDoneComments(c);
-    setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
-    doneFiredRef.current = true;
-    setStep("done");
-    return;
-  }
+    if (prog.allSubmitted) {
+      const { scores: s, comments: c } = rowsToState(prog.rows);
+      setScores(s);
+      setComments(c);
+      setDoneScores(s);
+      setDoneComments(c);
+      setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
+      doneFiredRef.current = true;
+      setStep("done");
+      return;
+    }
 
-  if (prog.rows.length > 0) {
-    // Partial progress found — load sheet data into eval form.
-    const { scores: s, comments: c } = rowsToState(prog.rows);
-    const synced = Object.fromEntries(
-      prog.rows
-        .filter((r) => r.status === "group_submitted" || r.status === "all_submitted")
-        .map((r) => [Number(r.projectId), true])
-    );
+    if (prog.rows.length > 0) {
+      const { scores: s, comments: c } = rowsToState(prog.rows);
+      const synced = Object.fromEntries(
+        prog.rows
+          .filter((r) => r.status === "group_submitted" || r.status === "all_submitted")
+          .map((r) => [Number(r.projectId), true])
+      );
+      setScores(s);
+      setComments(c);
+      setGroupSynced(synced);
 
-    setScores(s);
-    setComments(c);
-    setGroupSynced(synced);
+      const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(s, p.id));
+      setCurrent(firstIncomplete >= 0 ? firstIncomplete : 0);
+      doneFiredRef.current = false;
+    }
+    // No sheet data → start with empty form (no localStorage fallback).
 
-    // Navigate to the first incomplete group.
-    const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(s, p.id));
-    setCurrent(firstIncomplete >= 0 ? firstIncomplete : 0);
-    doneFiredRef.current = false;
-  } else {
-    // No rows in sheet → start fresh (Sheets is master; no local restore)
-    setScores(makeEmptyScores());
-    setComments(makeEmptyComments());
-    setGroupSynced({});
-    setCurrent(0);
-    doneFiredRef.current = false;
-  }
-
-  setStep("eval");
-}, [sheetProgress]);
+    setStep("eval");
+  }, [sheetProgress]);
 
   // ── Start fresh: ignore sheet data ───────────────────────
-  // Called when the user clicks "Start Fresh" in SheetsProgressDialog.
   const handleStartFresh = useCallback(() => {
     setSheetProgress(null);
     setScores(makeEmptyScores());
@@ -458,19 +423,12 @@ export default function useJuryState() {
   }, []);
 
   // ── Start button on InfoStep ──────────────────────────────
-  // If a valid token is already in session, skip PIN and go
-  // directly to proceedAfterPin. Otherwise run the PIN flow.
-  //
-  // INVARIANT: proceedAfterPin() is NEVER called from here unless
-  // a valid token is already stored in sessionStorage. Token-less
-  // paths always end at the PIN screen, never at eval/done.
   const handleStart = useCallback(async () => {
     const { juryName: n, juryDept: d } = stateRef.current;
     if (!n.trim() || !d.trim()) return;
     const jid = generateId(n, d);
     jurorIdRef.current = jid;
 
-    // Token already in session (same tab, navigated back) → skip PIN.
     if (getToken()) {
       await proceedAfterPin();
       return;
@@ -480,8 +438,6 @@ export default function useJuryState() {
       const res = await checkPin(jid);
 
       if (res.status !== "ok") {
-        // API secret wrong, network error, or GAS returned an error.
-        // Show PIN entry so the juror can retry — do not proceed without a token.
         setPinError("Could not reach the server. Please try again.");
         setPinStep("entering");
         setStep("pin");
@@ -489,28 +445,24 @@ export default function useJuryState() {
       }
 
       if (res.exists) {
-        // PIN already set — show the entry screen.
         setPinStep("entering");
         setPinError("");
         setAttemptsLeft(3);
         setStep("pin");
       } else {
-        // First time — create a PIN and issue a token.
         const r2 = await createPin(jid, n, d);
         if (r2.status === "ok") {
-          storeToken(r2.token); // token stored BEFORE any navigation
+          storeToken(r2.token);
           setNewPin(r2.pin);
           setPinStep("new");
           setStep("pin");
         } else {
-          // createPin failed — show entry screen, do not proceed.
           setPinError("Could not create a PIN. Please try again.");
           setPinStep("entering");
           setStep("pin");
         }
       }
     } catch (_) {
-      // Network or parse error — show PIN screen, do not proceed.
       setPinError("Connection error. Please check your network and try again.");
       setPinStep("entering");
       setStep("pin");
@@ -544,14 +496,7 @@ export default function useJuryState() {
           setPinStep("locked");
           setPinError("Too many failed attempts. Please contact the admin.");
         } else {
-          // Avoid template literals here to keep parsing robust across build toolchains.
-          setPinError(
-            "Incorrect PIN. " +
-              left +
-              " attempt" +
-              (left !== 1 ? "s" : "") +
-              " remaining."
-          );
+          setPinError(`Incorrect PIN. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
         }
       } catch (_) {
         setPinError("Could not verify PIN. Please try again.");
@@ -560,7 +505,6 @@ export default function useJuryState() {
     [attemptsLeft, proceedAfterPin]
   );
 
-  // Called when new juror clicks "I've saved my PIN".
   const handlePinAcknowledge = useCallback(async () => {
     await proceedAfterPin();
   }, [proceedAfterPin]);
@@ -579,6 +523,7 @@ export default function useJuryState() {
     setEditMode(false);
     setDoneScores(null);
     setDoneComments(null);
+    setSaveStatus("idle");
     setPinStep("idle");
     setPinError("");
     setNewPin("");
@@ -611,7 +556,8 @@ export default function useJuryState() {
     doneScores,   setDoneScores,
     doneComments, setDoneComments,
 
-    sheetProgress,   // SheetsProgressDialog reads this
+    sheetProgress,
+    saveStatus,
 
     pinStep, pinError, newPin, attemptsLeft,
     handlePinSubmit, handlePinAcknowledge,

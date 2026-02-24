@@ -2,20 +2,14 @@
 // ============================================================
 // Step 3 — The scoring form.
 //
-// Layout:
-//   Sticky header row 1:
-//     [home btn]  [project info]  [juror identity card]
-//      34×34px     flex:1          fixed width, same height as home btn
+// Header layout (4 rows, all sticky):
+//   Row 1 (full-width): Juror Name (Dept) — identity header
+//   Row 2: [HOME btn]  [Group info card — name, desc, students]
+//   Row 3: [←]  [Group dropdown]  [→]
+//   Row 4 (full-width): Progress bar with percentage
 //
-//   The juror identity card replaces the old Save button.
-//   It shows name + dept and a passive "auto-saving" indicator.
-//   No explicit save action — every score change is written to
-//   Sheets automatically (350 ms debounce + 30 s background sync).
-//
-//   Sticky header row 2: prev | group dropdown | next
-//   Sticky header row 3: progress bar
-//   Body: criterion cards + comments + running total
-//         in edit mode: Submit Final button at bottom
+// Body: criterion cards + comments + running total
+//       in edit mode: Submit Final button at bottom
 // ============================================================
 
 import { useState } from "react";
@@ -32,13 +26,22 @@ function progressGradient(pct) {
   return "linear-gradient(90deg,#84cc16,#22c55e)";
 }
 
+// Passive save indicator — shown inside the identity header
+function SaveIndicator({ saveStatus }) {
+  if (saveStatus === "saving") return <span className="autosave-dot saving">⏳ Saving…</span>;
+  if (saveStatus === "saved")  return <span className="autosave-dot saved">✓ Saved</span>;
+  return <span className="autosave-dot idle">● Auto-saving</span>;
+}
+
 export default function EvalStep({
   juryName,
   juryDept,
   current, setCurrent,
   scores, comments, touched,
   groupSynced, editMode,
-  progressPct, allComplete,  handleScore, handleScoreBlur, handleCommentChange,
+  progressPct, allComplete,
+  saveStatus,
+  handleScore, handleScoreBlur, handleCommentChange,
   handleFinalSubmit,
   onGoHome,
 }) {
@@ -56,17 +59,25 @@ export default function EvalStep({
   return (
     <div className="form-screen eval-screen">
 
-      <div className="juror-title-bar">
-        {juryName}{juryDept ? ` ()` : ""}
-      </div>
-
       {/* ── Sticky header ────────────────────────────────── */}
       <div className="eval-sticky-header">
 
-        {/* Row 1: home btn | project info | juror card */}
+        {/* Row 1: Full-width juror identity bar */}
+        <div className="eval-identity-bar">
+          <span className="eval-identity-icon">👤</span>
+          <span className="eval-identity-name">{juryName}</span>
+          {juryDept && (
+            <span className="eval-identity-dept">({juryDept})</span>
+          )}
+          <span className="eval-identity-save">
+            <SaveIndicator saveStatus={saveStatus} />
+          </span>
+        </div>
+
+        {/* Row 2: HOME button + Group info card */}
         <div className="eval-top-row">
 
-          {/* Home button — 34×34, same height as juror card */}
+          {/* Home button */}
           <button
             className="eval-back-btn"
             onClick={() => setShowBackMenu(true)}
@@ -75,7 +86,7 @@ export default function EvalStep({
             <HomeIcon />
           </button>
 
-          {/* Project name + desc + students */}
+          {/* Group info card */}
           <div className="eval-project-info">
             <div className="eval-project-name">{project.name}</div>
             {project.desc && (
@@ -87,23 +98,9 @@ export default function EvalStep({
               </div>
             )}
           </div>
-
-          {/* Juror identity card — same height as home button,
-              stretches to fill available width on the right side.
-              Shows name, dept, and a passive auto-save indicator. */}
-          <div className="juror-card">
-            <div className="juror-card-top">
-              <span className="juror-card-icon">👤</span>
-              <span className="juror-card-name">{juryName}</span>
-            </div>
-            {juryDept && (
-              <div className="juror-card-dept">{juryDept}</div>
-            )}
-            <span className="autosave-dot idle">● Auto-saving</span>
-          </div>
         </div>
 
-        {/* Row 2: prev | group selector | next */}
+        {/* Row 3: prev | group dropdown | next */}
         <div className="eval-nav-row">
           <button
             className="group-nav-btn"
@@ -130,7 +127,7 @@ export default function EvalStep({
           >→</button>
         </div>
 
-        {/* Row 3: progress bar */}
+        {/* Row 4: Progress bar */}
         <div className="eval-progress-wrap">
           <div className="eval-progress-track">
             <div
