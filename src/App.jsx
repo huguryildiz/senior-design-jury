@@ -111,7 +111,7 @@ export default function App() {
 
         <p className="home-hint">
           <span className="home-hint-ico">ℹ️</span>
-          Use the <strong>Evaluation Form</strong> to score each project group.
+          <span>Use the <strong>Evaluation Form</strong> to score each project group.</span>
         </p>
 
         <div className="home-footer">
