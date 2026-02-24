@@ -18,9 +18,20 @@ jobs:
           node-version: 20
 
       - name: Install & Build
+        env:
+          VITE_SCRIPT_URL: ${{ secrets.VITE_SCRIPT_URL }}
+          VITE_API_SECRET: ${{ secrets.VITE_API_SECRET }}
         run: |
           npm install
           npm run build
+
+      - name: Check env present (no secret output)
+        env:
+          VITE_SCRIPT_URL: ${{ secrets.VITE_SCRIPT_URL }}
+          VITE_API_SECRET: ${{ secrets.VITE_API_SECRET }}
+        run: |
+          test -n "$VITE_SCRIPT_URL" && echo "VITE_SCRIPT_URL OK" || (echo "VITE_SCRIPT_URL MISSING" && exit 1)
+          test -n "$VITE_API_SECRET" && echo "VITE_API_SECRET OK" || (echo "VITE_API_SECRET MISSING" && exit 1)
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
