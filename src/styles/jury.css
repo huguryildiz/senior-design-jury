@@ -250,9 +250,10 @@
 }
 .eval-identity-icon {
   flex-shrink: 0;
-  color: #64748b;
+  font-size: 12px;
   display: flex;
   align-items: center;
+  line-height: 1;
 }
 .eval-identity-save { flex-shrink: 0; }
 
@@ -296,13 +297,13 @@
 }
 .eval-project-line1::-webkit-scrollbar { display: none; }
 .eval-group-label {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
   flex-shrink: 0;
 }
 .eval-project-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   color: #94a3b8;
   white-space: nowrap;
@@ -328,10 +329,10 @@
 .autosave-dot.saving { color: #f59e0b; }
 .autosave-dot.saved  { color: #166534; }
 
-/* Row 3: CSS grid 25% | 50% | 25% */
+/* Row 3: CSS grid 1fr | 2fr | 1fr  — fraction units account for gaps */
 .eval-nav-row {
   display: grid;
-  grid-template-columns: 25% 50% 25%;
+  grid-template-columns: 1fr 2fr 1fr;
   gap: 6px;
   width: 100%;
   box-sizing: border-box;
@@ -379,14 +380,14 @@
   box-shadow: 0 0 0 3px rgba(29,78,216,0.10);
 }
 
-/* Row 4: Full-width gradient progress bar */
+/* Row 4: Full-width gradient progress bar with centered % label */
 .eval-progress-row {
   width: 100%;
   padding: 1px 0 0;
 }
 .eval-progress-track {
   position: relative;
-  height: 7px;
+  height: 18px;
   background: #f1f5f9;
   border-radius: 999px;
   overflow: hidden;
@@ -397,6 +398,21 @@
   transition: width 400ms ease, background 400ms ease;
   position: absolute;
   top: 0; left: 0;
+}
+.eval-progress-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.65), 0 0 6px rgba(0,0,0,0.45);
+  white-space: nowrap;
+  z-index: 1;
+  line-height: 1;
+  letter-spacing: 0.3px;
+  pointer-events: none;
 }
 
 /* Hide segment buttons on small screens */

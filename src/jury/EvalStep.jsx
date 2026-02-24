@@ -19,7 +19,7 @@
 import { useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "../config";
 import { isAllFilled, countFilled } from "./useJuryState";
-import { UserIcon, UsersIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "../shared/Icons";
+import { ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "../shared/Icons";
 
 function progressGradient(pct) {
   if (pct === 0)   return "#e2e8f0";
@@ -69,7 +69,7 @@ export default function EvalStep({
 
         {/* Row 1: Juror name (Dept)  ·  autosave  ·  HOME icon */}
         <div className="eval-identity-bar">
-          <span className="eval-identity-icon"><UserIcon /></span>
+          <span className="eval-identity-icon">👤</span>
           <span className="eval-identity-text">
             {juryName}{juryDept && <span className="eval-identity-dept"> ({juryDept})</span>}
           </span>
@@ -93,7 +93,7 @@ export default function EvalStep({
           </div>
           {APP_CONFIG.showStudents && project.students?.length > 0 && (
             <div className="eval-project-line2">
-              <UsersIcon />{" "}{project.students.join(" · ")}
+              👥 {project.students.join(" · ")}
             </div>
           )}
         </div>
@@ -127,13 +127,14 @@ export default function EvalStep({
           </button>
         </div>
 
-        {/* Row 4: Full-width gradient progress bar */}
+        {/* Row 4: Full-width gradient progress bar with % label */}
         <div className="eval-progress-row">
           <div className="eval-progress-track">
             <div
               className="eval-progress-fill"
               style={{ width: `${progressPct}%`, background: progressGradient(progressPct) }}
             />
+            <span className="eval-progress-label">{Math.round(progressPct)}%</span>
           </div>
         </div>
 
