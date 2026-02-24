@@ -143,6 +143,10 @@ export default function useJuryState() {
   const [newPin,       setNewPin]       = useState("");
   const [attemptsLeft, setAttemptsLeft] = useState(3);
 
+  // ── Session-kicked dialog state ───────────────────────────
+  const [sessionKicked, setSessionKicked] = useState(false);
+  const [kickedMsg,     setKickedMsg]     = useState("");
+
   // ── Refs ──────────────────────────────────────────────────
   const doneFiredRef = useRef(false);
   const stateRef     = useRef({});
@@ -330,10 +334,18 @@ export default function useJuryState() {
   }, [scores, comments, submitFinal]);
 
   // ── Session kick helper ───────────────────────────────────
+  // Shows the "Session Ended" dialog overlay without changing the step.
+  // The user must click "Sign in again" to proceed to PIN entry.
   const kickSession = useCallback((msg) => {
     clearToken();
-    setSheetProgress(null);
-    setPinError(msg || "Your session has expired. Please enter your PIN again.");
+    setKickedMsg(msg || "Your session has expired. Please enter your PIN again.");
+    setSessionKicked(true);
+  }, []);
+
+  const handleKickedAcknowledge = useCallback(() => {
+    setSessionKicked(false);
+    setKickedMsg("");
+    setPinError("");
     setPinStep("entering");
     setStep("pin");
   }, []);
@@ -377,8 +389,26 @@ export default function useJuryState() {
       } catch (_) {
         // Network error — don't kick; retry next cycle.
       }
-    }, 60_000);
+    }, 15_000);
     return () => clearInterval(id);
+  }, [step, kickSession]);
+
+  // ── Visibility change — immediate check on tab focus ──────
+  // Handles the common case: user logged in on Device B, then switches
+  // back to Device A's tab. The kick dialog appears within ~1 s.
+  useEffect(() => {
+    if (step !== "eval") return;
+    async function handleVisible() {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const json = await pingSession();
+        if (json.status === "unauthorized") {
+          kickSession("Your session was ended because you signed in from another device.");
+        }
+      } catch (_) {}
+    }
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => document.removeEventListener("visibilitychange", handleVisible);
   }, [step, kickSession]);
 
   // ── Confirm: load sheet data ──────────────────────────────
@@ -625,6 +655,8 @@ export default function useJuryState() {
 
     pinStep, pinError, newPin, attemptsLeft,
     handlePinSubmit, handlePinAcknowledge,
+
+    sessionKicked, kickedMsg, handleKickedAcknowledge,
 
     handleStart,
     handleConfirmFromSheet,

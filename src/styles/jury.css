@@ -770,7 +770,36 @@
   font-size: 15px;
   border-radius: 12px;
 
-  display: flex;              /* 👈 ekle */
-  align-items: center;        /* 👈 dikey ortala */
-  justify-content: center;    /* 👈 yatay ortala */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+/* ── Session-kicked dialog ──────────────────────────────────── */
+.kicked-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.kicked-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(15,23,42,0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.kicked-icon  { font-size: 40px; line-height: 1; }
+.kicked-title { font-size: 18px; font-weight: 700; color: #0f172a; }
+.kicked-body  { font-size: 14px; color: #64748b; line-height: 1.5; }

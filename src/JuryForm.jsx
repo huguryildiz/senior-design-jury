@@ -32,8 +32,24 @@ export default function JuryForm({ onBack }) {
     handleFinalSubmit,
     handlePinSubmit,
     handlePinAcknowledge,
+    sessionKicked, kickedMsg, handleKickedAcknowledge,
     resetAll,
   } = useJuryState();
+
+  if (sessionKicked) {
+    return (
+      <div className="kicked-overlay">
+        <div className="kicked-card">
+          <div className="kicked-icon">🔐</div>
+          <div className="kicked-title">Session Ended</div>
+          <div className="kicked-body">{kickedMsg}</div>
+          <button className="btn-primary" onClick={handleKickedAcknowledge}>
+            Sign in again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (step === "done") {
     return (
