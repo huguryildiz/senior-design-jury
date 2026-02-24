@@ -67,7 +67,6 @@
 // ============================================================
 
 var EVAL_SHEET  = "Evaluations";
-var DRAFT_SHEET = "Drafts";
 var INFO_SHEET  = "Info";
 var NUM_COLS    = 15;          // A–O
 var TZ          = "Europe/Istanbul";
@@ -75,6 +74,12 @@ var TS_FORMAT   = "dd/MM/yyyy HH:mm";
 
 var RESET_UNLOCK_MINUTES = 20;
 var MAX_PIN_ATTEMPTS     = 3;
+
+// v8: Score caps (must match frontend config)
+var MAX_TECHNICAL = 30;
+var MAX_DESIGN    = 30;
+var MAX_DELIVERY  = 30;
+var MAX_TEAMWORK  = 10;
 
 // ── Group definitions ─────────────────────────────────────────
 var PROJECTS_DATA = [
@@ -102,31 +107,16 @@ function respond(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// --- Logging helpers (Logs sheet) ---
-function getOrCreateLogSheet_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName("Logs");
-  if (!sh) {
-    sh = ss.insertSheet("Logs");
-    sh.appendRow(["ts", "where", "message", "raw"]);
-    sh.setFrozenRows(1);
-  }
-  return sh;
-}
-
-function logError_(where, err, e) {
-  try {
-    var sh = getOrCreateLogSheet_();
-    var raw = "";
-    try {
-      raw = (e && e.postData && e.postData.contents) ? String(e.postData.contents) : "";
-    } catch (_) {}
-    sh.appendRow([new Date().toISOString(), where, String(err), raw.slice(0, 2000)]);
-  } catch (_) {}
-}
-
 function norm(s) {
   return String(s || "").trim().toLowerCase();
+}
+
+function clampInt_(v, lo, hi) {
+  var n = parseInt(v, 10);
+  if (!isFinite(n)) n = 0;
+  if (n < lo) n = lo;
+  if (n > hi) n = hi;
+  return n;
 }
 
 // Format an ISO timestamp string (or Date) into a human-readable local string.
@@ -138,44 +128,29 @@ function formatTs(raw) {
   } catch (_) {
     return String(raw || "");
   }
-}
 
-// --- Robust timestamp parsing/comparison (fixes stale-drop bug) ---
-function tsToMillis(raw) {
-  if (!raw) return NaN;
-
-  if (raw instanceof Date) return raw.getTime();
-
-  var s = String(raw).trim();
-  if (!s) return NaN;
-
-  // ISO-ish: try Date parsing
-  if (s.indexOf("-") >= 0 && s.indexOf("T") >= 0) {
-    var dIso = new Date(s);
-    if (!isNaN(dIso.getTime())) return dIso.getTime();
+// Parse POST body (supports text/plain JSON and simple form payload)
+function parsePostData_(e) {
+  var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : "";
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    // Support payload=<urlencoded json>
+    try {
+      var out = {};
+      raw.split("&").forEach(function(kv) {
+        var idx = kv.indexOf("=");
+        if (idx < 0) return;
+        var k = decodeURIComponent(kv.slice(0, idx));
+        var v = decodeURIComponent(kv.slice(idx + 1));
+        out[k] = v;
+      });
+      if (out.payload) return JSON.parse(out.payload);
+    } catch (_) {}
+    return {};
   }
-
-  // Display format: dd/MM/yyyy HH:mm
-  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
-  if (m) {
-    var dd = parseInt(m[1], 10);
-    var MM = parseInt(m[2], 10) - 1;
-    var yy = parseInt(m[3], 10);
-    var hh = parseInt(m[4], 10);
-    var mm = parseInt(m[5], 10);
-    var dLocal = new Date(yy, MM, dd, hh, mm, 0, 0);
-    if (!isNaN(dLocal.getTime())) return dLocal.getTime();
-  }
-
-  var d = new Date(s);
-  return isNaN(d.getTime()) ? NaN : d.getTime();
 }
-
-function isStaleIncoming(existingTs, incomingTs) {
-  var ex = tsToMillis(existingTs);
-  var inc = tsToMillis(incomingTs);
-  if (isNaN(ex) || isNaN(inc)) return false; // if unsure, don't drop
-  return inc < ex;
 }
 
 // ── Auth helpers ──────────────────────────────────────────────
@@ -333,13 +308,7 @@ function buildIndexAndDedupe(sheet, jurorId) {
       var pa = pri[String(a.r[12] || "").trim()] || 0;
       var pb = pri[String(b.r[12] || "").trim()] || 0;
       if (pb !== pa) return pb - pa;
-
-      var tb = tsToMillis(b.r[3]);
-      var ta = tsToMillis(a.r[3]);
-      if (isNaN(tb) || isNaN(ta)) {
-        return String(b.r[3]) > String(a.r[3]) ? 1 : -1;
-      }
-      return tb - ta;
+      return String(b.r[3]) > String(a.r[3]) ? 1 : -1;
     });
 
     // Mark all but the first (best) for deletion.
@@ -435,18 +404,19 @@ function doGet(e) {
       var juryDept = (e.parameter.juryDept || "").trim();
 
       var existingPin = getPin(jurorId);
-      var pin, perSecret;
+      var pin;
       if (existingPin) {
-        // PIN already exists — return it with a (re)issued token.
-        pin       = existingPin;
-        perSecret = getPerJurorSecret(jurorId) || generateSecret();
-        setPerJurorSecret(jurorId, perSecret);
+        // PIN already exists — return it.
+        pin = existingPin;
       } else {
-        pin       = generatePin();
-        perSecret = generateSecret();
+        pin = generatePin();
         setPin(jurorId, pin);
-        setPerJurorSecret(jurorId, perSecret);
       }
+
+      // IMPORTANT: rotate secret on every token issuance (single active session).
+      var perSecret = generateSecret();
+      setPerJurorSecret(jurorId, perSecret);
+
       if (juryName) setJurorMeta(jurorId, juryName, juryDept);
       return respond({ status: "ok", pin: pin, token: buildToken(jurorId, perSecret) });
     }
@@ -490,17 +460,6 @@ function doGet(e) {
     if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
     var jid = identity.jurorId;
 
-    if (action === "loaddraft") {
-      var draftSheet = getOrCreateDraftSheet();
-      var row        = findDraftRow(draftSheet, jid);
-      if (!row) return respond({ status: "not_found" });
-      try {
-        return respond({ status: "ok", draft: JSON.parse(row[1]) });
-      } catch (_) {
-        return respond({ status: "error", message: "Corrupt draft JSON." });
-      }
-    }
-
     if (action === "verify") {
       // Returns the count of all_submitted rows for this juror.
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -518,6 +477,7 @@ function doGet(e) {
     if (action === "myscores") {
       // Returns the best row per group for this juror (all statuses included).
       // "Best" = highest priority status, then latest timestamp.
+      // This is the source of truth for restoring scores on a new device.
       var ss    = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(EVAL_SHEET);
       if (!sheet) return respond({ status: "ok", rows: [] });
@@ -534,19 +494,11 @@ function doGet(e) {
         if (!groupNo) return;
         var prev = bestByGroup[groupNo];
         if (!prev) { bestByGroup[groupNo] = r; return; }
-
         var ns = String(r[12]    || "").trim();
         var ps = String(prev[12] || "").trim();
         if ((pri[ns] || 0) > (pri[ps] || 0)) { bestByGroup[groupNo] = r; return; }
-
-        if ((pri[ns] || 0) === (pri[ps] || 0)) {
-          var tNew = tsToMillis(r[3]);
-          var tOld = tsToMillis(prev[3]);
-          if (!isNaN(tNew) && !isNaN(tOld)) {
-            if (tNew > tOld) bestByGroup[groupNo] = r;
-          } else if (String(r[3]) > String(prev[3])) {
-            bestByGroup[groupNo] = r;
-          }
+        if ((pri[ns] || 0) === (pri[ps] || 0) && String(r[3]) > String(prev[3])) {
+          bestByGroup[groupNo] = r;
         }
       });
 
@@ -576,75 +528,13 @@ function doGet(e) {
 // ════════════════════════════════════════════════════════════
 
 function doPost(e) {
-  var lock = LockService.getScriptLock();
-  var locked = false;
-
   try {
-    locked = lock.tryLock(15000); // 15 seconds
-    if (!locked) return respond({ status: "error", message: "LOCK_TIMEOUT" });
-
-    // Parse raw body
-    var raw = (e && e.postData && e.postData.contents) ? String(e.postData.contents) : "";
-    var data;
-
-    // Support application/x-www-form-urlencoded: payload=<urlencoded JSON>
-    if (raw && raw.indexOf("payload=") === 0) {
-      var encoded = raw.slice("payload=".length);
-      var jsonStr = decodeURIComponent(encoded);
-      data = JSON.parse(jsonStr || "{}");
-    } else {
-      // Default: raw JSON
-      data = JSON.parse(raw || "{}");
-    }
-
+    var data = parsePostData_(e);
     var identity = verifyToken(data.token || "");
     if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
     var jid = identity.jurorId;
 
-    // ── Draft actions ─────────────────────────────────────────
-
-    if (data.action === "saveDraft") {
-      var draftSheet = getOrCreateDraftSheet();
-      var json       = JSON.stringify(data.draft || {});
-      var now        = new Date().toISOString();
-      var rowIdx     = findDraftRowIndex(draftSheet, jid);
-      if (rowIdx > 0) {
-        draftSheet.getRange(rowIdx, 2, 1, 2).setValues([[json, now]]);
-      } else {
-        draftSheet.appendRow([jid, json, now]);
-      }
-      return respond({ status: "ok" });
-    }
-
-    if (data.action === "deleteDraft") {
-      var draftSheet = getOrCreateDraftSheet();
-      var rowIdx     = findDraftRowIndex(draftSheet, jid);
-      if (rowIdx > 0) draftSheet.deleteRow(rowIdx);
-      return respond({ status: "ok" });
-    }
-
-    if (data.action === "deleteJurorData") {
-      var draftSheet = getOrCreateDraftSheet();
-      var draftIdx   = findDraftRowIndex(draftSheet, jid);
-      if (draftIdx > 0) draftSheet.deleteRow(draftIdx);
-
-      var ss        = SpreadsheetApp.getActiveSpreadsheet();
-      var evalSheet = ss.getSheetByName(EVAL_SHEET);
-      var deleted   = 0;
-      if (evalSheet) {
-        var lastRow = evalSheet.getLastRow();
-        if (lastRow >= 2) {
-          var values = evalSheet.getRange(2, 1, lastRow - 1, NUM_COLS).getValues();
-          for (var i = values.length - 1; i >= 0; i--) {
-            if (String(values[i][2]).trim() === jid) {
-              evalSheet.deleteRow(i + 2);
-              deleted++;
-            }
-          }
-        }
-      }
-      return respond({ status: "ok", deleted: deleted });
-    }
+    // ── Juror actions ─────────────────────────────────────────
 
     if (data.action === "resetJuror") {
       // Mark the unlock window so the next upsert can downgrade status.
@@ -668,6 +558,12 @@ function doPost(e) {
     }
 
     // ── Default: upsert evaluation rows ──────────────────────
+    // Steps:
+    //   1. Deduplicate existing rows for this juror (removes race-condition
+    //      duplicates created by rapid instantWrite calls from the client).
+    //   2. Build a clean composite-key → row-number index.
+    //   3. For each incoming row, update in place or append.
+
     var ss    = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(EVAL_SHEET);
 
@@ -690,6 +586,7 @@ function doPost(e) {
     // Step 3: collect latest incoming row per group (last one wins if dupes in payload).
     var latestByKey = {};
     (data.rows || []).forEach(function(row) {
+      // Security: silently drop any row whose jurorId doesn't match the token.
       if (String(row.jurorId || "").trim() !== jid) return;
       var k = jid + "__" + String(row.projectId || "").trim();
       latestByKey[k] = row;
@@ -704,15 +601,18 @@ function doPost(e) {
       var existingRN = index[k];
 
       if (existingRN) {
-        var existingRow = sheet.getRange(existingRN, 1, 1, NUM_COLS).getValues()[0];
-        var existingTs  = String(existingRow[3] || "");
-        var incomingTs  = String(row.timestamp || "");
+        var existingIdx    = existingRN - 2;
+        var currentStatus  = String(index[k] ? sheet.getRange(existingRN, 13).getValue() : "") || "";
+        var existingRow    = sheet.getRange(existingRN, 1, 1, NUM_COLS).getValues()[0];
+        var existingTs     = String(existingRow[3] || "");
+        var incomingTs     = String(row.timestamp   || "");
 
         // Skip stale updates (older timestamp than what's already stored).
-        if (existingTs && incomingTs && isStaleIncoming(existingTs, incomingTs)) return;
+        if (existingTs && incomingTs && incomingTs < existingTs) return;
 
-        // Prevent status from being downgraded from all_submitted unless reset-unlock is active.
-        var currentStatus = String(existingRow[12] || "");
+        // Prevent status from being downgraded from all_submitted unless
+        // a reset-unlock window is active for this juror.
+        currentStatus = String(existingRow[12] || "");
         if (currentStatus === "all_submitted" && newStatus !== "all_submitted") {
           if (!isResetUnlockActive(jid)) {
             newStatus = "all_submitted";
@@ -733,11 +633,18 @@ function doPost(e) {
       // Format timestamp for human readability in the sheet.
       var tsDisplay = formatTs(row.timestamp || new Date().toISOString());
 
+      // v8: enforce score caps on the server (never trust client)
+      var tech = clampInt_(tech, 0, MAX_TECHNICAL);
+      var des  = clampInt_(des,    0, MAX_DESIGN);
+      var del  = clampInt_(del,  0, MAX_DELIVERY);
+      var team = clampInt_(team,  0, MAX_TEAMWORK);
+      var total = tech + des + del + team;
+
       var rowValues = [
         row.juryName,    row.juryDept,    jid,          tsDisplay,
         row.projectId,   row.projectName,
-        row.technical,   row.design,      row.delivery,  row.teamwork,
-        row.total,       row.comments,    newStatus,     newFlag,
+        tech,   des,      del,  team,
+        total,       row.comments,    newStatus,     newFlag,
         getPerJurorSecret(jid) || "",
       ];
 
@@ -758,49 +665,6 @@ function doPost(e) {
     return respond({ status: "ok", updated: updated, added: added });
 
   } catch (err) {
-    logError_("doPost", err, e);
     return respond({ status: "error", message: String(err) });
-  } finally {
-    if (locked) {
-      try { lock.releaseLock(); } catch (_) {}
-    }
   }
-}
-
-// ════════════════════════════════════════════════════════════
-// Draft sheet helpers
-// ════════════════════════════════════════════════════════════
-
-function getOrCreateDraftSheet() {
-  var ss    = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(DRAFT_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(DRAFT_SHEET);
-    sheet.appendRow(["DraftKey", "DraftJSON", "UpdatedAt"]);
-    sheet.getRange(1, 1, 1, 3)
-      .setFontWeight("bold").setBackground("#1d4ed8").setFontColor("white");
-    sheet.setFrozenRows(1);
-    sheet.setColumnWidth(2, 420);
-  }
-  return sheet;
-}
-
-function findDraftRow(sheet, key) {
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return null;
-  var values = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-  for (var i = 0; i < values.length; i++) {
-    if (String(values[i][0]).trim() === key) return values[i];
-  }
-  return null;
-}
-
-function findDraftRowIndex(sheet, key) {
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 0;
-  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (var i = 0; i < values.length; i++) {
-    if (String(values[i][0]).trim() === key) return i + 2;
-  }
-  return 0;
 }

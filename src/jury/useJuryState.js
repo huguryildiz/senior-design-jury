@@ -14,7 +14,7 @@
 //         No token:
 //           checkPin(jurorId) → exists=false → createPin → storeToken → "new" PIN screen
 //           checkPin(jurorId) → exists=true  → "entering" PIN screen
-//           verifyPin  → storeToken → proceedAfterPin
+//           verifyPin  → storeToken(token)
 //     → proceedAfterPin()                      ← SINGLE ENTRY POINT
 //         Always fetches myscores from Sheets  ← Sheets is master
 //         Sets sheetProgress state             ← triggers SheetsProgressDialog
@@ -52,9 +52,8 @@ import {
 } from "../shared/api";
 
 // ── Constants ─────────────────────────────────────────────────
-const STORAGE_KEY        = "ee492_jury_draft_v1";
 const INSTANT_DELAY      = 500;       // debounce for per-keystroke writes
-const EDITING_ROWS_DELAY = 1500;      // wait before writing "group_submitted" in edit mode
+const EDITING_ROWS_DELAY = 1500;      // wait before writing "group_submitted" in edit mode      // wait before writing "group_submitted" in edit mode
 
 // ── Empty-state factories ─────────────────────────────────────
 
@@ -153,9 +152,6 @@ export default function useJuryState() {
   //          allSubmitted: boolean } | null
   const [sheetProgress, setSheetProgress] = useState(null);
 
-  // saveStatus drives the Save button feedback in EvalStep.
-  const [saveStatus, setSaveStatus] = useState("idle");
-
   // ── PIN state ─────────────────────────────────────────────
   const [pinStep,      setPinStep]      = useState("idle");
   const [pinError,     setPinError]     = useState("");
@@ -168,61 +164,7 @@ export default function useJuryState() {
   const stateRef     = useRef({});
   stateRef.current   = { juryName, juryDept, scores, comments, groupSynced, current };
 
-  // ── Restore name/dept from localStorage on mount ─────────
-  // Only identity fields are restored here; scores come from
-  // the Sheets after PIN verification (Sheets is master).
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (saved.juryName) setJuryName(saved.juryName);
-      if (saved.juryDept) setJuryDept(saved.juryDept);
-    } catch (_) {}
-  }, []);
-
-  // ── localStorage auto-save (eval step only) ──────────────
-  useEffect(() => {
-    if (step !== "eval") return;
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          juryName, juryDept,
-          scores, comments, current, groupSynced, step,
-          savedAt: new Date().toISOString(),
-        })
-      );
-    } catch (_) {}
-  }, [juryName, juryDept, scores, comments, current, groupSynced, step]);
-
-  // ── Cloud draft save ──────────────────────────────────────
-  const saveCloudDraft = useCallback((showFeedback = false) => {
-    const { juryName: n, juryDept: d, scores: s, comments: c, groupSynced: gs, current: cur } =
-      stateRef.current;
-    if (!n.trim() || !getToken()) return;
-    if (showFeedback) setSaveStatus("saving");
-    postToSheet({
-      action: "saveDraft",
-      draft:  {
-        juryName: n.trim(), juryDept: d.trim(),
-        scores: s, comments: c, current: cur, groupSynced: gs,
-        savedAt: new Date().toISOString(),
-      },
-    }).then(() => {
-      if (showFeedback) {
-        setSaveStatus("saved");
-        setTimeout(() => setSaveStatus("idle"), 2000);
-      }
-    });
-  }, []);
-
-  const deleteCloudDraft = useCallback(() => {
-    if (!getToken()) return;
-    postToSheet({ action: "deleteDraft" });
-  }, []);
-
-  // ── Instant rows write (debounced) ────────────────────────
+  // ── Instant rows write (debounced) — ONLY write mechanism ──────────
   const instantWrite = useCallback((newScores, newComments, newGroupSynced) => {
     clearTimeout(instantRef.current);
     instantRef.current = setTimeout(() => {
@@ -238,7 +180,6 @@ export default function useJuryState() {
       if (rows.length > 0) postToSheet({ rows });
     }, INSTANT_DELAY);
   }, []);
-
 
   // ── Auto-upgrade groupSynced ──────────────────────────────
   useEffect(() => {
@@ -260,15 +201,12 @@ export default function useJuryState() {
     const t = setTimeout(() => {
       const { juryName: n, juryDept: d, scores: s, comments: c } = stateRef.current;
       const jid = jurorIdRef.current;
-      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, jid, s, c, p, "all_submitted")) });
-      deleteCloudDraft();
-      localStorage.removeItem(STORAGE_KEY);
-      setDoneScores({ ...s });
+      postToSheet({ rows: PROJECTS.map((p) => buildRow(n, d, jid, s, c, p, "all_submitted")) });      setDoneScores({ ...s });
       setDoneComments({ ...c });
       setStep("done");
     }, 800);
     return () => clearTimeout(t);
-  }, [groupSynced, step, editMode, deleteCloudDraft]);
+  }, [groupSynced, step, editMode]);
 
   // ── Score / comment handlers ──────────────────────────────
   const handleScore = useCallback(
@@ -276,7 +214,7 @@ export default function useJuryState() {
       const crit = CRITERIA.find((c) => c.id === cid);
       let nextVal = val;
 
-      // Clamp numeric inputs immediately to avoid writing out-of-range values before blur.
+      // Clamp immediately so we never write out-of-range values to Sheets.
       if (val !== "" && val !== undefined && crit && typeof crit.max === "number") {
         const n = parseInt(val, 10);
         if (Number.isFinite(n)) {
@@ -306,16 +244,18 @@ export default function useJuryState() {
       const val  = scores[pid]?.[cid];
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
       if (val === "" || val === undefined) return;
-      const n       = parseInt(val, 10);
-      const clamped = Number.isFinite(n) && crit && typeof crit.max === "number"
-        ? Math.min(Math.max(n, 0), crit.max)
-        : 0;
-
+      const n = parseInt(val, 10);
+      const clamped =
+        Number.isFinite(n) && crit && typeof crit.max === "number"
+          ? Math.min(Math.max(n, 0), crit.max)
+          : 0;
       if (String(clamped) !== String(val)) {
         const nextScores = { ...scores, [pid]: { ...scores[pid], [cid]: String(clamped) } };
         setScores(nextScores);
-        // Persist corrected value (e.g., Teamwork capped at 10)
         instantWrite(nextScores, comments, groupSynced);
+      } else {
+        // Guarantee a write on blur (even if debounce hasn't fired yet).
+        instantWrite(scores, comments, groupSynced);
       }
     },
     [scores, comments, groupSynced, instantWrite]
@@ -337,16 +277,13 @@ export default function useJuryState() {
       const jid = jurorIdRef.current;
       postToSheet({
         rows: PROJECTS.map((p) => buildRow(n, d, jid, finalScores, finalComments, p, "all_submitted")),
-      });
-      deleteCloudDraft();
-      localStorage.removeItem(STORAGE_KEY);
-      setDoneScores({ ...finalScores });
+      });      setDoneScores({ ...finalScores });
       setDoneComments({ ...finalComments });
       setEditMode(false);
       doneFiredRef.current = true;
       setStep("done");
     },
-    [deleteCloudDraft]
+    []
   );
 
   // ── Edit-mode entry ───────────────────────────────────────
@@ -457,17 +394,6 @@ export default function useJuryState() {
       const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(s, p.id));
       setCurrent(firstIncomplete >= 0 ? firstIncomplete : 0);
       doneFiredRef.current = false;
-    } else {
-      // No sheet data — fall back to local draft if available.
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const saved = JSON.parse(raw);
-          if (saved.scores)      setScores(saved.scores);
-          if (saved.comments)    setComments(saved.comments);
-          if (saved.groupSynced) setGroupSynced(saved.groupSynced);
-          if (typeof saved.current === "number") setCurrent(saved.current);
-        }
       } catch (_) {}
     }
 
@@ -639,7 +565,6 @@ export default function useJuryState() {
     setEditMode(false);
     setDoneScores(null);
     setDoneComments(null);
-    setSaveStatus("idle");
     setPinStep("idle");
     setPinError("");
     setNewPin("");
@@ -673,7 +598,6 @@ export default function useJuryState() {
     doneComments, setDoneComments,
 
     sheetProgress,   // SheetsProgressDialog reads this
-    saveStatus,
 
     pinStep, pinError, newPin, attemptsLeft,
     handlePinSubmit, handlePinAcknowledge,
@@ -684,7 +608,6 @@ export default function useJuryState() {
     handleResubmit,
     handleEditScores,
     handleFinalSubmit,
-    saveCloudDraft,
     resetAll,
   };
 }

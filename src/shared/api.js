@@ -53,26 +53,27 @@ export function clearToken() {
 // ── Fire-and-forget POST ──────────────────────────────────────
 export async function postToSheet(body) {
   if (!SCRIPT_URL) return;
-
   const token = getToken();
-  const jsonPayload = JSON.stringify({ ...body, token });
-  const formBody = "payload=" + encodeURIComponent(jsonPayload);
-
-  if (navigator.sendBeacon) {
-    const blob = new Blob([formBody], {
-      type: "application/x-www-form-urlencoded;charset=utf-8",
-    });
-    navigator.sendBeacon(SCRIPT_URL, blob);
-    return;
-  }
+  const payload = JSON.stringify({ ...body, token });
 
   try {
+    // Prefer sendBeacon: more reliable for instant writes (tab switch / close).
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
+      navigator.sendBeacon(SCRIPT_URL, blob);
+      return;
+    }
+
+    // Fallback: fire-and-forget POST. Keep it a "simple" request.
     await fetch(SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-      body: formBody,
-      keepalive: true,
+      method:  "POST",
+      mode:    "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body:    payload,
+    });
+  } catch (_) {}
+},
+      body:    JSON.stringify({ ...body, token }),
     });
   } catch (_) {}
 }
@@ -96,7 +97,12 @@ export async function getFromSheet(params) {
 
 // ── Token-gated GET ───────────────────────────────────────────
 export async function getFromSheetAuth(params) {
-  return getFromSheet({ ...params, token: getToken() });
+  const json = await getFromSheet({ ...params, token: getToken() });
+  if (json && json.status === "unauthorized") {
+    clearToken();
+    throw new Error("unauthorized");
+  }
+  return json;
 }
 
 // ── Row builder ───────────────────────────────────────────────

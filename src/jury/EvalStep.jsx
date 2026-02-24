@@ -32,22 +32,13 @@ function progressGradient(pct) {
   return "linear-gradient(90deg,#84cc16,#22c55e)";
 }
 
-// Passive save indicator label — driven by saveStatus prop.
-function SaveIndicator({ saveStatus }) {
-  if (saveStatus === "saving") return <span className="autosave-dot saving">⏳ Saving…</span>;
-  if (saveStatus === "saved")  return <span className="autosave-dot saved">✓ Saved</span>;
-  return <span className="autosave-dot idle">● Auto-saving</span>;
-}
-
 export default function EvalStep({
   juryName,
   juryDept,
   current, setCurrent,
   scores, comments, touched,
   groupSynced, editMode,
-  progressPct, allComplete,
-  saveStatus,
-  handleScore, handleScoreBlur, handleCommentChange,
+  progressPct, allComplete,  handleScore, handleScoreBlur, handleCommentChange,
   handleFinalSubmit,
   onGoHome,
 }) {
@@ -64,6 +55,10 @@ export default function EvalStep({
 
   return (
     <div className="form-screen eval-screen">
+
+      <div className="juror-title-bar">
+        {juryName}{juryDept ? ` ()` : ""}
+      </div>
 
       {/* ── Sticky header ────────────────────────────────── */}
       <div className="eval-sticky-header">
@@ -104,7 +99,7 @@ export default function EvalStep({
             {juryDept && (
               <div className="juror-card-dept">{juryDept}</div>
             )}
-            <SaveIndicator saveStatus={saveStatus} />
+            <span className="autosave-dot idle">● Auto-saving</span>
           </div>
         </div>
 
