@@ -30,6 +30,7 @@ import {
   postToSheet,
   buildRow,
   fetchMyScores,
+  pingSession,
   checkPin,
   createPin,
   verifyPin,
@@ -328,6 +329,15 @@ export default function useJuryState() {
     submitFinal(scores, comments);
   }, [scores, comments, submitFinal]);
 
+  // ── Session kick helper ───────────────────────────────────
+  const kickSession = useCallback((msg) => {
+    clearToken();
+    setSheetProgress(null);
+    setPinError(msg || "Your session has expired. Please enter your PIN again.");
+    setPinStep("entering");
+    setStep("pin");
+  }, []);
+
   // ── SINGLE ENTRY POINT after PIN ──────────────────────────
   const proceedAfterPin = useCallback(async () => {
     // Show overlay immediately — user sees feedback without waiting for the fetch.
@@ -336,7 +346,13 @@ export default function useJuryState() {
     let sheetRows = [];
     try {
       sheetRows = await fetchMyScores() || [];
-    } catch (_) {}
+    } catch (err) {
+      if (err.unauthorized) {
+        kickSession("Your session has expired. Please enter your PIN again.");
+        return;
+      }
+      // Other network errors — fall through, show empty progress dialog.
+    }
 
     const totalCount  = PROJECTS.length;
     const filledCount = sheetRows.filter((r) =>
@@ -347,7 +363,23 @@ export default function useJuryState() {
       sheetRows.every((r) => r.status === "all_submitted");
 
     setSheetProgress({ rows: sheetRows, filledCount, totalCount, allSubmitted });
-  }, []);
+  }, [kickSession]);
+
+  // ── Session heartbeat — kick when another device logs in ──
+  useEffect(() => {
+    if (step !== "eval") return;
+    const id = setInterval(async () => {
+      try {
+        const json = await pingSession();
+        if (json.status === "unauthorized") {
+          kickSession("Your session was ended because you signed in from another device.");
+        }
+      } catch (_) {
+        // Network error — don't kick; retry next cycle.
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [step, kickSession]);
 
   // ── Confirm: load sheet data ──────────────────────────────
   const handleConfirmFromSheet = useCallback(() => {

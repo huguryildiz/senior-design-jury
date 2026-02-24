@@ -383,9 +383,9 @@ function doGet(e) {
       var existingPin = getPin(jurorId);
       var pin, perSecret;
       if (existingPin) {
-        // PIN already exists — return it with a (re)issued token.
+        // PIN already exists — re-issue with a FRESH secret to invalidate old sessions.
         pin       = existingPin;
-        perSecret = getPerJurorSecret(jurorId) || generateSecret();
+        perSecret = generateSecret();
         setPerJurorSecret(jurorId, perSecret);
       } else {
         pin       = generatePin();
@@ -409,7 +409,8 @@ function doGet(e) {
       var stored = getPin(jurorId);
       if (!stored) {
         // No PIN yet — issue a token anyway (graceful degradation).
-        var sec = getPerJurorSecret(jurorId) || generateSecret();
+        // Always rotate secret so any prior session is invalidated.
+        var sec = generateSecret();
         setPerJurorSecret(jurorId, sec);
         return respond({ status: "ok", valid: true, locked: false,
           attemptsLeft: MAX_PIN_ATTEMPTS, token: buildToken(jurorId, sec) });
@@ -417,7 +418,8 @@ function doGet(e) {
 
       if (entered === stored) {
         setAttempts(jurorId, 0);
-        var sec2 = getPerJurorSecret(jurorId) || generateSecret();
+        // Always rotate secret — invalidates all previously issued tokens.
+        var sec2 = generateSecret();
         setPerJurorSecret(jurorId, sec2);
         return respond({ status: "ok", valid: true, locked: false,
           attemptsLeft: MAX_PIN_ATTEMPTS, token: buildToken(jurorId, sec2) });
@@ -435,6 +437,11 @@ function doGet(e) {
     var identity = verifyToken(token);
     if (!identity) return respond({ status: "unauthorized", message: "Invalid or missing token." });
     var jid = identity.jurorId;
+
+    // Lightweight heartbeat — token already validated above.
+    if (action === "ping") {
+      return respond({ status: "ok" });
+    }
 
     if (action === "loaddraft") {
       var draftSheet = getOrCreateDraftSheet();

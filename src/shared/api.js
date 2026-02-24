@@ -142,8 +142,17 @@ export async function verifyPin(jurorId, pin) {
 
 export async function fetchMyScores() {
   const json = await getFromSheetAuth({ action: "myscores" });
+  if (json.status === "unauthorized") {
+    const err = new Error("unauthorized");
+    err.unauthorized = true;
+    throw err;
+  }
   if (json.status !== "ok") return null;
   return json.rows || [];
+}
+
+export async function pingSession() {
+  return getFromSheetAuth({ action: "ping" });
 }
 
 export async function verifySubmittedCount() {
