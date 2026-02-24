@@ -258,7 +258,7 @@
 
 .eval-home-btn {
   flex-shrink: 0;
-  width: 28px;
+  width: 56px;  /* 28px */ 
   height: 28px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
@@ -751,4 +751,8 @@
   padding: 13px;
   font-size: 15px;
   border-radius: 12px;
+
+  display: flex;              /* 👈 ekle */
+  align-items: center;        /* 👈 dikey ortala */
+  justify-content: center;    /* 👈 yatay ortala */
 }
