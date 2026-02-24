@@ -19,7 +19,6 @@
 import { useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "../config";
 import { isAllFilled, countFilled } from "./useJuryState";
-import { HomeIcon } from "../shared/Icons";
 
 function progressGradient(pct) {
   if (pct === 0)   return "#e2e8f0";
@@ -67,78 +66,69 @@ export default function EvalStep({
       {/* ── Sticky header ── */}
       <div className="eval-sticky-header">
 
-        {/* Row 1: identity + save status */}
+        {/* Row 1: Juror name (Dept)  ·  HOME button */}
         <div className="eval-identity-bar">
+          <span className="eval-identity-text">
+            {juryName}{juryDept && <span className="eval-identity-dept"> ({juryDept})</span>}
+          </span>
           <button
-            className="eval-back-btn"
+            className="eval-home-btn"
             onClick={() => setShowBackMenu(true)}
             aria-label="Home"
           >
-            <HomeIcon />
+            HOME
           </button>
-
-          <span className="eval-identity-icon">👤</span>
-          <span className="eval-identity-name">{juryName}</span>
-          {juryDept && <span className="eval-identity-dept">({juryDept})</span>}
-
-          <span className="eval-identity-save">
-            <SaveIndicator saveStatus={saveStatus} />
-          </span>
         </div>
 
-        {/* Row 2: group info */}
-        <div className="eval-project-info">
-          <div className="eval-project-name">{project.name}</div>
-          {project.desc && (
-            <div className="eval-project-desc">{project.desc}</div>
-          )}
-          {APP_CONFIG.showStudents && project.students?.length > 0 && (
-            <div className="eval-project-students">
-              👥 {project.students.join(" · ")}
-            </div>
-          )}
-        </div>
-
-        {/* Row 3: prev | dropdown | next + progress */}
-        <div className="eval-nav-row combined">
-          <div className="nav-controls">
-            <button
-              className="group-nav-btn"
-              onClick={goPrev}
-              disabled={current === 0}
-              aria-label="Previous group"
-            >
-              ←
-            </button>
-
-            <select
-              className="group-nav-select"
-              value={current}
-              onChange={(e) => onNavigate(Number(e.target.value))}
-            >
-              {PROJECTS.map((p, i) => (
-                <option key={p.id} value={i}>{groupLabel(p, i)}</option>
-              ))}
-            </select>
-
-            <button
-              className="group-nav-btn"
-              onClick={goNext}
-              disabled={current === PROJECTS.length - 1}
-              aria-label="Next group"
-            >
-              →
-            </button>
+        {/* Row 2: Project card — two independently scrollable lines */}
+        <div className="eval-project-card">
+          <div className="eval-project-line1">
+            <span className="eval-group-label">{project.name}</span>
+            <span className="eval-project-name">{project.desc}</span>
           </div>
-
-          <div className="nav-progress">
-            <div className="eval-progress-track compact">
-              <div
-                className="eval-progress-fill"
-                style={{ width: `${progressPct}%`, background: progressGradient(progressPct) }}
-              />
+          {APP_CONFIG.showStudents && project.students?.length > 0 && (
+            <div className="eval-project-line2">
+              {project.students.join(" · ")}
             </div>
-            <span className="eval-progress-label compact">{progressPct}%</span>
+          )}
+        </div>
+
+        {/* Row 3: CSS grid 25% | 50% | 25% — Prev · Dropdown · Next */}
+        <div className="eval-nav-row">
+          <button
+            className="group-nav-btn"
+            onClick={goPrev}
+            disabled={current === 0}
+            aria-label="Previous group"
+          >
+            ← Prev
+          </button>
+          <select
+            className="group-nav-select"
+            value={current}
+            onChange={(e) => onNavigate(Number(e.target.value))}
+          >
+            {PROJECTS.map((p, i) => (
+              <option key={p.id} value={i}>{groupLabel(p, i)}</option>
+            ))}
+          </select>
+          <button
+            className="group-nav-btn"
+            onClick={goNext}
+            disabled={current === PROJECTS.length - 1}
+            aria-label="Next group"
+          >
+            Next →
+          </button>
+        </div>
+
+        {/* Row 4: Full-width gradient progress bar */}
+        <div className="eval-progress-row">
+          <div className="eval-progress-track">
+            <div
+              className="eval-progress-fill"
+              style={{ width: `${progressPct}%`, background: progressGradient(progressPct) }}
+            />
           </div>
         </div>
 
@@ -170,6 +160,10 @@ export default function EvalStep({
 
       {/* ── Body ── */}
       <div className="eval-body">
+
+        <div className="eval-save-toast">
+          <SaveIndicator saveStatus={saveStatus} />
+        </div>
 
         {groupSynced[project.id] && !editMode && (
           <div className="group-done-banner">
