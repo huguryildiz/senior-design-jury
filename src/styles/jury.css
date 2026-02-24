@@ -257,45 +257,25 @@
 }
 .eval-identity-save { flex-shrink: 0; }
 
-/* Home icon button (fixed pill) */
-.eval-sticky-header .eval-home-btn-icon {
-  flex: 0 0 56px;
-  width: 56px !important;
-  min-width: 56px !important;
-  max-width: 56px !important;
-  height: 28px !important;
-
-  padding: 0 !important;
-  box-sizing: border-box;
+.eval-home-btn-icon {
+  flex: 0 0 112px;
+  width: 112px;
+  height: 28px;
 
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   color: #475569;
 
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
 
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background 0.12s, border-color 0.12s;
 }
-
-.eval-sticky-header .eval-home-btn-icon svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-}
-
-.eval-sticky-header .eval-home-btn-icon:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #1d4ed8;
-}
-
-.eval-sticky-header .eval-home-btn-icon:active {
-  background: #dbeafe;
-}
+.eval-home-btn-icon:hover  { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.eval-home-btn-icon:active { background: #dbeafe; }
 
 /* Row 2: Project card — two independently scrollable lines */
 .eval-project-card {
