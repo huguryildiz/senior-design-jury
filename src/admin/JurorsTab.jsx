@@ -61,7 +61,6 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
         <div className="empty-msg">No jurors match the current filter.</div>
       )}
 
-      /* Full-width stacked layout */
       <div className="jurors-grid jurors-grid-full">
         {filtered.map(({ jury, rows, submitted, overall, latestTs, latestRow }) => {
           const pct = Math.round((submitted.length / TOTAL_GROUPS) * 100);
