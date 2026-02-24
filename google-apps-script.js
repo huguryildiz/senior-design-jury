@@ -71,7 +71,7 @@ var DRAFT_SHEET = "Drafts";
 var INFO_SHEET  = "Info";
 var NUM_COLS    = 15;          // A–O
 var TZ          = "Europe/Istanbul";
-var TS_FORMAT   = "dd/MM/yyyy HH:mm";
+var TS_FORMAT = "dd/MM/yyyy HH:mm:ss";
 
 var RESET_UNLOCK_MINUTES = 20;
 var MAX_PIN_ATTEMPTS     = 3;
@@ -115,6 +115,19 @@ function formatTs(raw) {
   } catch (_) {
     return String(raw || "");
   }
+}
+
+// Parse a "dd/MM/yyyy HH:mm:ss" formatted timestamp back to milliseconds.
+// Used for stale-update comparisons where the stored timestamp is in
+// display format while the incoming timestamp is an ISO string.
+// Returns 0 if the input cannot be parsed.
+function parseFormattedTs(s) {
+  var m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/.exec(String(s || "").trim());
+  if (!m) return 0;
+  return new Date(
+    Number(m[3]), Number(m[2]) - 1, Number(m[1]),
+    Number(m[4]), Number(m[5]), Number(m[6])
+  ).getTime();
 }
 
 // ── Auth helpers ──────────────────────────────────────────────
@@ -625,7 +638,11 @@ function doPost(e) {
         var incomingTs     = String(row.timestamp   || "");
 
         // Skip stale updates (older timestamp than what's already stored).
-        if (existingTs && incomingTs && incomingTs < existingTs) return;
+        // existingTs is stored as "dd/MM/yyyy HH:mm" (display format),
+        // incomingTs is an ISO string from the client — compare as Date ms.
+        var existingTsMs = parseFormattedTs(existingTs);
+        var incomingTsMs = incomingTs ? new Date(incomingTs).getTime() : 0;
+        if (existingTsMs && incomingTsMs && incomingTsMs < existingTsMs) return;
 
         // Prevent status from being downgraded from all_submitted unless
         // a reset-unlock window is active for this juror.
