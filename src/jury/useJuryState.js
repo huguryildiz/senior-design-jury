@@ -361,44 +361,51 @@ export default function useJuryState() {
   // ── Confirm: load sheet data and proceed ──────────────────
   // Called when the user clicks "Continue" in SheetsProgressDialog.
   const handleConfirmFromSheet = useCallback(() => {
-    const prog = sheetProgress;
-    if (!prog) return;
-    setSheetProgress(null);
+  const prog = sheetProgress;
+  if (!prog) return;
+  setSheetProgress(null);
 
-    if (prog.allSubmitted) {
-      // All groups submitted — restore scores and go to done screen.
-      const { scores: s, comments: c } = rowsToState(prog.rows);
-      setScores(s);
-      setComments(c);
-      setDoneScores(s);
-      setDoneComments(c);
-      setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
-      doneFiredRef.current = true;
-      setStep("done");
-      return;
-    }
+  if (prog.allSubmitted) {
+    // All groups submitted — restore scores and go to done screen.
+    const { scores: s, comments: c } = rowsToState(prog.rows);
+    setScores(s);
+    setComments(c);
+    setDoneScores(s);
+    setDoneComments(c);
+    setGroupSynced(Object.fromEntries(PROJECTS.map((p) => [p.id, true])));
+    doneFiredRef.current = true;
+    setStep("done");
+    return;
+  }
 
-    if (prog.rows.length > 0) {
-      // Partial progress found — load sheet data into eval form.
-      const { scores: s, comments: c } = rowsToState(prog.rows);
-      const synced = Object.fromEntries(
-        prog.rows
-          .filter((r) => r.status === "group_submitted" || r.status === "all_submitted")
-          .map((r) => [Number(r.projectId), true])
-      );
-      setScores(s);
-      setComments(c);
-      setGroupSynced(synced);
+  if (prog.rows.length > 0) {
+    // Partial progress found — load sheet data into eval form.
+    const { scores: s, comments: c } = rowsToState(prog.rows);
+    const synced = Object.fromEntries(
+      prog.rows
+        .filter((r) => r.status === "group_submitted" || r.status === "all_submitted")
+        .map((r) => [Number(r.projectId), true])
+    );
 
-      // Navigate to the first incomplete group.
-      const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(s, p.id));
-      setCurrent(firstIncomplete >= 0 ? firstIncomplete : 0);
-      doneFiredRef.current = false;
-      } catch (_) {}
-    }
+    setScores(s);
+    setComments(c);
+    setGroupSynced(synced);
 
-    setStep("eval");
-  }, [sheetProgress]);
+    // Navigate to the first incomplete group.
+    const firstIncomplete = PROJECTS.findIndex((p) => !isAllFilled(s, p.id));
+    setCurrent(firstIncomplete >= 0 ? firstIncomplete : 0);
+    doneFiredRef.current = false;
+  } else {
+    // No rows in sheet → start fresh (Sheets is master; no local restore)
+    setScores(makeEmptyScores());
+    setComments(makeEmptyComments());
+    setGroupSynced({});
+    setCurrent(0);
+    doneFiredRef.current = false;
+  }
+
+  setStep("eval");
+}, [sheetProgress]);
 
   // ── Start fresh: ignore sheet data ───────────────────────
   // Called when the user clicks "Start Fresh" in SheetsProgressDialog.
@@ -537,7 +544,14 @@ export default function useJuryState() {
           setPinStep("locked");
           setPinError("Too many failed attempts. Please contact the admin.");
         } else {
-          setPinError(`Incorrect PIN. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
+          // Avoid template literals here to keep parsing robust across build toolchains.
+          setPinError(
+            "Incorrect PIN. " +
+              left +
+              " attempt" +
+              (left !== 1 ? "s" : "") +
+              " remaining."
+          );
         }
       } catch (_) {
         setPinError("Could not verify PIN. Please try again.");

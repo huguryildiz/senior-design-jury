@@ -51,8 +51,10 @@ export function clearToken() {
 }
 
 // ── Fire-and-forget POST ──────────────────────────────────────
+// ── Fire-and-forget POST ──────────────────────────────────────
 export async function postToSheet(body) {
   if (!SCRIPT_URL) return;
+
   const token = getToken();
   const payload = JSON.stringify({ ...body, token });
 
@@ -66,16 +68,14 @@ export async function postToSheet(body) {
 
     // Fallback: fire-and-forget POST. Keep it a "simple" request.
     await fetch(SCRIPT_URL, {
-      method:  "POST",
-      mode:    "no-cors",
+      method: "POST",
+      mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body:    payload,
+      body: payload,
     });
-  } catch (_) {}
-},
-      body:    JSON.stringify({ ...body, token }),
-    });
-  } catch (_) {}
+  } catch (_) {
+    // swallow errors (fire-and-forget)
+  }
 }
 
 // ── Authenticated GET ─────────────────────────────────────────
