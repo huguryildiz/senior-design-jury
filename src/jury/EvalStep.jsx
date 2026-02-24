@@ -1,15 +1,19 @@
 // src/jury/EvalStep.jsx
 // ============================================================
-// Step 3 — The scoring form.
+// Step 3 — Scoring form.
 //
-// Header layout (4 rows, all sticky):
-//   Row 1 (full-width): Juror Name (Dept) — identity header
-//   Row 2: [HOME btn]  [Group info card — name, desc, students]
-//   Row 3: [←]  [Group dropdown]  [→]
-//   Row 4 (full-width): Progress bar with percentage
+// Header (sticky, 4 rows):
+//   Row 1: Juror identity + save status
+//   Row 2: [Home btn]  [Group info card]
+//   Row 3: [← Prev]  [Group dropdown]  [Next →]
+//   Row 4: Progress bar
 //
-// Body: criterion cards + comments + running total
-//       in edit mode: Submit Final button at bottom
+// Write strategy:
+//   - Score onChange  → state only, no write
+//   - Score onBlur    → clamp + writeGroup(pid)
+//   - Comment onChange → state only, no write
+//   - Comment onBlur  → writeGroup(pid)
+//   - Navigation      → writeGroup(currentPid) then navigate
 // ============================================================
 
 import { useState } from "react";
@@ -17,16 +21,14 @@ import { PROJECTS, CRITERIA, APP_CONFIG } from "../config";
 import { isAllFilled, countFilled } from "./useJuryState";
 import { HomeIcon } from "../shared/Icons";
 
-// Progress bar gradient: red → orange → yellow → green
 function progressGradient(pct) {
-  if (pct === 0)  return "#e2e8f0";
-  if (pct < 34)   return "linear-gradient(90deg,#ef4444,#f97316)";
-  if (pct < 67)   return "linear-gradient(90deg,#f97316,#eab308)";
-  if (pct < 100)  return "linear-gradient(90deg,#eab308,#84cc16)";
+  if (pct === 0)   return "#e2e8f0";
+  if (pct < 34)    return "linear-gradient(90deg,#ef4444,#f97316)";
+  if (pct < 67)    return "linear-gradient(90deg,#f97316,#eab308)";
+  if (pct < 100)   return "linear-gradient(90deg,#eab308,#84cc16)";
   return "linear-gradient(90deg,#84cc16,#22c55e)";
 }
 
-// Passive save indicator — shown inside the identity header
 function SaveIndicator({ saveStatus }) {
   if (saveStatus === "saving") return <span className="autosave-dot saving">⏳ Saving…</span>;
   if (saveStatus === "saved")  return <span className="autosave-dot saved">✓ Saved</span>;
@@ -34,14 +36,14 @@ function SaveIndicator({ saveStatus }) {
 }
 
 export default function EvalStep({
-  juryName,
-  juryDept,
-  current, setCurrent,
+  juryName, juryDept,
+  current, onNavigate,
   scores, comments, touched,
   groupSynced, editMode,
   progressPct, allComplete,
   saveStatus,
-  handleScore, handleScoreBlur, handleCommentChange,
+  handleScore, handleScoreBlur,
+  handleCommentChange, handleCommentBlur,
   handleFinalSubmit,
   onGoHome,
 }) {
@@ -50,43 +52,41 @@ export default function EvalStep({
 
   const project = PROJECTS[current];
 
-  // Dropdown option label: completion checkmark + fill count.
-  const groupLabel = (p) => {
+  const groupLabel = (p, i) => {
     const filled = CRITERIA.filter((c) => scores[p.id]?.[c.id] !== "").length;
-    return `${isAllFilled(scores, p.id) ? "✅" : "⚠️"} ${p.name} (${filled}/${CRITERIA.length})`;
+    const icon   = isAllFilled(scores, p.id) ? "✅" : "⚠️";
+    return `${icon} ${p.name} (${filled}/${CRITERIA.length})`;
   };
+
+  const goPrev = () => { if (current > 0) onNavigate(current - 1); };
+  const goNext = () => { if (current < PROJECTS.length - 1) onNavigate(current + 1); };
 
   return (
     <div className="form-screen eval-screen">
 
-      {/* ── Sticky header ────────────────────────────────── */}
+      {/* ── Sticky header ── */}
       <div className="eval-sticky-header">
 
-        {/* Row 1: Full-width juror identity bar */}
+        {/* Row 1: identity + save status */}
         <div className="eval-identity-bar">
           <span className="eval-identity-icon">👤</span>
           <span className="eval-identity-name">{juryName}</span>
-          {juryDept && (
-            <span className="eval-identity-dept">({juryDept})</span>
-          )}
+          {juryDept && <span className="eval-identity-dept">({juryDept})</span>}
           <span className="eval-identity-save">
             <SaveIndicator saveStatus={saveStatus} />
           </span>
         </div>
 
-        {/* Row 2: HOME button + Group info card */}
+        {/* Row 2: home + group info */}
         <div className="eval-top-row">
-
-          {/* Home button */}
           <button
             className="eval-back-btn"
             onClick={() => setShowBackMenu(true)}
-            aria-label="Back to home"
+            aria-label="Home"
           >
             <HomeIcon />
           </button>
 
-          {/* Group info card */}
           <div className="eval-project-info">
             <div className="eval-project-name">{project.name}</div>
             {project.desc && (
@@ -100,34 +100,38 @@ export default function EvalStep({
           </div>
         </div>
 
-        {/* Row 3: prev | group dropdown | next */}
+        {/* Row 3: prev | dropdown | next */}
         <div className="eval-nav-row">
           <button
             className="group-nav-btn"
-            onClick={() => setCurrent((i) => Math.max(0, i - 1))}
+            onClick={goPrev}
             disabled={current === 0}
             aria-label="Previous group"
-          >←</button>
+          >
+            ←
+          </button>
 
           <select
             className="group-nav-select"
             value={current}
-            onChange={(e) => setCurrent(Number(e.target.value))}
+            onChange={(e) => onNavigate(Number(e.target.value))}
           >
             {PROJECTS.map((p, i) => (
-              <option key={p.id} value={i}>{groupLabel(p)}</option>
+              <option key={p.id} value={i}>{groupLabel(p, i)}</option>
             ))}
           </select>
 
           <button
             className="group-nav-btn"
-            onClick={() => setCurrent((i) => Math.min(PROJECTS.length - 1, i + 1))}
+            onClick={goNext}
             disabled={current === PROJECTS.length - 1}
             aria-label="Next group"
-          >→</button>
+          >
+            →
+          </button>
         </div>
 
-        {/* Row 4: Progress bar */}
+        {/* Row 4: progress bar */}
         <div className="eval-progress-wrap">
           <div className="eval-progress-track">
             <div
@@ -139,13 +143,13 @@ export default function EvalStep({
         </div>
       </div>
 
-      {/* ── Home confirmation overlay ─────────────────────── */}
+      {/* ── Home confirmation overlay ── */}
       {showBackMenu && (
         <div className="back-menu-overlay" onClick={() => setShowBackMenu(false)}>
           <div className="back-menu" onClick={(e) => e.stopPropagation()}>
             <p className="back-menu-title">Leave evaluation?</p>
             <p className="back-menu-sub">
-              Your progress is auto-saved and you can resume any time.
+              Your progress is saved. You can continue any time.
             </p>
             <button
               className="back-menu-btn primary"
@@ -163,13 +167,12 @@ export default function EvalStep({
         </div>
       )}
 
-      {/* ── Body ─────────────────────────────────────────── */}
+      {/* ── Body ── */}
       <div className="eval-body">
 
-        {/* Status banners */}
         {groupSynced[project.id] && !editMode && (
           <div className="group-done-banner">
-            ✅ Scores saved for this group. Continue with other groups.
+            ✅ All scores saved for this group.
           </div>
         )}
         {editMode && (
@@ -185,7 +188,7 @@ export default function EvalStep({
           const barPct      = ((parseInt(val, 10) || 0) / crit.max) * 100;
 
           return (
-            <div key={crit.id} className={`crit-card ${showMissing ? "invalid" : ""}`}>
+            <div key={crit.id} className={`crit-card${showMissing ? " invalid" : ""}`}>
               <div className="crit-header">
                 <div>
                   <div className="crit-label">{crit.label}</div>
@@ -219,7 +222,7 @@ export default function EvalStep({
                   max={crit.max}
                   value={val}
                   onChange={(e) => handleScore(project.id, crit.id, e.target.value)}
-                  onBlur={()  => handleScoreBlur(project.id, crit.id)}
+                  onBlur={()   => handleScoreBlur(project.id, crit.id)}
                   placeholder="—"
                   className="score-input"
                 />
@@ -242,6 +245,7 @@ export default function EvalStep({
           <textarea
             value={comments[project.id] || ""}
             onChange={(e) => handleCommentChange(project.id, e.target.value)}
+            onBlur={()    => handleCommentBlur(project.id)}
             placeholder="Any additional feedback about this group…"
             rows={3}
           />
@@ -255,20 +259,19 @@ export default function EvalStep({
               (s, c) => s + (parseInt(scores[project.id]?.[c.id], 10) || 0), 0
             );
             return (
-              <span className={`total-score ${total >= 80 ? "high" : total >= 60 ? "mid" : ""}`}>
+              <span className={`total-score${total >= 80 ? " high" : total >= 60 ? " mid" : ""}`}>
                 {total} / 100
               </span>
             );
           })()}
         </div>
 
-        {/* Submit Final — visible only in edit mode */}
+        {/* Submit Final — edit mode only */}
         {editMode && (
           <button
             className="btn-primary"
             style={{ width: "100%", marginTop: 8, opacity: allComplete ? 1 : 0.65 }}
             onClick={handleFinalSubmit}
-            title={allComplete ? "Submit all evaluations" : "Fill in all scores first"}
           >
             {allComplete
               ? "✅ Submit Final"

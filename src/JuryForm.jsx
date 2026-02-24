@@ -1,25 +1,11 @@
 // src/JuryForm.jsx
-// ============================================================
-// Thin step-router for the jury evaluation flow.
-// All state and business logic lives in useJuryState.
-//
-// Step routing:
-//   "info"  → InfoStep           (identity entry)
-//   "pin"   → PinStep            (PIN entry / first-time display)
-//   "eval"  → EvalStep           (scoring form)
-//   "done"  → DoneStep           (confirmation + edit option)
-//
-// SheetsProgressDialog is rendered as an overlay on top of the
-// current step whenever sheetProgress is non-null. It is always
-// shown after PIN verification so the juror sees the server-side
-// state before proceeding.
-// ============================================================
+// Step-router. All logic lives in useJuryState.
 
-import useJuryState       from "./jury/useJuryState";
-import InfoStep           from "./jury/InfoStep";
-import PinStep            from "./jury/PinStep";
-import EvalStep           from "./jury/EvalStep";
-import DoneStep           from "./jury/DoneStep";
+import useJuryState         from "./jury/useJuryState";
+import InfoStep             from "./jury/InfoStep";
+import PinStep              from "./jury/PinStep";
+import EvalStep             from "./jury/EvalStep";
+import DoneStep             from "./jury/DoneStep";
 import SheetsProgressDialog from "./jury/SheetsProgressDialog";
 import "./styles/jury.css";
 
@@ -28,7 +14,7 @@ export default function JuryForm({ onBack }) {
     step,
     juryName, setJuryName,
     juryDept, setJuryDept,
-    current, setCurrent,
+    current, handleNavigate,
     scores, comments, touched,
     groupSynced, editMode,
     progressPct, allComplete,
@@ -36,7 +22,8 @@ export default function JuryForm({ onBack }) {
     sheetProgress,
     saveStatus,
     pinStep, pinError, newPin, attemptsLeft,
-    handleScore, handleScoreBlur, handleCommentChange,
+    handleScore, handleScoreBlur,
+    handleCommentChange, handleCommentBlur,
     handleStart,
     handleConfirmFromSheet,
     handleStartFresh,
@@ -48,7 +35,6 @@ export default function JuryForm({ onBack }) {
     resetAll,
   } = useJuryState();
 
-  // ── Done ────────────────────────────────────────────────
   if (step === "done") {
     return (
       <>
@@ -60,7 +46,6 @@ export default function JuryForm({ onBack }) {
           onEditScores={handleEditScores}
           onBack={() => { resetAll(); onBack(); }}
         />
-        {/* Dialog may appear over the done screen too (e.g. on reload) */}
         <SheetsProgressDialog
           progress={sheetProgress}
           onConfirm={handleConfirmFromSheet}
@@ -70,7 +55,6 @@ export default function JuryForm({ onBack }) {
     );
   }
 
-  // ── PIN ──────────────────────────────────────────────────
   if (step === "pin") {
     return (
       <>
@@ -92,7 +76,6 @@ export default function JuryForm({ onBack }) {
     );
   }
 
-  // ── Eval ─────────────────────────────────────────────────
   if (step === "eval") {
     return (
       <>
@@ -100,7 +83,7 @@ export default function JuryForm({ onBack }) {
           juryName={juryName}
           juryDept={juryDept}
           current={current}
-          setCurrent={setCurrent}
+          onNavigate={handleNavigate}
           scores={scores}
           comments={comments}
           touched={touched}
@@ -112,6 +95,7 @@ export default function JuryForm({ onBack }) {
           handleScore={handleScore}
           handleScoreBlur={handleScoreBlur}
           handleCommentChange={handleCommentChange}
+          handleCommentBlur={handleCommentBlur}
           handleFinalSubmit={handleFinalSubmit}
           onGoHome={onBack}
         />
@@ -124,7 +108,7 @@ export default function JuryForm({ onBack }) {
     );
   }
 
-  // ── Info (default) ────────────────────────────────────────
+  // Info (default)
   return (
     <>
       <InfoStep
