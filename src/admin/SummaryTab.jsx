@@ -29,7 +29,7 @@ export default function SummaryTab({ ranked, submittedData }) {
         fontSize: 13,
         fontWeight: 500
       }}>
-        ℹ️ Averages and rankings include only <strong>final submissions (all_submitted)</strong>.
+        ℹ️ Averages and rankings include only <strong>final submissions</strong>.
       </div>
       <div className="rank-list">
       {ranked.map((p, i) => (

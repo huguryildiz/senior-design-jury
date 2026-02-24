@@ -10,8 +10,6 @@
   background: var(--gray-50);
   display: flex;
   flex-direction: column;
-  max-width: 900px;
-  margin: 0 auto;
 }
 .admin-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 
@@ -195,10 +193,10 @@
 }
 
 .jurors-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 16px;
-  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
 }
 
 .juror-filter-bar {
