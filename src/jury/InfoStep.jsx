@@ -45,7 +45,7 @@ export default function InfoStep({
         </div>
 
         <div className="field">
-          <label htmlFor="jury-name">Full Name *</label>
+          <label htmlFor="jury-name">Full Name <span className="req">*</span></label>
           <input
             id="jury-name"
             value={juryName}
@@ -57,7 +57,7 @@ export default function InfoStep({
         </div>
 
         <div className="field">
-          <label htmlFor="jury-dept">Department / Institution *</label>
+          <label htmlFor="jury-dept">Department / Institution <span className="req">*</span></label>
           <input
             id="jury-dept"
             value={juryDept}
@@ -68,9 +68,8 @@ export default function InfoStep({
         </div>
 
         <p className="draft-device-note">
-          ℹ️ Your progress is auto-saved every 30 seconds. You can continue from
-          any device using the same name and department. A PIN is assigned on your
-          first login to protect your evaluations.
+          ℹ️ Scores save automatically when you fill in each field or navigate between groups.
+          Your PIN lets you continue from any device.
         </p>
 
         <button

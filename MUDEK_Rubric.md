@@ -11,15 +11,15 @@ The poster day evaluation is designed to assess four competencies that directly 
 
 | # | Criterion | Max | MÜDEK Outcome |
 |---|-----------|-----|---------------|
-| 1 | Written Communication (Poster) | 30 | 9.2 |
-| 2 | Oral Communication (Presentation & Q&A) | 30 | 9.1 |
-| 3 | Technical & Engineering Content | 30 | 1.2 / 2 / 3 |
-| 4 | Teamwork & Professionalism | 10 | 8.1 / 8.2 |
+| 1 | Written Communication | 30 | 9.2 |
+| 2 | Oral Communication | 30 | 9.1 |
+| 3 | Technical Content | 30 | 1.2 / 2 / 3 |
+| 4 | Teamwork | 10 | 8.1 / 8.2 |
 | | **Total** | **100** | |
 
 ---
 
-## Criterion 1 — Written Communication (Poster)
+## Criterion 1 — Written Communication
 **30 points · MÜDEK 9.2**
 
 > *"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda **yazılı** etkin iletişim kurma becerisi."*
@@ -41,7 +41,7 @@ This criterion evaluates how effectively the team communicates their project in 
 
 ---
 
-## Criterion 2 — Oral Communication (Presentation & Q&A)
+## Criterion 2 — Oral Communication
 **30 points · MÜDEK 9.1**
 
 > *"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda **sözlü** etkin iletişim kurma becerisi."*
@@ -63,7 +63,7 @@ This criterion evaluates the team's ability to present their work verbally and t
 
 ---
 
-## Criterion 3 — Technical & Engineering Content
+## Criterion 3 — Technical Content
 **30 points · MÜDEK 1.2 / 2 / 3**
 
 > *"Matematik, fen bilimleri ve mühendislik bilgilerini karmaşık mühendislik problemlerinin çözümünde kullanabilme becerisi (1.2); karmaşık mühendislik problemlerini tanımlama, formüle etme ve analiz becerisi (2); karmaşık mühendislik problemlerine yaratıcı, gerçekçi kısıtları gözeten çözümler tasarlama becerisi (3)."*
@@ -85,7 +85,7 @@ This criterion evaluates the depth, correctness, and originality of the engineer
 
 ---
 
-## Criterion 4 — Teamwork & Professionalism
+## Criterion 4 — Teamwork
 **10 points · MÜDEK 8.1 / 8.2**
 
 > *"Bireysel olarak disiplin içi ve çok disiplinli takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi (8.1 / 8.2)."*

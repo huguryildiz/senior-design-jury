@@ -177,5 +177,5 @@
   .home-logo   { width: 116px; height: 116px; }
   .home-card   { padding: 32px 24px; }
   .home-card h1 { font-size: 26px; }
-  .home-hint   { font-size: 12px; }
+  .home-hint   { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }

@@ -19,6 +19,7 @@
 import { useState } from "react";
 import { PROJECTS, CRITERIA, APP_CONFIG } from "../config";
 import { isAllFilled, countFilled } from "./useJuryState";
+import { UserIcon, UsersIcon, ChevronLeftIcon, ChevronRightIcon, HomeIcon } from "../shared/Icons";
 
 function progressGradient(pct) {
   if (pct === 0)   return "#e2e8f0";
@@ -66,17 +67,21 @@ export default function EvalStep({
       {/* ── Sticky header ── */}
       <div className="eval-sticky-header">
 
-        {/* Row 1: Juror name (Dept)  ·  HOME button */}
+        {/* Row 1: Juror name (Dept)  ·  autosave  ·  HOME icon */}
         <div className="eval-identity-bar">
+          <span className="eval-identity-icon"><UserIcon /></span>
           <span className="eval-identity-text">
             {juryName}{juryDept && <span className="eval-identity-dept"> ({juryDept})</span>}
+          </span>
+          <span className="eval-identity-save">
+            <SaveIndicator saveStatus={saveStatus} />
           </span>
           <button
             className="eval-home-btn"
             onClick={() => setShowBackMenu(true)}
             aria-label="Home"
           >
-            HOME
+            <HomeIcon />
           </button>
         </div>
 
@@ -88,7 +93,7 @@ export default function EvalStep({
           </div>
           {APP_CONFIG.showStudents && project.students?.length > 0 && (
             <div className="eval-project-line2">
-              {project.students.join(" · ")}
+              <UsersIcon />{" "}{project.students.join(" · ")}
             </div>
           )}
         </div>
@@ -101,7 +106,7 @@ export default function EvalStep({
             disabled={current === 0}
             aria-label="Previous group"
           >
-            ← Prev
+            <ChevronLeftIcon />
           </button>
           <select
             className="group-nav-select"
@@ -118,7 +123,7 @@ export default function EvalStep({
             disabled={current === PROJECTS.length - 1}
             aria-label="Next group"
           >
-            Next →
+            <ChevronRightIcon />
           </button>
         </div>
 
@@ -160,10 +165,6 @@ export default function EvalStep({
 
       {/* ── Body ── */}
       <div className="eval-body">
-
-        <div className="eval-save-toast">
-          <SaveIndicator saveStatus={saveStatus} />
-        </div>
 
         {groupSynced[project.id] && !editMode && (
           <div className="group-done-banner">

@@ -30,8 +30,7 @@ export default function DoneStep({
         <div className="done-icon">🎉</div>
         <h2>Thank You!</h2>
         <p className="done-subtitle">
-          Your evaluations have been recorded successfully.<br />
-          We appreciate your time and valuable feedback.
+          Your evaluations have been recorded—thank you for your time and feedback.
         </p>
 
         <div className="done-summary">

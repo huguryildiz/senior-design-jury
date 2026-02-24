@@ -67,7 +67,7 @@ export const PROJECTS = [
 export const CRITERIA = [
   {
     id: "technical",
-    label: "Technical & Engineering Content",
+    label: "Technical Content",
     shortLabel: "Technical",
     mudek: "1.2 / 2 / 3",
     max: 30,
@@ -80,7 +80,7 @@ export const CRITERIA = [
   },
   {
     id: "design",
-    label: "Written Communication (Poster)",
+    label: "Written Communication",
     shortLabel: "Written",
     mudek: "9.2",
     max: 30,
@@ -93,7 +93,7 @@ export const CRITERIA = [
   },
   {
     id: "delivery",
-    label: "Oral Communication (Presentation & Q&A)",
+    label: "Oral Communication",
     shortLabel: "Oral",
     mudek: "9.1",
     max: 30,
@@ -106,7 +106,7 @@ export const CRITERIA = [
   },
   {
     id: "teamwork",
-    label: "Teamwork & Professionalism",
+    label: "Teamwork",
     shortLabel: "Teamwork",
     mudek: "8.1 / 8.2",
     max: 10,
