@@ -330,6 +330,9 @@ export default function useJuryState() {
 
   // ── SINGLE ENTRY POINT after PIN ──────────────────────────
   const proceedAfterPin = useCallback(async () => {
+    // Show overlay immediately — user sees feedback without waiting for the fetch.
+    setSheetProgress({ loading: true });
+
     let sheetRows = [];
     try {
       sheetRows = await fetchMyScores() || [];

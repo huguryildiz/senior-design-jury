@@ -27,6 +27,23 @@ function rowStatusChip(status) {
 export default function SheetsProgressDialog({ progress, onConfirm, onFresh }) {
   if (!progress) return null;
 
+  // Loading sentinel — shown while fetchMyScores is in flight.
+  if (progress.loading) {
+    return (
+      <div className="spd-overlay">
+        <div className="spd-card">
+          <div className="spd-header">
+            <div className="spd-icon">⏳</div>
+            <div>
+              <div className="spd-title">Checking your progress…</div>
+              <div className="spd-sub">Connecting to server</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const { rows, filledCount, totalCount, allSubmitted } = progress;
   const hasData = rows && rows.length > 0;
 

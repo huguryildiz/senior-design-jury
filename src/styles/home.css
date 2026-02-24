@@ -92,7 +92,8 @@
 .home-hint {
   margin-top: 18px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 9px 14px;
   background: rgba(241,245,249,0.90);
@@ -103,7 +104,7 @@
   line-height: 1.4;
   width: 100%;
   box-sizing: border-box;
-  text-align: left;
+  text-align: center;
 }
 .home-hint-ico { opacity: .85; font-size: 15px; flex-shrink: 0; }
 
