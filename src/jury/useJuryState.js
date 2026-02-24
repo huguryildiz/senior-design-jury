@@ -148,12 +148,13 @@ export default function useJuryState() {
   stateRef.current   = { juryName, juryDept, scores, comments, groupSynced, current };
 
   // Always-fresh copies of scores/comments — updated synchronously
-  // in onChange handlers before React batches the state update.
-  // writeGroup reads from these, never from stale closure state.
+  // in onChange handlers ONLY. Never reset from render — doing so
+  // would overwrite handler updates with stale React state between
+  // setScores() call and the commit, causing lost writes.
+  // Initialised once; kept current via explicit assignments in every
+  // handler that mutates scores/comments.
   const pendingScoresRef   = useRef(scores);
   const pendingCommentsRef = useRef(comments);
-  pendingScoresRef.current   = scores;
-  pendingCommentsRef.current = comments;
 
   // ── Core write: single group → single row ─────────────────
   // Reads from pendingScoresRef/pendingCommentsRef — always fresh.
