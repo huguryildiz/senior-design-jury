@@ -77,7 +77,7 @@ export default function EvalStep({
             <SaveIndicator saveStatus={saveStatus} />
           </span>
           <button
-            className="eval-home-btn"
+            className="eval-home-btn-icon"
             onClick={() => setShowBackMenu(true)}
             aria-label="Home"
           >

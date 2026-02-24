@@ -500,9 +500,11 @@ export default function useJuryState() {
   // ── PIN submit ────────────────────────────────────────────
   const handlePinSubmit = useCallback(async (enteredPin) => {
     const jid = jurorIdRef.current;
+    setSheetProgress({ loading: true });
     try {
       const res = await verifyPin(jid, enteredPin);
       if (res.locked) {
+        setSheetProgress(null);
         setPinStep("locked");
         setPinError("Too many failed attempts. Please contact the admin to reset your PIN.");
         return;
@@ -514,6 +516,7 @@ export default function useJuryState() {
         await proceedAfterPin();
         return;
       }
+      setSheetProgress(null);
       const left = typeof res.attemptsLeft === "number" ? res.attemptsLeft : attemptsLeft - 1;
       setAttemptsLeft(left);
       if (left <= 0) {
@@ -523,6 +526,7 @@ export default function useJuryState() {
         setPinError(`Incorrect PIN. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
       }
     } catch (_) {
+      setSheetProgress(null);
       setPinError("Could not verify PIN. Please try again.");
     }
   }, [attemptsLeft, proceedAfterPin]);

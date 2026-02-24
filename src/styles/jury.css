@@ -257,7 +257,7 @@
 }
 .eval-identity-save { flex-shrink: 0; }
 
-.eval-home-btn {
+.eval-home-btn-icon {
   flex-shrink: 0;
   width: 56px;
   height: 28px;
@@ -272,10 +272,8 @@
   padding: 0;
   transition: background 0.12s, border-color 0.12s;
 }
-.eval-home-btn:hover  { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
-.eval-home-btn:active { background: #dbeafe; }
-/* Specific override to guarantee width even if general rule is overridden */
-.eval-sticky-header .eval-home-btn { width: 56px !important; height: 28px !important; }
+.eval-home-btn-icon:hover  { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.eval-home-btn-icon:active { background: #dbeafe; }
 
 /* Row 2: Project card — two independently scrollable lines */
 .eval-project-card {
