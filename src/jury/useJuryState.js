@@ -451,6 +451,9 @@ export default function useJuryState() {
     const jid = generateId(n, d);
     jurorIdRef.current = jid;
 
+    // Show overlay immediately — user sees "Checking…" without waiting.
+    setSheetProgress({ loading: true });
+
     if (getToken()) {
       await proceedAfterPin();
       return;
@@ -459,12 +462,14 @@ export default function useJuryState() {
     try {
       const res = await checkPin(jid);
       if (res.status !== "ok") {
+        setSheetProgress(null);
         setPinError("Could not reach the server. Please try again.");
         setPinStep("entering");
         setStep("pin");
         return;
       }
       if (res.exists) {
+        setSheetProgress(null);
         setPinStep("entering");
         setPinError("");
         setAttemptsLeft(3);
@@ -472,17 +477,20 @@ export default function useJuryState() {
       } else {
         const r2 = await createPin(jid, n, d);
         if (r2.status === "ok") {
+          setSheetProgress(null);
           storeToken(r2.token);
           setNewPin(r2.pin);
           setPinStep("new");
           setStep("pin");
         } else {
+          setSheetProgress(null);
           setPinError("Could not create a PIN. Please try again.");
           setPinStep("entering");
           setStep("pin");
         }
       }
     } catch (_) {
+      setSheetProgress(null);
       setPinError("Connection error. Please check your network and try again.");
       setPinStep("entering");
       setStep("pin");

@@ -35,20 +35,15 @@ export function generateId(name, dept) {
   return hash.toString(16).padStart(8, "0");
 }
 
-// ── Token storage ─────────────────────────────────────────────
-const TOKEN_KEY = "ee492_jury_token";
+// ── Token storage (in-memory — cleared on every page refresh) ──
+// Intentionally NOT persisted to sessionStorage or localStorage.
+// After a page refresh the token is gone and the juror must re-enter
+// their PIN. Sheets is the single source of truth; PIN re-auth is cheap.
+let _token = "";
 
-export function storeToken(token) {
-  try { sessionStorage.setItem(TOKEN_KEY, token); } catch (_) {}
-}
-
-export function getToken() {
-  try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (_) { return ""; }
-}
-
-export function clearToken() {
-  try { sessionStorage.removeItem(TOKEN_KEY); } catch (_) {}
-}
+export function storeToken(token) { _token = token; }
+export function getToken()        { return _token; }
+export function clearToken()      { _token = ""; }
 
 // ── Fire-and-forget POST ──────────────────────────────────────
 export async function postToSheet(body) {
