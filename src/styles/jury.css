@@ -9,7 +9,7 @@
   background: var(--gray-50);
   display: flex;
   flex-direction: column;
-  max-width: 680px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -310,9 +310,54 @@
 .eval-nav-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Left side: prev / select / next */
+.eval-nav-row .nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Make buttons fixed width again inside combined layout */
+.eval-nav-row .group-nav-btn {
+  flex: 0 0 44px;
+  width: 44px;
+}
+
+.eval-nav-row .group-nav-select {
+  flex: 1 1 auto;
+}
+
+/* Right side: compact progress */
+.eval-nav-row .nav-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.eval-progress-track.compact {
+  height: 10px;
+  width: 120px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+}
+
+.eval-progress-label.compact {
+  position: static;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  text-shadow: none;
 }
 
 .group-nav-btn {
