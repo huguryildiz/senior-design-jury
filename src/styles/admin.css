@@ -285,7 +285,10 @@
 .juror-row-desc     { font-size: 11px; color: #64748b; white-space: nowrap; }
 .juror-row-students { font-size: 11px; color: #64748b; white-space: nowrap; }
 .juror-score     { font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); white-space: nowrap; flex-shrink: 0; }
-.juror-row-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
+.juror-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; white-space: nowrap; }
+.juror-row-right .juror-score   { order: 1; }
+.juror-row-right .status-badge  { order: 2; }
+.juror-row-right > :first-child { order: 3; font-size: 11px; color: #94a3b8; }
 
 /* StatusBadge → Reset PIN horizontal gap (desktop + landscape) */
 .status-badge + .pin-reset-btn { margin-left: 6px; }
@@ -299,9 +302,9 @@
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid var(--gray-200);
+  border: 1px solid var(--gray-300);
   border-radius: 6px;
-  background: white;
+  background: #f1f5f9;
   color: var(--gray-700);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
@@ -309,10 +312,10 @@
 }
 .pin-reset-btn:hover { background: var(--amber-light); border-color: #fcd34d; color: var(--amber); }
 
-/* PIN reset button background matches card status color */
-.juror-card-all-submitted .pin-reset-btn { background: #f0fdf4; }
-.juror-card-in-progress   .pin-reset-btn { background: #fefce8; }
-.juror-card-editing       .pin-reset-btn { background: #fff7ed; }
+/* PIN reset button background matches card status color (one shade darker than card bg) */
+.juror-card-all-submitted .pin-reset-btn { background: #dcfce7; }
+.juror-card-in-progress   .pin-reset-btn { background: #fef9c3; }
+.juror-card-editing       .pin-reset-btn { background: #ffedd5; }
 
 /* PIN reset centered modal */
 .pin-reset-modal-overlay {
@@ -661,13 +664,7 @@
 
   /* Per-group rows: 2-column grid (text | right side) */
   .juror-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
-  .juror-row-right { flex-direction: column; align-items: flex-end; gap: 2px; }
   .juror-score { font-size: 12px; }
-
-  /* Mobile: reorder right-side elements — score first, badge second, timestamp last */
-  .juror-row-right .juror-score   { order: 1; }
-  .juror-row-right .status-badge  { order: 2; }
-  .juror-row-right > :first-child { order: 3; }
 
   /* Reset PIN — smaller, left-aligned on mobile */
   .pin-reset-btn { width: auto; display: block; font-size: 11px; padding: 3px 8px; margin-top: 4px; }

@@ -146,9 +146,7 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                           )}
                         </div>
                         <div className="juror-row-right">
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                            {formatTs(d.timestamp)}
-                          </span>
+                          <span>{formatTs(d.timestamp)}</span>
                           <StatusBadge status={d.status} editingFlag={d.editingFlag} />
                           {(d.status === "all_submitted" || d.status === "group_submitted") && (
                             <span className="juror-score">{d.total} / 100</span>
