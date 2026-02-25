@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { cmp, exportCSV, formatTs } from "./utils";
+import { cmp, exportCSV, formatTs, tsToMillis } from "./utils";
 import { StatusBadge } from "./components";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
@@ -26,12 +26,22 @@ function displayScore(val) {
   return n;
 }
 
+const STATUS_PILLS = [
+  { key: "in_progress",     label: "In Progress" },
+  { key: "group_submitted", label: "Completed"   },
+  { key: "all_submitted",   label: "Final"       },
+  { key: "editing",         label: "Editing"     },
+];
+
 export default function DetailsTab({ data, jurors }) {
-  const [filterJuror,  setFilterJuror]  = useState("ALL");
-  const [filterGroup,  setFilterGroup]  = useState("ALL");
-  const [searchText,   setSearchText]   = useState("");
-  const [sortKey,      setSortKey]      = useState("tsMs");
-  const [sortDir,      setSortDir]      = useState("desc");
+  const [filterJuror,    setFilterJuror]    = useState("ALL");
+  const [filterGroup,    setFilterGroup]    = useState("ALL");
+  const [searchText,     setSearchText]     = useState("");
+  const [sortKey,        setSortKey]        = useState("tsMs");
+  const [sortDir,        setSortDir]        = useState("desc");
+  const [filterStatuses, setFilterStatuses] = useState(new Set());
+  const [dateFrom,       setDateFrom]       = useState("");
+  const [dateTo,         setDateTo]         = useState("");
 
   const groups = useMemo(
     () => PROJECT_LIST.map((p) => ({ id: p.id, label: `Group ${p.id}`, name: p.name }))
@@ -39,11 +49,38 @@ export default function DetailsTab({ data, jurors }) {
     []
   );
 
+  function toggleStatus(key) {
+    setFilterStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   const rows = useMemo(() => {
     const q = searchText.trim().toLowerCase();
+    const fromMs = dateFrom ? new Date(dateFrom).getTime()                   : 0;
+    const toMs   = dateTo   ? new Date(dateTo + "T23:59:59").getTime()       : Infinity;
+
     let list = data.slice();
     if (filterJuror !== "ALL") list = list.filter((r) => r.juryName  === filterJuror);
     if (filterGroup !== "ALL") list = list.filter((r) => String(r.projectId) === filterGroup);
+
+    if (filterStatuses.size > 0) {
+      list = list.filter((r) => {
+        if (filterStatuses.has("editing") && r.editingFlag === "editing") return true;
+        return filterStatuses.has(r.status);
+      });
+    }
+
+    if (dateFrom || dateTo) {
+      list = list.filter((r) => {
+        const ms = r.tsMs || tsToMillis(r.timestamp);
+        return ms >= fromMs && ms <= toMs;
+      });
+    }
+
     if (q) {
       list = list.filter((r) =>
         [r.juryName, r.juryDept, r.timestamp, r.projectName,
@@ -56,7 +93,7 @@ export default function DetailsTab({ data, jurors }) {
       sortDir === "asc" ? cmp(a[sortKey], b[sortKey]) : cmp(b[sortKey], a[sortKey])
     );
     return list;
-  }, [data, filterJuror, filterGroup, searchText, sortKey, sortDir]);
+  }, [data, filterJuror, filterGroup, searchText, sortKey, sortDir, filterStatuses, dateFrom, dateTo]);
 
   function setSort(key) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -71,6 +108,9 @@ export default function DetailsTab({ data, jurors }) {
     setSearchText("");
     setSortKey("tsMs");
     setSortDir("desc");
+    setFilterStatuses(new Set());
+    setDateFrom("");
+    setDateTo("");
   }
 
   return (
@@ -102,6 +142,16 @@ export default function DetailsTab({ data, jurors }) {
           />
         </div>
 
+        {/* Date range */}
+        <div className="filter-item">
+          <span>From</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div className="filter-item">
+          <span>To</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+
         <button className="filter-reset" onClick={resetFilters}>Reset</button>
         <span className="filter-count">
           Showing <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
@@ -109,6 +159,28 @@ export default function DetailsTab({ data, jurors }) {
         <button className="csv-export-btn" onClick={() => exportCSV(rows)}>
           ⬇ Export CSV
         </button>
+      </div>
+
+      {/* Status pills */}
+      <div className="status-pill-bar">
+        <span className="status-pill-label">Status:</span>
+        {STATUS_PILLS.map(({ key, label }) => (
+          <button
+            key={key}
+            className={`status-pill${filterStatuses.has(key) ? " active" : ""}`}
+            onClick={() => toggleStatus(key)}
+          >
+            {label}
+          </button>
+        ))}
+        {filterStatuses.size > 0 && (
+          <button
+            className="status-pill-clear"
+            onClick={() => setFilterStatuses(new Set())}
+          >
+            ✕ Clear
+          </button>
+        )}
       </div>
 
       {/* Table */}

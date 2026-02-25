@@ -44,7 +44,7 @@ const TABS = [
   { id: "matrix",    label: "🔢 Matrix"    },
 ];
 
-export default function AdminPanel({ adminPass, onBack, onAuthError }) {
+export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLoadDone }) {
   const [data,        setData]        = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState("");
@@ -55,6 +55,9 @@ export default function AdminPanel({ adminPass, onBack, onAuthError }) {
   // PIN reset feedback
   const [pinResetTarget, setPinResetTarget] = useState(null); // { juryName, juryDept }
   const [pinResetStatus, setPinResetStatus] = useState("");   // "" | "loading" | "ok" | "error"
+
+  // Track whether the very first data fetch has resolved.
+  const initialLoadFiredRef = useRef(false);
 
   // Keep adminPass current in a ref so the interval callback
   // always has the latest value without causing re-renders.
@@ -111,6 +114,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError }) {
       setData(dedupeAndSort(parsed));
       setLastRefresh(new Date());
       setAuthError("");
+      if (!initialLoadFiredRef.current) {
+        initialLoadFiredRef.current = true;
+        onInitialLoadDone?.();
+      }
     } catch (e) {
       if (onAuthError) { onAuthError("Connection error — try again."); return; }
       setError("Could not load data: " + e.message);
@@ -125,6 +132,16 @@ export default function AdminPanel({ adminPass, onBack, onAuthError }) {
     const id = setInterval(fetchData, AUTO_REFRESH);
     return () => clearInterval(id);
   }, []); // interval never needs to restart — passRef always has latest pass
+
+  // Lock body scroll while PIN reset modal is open.
+  useEffect(() => {
+    if (pinResetTarget) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [pinResetTarget]);
 
   // ── PIN reset ─────────────────────────────────────────────
   const handlePinReset = async (juryName, juryDept, jurorId) => {
@@ -301,12 +318,35 @@ export default function AdminPanel({ adminPass, onBack, onAuthError }) {
       {error     && <div className="error-msg">{error}</div>}
       {authError && <div className="error-msg">{authError}</div>}
 
-      {/* PIN reset toast */}
+      {/* PIN reset modal */}
       {pinResetTarget && (
-        <div className={`pin-reset-toast ${pinResetStatus}`}>
-          {pinResetStatus === "loading" && `Resetting PIN for ${pinResetTarget.juryName}…`}
-          {pinResetStatus === "ok"      && `✓ PIN reset — ${pinResetTarget.juryName} will receive a new PIN on next login.`}
-          {pinResetStatus === "error"   && `✗ Could not reset PIN for ${pinResetTarget.juryName}.`}
+        <div className="pin-reset-modal-overlay">
+          <div className={`pin-reset-modal-card ${pinResetStatus}`}>
+            {pinResetStatus === "loading" && (
+              <>
+                <div className="pin-reset-modal-icon">🔑</div>
+                <div className="pin-reset-modal-msg">
+                  Resetting PIN for <strong>{pinResetTarget.juryName}</strong>…
+                </div>
+              </>
+            )}
+            {pinResetStatus === "ok" && (
+              <>
+                <div className="pin-reset-modal-icon">✅</div>
+                <div className="pin-reset-modal-msg">
+                  PIN reset. <strong>{pinResetTarget.juryName}</strong> will receive a new PIN on next login.
+                </div>
+              </>
+            )}
+            {pinResetStatus === "error" && (
+              <>
+                <div className="pin-reset-modal-icon">❌</div>
+                <div className="pin-reset-modal-msg">
+                  Could not reset PIN for <strong>{pinResetTarget.juryName}</strong>.
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

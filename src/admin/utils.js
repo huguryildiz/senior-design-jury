@@ -4,7 +4,7 @@
 // No React, no side-effects — safe to import anywhere.
 // ============================================================
 
-import { PROJECTS } from "../config";
+import { PROJECTS, CRITERIA } from "../config";
 
 const PROJECT_MAP = new Map(
   PROJECTS.map((p, i) =>
@@ -155,6 +155,17 @@ export function exportCSV(rows) {
   }).click();
   URL.revokeObjectURL(url);
 }
+
+// ── Completion % — mirrors countFilled / totalFields in useJuryState ─────────
+// r[c.id] > 0 matches admin field names (technical/design/delivery/teamwork)
+// which equal CRITERIA ids. 0 == not filled (toNum default).
+export const countAdminFilledCriteria = (rows) =>
+  rows.reduce((t, r) => t + CRITERIA.filter((c) => r[c.id] > 0).length, 0);
+
+export const adminCompletionPct = (rows) => {
+  const total = PROJECTS.length * CRITERIA.length;
+  return total === 0 ? 0 : Math.round((countAdminFilledCriteria(rows) / total) * 100);
+};
 
 // ── Row deduplication ─────────────────────────────────────────
 // Keeps the single best row per (juror + dept + group) composite key.

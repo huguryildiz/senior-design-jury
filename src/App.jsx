@@ -26,6 +26,7 @@ export default function App() {
   const [page,           setPage]          = useState("home");
   const adminPassRef     = useRef("");
   const [adminUnlocked,  setAdminUnlocked]  = useState(false);
+  const [adminChecking,  setAdminChecking]  = useState(false);
   const [adminInput,     setAdminInput]     = useState("");
   const [adminAuthError, setAdminAuthError] = useState("");
 
@@ -35,11 +36,13 @@ export default function App() {
     adminPassRef.current = pass;
     setAdminInput("");
     setAdminAuthError("");
+    setAdminChecking(true);
     setAdminUnlocked(true);
   }
 
   function handleAuthFail(msg) {
     setAdminUnlocked(false);
+    setAdminChecking(false);
     adminPassRef.current = "";
     setAdminAuthError(msg || "Authentication failed.");
   }
@@ -76,23 +79,39 @@ export default function App() {
               onKeyDown={(e) => { if (e.key === "Enter") handleAdminLogin(); }}
               autoFocus
             />
-            <button className="btn-primary" onClick={handleAdminLogin}>Login</button>
-            <button className="btn-ghost"   onClick={() => { setPage("home"); setAdminAuthError(""); }}>← Back</button>
+            <button className="btn-primary" onClick={handleAdminLogin} disabled={adminChecking}>
+              Login
+            </button>
+            <button className="btn-ghost" onClick={() => { setPage("home"); setAdminAuthError(""); }}>← Back</button>
           </div>
         </div>
       );
     }
+
     return (
-      <AdminPanel
-        adminPass={adminPassRef.current}
-        onAuthError={handleAuthFail}
-        onBack={() => {
-          setPage("home");
-          setAdminUnlocked(false);
-          setAdminAuthError("");
-          adminPassRef.current = "";
-        }}
-      />
+      <>
+        {/* Checking… overlay — shown while the first fetch is in flight */}
+        {adminChecking && (
+          <div className="admin-checking-overlay">
+            <div className="admin-checking-card">
+              <div className="admin-checking-icon">🔄</div>
+              <div className="admin-checking-msg">Checking…</div>
+            </div>
+          </div>
+        )}
+        <AdminPanel
+          adminPass={adminPassRef.current}
+          onAuthError={handleAuthFail}
+          onInitialLoadDone={() => setAdminChecking(false)}
+          onBack={() => {
+            setPage("home");
+            setAdminUnlocked(false);
+            setAdminChecking(false);
+            setAdminAuthError("");
+            adminPassRef.current = "";
+          }}
+        />
+      </>
     );
   }
 

@@ -257,7 +257,9 @@
   overflow: hidden;
   box-sizing: border-box;
 }
-.juror-card-editing { border: 1.5px solid #fcd34d !important; background: #fffbeb !important; }
+.juror-card-editing       { border: 1.5px solid #fcd34d !important; background: #fffbeb !important; }
+.juror-card-all-submitted { border: 1.5px solid #86efac !important; background: #f0fdf4 !important; }
+.juror-card-in-progress   { border: 1.5px solid #fde68a !important; background: #fefce8 !important; }
 .juror-card-header  { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
 .juror-card-header > div:first-child { min-width: 0; }
 .juror-name         { font-size: 16px; font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -297,25 +299,39 @@
 }
 .pin-reset-btn:hover { background: var(--amber-light); border-color: #fcd34d; color: var(--amber); }
 
-/* PIN reset toast */
-.pin-reset-toast {
+/* PIN reset button background matches card status color */
+.juror-card-all-submitted .pin-reset-btn { background: #f0fdf4; }
+.juror-card-in-progress   .pin-reset-btn { background: #fefce8; }
+.juror-card-editing       .pin-reset-btn { background: #fffbeb; }
+
+/* PIN reset centered modal */
+.pin-reset-modal-overlay {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 12px 18px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
   z-index: 9999;
-  box-shadow: var(--shadow-lg);
-  animation: slideUp 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
-.pin-reset-toast.loading { background: #f1f5f9; color: var(--gray-700); }
-.pin-reset-toast.ok      { background: var(--green-light); color: var(--green); border: 1px solid #86efac; }
-.pin-reset-toast.error   { background: var(--red-light); color: var(--red); border: 1px solid #fca5a5; }
-@keyframes slideUp {
-  from { transform: translateY(10px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+.pin-reset-modal-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 24px;
+  width: min(360px, calc(100vw - 40px));
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+  text-align: center;
+  animation: fadeInScale 0.18s ease;
+}
+.pin-reset-modal-card.ok    { border-top: 4px solid #22c55e; }
+.pin-reset-modal-card.error { border-top: 4px solid #ef4444; }
+.pin-reset-modal-icon { font-size: 32px; margin-bottom: 12px; }
+.pin-reset-modal-msg  { font-size: 14px; color: #0f172a; line-height: 1.5; }
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* Editing indicator in admin header */
@@ -358,6 +374,47 @@
 .progress-dot   { background: #fde68a; }
 .empty-dot      { background: #e2e8f0; }
 .group-dot      { background: #93c5fd; }
+
+/* Matrix controls bar */
+.matrix-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.matrix-search-wrap   { position: relative; }
+.matrix-search-input  {
+  padding: 7px 28px 7px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  min-width: 180px;
+}
+.matrix-search-clear  {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 12px;
+}
+.matrix-sort-bar   { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.matrix-sort-label { font-size: 12px; color: #64748b; }
+.matrix-sort-btn {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.matrix-sort-btn:hover  { background: #e0f2fe; border-color: #93c5fd; }
+.matrix-sort-btn.active { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+
+/* Matrix Average row */
+.matrix-avg-row   { background: #fef2f2; }
+.matrix-avg-label { color: #ef4444 !important; font-weight: 700 !important; }
+.matrix-avg-cell  { color: #dc2626; font-weight: 600; font-size: 13px; }
 
 /* ── Dashboard tab ──────────────────────────────────────────── */
 .dashboard-grid {
@@ -415,6 +472,75 @@
 /* Clustered bar */
 .clustered-scroll { overflow-x: auto; }
 
+/* ── Details tab status pill filter ────────────────────────── */
+.status-pill-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+.status-pill-label { font-size: 12px; color: #64748b; margin-right: 2px; }
+.status-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.status-pill:hover  { background: #e0f2fe; border-color: #93c5fd; }
+.status-pill.active { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+.status-pill-clear  { padding: 4px 10px; border-radius: 999px; border: 1px solid #fca5a5; background: #fff1f2; color: #dc2626; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* ── Dashboard toolbar + PDF export ────────────────────────── */
+.dashboard-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.pdf-export-btn {
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pdf-export-btn:hover { background: #dbeafe; }
+
+/* Print-only header — hidden on screen */
+.print-header { display: none; }
+
+/* ── Admin "Checking…" overlay ──────────────────────────────── */
+.admin-checking-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-checking-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 40px;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
+  text-align: center;
+  animation: fadeInScale 0.18s ease;
+}
+.admin-checking-icon { font-size: 36px; margin-bottom: 12px; animation: spin 1s linear infinite; }
+.admin-checking-msg  { font-size: 16px; font-weight: 600; color: #0f172a; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -436,6 +562,10 @@
   .filter-reset { width: 100%; }
   .filter-count { margin-left: 0; }
   .csv-export-btn { width: 100%; text-align: center; }
+
+  /* Status pill bar wraps */
+  .status-pill-bar { gap: 5px; }
+  .status-pill { font-size: 11px; padding: 3px 10px; }
 
   /* Rank cards wrap */
   .rank-card { flex-wrap: wrap; }
@@ -459,4 +589,35 @@
 
   /* Tab bar text smaller */
   .tab { font-size: 12px; padding: 10px 10px; }
+
+  /* Matrix controls stack */
+  .matrix-controls { flex-direction: column; align-items: stretch; }
+  .matrix-search-input { min-width: unset; width: 100%; }
+  .matrix-sort-bar { justify-content: flex-start; }
+
+  /* Dashboard toolbar */
+  .pdf-export-btn { width: 100%; text-align: center; }
+}
+
+/* ── Print styles ───────────────────────────────────────────── */
+@media print {
+  /* Show the print-only header */
+  .print-header        { display: block !important; margin-bottom: 16px; border-bottom: 1px solid #ccc; padding-bottom: 12px; }
+  .print-header-title  { font-size: 18px; font-weight: 800; color: #0f172a; }
+  .print-header-sub    { font-size: 13px; color: #475569; margin-top: 2px; }
+  .print-header-meta   { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+  /* Hide everything except the dashboard content */
+  .form-header, .tab-bar, .no-print { display: none !important; }
+
+  /* Reset background and padding */
+  body, .admin-screen { background: white !important; }
+  .admin-body { padding: 0 !important; }
+
+  /* Charts: 2-column on A4, avoid page breaks inside */
+  .dashboard-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .chart-card { break-inside: avoid; border: 1px solid #ccc !important; }
+
+  /* A4 page setup */
+  @page { size: A4 portrait; margin: 16mm; }
 }

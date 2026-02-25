@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { formatTs } from "./utils";
+import { formatTs, adminCompletionPct } from "./utils";
 import { StatusBadge } from "./components";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
@@ -63,9 +63,8 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
 
       <div className="jurors-grid jurors-grid-full">
         {filtered.map(({ jury, rows, submitted, overall, latestTs, latestRow }) => {
-          // Progress bar: any group touched (in_progress included), matching jury form's own progress.
-          // "submitted" text counter still shows only fully-completed groups.
-          const pct = Math.round((rows.length / TOTAL_GROUPS) * 100);
+          // Progress bar: matches Jury Form sticky header (criteria filled / total criteria).
+          const pct = adminCompletionPct(rows);
 
           const barColor =
             pct === 100 ? "#22c55e" :
@@ -75,8 +74,14 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
 
           const isEditing = rows.some((r) => r.editingFlag === "editing");
 
+          const statusClass = isEditing
+            ? "juror-card-editing"
+            : overall === "all_submitted" ? "juror-card-all-submitted"
+            : overall === "in_progress"   ? "juror-card-in-progress"
+            : "";
+
           return (
-            <div key={jury} className={`juror-card ${isEditing ? "juror-card-editing" : ""}`}>
+            <div key={jury} className={`juror-card ${statusClass}`}>
 
               <div className="juror-card-header">
                 <div style={{ minWidth: 0, flex: 1 }}>
