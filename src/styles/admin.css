@@ -288,27 +288,37 @@
 .juror-progress-label    { font-size: 12px; font-weight: 700; color: #475569; min-width: 34px; text-align: right; flex-shrink: 0; }
 
 .juror-projects  { display: flex; flex-direction: column; gap: 6px; }
-.juror-row       { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.juror-row span:first-child { flex: 1; min-width: 0; }
-.juror-row-main  {
-  flex: 1;
-  min-width: 0;
+.juror-row       { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 3px 0; }
+.juror-row-left  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.juror-row-header-line {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 4px;
   overflow-x: auto;
+  white-space: nowrap;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.juror-row-main::-webkit-scrollbar { display: none; }
+.juror-row-header-line::-webkit-scrollbar { display: none; }
 .juror-row-name  { font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; line-height: 1.25; margin-bottom: 0; }
-.juror-row-desc     { font-size: 11px; color: #64748b; white-space: nowrap; line-height: 1.25; }
-.juror-row-students { font-size: 11px; color: #64748b; white-space: nowrap; line-height: 1.25; }
-.juror-score     { font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); white-space: nowrap; flex-shrink: 0; }
-.juror-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; white-space: nowrap; }
-.juror-row-right .juror-score   { order: 1; }
-.juror-row-right .status-badge  { order: 2; }
-.juror-row-right > :first-child { order: 3; font-size: 11px; color: #94a3b8; }
+.juror-row-desc     { font-size: 11px; color: #64748b; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; line-height: 1.25; }
+.juror-row-students { font-size: 11px; color: #64748b; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; line-height: 1.25; }
+.juror-row-desc::-webkit-scrollbar, .juror-row-students::-webkit-scrollbar { display: none; }
+.juror-score     { font-size: 14px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); white-space: nowrap; flex-shrink: 0; }
+.juror-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.juror-row-ts    { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.juror-row-mini-progress-wrap {
+  width: 56px; height: 5px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.juror-row-mini-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 200ms;
+}
 
 /* StatusBadge → Reset PIN horizontal gap (desktop + landscape) */
 .status-badge + .pin-reset-btn { margin-left: 6px; }
@@ -752,9 +762,8 @@ th .sort-icon svg { vertical-align: middle; }
   .juror-name { overflow-x: auto; text-overflow: clip; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .juror-name::-webkit-scrollbar { display: none; }
 
-  /* Per-group rows: 2-column grid (text | right side) */
-  .juror-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
-  .juror-score { font-size: 12px; }
+  /* Per-group rows: flex layout is already correct at all widths */
+  .juror-score { font-size: 13px; }
 
   /* Reset PIN — smaller, left-aligned on mobile */
   .pin-reset-btn { width: auto; display: block; font-size: 11px; padding: 3px 8px; margin-top: 4px; }

@@ -1,7 +1,7 @@
 // src/admin/JurorsTab.jsx
 
 import { useState, useMemo, useEffect } from "react";
-import { PROJECTS } from "../config";
+import { PROJECTS, CRITERIA } from "../config";
 import { formatTs, adminCompletionPct } from "./utils";
 import { StatusBadge } from "./components";
 import { ChevronDownIcon } from "../shared/Icons";
@@ -144,6 +144,13 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                     const isExpanded = expandedGroups.has(groupKey);
                     const panelId = `juror-group-panel-${groupKey}`;
                     const hasDetails = !!grp?.desc || grp?.students?.length > 0;
+                    const rowFilledCount = CRITERIA.filter(c => d[c.id] > 0).length;
+                    const rowPct = Math.round(rowFilledCount / CRITERIA.length * 100);
+                    const rowBarColor =
+                      rowPct === 100 ? "#22c55e" :
+                      rowPct > 66    ? "#84cc16" :
+                      rowPct > 33    ? "#eab308" :
+                      rowPct > 0     ? "#f97316" : "#e2e8f0";
                     return (
                       <div key={groupKey} className="juror-row-wrap">
                         {/* Clickable row header */}
@@ -162,23 +169,35 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                           }}
                           style={{ cursor: hasDetails ? "pointer" : "default" }}
                         >
-                          <div className="juror-row-main">
-                            <span className="juror-row-name">
-                              {grp?.name || `Group ${d.projectId}`}
-                            </span>
+                          {/* LEFT: identity column */}
+                          <div className="juror-row-left">
+                            <div className="juror-row-header-line">
+                              <span className="juror-row-name">
+                                {grp?.name || `Group ${d.projectId}`}
+                              </span>
+                              {hasDetails && (
+                                <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
+                                  <ChevronDownIcon />
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          {/* RIGHT: KPI stack */}
                           <div className="juror-row-right">
-                            <span>{formatTs(d.timestamp)}</span>
-                            <StatusBadge status={d.status} editingFlag={d.editingFlag} />
                             {(d.status === "all_submitted" || d.status === "group_submitted") && (
                               <span className="juror-score">{d.total} / 100</span>
                             )}
+                            <StatusBadge status={d.status} editingFlag={d.editingFlag} />
+                            <div className="juror-row-mini-progress-wrap">
+                              <div
+                                className="juror-row-mini-progress-fill"
+                                style={{ width: `${rowPct}%`, background: rowBarColor }}
+                              />
+                            </div>
+                            {d.timestamp && (
+                              <span className="juror-row-ts">{formatTs(d.timestamp)}</span>
+                            )}
                           </div>
-                          {hasDetails && (
-                            <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
-                              <ChevronDownIcon />
-                            </span>
-                          )}
                         </div>
 
                         {/* Expandable panel */}

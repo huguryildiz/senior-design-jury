@@ -675,9 +675,24 @@
   gap: 8px;
   margin: 4px 0;
 }
-.done-row          { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 6px 0; }
+.done-row          { display: flex; justify-content: space-between; align-items: flex-start; font-size: 14px; padding: 6px 0; gap: 10px; }
+.done-row-left     { flex: 1; min-width: 0; }
+.done-row-header-line { display: flex; align-items: center; gap: 4px; }
+.done-row-right    { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.done-row-mini-progress-wrap {
+  width: 48px; height: 4px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.done-row-mini-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 200ms;
+}
 .done-row-name     { font-size: 13px; font-weight: 600; color: var(--gray-900); text-align: left; }
-.done-row-desc     { font-size: 11px; color: #94a3b8; text-align: left; }
+.done-row-desc     { font-size: 11px; color: #94a3b8; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; text-align: left; }
+.done-row-desc::-webkit-scrollbar { display: none; }
 .done-score        { font-weight: 700; color: var(--blue); font-family: 'DM Mono', monospace; }
 .done-actions      { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
 
@@ -710,8 +725,13 @@
 .done-row-students {
   font-size: 11px;
   color: #64748b;
+  white-space: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   text-align: left;
 }
+.done-row-students::-webkit-scrollbar { display: none; }
 
 /* Done screen cloud verify states */
 .done-verify-pending { font-size: 13px; color: #64748b; margin: 6px 0; }

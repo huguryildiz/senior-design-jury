@@ -49,7 +49,17 @@ export default function DoneStep({
             const panelId = `done-group-panel-${p.id}`;
             const hasDetails =
               !!p.desc || p.students?.length > 0 || !!displayComments?.[p.id];
-            return (
+            const filledCount = CRITERIA.filter(c => {
+              const v = displayScores[p.id]?.[c.id];
+              return v !== undefined && v !== null && v !== "";
+            }).length;
+            const groupPct = Math.round(filledCount / CRITERIA.length * 100);
+            const groupBarColor =
+              groupPct === 100 ? "#22c55e" :
+              groupPct > 66    ? "#84cc16" :
+              groupPct > 33    ? "#eab308" :
+              groupPct > 0     ? "#f97316" : "#e2e8f0";
+          return (
               <div key={p.id} className="done-row-wrap">
                 {/* Clickable header — always visible */}
                 <div
@@ -67,16 +77,28 @@ export default function DoneStep({
                   }}
                   style={{ cursor: hasDetails ? "pointer" : "default" }}
                 >
-                  <span className="done-row-name">{p.name}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {/* LEFT: identity column */}
+                  <div className="done-row-left">
+                    <div className="done-row-header-line">
+                      <span className="done-row-name">{p.name}</span>
+                      {hasDetails && (
+                        <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
+                          <ChevronDownIcon />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* RIGHT: KPI stack */}
+                  <div className="done-row-right">
                     <span className="done-score">
                       {groupTotal(displayScores, p.id)} / 100
                     </span>
-                    {hasDetails && (
-                      <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
-                        <ChevronDownIcon />
-                      </span>
-                    )}
+                    <div className="done-row-mini-progress-wrap">
+                      <div
+                        className="done-row-mini-progress-fill"
+                        style={{ width: `${groupPct}%`, background: groupBarColor }}
+                      />
+                    </div>
                   </div>
                 </div>
 
