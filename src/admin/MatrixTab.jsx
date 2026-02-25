@@ -2,7 +2,7 @@
 // ── Enterprise-style juror × group matrix ─────────────────────
 // - Column-based sorting (click group header: desc → asc → reset)
 // - Sticky header + frozen first column
-// - Excel-style per-column header filters
+// - Juror column text filter
 // - Final-only averages (all_submitted only)
 
 import { useState, useMemo } from "react";
@@ -18,28 +18,26 @@ const cellStyle = (entry) => {
   return { background: "#f8fafc", color: "#94a3b8" };
 };
 
-function CellContent({ entry }) {
+const cellText = (entry) => {
   if (!entry) return "—";
   if (entry.status === "all_submitted" || entry.status === "group_submitted") return entry.total;
-  if (entry.status === "in_progress") return <span className="matrix-ip-badge">In Progress</span>;
+  if (entry.status === "in_progress") return "";  // background color only
   return "—";
-}
+};
 
 // ── Component ──────────────────────────────────────────────────
 
 // Props:
-//   data          – raw rows
-//   jurors        – { key, name, dept }[]  (from AdminPanel uniqueJurors)
-//   groups        – { id, label }[]
+//   data    – raw rows
+//   jurors  – { key, name, dept }[]  (from AdminPanel uniqueJurors)
+//   groups  – { id, label }[]
 export default function MatrixTab({ data, jurors, groups }) {
-  // Sort: which group column is active + direction cycle
-  // sortGroupDir cycles: null (default) → "desc" → "asc" → null
+  // Group column sort state
   const [sortGroupId,  setSortGroupId]  = useState(null);   // group id | null
   const [sortGroupDir, setSortGroupDir] = useState("desc");  // "desc" | "asc"
 
-  // Filters
-  const [jurorFilter,     setJurorFilter]     = useState("");   // text
-  const [groupFilters,    setGroupFilters]    = useState({});   // { [groupId]: { op, val, val2 } }
+  // Juror text filter
+  const [jurorFilter,     setJurorFilter]     = useState("");
   const [activeFilterCol, setActiveFilterCol] = useState(null);
 
   // Build lookup: jurorKey → { [projectId]: { total, status } }
@@ -55,7 +53,7 @@ export default function MatrixTab({ data, jurors, groups }) {
     return map;
   }, [data]);
 
-  // Click-to-sort cycle: none → desc → asc → none
+  // Click-to-sort cycle on group columns: none → desc → asc → none
   function toggleGroupSort(gId) {
     if (sortGroupId !== gId) {
       setSortGroupId(gId);
@@ -64,57 +62,30 @@ export default function MatrixTab({ data, jurors, groups }) {
       setSortGroupDir("asc");
     } else {
       setSortGroupId(null);
-      setSortGroupDir("desc"); // reset direction ready for next use
+      setSortGroupDir("desc");
     }
   }
 
-  // Sort icon shown in group column header
   const groupSortIcon = (gId) => {
     if (sortGroupId !== gId) return "↕";
     return sortGroupDir === "desc" ? "↓" : "↑";
   };
 
-  function setGroupFilter(gId, val) {
-    setGroupFilters((prev) => ({ ...prev, [gId]: val }));
-  }
-  function clearGroupFilter(gId) {
-    setGroupFilters((prev) => { const n = { ...prev }; delete n[gId]; return n; });
-  }
   function clearAllFilters() {
     setJurorFilter("");
-    setGroupFilters({});
     setActiveFilterCol(null);
   }
-  function toggleFilterCol(colId) {
-    setActiveFilterCol((prev) => (prev === colId ? null : colId));
-  }
-  const hasFilters = jurorFilter || Object.keys(groupFilters).length > 0;
 
   const visibleJurors = useMemo(() => {
     let list = jurors.slice();
 
-    // 1. Apply juror name text filter.
+    // Apply juror name text filter.
     if (jurorFilter) {
       const q = jurorFilter.toLowerCase();
       list = list.filter((j) => j.name.toLowerCase().includes(q));
     }
 
-    // 2. Apply per-group numeric filters (only all_submitted entries count).
-    Object.entries(groupFilters).forEach(([gId, f]) => {
-      if (f?.val === "" || f?.val === undefined) return;
-      const gIdNum = Number(gId);
-      list = list.filter((j) => {
-        const entry = lookup[j.key]?.[gIdNum];
-        if (!entry || entry.status !== "all_submitted") return false;
-        const v = Number(entry.total);
-        if (f.op === "gte")     return v >= Number(f.val);
-        if (f.op === "lte")     return v <= Number(f.val);
-        if (f.op === "between") return v >= Number(f.val) && v <= Number(f.val2 ?? f.val);
-        return true;
-      });
-    });
-
-    // 3. Sort by active group column (only all_submitted; missing/non-final → bottom).
+    // Sort by active group column (only all_submitted; missing/non-final → bottom).
     if (sortGroupId !== null) {
       list = [...list].sort((a, b) => {
         const ea = lookup[a.key]?.[sortGroupId];
@@ -131,11 +102,10 @@ export default function MatrixTab({ data, jurors, groups }) {
         return diff !== 0 ? diff : cmp(a.name, b.name); // stable tie-breaker
       });
     }
-    // Default order: no extra sort (jurors are already alpha-sorted from AdminPanel).
+    // Default order: jurors are alpha-sorted from AdminPanel.
 
     return list;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jurors, jurorFilter, groupFilters, sortGroupId, sortGroupDir, lookup]);
+  }, [jurors, jurorFilter, sortGroupId, sortGroupDir, lookup]);
 
   // Average row: final-only entries from visibleJurors, 2 decimal places.
   const groupAverages = useMemo(() =>
@@ -155,10 +125,10 @@ export default function MatrixTab({ data, jurors, groups }) {
   return (
     <div className="matrix-wrap">
 
-      {/* Controls: only shown when there's something to show */}
-      {(hasFilters || visibleJurors.length < jurors.length) && (
+      {/* Controls bar — only rendered when there's something to show */}
+      {(jurorFilter || visibleJurors.length < jurors.length) && (
         <div className="matrix-controls">
-          {hasFilters && (
+          {jurorFilter && (
             <button className="matrix-clear-filters" onClick={clearAllFilters}>
               ✕ Clear Filters
             </button>
@@ -179,7 +149,7 @@ export default function MatrixTab({ data, jurors, groups }) {
         <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
       </p>
 
-      {/* Close-layer: click outside any open popover to dismiss */}
+      {/* Close-layer: click outside filter popover to dismiss */}
       {activeFilterCol !== null && (
         <div
           style={{ position: "fixed", inset: 0, zIndex: 50 }}
@@ -191,13 +161,13 @@ export default function MatrixTab({ data, jurors, groups }) {
         <table className="matrix-table">
           <thead>
             <tr>
-              {/* ── Juror column: text filter ── */}
+              {/* Juror column — text filter only */}
               <th className="matrix-corner">
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   Juror / Group
                   <button
                     className={`col-filter-btn${jurorFilter ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror"); }}
+                    onClick={(e) => { e.stopPropagation(); setActiveFilterCol((p) => p === "juror" ? null : "juror"); }}
                     title="Filter jurors"
                   >▼</button>
                 </div>
@@ -218,72 +188,19 @@ export default function MatrixTab({ data, jurors, groups }) {
                 )}
               </th>
 
-              {/* ── Group columns: click-to-sort + numeric filter ── */}
+              {/* Group columns — click-to-sort only, no filter */}
               {groups.map((g) => {
-                const gf      = groupFilters[g.id];
                 const isActive = sortGroupId === g.id;
                 return (
                   <th key={g.id}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                      {/* Sort trigger */}
-                      <button
-                        className={`matrix-col-sort${isActive ? " active" : ""}`}
-                        onClick={() => toggleGroupSort(g.id)}
-                        title={`Sort by ${g.label}`}
-                      >
-                        <strong>{g.label}</strong>
-                        <span className="sort-icon">{groupSortIcon(g.id)}</span>
-                      </button>
-                      {/* Filter trigger */}
-                      <button
-                        className={`col-filter-btn${gf ? " active" : ""}`}
-                        onClick={(e) => { e.stopPropagation(); toggleFilterCol(g.id); }}
-                        title={`Filter ${g.label}`}
-                      >▼</button>
-                    </div>
-                    {activeFilterCol === g.id && (
-                      <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>
-                        <select
-                          value={gf?.op || "gte"}
-                          onChange={(e) => setGroupFilter(g.id, { op: e.target.value, val: gf?.val || "", val2: gf?.val2 || "" })}
-                        >
-                          <option value="gte">≥ (at least)</option>
-                          <option value="lte">≤ (at most)</option>
-                          <option value="between">Between</option>
-                        </select>
-                        {gf?.op !== "between" ? (
-                          <input
-                            autoFocus
-                            type="number"
-                            placeholder="Score…"
-                            value={gf?.val || ""}
-                            onChange={(e) => setGroupFilter(g.id, { op: gf?.op || "gte", val: e.target.value, val2: gf?.val2 || "" })}
-                          />
-                        ) : (
-                          <div className="filter-between-row">
-                            <input
-                              autoFocus
-                              type="number"
-                              placeholder="Min"
-                              value={gf?.val || ""}
-                              onChange={(e) => setGroupFilter(g.id, { op: "between", val: e.target.value, val2: gf?.val2 || "" })}
-                            />
-                            <span style={{ fontSize: 11, color: "#64748b" }}>–</span>
-                            <input
-                              type="number"
-                              placeholder="Max"
-                              value={gf?.val2 || ""}
-                              onChange={(e) => setGroupFilter(g.id, { op: "between", val: gf?.val || "", val2: e.target.value })}
-                            />
-                          </div>
-                        )}
-                        {gf && (
-                          <button className="col-filter-clear" onClick={() => { clearGroupFilter(g.id); setActiveFilterCol(null); }}>
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                    )}
+                    <button
+                      className={`matrix-col-sort${isActive ? " active" : ""}`}
+                      onClick={() => toggleGroupSort(g.id)}
+                      title={`Sort by ${g.label}`}
+                    >
+                      <strong>{g.label}</strong>
+                      <span className="sort-icon">{groupSortIcon(g.id)}</span>
+                    </button>
                   </th>
                 );
               })}
@@ -300,9 +217,7 @@ export default function MatrixTab({ data, jurors, groups }) {
                 {groups.map((g) => {
                   const entry = lookup[juror.key]?.[g.id] ?? null;
                   return (
-                    <td key={g.id} style={cellStyle(entry)}>
-                      <CellContent entry={entry} />
-                    </td>
+                    <td key={g.id} style={cellStyle(entry)}>{cellText(entry)}</td>
                   );
                 })}
               </tr>
