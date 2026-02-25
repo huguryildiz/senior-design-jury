@@ -4,6 +4,7 @@
 // No React, no side-effects — safe to import anywhere.
 // ============================================================
 
+import * as XLSX from "xlsx";
 import { PROJECTS, CRITERIA } from "../config";
 
 const PROJECT_MAP = new Map(
@@ -154,6 +155,41 @@ export function exportCSV(rows) {
     download: `jury_export_${date}_${hhmm}.csv`,
   }).click();
   URL.revokeObjectURL(url);
+}
+
+// ── Excel (.xlsx) export ──────────────────────────────────────
+export function exportXLSX(rows) {
+  const headers = [
+    "Juror Name", "Department / Institution", "Timestamp",
+    "Group Name", "Group Desc", "Students",
+    "Technical (30)", "Written (30)", "Oral (30)", "Teamwork (10)",
+    "Total (100)", "Comments",
+  ];
+  const data = rows.map((r) => {
+    const grp = PROJECT_MAP.get(r.projectId) || { desc: "", students: [] };
+    return [
+      r.juryName    ?? "",
+      r.juryDept    ?? "",
+      r.timestamp   ?? "",
+      r.projectName ?? "",
+      grp.desc,
+      grp.students.join(" · "),
+      r.technical ?? "",
+      r.design    ?? "",
+      r.delivery  ?? "",
+      r.teamwork  ?? "",
+      r.total     ?? "",
+      r.comments  ?? "",
+    ];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  ws["!cols"] = [20, 22, 18, 20, 24, 28, 14, 12, 10, 13, 10, 30].map((w) => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Jury Evaluations");
+  const now  = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}`;
+  XLSX.writeFile(wb, `jury_export_${date}_${hhmm}.xlsx`);
 }
 
 // ── Completion % — mirrors countFilled / totalFields in useJuryState ─────────

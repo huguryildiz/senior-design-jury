@@ -176,7 +176,7 @@ export default function MatrixTab({ data, jurors, groups }) {
       )}
 
       {/* Info note + legend */}
-      <p className="matrix-info-note"><IconInfo /> Averages include only final submissions.</p>
+      <p className="matrix-info-note"><IconInfo /> <strong>Averages include only final submissions.</strong></p>
       <p className="matrix-subtitle">
         <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
         <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>

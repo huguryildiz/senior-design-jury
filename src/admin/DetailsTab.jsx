@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { cmp, exportCSV, formatTs, tsToMillis } from "./utils";
+import { cmp, exportCSV, exportXLSX, formatTs, tsToMillis } from "./utils";
 import { StatusBadge } from "./components";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
@@ -14,11 +14,11 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
     : { id: p.id ?? i + 1, name: p.name ?? `Group ${i + 1}`, desc: p.desc ?? "", students: p.students ?? [] }
 );
 
-// Show "—" for null/undefined/empty/NaN only.  0 is a valid score.
+// Show "" for null/undefined/empty/NaN.  0 is a valid score.
 function displayScore(val) {
-  if (val === "" || val === null || val === undefined) return "—";
+  if (val === "" || val === null || val === undefined) return "";
   const n = Number(val);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "";
   return n;
 }
 
@@ -33,60 +33,42 @@ const SCORE_COLS = [
   { key: "technical", label: "Technical /30" },
   { key: "design",    label: "Written /30"   },
   { key: "delivery",  label: "Oral /30"      },
-  { key: "teamwork",  label: "Team /10"      },
+  { key: "teamwork",  label: "Teamwork /10"  },
   { key: "total",     label: "Total"         },
 ];
+
+// ── Inline SVG icons ─────────────────────────────────────────
+const SortBothSVG = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M3 4.5L6 1.5L9 4.5"/><path d="M3 7.5L6 10.5L9 7.5"/>
+  </svg>
+);
+const SortAscSVG = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M3 7.5L6 4.5L9 7.5"/>
+  </svg>
+);
+const SortDescSVG = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M3 4.5L6 7.5L9 4.5"/>
+  </svg>
+);
+const ClearSVG = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M2 2L10 10M10 2L2 10"/>
+  </svg>
+);
+const DownloadSVG = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M7 2v7M4 6.5L7 9.5L10 6.5"/><path d="M2 11.5h10"/>
+  </svg>
+);
 
 // Stable per-row key matching AdminPanel's rowKey.
 function rowKey(r) {
   return r.jurorId
     ? r.jurorId
     : `${(r.juryName || "").trim().toLowerCase()}__${(r.juryDept || "").trim().toLowerCase()}`;
-}
-
-// Numeric filter popover content.
-function NumericFilter({ value, onChange }) {
-  const op = value?.op || "gte";
-  const v1 = value?.val  ?? "";
-  const v2 = value?.val2 ?? "";
-  return (
-    <>
-      <select
-        value={op}
-        onChange={(e) => onChange({ op: e.target.value, val: v1, val2: v2 })}
-      >
-        <option value="gte">≥ (at least)</option>
-        <option value="lte">≤ (at most)</option>
-        <option value="between">Between</option>
-      </select>
-      {op !== "between" ? (
-        <input
-          autoFocus
-          type="number"
-          placeholder="Score…"
-          value={v1}
-          onChange={(e) => onChange({ op, val: e.target.value, val2: v2 })}
-        />
-      ) : (
-        <div className="filter-between-row">
-          <input
-            autoFocus
-            type="number"
-            placeholder="Min"
-            value={v1}
-            onChange={(e) => onChange({ op, val: e.target.value, val2: v2 })}
-          />
-          <span style={{ fontSize: 11, color: "#64748b" }}>–</span>
-          <input
-            type="number"
-            placeholder="Max"
-            value={v2}
-            onChange={(e) => onChange({ op, val: v1, val2: e.target.value })}
-          />
-        </div>
-      )}
-    </>
-  );
 }
 
 // jurors prop: { key, name, dept }[]
@@ -97,7 +79,6 @@ export default function DetailsTab({ data, jurors }) {
   const [filterStatuses, setFilterStatuses] = useState(new Set());
   const [dateFrom,       setDateFrom]       = useState("");
   const [dateTo,         setDateTo]         = useState("");
-  const [scoreFilters,   setScoreFilters]   = useState({});  // { [colKey]: { op, val, val2 } }
   const [filterComment,  setFilterComment]  = useState("");
   const [sortKey,        setSortKey]        = useState("tsMs");
   const [sortDir,        setSortDir]        = useState("desc");
@@ -111,9 +92,8 @@ export default function DetailsTab({ data, jurors }) {
 
   const hasAnyFilter = useMemo(() =>
     filterJuror !== "ALL" || filterDept || filterGroup !== "ALL" ||
-    filterStatuses.size > 0 || dateFrom || dateTo ||
-    Object.keys(scoreFilters).length > 0 || filterComment,
-    [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, scoreFilters, filterComment]
+    filterStatuses.size > 0 || dateFrom || dateTo || filterComment,
+    [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, filterComment]
   );
 
   function resetFilters() {
@@ -123,7 +103,6 @@ export default function DetailsTab({ data, jurors }) {
     setFilterStatuses(new Set());
     setDateFrom("");
     setDateTo("");
-    setScoreFilters({});
     setFilterComment("");
     setSortKey("tsMs");
     setSortDir("desc");
@@ -137,13 +116,6 @@ export default function DetailsTab({ data, jurors }) {
       else next.add(key);
       return next;
     });
-  }
-
-  function setScoreFilter(col, val) {
-    setScoreFilters((prev) => ({ ...prev, [col]: val }));
-  }
-  function clearScoreFilter(col) {
-    setScoreFilters((prev) => { const n = { ...prev }; delete n[col]; return n; });
   }
 
   function toggleFilterCol(colId) {
@@ -178,35 +150,31 @@ export default function DetailsTab({ data, jurors }) {
         return ms >= fromMs && ms <= toMs;
       });
     }
-    Object.entries(scoreFilters).forEach(([col, f]) => {
-      if (f?.val === "" || f?.val === undefined) return;
-      list = list.filter((r) => {
-        const v = Number(r[col]);
-        if (!Number.isFinite(v)) return false;
-        if (f.op === "gte")     return v >= Number(f.val);
-        if (f.op === "lte")     return v <= Number(f.val);
-        if (f.op === "between") return v >= Number(f.val) && v <= Number(f.val2 ?? f.val);
-        return true;
-      });
-    });
     if (filterComment) {
       const q = filterComment.toLowerCase();
       list = list.filter((r) => (r.comments || "").toLowerCase().includes(q));
     }
 
-    list.sort((a, b) =>
-      sortDir === "asc" ? cmp(a[sortKey], b[sortKey]) : cmp(b[sortKey], a[sortKey])
-    );
+    // Missing values always sink to bottom regardless of sort direction.
+    list.sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      const aMiss = av === "" || av === null || av === undefined;
+      const bMiss = bv === "" || bv === null || bv === undefined;
+      if (aMiss && bMiss) return 0;
+      if (aMiss) return 1;
+      if (bMiss) return -1;
+      return sortDir === "asc" ? cmp(av, bv) : cmp(bv, av);
+    });
     return list;
   }, [data, filterJuror, filterGroup, filterDept, filterStatuses, dateFrom, dateTo,
-      scoreFilters, filterComment, sortKey, sortDir]);
+      filterComment, sortKey, sortDir]);
 
   function setSort(key) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("desc"); }
   }
   const sortIcon = (key) =>
-    sortKey !== key ? "↕" : sortDir === "asc" ? "↑" : "↓";
+    sortKey !== key ? <SortBothSVG /> : sortDir === "asc" ? <SortAscSVG /> : <SortDescSVG />;
 
   return (
     <>
@@ -216,10 +184,19 @@ export default function DetailsTab({ data, jurors }) {
           Showing <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
         </span>
         {hasAnyFilter && (
-          <button className="filter-reset" onClick={resetFilters}>✕ Clear Filters</button>
+          <button className="filter-reset" onClick={resetFilters}>
+            <ClearSVG /> Clear Filters
+          </button>
         )}
         <button className="csv-export-btn" onClick={() => exportCSV(rows)}>
-          ⬇ Export CSV
+          <DownloadSVG />
+          <span className="export-label-long">Export CSV</span>
+          <span className="export-label-short">CSV</span>
+        </button>
+        <button className="xlsx-export-btn" onClick={() => exportXLSX(rows)}>
+          <DownloadSVG />
+          <span className="export-label-long">Export Excel</span>
+          <span className="export-label-short">Excel</span>
         </button>
       </div>
 
@@ -236,15 +213,17 @@ export default function DetailsTab({ data, jurors }) {
         <table className="detail-table">
           <thead>
             <tr>
-              {/* Juror */}
-              <th style={{ position: "relative", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span onClick={() => setSort("juryName")}>Juror {sortIcon("juryName")}</span>
-                  <button
-                    className={`col-filter-btn${filterJuror !== "ALL" ? " active" : ""}`}
+              {/* Juror — sort label + filter hotspot */}
+              <th style={{ position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span className="col-sort-label" onClick={() => setSort("juryName")}>
+                    Juror <span className="sort-icon">{sortIcon("juryName")}</span>
+                  </span>
+                  <div
+                    className={`col-filter-hotspot${filterJuror !== "ALL" ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror"); }}
                     title="Filter by juror"
-                  >▼</button>
+                  />
                 </div>
                 {activeFilterCol === "juror" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -270,14 +249,16 @@ export default function DetailsTab({ data, jurors }) {
               </th>
 
               {/* Department */}
-              <th style={{ position: "relative", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span onClick={() => setSort("juryDept")}>Department {sortIcon("juryDept")}</span>
-                  <button
-                    className={`col-filter-btn${filterDept ? " active" : ""}`}
+              <th style={{ position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span className="col-sort-label" onClick={() => setSort("juryDept")}>
+                    Department <span className="sort-icon">{sortIcon("juryDept")}</span>
+                  </span>
+                  <div
+                    className={`col-filter-hotspot${filterDept ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept"); }}
                     title="Filter by department"
-                  >▼</button>
+                  />
                 </div>
                 {activeFilterCol === "dept" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -297,14 +278,16 @@ export default function DetailsTab({ data, jurors }) {
               </th>
 
               {/* Group */}
-              <th style={{ position: "relative", cursor: "pointer", whiteSpace: "nowrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span onClick={() => setSort("projectId")}>Group {sortIcon("projectId")}</span>
-                  <button
-                    className={`col-filter-btn${filterGroup !== "ALL" ? " active" : ""}`}
+              <th style={{ position: "relative", whiteSpace: "nowrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span className="col-sort-label" onClick={() => setSort("projectId")}>
+                    Group <span className="sort-icon">{sortIcon("projectId")}</span>
+                  </span>
+                  <div
+                    className={`col-filter-hotspot${filterGroup !== "ALL" ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("group"); }}
                     title="Filter by group"
-                  >▼</button>
+                  />
                 </div>
                 {activeFilterCol === "group" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -328,20 +311,22 @@ export default function DetailsTab({ data, jurors }) {
               </th>
 
               {/* Timestamp */}
-              <th style={{ position: "relative", cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span onClick={() => setSort("tsMs")}>Timestamp {sortIcon("tsMs")}</span>
-                  <button
-                    className={`col-filter-btn${(dateFrom || dateTo) ? " active" : ""}`}
+              <th style={{ position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span className="col-sort-label" onClick={() => setSort("tsMs")}>
+                    Timestamp <span className="sort-icon">{sortIcon("tsMs")}</span>
+                  </span>
+                  <div
+                    className={`col-filter-hotspot${(dateFrom || dateTo) ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp"); }}
                     title="Filter by date"
-                  >▼</button>
+                  />
                 </div>
                 {activeFilterCol === "timestamp" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <label style={{ fontSize: 11, color: "#64748b" }}>From</label>
+                    <label style={{ fontSize: 11 }}>From</label>
                     <input autoFocus type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-                    <label style={{ fontSize: 11, color: "#64748b" }}>To</label>
+                    <label style={{ fontSize: 11 }}>To</label>
                     <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                     {(dateFrom || dateTo) && (
                       <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); setActiveFilterCol(null); }}>
@@ -352,15 +337,15 @@ export default function DetailsTab({ data, jurors }) {
                 )}
               </th>
 
-              {/* Status */}
+              {/* Status — filter only (no sort) */}
               <th style={{ position: "relative" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  Status
-                  <button
-                    className={`col-filter-btn${filterStatuses.size > 0 ? " active" : ""}`}
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span>Status</span>
+                  <div
+                    className={`col-filter-hotspot${filterStatuses.size > 0 ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("status"); }}
                     title="Filter by status"
-                  >▼</button>
+                  />
                 </div>
                 {activeFilterCol === "status" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -384,42 +369,24 @@ export default function DetailsTab({ data, jurors }) {
                 )}
               </th>
 
-              {/* Score columns */}
+              {/* Score columns — sort only, no filter */}
               {SCORE_COLS.map(({ key: col, label }) => (
-                <th key={col} style={{ position: "relative", cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span onClick={() => setSort(col)}>{label} {sortIcon(col)}</span>
-                    <button
-                      className={`col-filter-btn${scoreFilters[col] ? " active" : ""}`}
-                      onClick={(e) => { e.stopPropagation(); toggleFilterCol(col); }}
-                      title={`Filter ${label}`}
-                    >▼</button>
-                  </div>
-                  {activeFilterCol === col && (
-                    <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>
-                      <NumericFilter
-                        value={scoreFilters[col]}
-                        onChange={(v) => setScoreFilter(col, v)}
-                      />
-                      {scoreFilters[col] && (
-                        <button className="col-filter-clear" onClick={() => { clearScoreFilter(col); setActiveFilterCol(null); }}>
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  )}
+                <th key={col} style={{ cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => setSort(col)}>
+                  <span className="col-sort-label">
+                    {label} <span className="sort-icon">{sortIcon(col)}</span>
+                  </span>
                 </th>
               ))}
 
-              {/* Comments */}
+              {/* Comments — filter only (no sort) */}
               <th style={{ position: "relative" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  Comments
-                  <button
-                    className={`col-filter-btn${filterComment ? " active" : ""}`}
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span>Comments</span>
+                  <div
+                    className={`col-filter-hotspot${filterComment ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments"); }}
                     title="Filter by comments"
-                  >▼</button>
+                  />
                 </div>
                 {activeFilterCol === "comments" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>
@@ -455,9 +422,9 @@ export default function DetailsTab({ data, jurors }) {
                   key={`${rowKey(row)}-${row.projectId}-${i}`}
                   className={i % 2 === 1 ? "row-even" : ""}
                 >
-                  <td>{row.juryName}</td>
-                  <td style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>
+                  <td className="cell-juror">{row.juryName}</td>
+                  <td className="cell-dept" style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
+                  <td className="cell-group" style={{ whiteSpace: "nowrap" }}>
                     <div
                       title={grp?.desc ? `Group ${row.projectId} — ${grp.desc}` : `Group ${row.projectId}`}
                       style={{ cursor: "default" }}
@@ -485,7 +452,7 @@ export default function DetailsTab({ data, jurors }) {
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>
                     <strong>{displayScore(row.total)}</strong>
                   </td>
-                  <td className="comment-cell">{row.comments}</td>
+                  <td className="comment-cell cell-comment">{row.comments}</td>
                 </tr>
               );
             })}
