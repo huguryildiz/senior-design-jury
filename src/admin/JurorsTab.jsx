@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { PROJECTS } from "../config";
 import { formatTs, adminCompletionPct } from "./utils";
 import { StatusBadge } from "./components";
+import { ChevronDownIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -13,13 +14,22 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
 
 // jurors prop: { key, name, dept, jurorId }[]
 export default function JurorsTab({ jurorStats, onPinReset }) {
-  const [searchQuery,   setSearchQuery]   = useState("");
+  const [searchQuery,    setSearchQuery]    = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(searchQuery), 200);
     return () => clearTimeout(id);
   }, [searchQuery]);
+
+  function toggleGroup(groupKey) {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
+      return next;
+    });
+  }
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
@@ -123,34 +133,69 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                 <span className="juror-progress-label">{pct}%</span>
               </div>
 
-              {/* Per-group rows */}
+              {/* Per-group rows — accordion */}
               <div className="juror-projects">
                 {rows
                   .slice()
                   .sort((a, b) => a.projectId - b.projectId)
                   .map((d) => {
                     const grp = PROJECT_LIST.find((p) => p.id === d.projectId);
+                    const groupKey = `${key}-${d.projectId}`;
+                    const isExpanded = expandedGroups.has(groupKey);
+                    const panelId = `juror-group-panel-${groupKey}`;
+                    const hasDetails = !!grp?.desc || grp?.students?.length > 0;
                     return (
-                      <div key={`${key}-${d.projectId}`} className="juror-row">
-                        <div className="juror-row-main">
-                          <span className="juror-row-name">
-                            {grp?.name || `Group ${d.projectId}`}
-                          </span>
-                          {grp?.desc && (
-                            <span className="juror-row-desc">{grp.desc}</span>
-                          )}
-                          {grp?.students?.length > 0 && (
-                            <span className="juror-row-students">
-                              👥 {grp.students.join(" · ")}
+                      <div key={groupKey} className="juror-row-wrap">
+                        {/* Clickable row header */}
+                        <div
+                          className="juror-row group-accordion-header"
+                          role="button"
+                          tabIndex={hasDetails ? 0 : -1}
+                          aria-expanded={isExpanded}
+                          aria-controls={panelId}
+                          onClick={() => { if (hasDetails) toggleGroup(groupKey); }}
+                          onKeyDown={(e) => {
+                            if ((e.key === "Enter" || e.key === " ") && hasDetails) {
+                              e.preventDefault();
+                              toggleGroup(groupKey);
+                            }
+                          }}
+                          style={{ cursor: hasDetails ? "pointer" : "default" }}
+                        >
+                          <div className="juror-row-main">
+                            <span className="juror-row-name">
+                              {grp?.name || `Group ${d.projectId}`}
+                            </span>
+                          </div>
+                          <div className="juror-row-right">
+                            <span>{formatTs(d.timestamp)}</span>
+                            <StatusBadge status={d.status} editingFlag={d.editingFlag} />
+                            {(d.status === "all_submitted" || d.status === "group_submitted") && (
+                              <span className="juror-score">{d.total} / 100</span>
+                            )}
+                          </div>
+                          {hasDetails && (
+                            <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
+                              <ChevronDownIcon />
                             </span>
                           )}
                         </div>
-                        <div className="juror-row-right">
-                          <span>{formatTs(d.timestamp)}</span>
-                          <StatusBadge status={d.status} editingFlag={d.editingFlag} />
-                          {(d.status === "all_submitted" || d.status === "group_submitted") && (
-                            <span className="juror-score">{d.total} / 100</span>
-                          )}
+
+                        {/* Expandable panel */}
+                        <div
+                          id={panelId}
+                          className={`group-accordion-panel${isExpanded ? " open" : ""}`}
+                        >
+                          <div className="group-accordion-panel-inner juror-accordion-inner">
+                            {grp?.desc && (
+                              <span className="juror-row-desc">{grp.desc}</span>
+                            )}
+                            {grp?.students?.length > 0 && (
+                              <span className="juror-row-students">
+                                👥 {grp.students.join(" · ")}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

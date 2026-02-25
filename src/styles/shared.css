@@ -175,3 +175,41 @@ body {
 .loading   { text-align: center; padding: 40px; color: var(--gray-500); }
 .error-msg { background: var(--red-light); color: var(--red); padding: 14px 20px; margin: 20px; border-radius: var(--radius); font-size: 14px; }
 .empty-msg { text-align: center; padding: 40px; color: var(--gray-500); }
+
+/* ── Group accordion — used by JurorsTab (admin) and DoneStep (jury) ── */
+.group-accordion-header {
+  cursor: pointer;
+  user-select: none;
+}
+.group-accordion-header:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.group-accordion-chevron {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+.group-accordion-chevron.open {
+  transform: rotate(180deg);
+  color: #475569;
+}
+
+/* CSS grid row expand — avoids max-height estimation; works on iOS Safari */
+.group-accordion-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.18s ease, opacity 0.18s ease;
+}
+.group-accordion-panel.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.group-accordion-panel-inner {
+  overflow: hidden;
+}

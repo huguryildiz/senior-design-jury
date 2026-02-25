@@ -313,6 +313,28 @@
 /* StatusBadge → Reset PIN horizontal gap (desktop + landscape) */
 .status-badge + .pin-reset-btn { margin-left: 6px; }
 
+/* ── Group accordion — JurorsTab-specific styles ─────────── */
+/* Shared base rules (.group-accordion-*) live in shared.css  */
+
+/* Juror tab accordion panel: indent + spacing */
+.juror-accordion-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0 8px 4px;
+}
+
+/* Row wrapper replaces direct .juror-row as the gap-child in .juror-projects */
+.juror-row-wrap {
+  display: flex;
+  flex-direction: column;
+}
+.juror-row-wrap .juror-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Matrix SVG icon alignment */
 .matrix-wrap svg { display: inline-block; vertical-align: middle; }
 

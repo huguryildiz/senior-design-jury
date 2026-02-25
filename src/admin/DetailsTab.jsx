@@ -17,6 +17,7 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
 // Show "" for null/undefined/empty/NaN.  0 is a valid score.
 function displayScore(val) {
   if (val === "" || val === null || val === undefined) return "";
+  if (typeof val === "string" && val.trim() === "") return "";
   const n = Number(val);
   if (!Number.isFinite(n)) return "";
   return n;
@@ -39,22 +40,22 @@ const SCORE_COLS = [
 
 // ── Inline SVG icons ─────────────────────────────────────────
 const SortBothSVG = () => (
-  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
     <path d="M3 4.5L6 1.5L9 4.5"/><path d="M3 7.5L6 10.5L9 7.5"/>
   </svg>
 );
 const SortAscSVG = () => (
-  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
     <path d="M3 7.5L6 4.5L9 7.5"/>
   </svg>
 );
 const SortDescSVG = () => (
-  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
     <path d="M3 4.5L6 7.5L9 4.5"/>
   </svg>
 );
 const ClearSVG = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
     <path d="M2 2L10 10M10 2L2 10"/>
   </svg>
 );
@@ -74,7 +75,7 @@ function rowKey(r) {
 // jurors prop: { key, name, dept }[]
 export default function DetailsTab({ data, jurors }) {
   const [filterJuror,    setFilterJuror]    = useState("ALL");
-  const [filterDept,     setFilterDept]     = useState("");
+  const [filterDept,     setFilterDept]     = useState("ALL");
   const [filterGroup,    setFilterGroup]    = useState("ALL");
   const [filterStatuses, setFilterStatuses] = useState(new Set());
   const [dateFrom,       setDateFrom]       = useState("");
@@ -89,16 +90,27 @@ export default function DetailsTab({ data, jurors }) {
       .sort((a, b) => a.id - b.id),
     []
   );
+  const deptOptions = useMemo(() => {
+    const map = new Map();
+    jurors.forEach((j) => {
+      const label = String(j?.dept ?? "").trim();
+      if (!label) return;
+      map.set(label.toLowerCase(), label);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([key, label]) => ({ key, label }));
+  }, [jurors]);
 
   const hasAnyFilter = useMemo(() =>
-    filterJuror !== "ALL" || filterDept || filterGroup !== "ALL" ||
+    filterJuror !== "ALL" || filterDept !== "ALL" || filterGroup !== "ALL" ||
     filterStatuses.size > 0 || dateFrom || dateTo || filterComment,
     [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, filterComment]
   );
 
   function resetFilters() {
     setFilterJuror("ALL");
-    setFilterDept("");
+    setFilterDept("ALL");
     setFilterGroup("ALL");
     setFilterStatuses(new Set());
     setDateFrom("");
@@ -122,6 +134,13 @@ export default function DetailsTab({ data, jurors }) {
     setActiveFilterCol((prev) => (prev === colId ? null : colId));
   }
 
+  function isMissing(val) {
+    if (val === "" || val === null || val === undefined) return true;
+    if (typeof val === "string" && val.trim() === "") return true;
+    if (typeof val === "number") return !Number.isFinite(val);
+    return false;
+  }
+
   const rows = useMemo(() => {
     const fromMs = dateFrom ? new Date(dateFrom).getTime()               : 0;
     const toMs   = dateTo   ? new Date(dateTo + "T23:59:59").getTime()   : Infinity;
@@ -134,9 +153,9 @@ export default function DetailsTab({ data, jurors }) {
     if (filterGroup !== "ALL") {
       list = list.filter((r) => String(r.projectId) === filterGroup);
     }
-    if (filterDept) {
+    if (filterDept !== "ALL") {
       const q = filterDept.toLowerCase();
-      list = list.filter((r) => (r.juryDept || "").toLowerCase().includes(q));
+      list = list.filter((r) => String(r.juryDept ?? "").trim().toLowerCase() === q);
     }
     if (filterStatuses.size > 0) {
       list = list.filter((r) => {
@@ -158,8 +177,8 @@ export default function DetailsTab({ data, jurors }) {
     // Missing values always sink to bottom regardless of sort direction.
     list.sort((a, b) => {
       const av = a[sortKey], bv = b[sortKey];
-      const aMiss = av === "" || av === null || av === undefined;
-      const bMiss = bv === "" || bv === null || bv === undefined;
+      const aMiss = isMissing(av);
+      const bMiss = isMissing(bv);
       if (aMiss && bMiss) return 0;
       if (aMiss) return 1;
       if (bMiss) return -1;
@@ -188,15 +207,15 @@ export default function DetailsTab({ data, jurors }) {
             <ClearSVG /> Clear Filters
           </button>
         )}
-        <button className="csv-export-btn" onClick={() => exportCSV(rows)}>
-          <DownloadSVG />
-          <span className="export-label-long">Export CSV</span>
-          <span className="export-label-short">CSV</span>
-        </button>
         <button className="xlsx-export-btn" onClick={() => exportXLSX(rows)}>
           <DownloadSVG />
           <span className="export-label-long">Export Excel</span>
           <span className="export-label-short">Excel</span>
+        </button>
+        <button className="csv-export-btn" onClick={() => exportCSV(rows)}>
+          <DownloadSVG />
+          <span className="export-label-long">Export CSV</span>
+          <span className="export-label-short">CSV</span>
         </button>
       </div>
 
@@ -262,14 +281,18 @@ export default function DetailsTab({ data, jurors }) {
                 </div>
                 {activeFilterCol === "dept" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <input
+                    <select
                       autoFocus
-                      placeholder="Filter department…"
                       value={filterDept}
-                      onChange={(e) => setFilterDept(e.target.value)}
-                    />
-                    {filterDept && (
-                      <button className="col-filter-clear" onClick={() => { setFilterDept(""); setActiveFilterCol(null); }}>
+                      onChange={(e) => { setFilterDept(e.target.value); setActiveFilterCol(null); }}
+                    >
+                      <option value="ALL">All departments</option>
+                      {deptOptions.map((d) => (
+                        <option key={d.key} value={d.key}>{d.label}</option>
+                      ))}
+                    </select>
+                    {filterDept !== "ALL" && (
+                      <button className="col-filter-clear" onClick={() => { setFilterDept("ALL"); setActiveFilterCol(null); }}>
                         Clear
                       </button>
                     )}
@@ -426,12 +449,13 @@ export default function DetailsTab({ data, jurors }) {
                   <td className="cell-dept" style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
                   <td className="cell-group" style={{ whiteSpace: "nowrap" }}>
                     <div
+                      className="cell-group-wrap"
                       title={grp?.desc ? `Group ${row.projectId} — ${grp.desc}` : `Group ${row.projectId}`}
                       style={{ cursor: "default" }}
                     >
-                      <strong>Group {row.projectId}</strong>
+                      <strong className="cell-group-title">Group {row.projectId}</strong>
                       {grp?.desc && (
-                        <span style={{
+                        <span className="cell-group-desc" style={{
                           display: "block", fontSize: 11, color: "#94a3b8",
                           fontWeight: 400, maxWidth: 180,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

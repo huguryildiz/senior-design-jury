@@ -675,13 +675,43 @@
   gap: 8px;
   margin: 4px 0;
 }
-.done-row          { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; border-bottom: 1px solid var(--gray-200); }
-.done-row:last-child { border-bottom: none; }
-.done-row-left     { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.done-row          { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 6px 0; }
 .done-row-name     { font-size: 13px; font-weight: 600; color: var(--gray-900); text-align: left; }
 .done-row-desc     { font-size: 11px; color: #94a3b8; text-align: left; }
 .done-score        { font-weight: 700; color: var(--blue); font-family: 'DM Mono', monospace; }
 .done-actions      { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Done screen accordion ───────────────────────────────── */
+.done-row-wrap {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--gray-200);
+}
+.done-row-wrap:last-child { border-bottom: none; }
+
+/* The .group-accordion-header styles (cursor, focus-visible) come from admin.css
+   which is always loaded when shared.css/jury.css are active.
+   For jury-only contexts, duplicate focus ring here just in case: */
+.done-row-wrap .done-row:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Done accordion panel inner: flex column for desc, students, comment */
+.done-accordion-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 8px 0;
+  text-align: left;
+}
+
+.done-row-students {
+  font-size: 11px;
+  color: #64748b;
+  text-align: left;
+}
 
 /* Done screen cloud verify states */
 .done-verify-pending { font-size: 13px; color: #64748b; margin: 6px 0; }
