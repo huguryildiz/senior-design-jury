@@ -164,16 +164,23 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
   // ── Derived data ──────────────────────────────────────────
 
-  // Deduplicate juror names case-insensitively.
-  // Stores the first-seen casing as the display name.
-  const jurors = useMemo(() => {
-    const seen = new Map(); // lowercase → original casing
+  // Stable per-row key: jurorId if present, else name__dept (lowercased).
+  // Must be consistent across AdminPanel, MatrixTab, DetailsTab, JurorsTab.
+  const rowKey = (r) =>
+    r.jurorId
+      ? r.jurorId
+      : `${(r.juryName || "").trim().toLowerCase()}__${(r.juryDept || "").trim().toLowerCase()}`;
+
+  // Unique jurors by key — prevents same-name/different-dept collisions.
+  const uniqueJurors = useMemo(() => {
+    const seen = new Map(); // key → { key, name, dept, jurorId }
     data.forEach((d) => {
       if (!d.juryName) return;
-      const low = d.juryName.trim().toLowerCase();
-      if (!seen.has(low)) seen.set(low, d.juryName.trim());
+      const key = rowKey(d);
+      if (!seen.has(key))
+        seen.set(key, { key, name: d.juryName.trim(), dept: d.juryDept.trim(), jurorId: d.jurorId });
     });
-    return [...seen.values()].sort(cmp);
+    return [...seen.values()].sort((a, b) => cmp(a.name, b.name));
   }, [data]);
 
   const groups = useMemo(
@@ -182,19 +189,18 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     []
   );
 
+  // Key → dept map for MatrixTab.
   const jurorDeptMap = useMemo(() => {
     const m = new Map();
-    data.forEach((r) => {
-      if (r.juryName && r.juryDept && !m.has(r.juryName)) m.set(r.juryName, r.juryDept);
-    });
+    uniqueJurors.forEach(({ key, dept }) => m.set(key, dept));
     return m;
-  }, [data]);
+  }, [uniqueJurors]);
 
   const jurorColorMap = useMemo(() => {
     const m = new Map();
-    jurors.forEach((n) => m.set(n, { bg: jurorBg(n), dot: jurorDot(n) }));
+    uniqueJurors.forEach(({ key, name }) => m.set(key, { bg: jurorBg(name), dot: jurorDot(name) }));
     return m;
-  }, [jurors]);
+  }, [uniqueJurors]);
 
   // Only rows with all_submitted count towards rankings and averages.
   const submittedData = useMemo(
@@ -238,8 +244,8 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   );
 
   const jurorStats = useMemo(() => {
-    return jurors.map((jury) => {
-      const rows           = data.filter((d) => d.juryName === jury);
+    return uniqueJurors.map(({ key, name, dept, jurorId }) => {
+      const rows           = data.filter((d) => rowKey(d) === key);
       const completed      = rows.filter((r) => r.status === "group_submitted" || r.status === "all_submitted");
       const finalSubmitted = rows.filter((r) => r.status === "all_submitted");
       const inProgress     = rows.filter((r) => r.status === "in_progress");
@@ -252,13 +258,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
         "not_started";
 
       return {
-        jury, rows,
+        key, jury: name, dept, jurorId, rows,
         submitted: completed, // backwards-compatible alias
         completed, finalSubmitted, inProgress,
         latestTs, latestRow, overall,
       };
     });
-  }, [jurors, data]);
+  }, [uniqueJurors, data]);
 
   const inProgressCount = data.filter((r) => r.status === "in_progress").length;
   const editingCount    = jurorStats.filter((s) =>
@@ -277,7 +283,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
         <div>
           <h2>Results Panel</h2>
           <p>
-            {jurors.length} juror{jurors.length !== 1 ? "s" : ""}
+            {uniqueJurors.length} juror{uniqueJurors.length !== 1 ? "s" : ""}
             {" · "}{completedData.length} completed
             {" · "}{submittedData.length} final
             {inProgressCount > 0 && (
@@ -355,16 +361,16 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
         <div className="admin-body">
           {activeTab === "summary"   && <SummaryTab   ranked={ranked} submittedData={submittedData} />}
           {activeTab === "dashboard" && <DashboardTab dashboardStats={dashboardStats} submittedData={submittedData} />}
-          {activeTab === "detail"    && <DetailsTab   data={data} jurors={jurors} jurorColorMap={jurorColorMap} />}
+          {activeTab === "detail"    && <DetailsTab   data={data} jurors={uniqueJurors} jurorColorMap={jurorColorMap} />}
           {activeTab === "jurors"    && (
             <JurorsTab
               jurorStats={jurorStats}
-              jurors={jurors}
+              jurors={uniqueJurors}
               onPinReset={handlePinReset}
             />
           )}
           {activeTab === "matrix"    && (
-            <MatrixTab data={data} jurors={jurors} groups={groups} jurorDeptMap={jurorDeptMap} />
+            <MatrixTab data={data} jurors={uniqueJurors} groups={groups} jurorDeptMap={jurorDeptMap} />
           )}
         </div>
       )}

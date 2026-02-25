@@ -1,6 +1,6 @@
 // src/admin/DetailsTab.jsx
 // ============================================================
-// Sortable, filterable details table with CSV export.
+// Sortable details table with Excel-style column header filters.
 // ============================================================
 
 import { useState, useMemo } from "react";
@@ -14,40 +14,121 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
     : { id: p.id ?? i + 1, name: p.name ?? `Group ${i + 1}`, desc: p.desc ?? "", students: p.students ?? [] }
 );
 
-// Display "—" for genuinely empty/missing scores.
-// Note: a score of 0 entered by the juror is also shown as "—" here
-// because the sheet stores "" for untouched fields and 0 only arrives
-// when the juror explicitly typed 0 — both are treated as "no data" in
-// the details view to avoid confusion with actually-scored rows.
+// Show "—" for null/undefined/empty/NaN only.  0 is a valid score.
 function displayScore(val) {
   if (val === "" || val === null || val === undefined) return "—";
   const n = Number(val);
-  if (!Number.isFinite(n) || n === 0) return "—";
+  if (!Number.isFinite(n)) return "—";
   return n;
 }
 
-const STATUS_PILLS = [
+const STATUS_OPTIONS = [
   { key: "in_progress",     label: "In Progress" },
   { key: "group_submitted", label: "Completed"   },
   { key: "all_submitted",   label: "Final"       },
   { key: "editing",         label: "Editing"     },
 ];
 
+const SCORE_COLS = [
+  { key: "technical", label: "Technical /30" },
+  { key: "design",    label: "Written /30"   },
+  { key: "delivery",  label: "Oral /30"      },
+  { key: "teamwork",  label: "Team /10"      },
+  { key: "total",     label: "Total"         },
+];
+
+// Stable per-row key matching AdminPanel's rowKey.
+function rowKey(r) {
+  return r.jurorId
+    ? r.jurorId
+    : `${(r.juryName || "").trim().toLowerCase()}__${(r.juryDept || "").trim().toLowerCase()}`;
+}
+
+// Numeric filter popover content.
+function NumericFilter({ value, onChange }) {
+  const op = value?.op || "gte";
+  const v1 = value?.val  ?? "";
+  const v2 = value?.val2 ?? "";
+  return (
+    <>
+      <select
+        value={op}
+        onChange={(e) => onChange({ op: e.target.value, val: v1, val2: v2 })}
+      >
+        <option value="gte">≥ (at least)</option>
+        <option value="lte">≤ (at most)</option>
+        <option value="between">Between</option>
+      </select>
+      {op !== "between" ? (
+        <input
+          autoFocus
+          type="number"
+          placeholder="Score…"
+          value={v1}
+          onChange={(e) => onChange({ op, val: e.target.value, val2: v2 })}
+        />
+      ) : (
+        <div className="filter-between-row">
+          <input
+            autoFocus
+            type="number"
+            placeholder="Min"
+            value={v1}
+            onChange={(e) => onChange({ op, val: e.target.value, val2: v2 })}
+          />
+          <span style={{ fontSize: 11, color: "#64748b" }}>–</span>
+          <input
+            type="number"
+            placeholder="Max"
+            value={v2}
+            onChange={(e) => onChange({ op, val: v1, val2: e.target.value })}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+// jurors prop: { key, name, dept }[]
 export default function DetailsTab({ data, jurors }) {
   const [filterJuror,    setFilterJuror]    = useState("ALL");
+  const [filterDept,     setFilterDept]     = useState("");
   const [filterGroup,    setFilterGroup]    = useState("ALL");
-  const [searchText,     setSearchText]     = useState("");
-  const [sortKey,        setSortKey]        = useState("tsMs");
-  const [sortDir,        setSortDir]        = useState("desc");
   const [filterStatuses, setFilterStatuses] = useState(new Set());
   const [dateFrom,       setDateFrom]       = useState("");
   const [dateTo,         setDateTo]         = useState("");
+  const [scoreFilters,   setScoreFilters]   = useState({});  // { [colKey]: { op, val, val2 } }
+  const [filterComment,  setFilterComment]  = useState("");
+  const [sortKey,        setSortKey]        = useState("tsMs");
+  const [sortDir,        setSortDir]        = useState("desc");
+  const [activeFilterCol, setActiveFilterCol] = useState(null);
 
   const groups = useMemo(
     () => PROJECT_LIST.map((p) => ({ id: p.id, label: `Group ${p.id}`, name: p.name }))
       .sort((a, b) => a.id - b.id),
     []
   );
+
+  const hasAnyFilter = useMemo(() =>
+    filterJuror !== "ALL" || filterDept || filterGroup !== "ALL" ||
+    filterStatuses.size > 0 || dateFrom || dateTo ||
+    Object.keys(scoreFilters).length > 0 || filterComment,
+    [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, scoreFilters, filterComment]
+  );
+
+  function resetFilters() {
+    setFilterJuror("ALL");
+    setFilterDept("");
+    setFilterGroup("ALL");
+    setFilterStatuses(new Set());
+    setDateFrom("");
+    setDateTo("");
+    setScoreFilters({});
+    setFilterComment("");
+    setSortKey("tsMs");
+    setSortDir("desc");
+    setActiveFilterCol(null);
+  }
 
   function toggleStatus(key) {
     setFilterStatuses((prev) => {
@@ -58,42 +139,67 @@ export default function DetailsTab({ data, jurors }) {
     });
   }
 
+  function setScoreFilter(col, val) {
+    setScoreFilters((prev) => ({ ...prev, [col]: val }));
+  }
+  function clearScoreFilter(col) {
+    setScoreFilters((prev) => { const n = { ...prev }; delete n[col]; return n; });
+  }
+
+  function toggleFilterCol(colId) {
+    setActiveFilterCol((prev) => (prev === colId ? null : colId));
+  }
+
   const rows = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    const fromMs = dateFrom ? new Date(dateFrom).getTime()                   : 0;
-    const toMs   = dateTo   ? new Date(dateTo + "T23:59:59").getTime()       : Infinity;
+    const fromMs = dateFrom ? new Date(dateFrom).getTime()               : 0;
+    const toMs   = dateTo   ? new Date(dateTo + "T23:59:59").getTime()   : Infinity;
 
     let list = data.slice();
-    if (filterJuror !== "ALL") list = list.filter((r) => r.juryName  === filterJuror);
-    if (filterGroup !== "ALL") list = list.filter((r) => String(r.projectId) === filterGroup);
 
+    if (filterJuror !== "ALL") {
+      list = list.filter((r) => rowKey(r) === filterJuror);
+    }
+    if (filterGroup !== "ALL") {
+      list = list.filter((r) => String(r.projectId) === filterGroup);
+    }
+    if (filterDept) {
+      const q = filterDept.toLowerCase();
+      list = list.filter((r) => (r.juryDept || "").toLowerCase().includes(q));
+    }
     if (filterStatuses.size > 0) {
       list = list.filter((r) => {
         if (filterStatuses.has("editing") && r.editingFlag === "editing") return true;
         return filterStatuses.has(r.status);
       });
     }
-
     if (dateFrom || dateTo) {
       list = list.filter((r) => {
         const ms = r.tsMs || tsToMillis(r.timestamp);
         return ms >= fromMs && ms <= toMs;
       });
     }
-
-    if (q) {
-      list = list.filter((r) =>
-        [r.juryName, r.juryDept, r.timestamp, r.projectName,
-         String(r.design), String(r.technical), String(r.delivery),
-         String(r.teamwork), String(r.total), r.comments]
-          .join(" ").toLowerCase().includes(q)
-      );
+    Object.entries(scoreFilters).forEach(([col, f]) => {
+      if (f?.val === "" || f?.val === undefined) return;
+      list = list.filter((r) => {
+        const v = Number(r[col]);
+        if (!Number.isFinite(v)) return false;
+        if (f.op === "gte")     return v >= Number(f.val);
+        if (f.op === "lte")     return v <= Number(f.val);
+        if (f.op === "between") return v >= Number(f.val) && v <= Number(f.val2 ?? f.val);
+        return true;
+      });
+    });
+    if (filterComment) {
+      const q = filterComment.toLowerCase();
+      list = list.filter((r) => (r.comments || "").toLowerCase().includes(q));
     }
+
     list.sort((a, b) =>
       sortDir === "asc" ? cmp(a[sortKey], b[sortKey]) : cmp(b[sortKey], a[sortKey])
     );
     return list;
-  }, [data, filterJuror, filterGroup, searchText, sortKey, sortDir, filterStatuses, dateFrom, dateTo]);
+  }, [data, filterJuror, filterGroup, filterDept, filterStatuses, dateFrom, dateTo,
+      scoreFilters, filterComment, sortKey, sortDir]);
 
   function setSort(key) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -102,103 +208,235 @@ export default function DetailsTab({ data, jurors }) {
   const sortIcon = (key) =>
     sortKey !== key ? "↕" : sortDir === "asc" ? "↑" : "↓";
 
-  function resetFilters() {
-    setFilterJuror("ALL");
-    setFilterGroup("ALL");
-    setSearchText("");
-    setSortKey("tsMs");
-    setSortDir("desc");
-    setFilterStatuses(new Set());
-    setDateFrom("");
-    setDateTo("");
-  }
-
   return (
     <>
-      {/* Filter bar */}
-      <div className="filter-bar">
-        <div className="filter-item">
-          <span>Juror</span>
-          <select value={filterJuror} onChange={(e) => setFilterJuror(e.target.value)}>
-            <option value="ALL">All</option>
-            {jurors.map((j) => <option key={j} value={j}>{j}</option>)}
-          </select>
-        </div>
-
-        <div className="filter-item">
-          <span>Group</span>
-          <select value={filterGroup} onChange={(e) => setFilterGroup(e.target.value)}>
-            <option value="ALL">All</option>
-            {groups.map((g) => <option key={g.id} value={String(g.id)}>{g.label}</option>)}
-          </select>
-        </div>
-
-        <div className="filter-item filter-search">
-          <span>Search</span>
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search juror, group, comments…"
-          />
-        </div>
-
-        {/* Date range */}
-        <div className="filter-item">
-          <span>From</span>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-        </div>
-        <div className="filter-item">
-          <span>To</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-
-        <button className="filter-reset" onClick={resetFilters}>Reset</button>
+      {/* Compact toolbar: row count + clear + export */}
+      <div className="detail-table-toolbar">
         <span className="filter-count">
           Showing <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
         </span>
+        {hasAnyFilter && (
+          <button className="filter-reset" onClick={resetFilters}>✕ Clear Filters</button>
+        )}
         <button className="csv-export-btn" onClick={() => exportCSV(rows)}>
           ⬇ Export CSV
         </button>
       </div>
 
-      {/* Status pills */}
-      <div className="status-pill-bar">
-        <span className="status-pill-label">Status:</span>
-        {STATUS_PILLS.map(({ key, label }) => (
-          <button
-            key={key}
-            className={`status-pill${filterStatuses.has(key) ? " active" : ""}`}
-            onClick={() => toggleStatus(key)}
-          >
-            {label}
-          </button>
-        ))}
-        {filterStatuses.size > 0 && (
-          <button
-            className="status-pill-clear"
-            onClick={() => setFilterStatuses(new Set())}
-          >
-            ✕ Clear
-          </button>
-        )}
-      </div>
+      {/* Close-layer: click outside popover to dismiss */}
+      {activeFilterCol !== null && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50 }}
+          onClick={() => setActiveFilterCol(null)}
+        />
+      )}
 
       {/* Table */}
       <div className="detail-table-wrap">
         <table className="detail-table">
           <thead>
             <tr>
-              <th onClick={() => setSort("juryName")}    style={{ cursor: "pointer" }}>Juror {sortIcon("juryName")}</th>
-              <th onClick={() => setSort("juryDept")}    style={{ cursor: "pointer" }}>Department {sortIcon("juryDept")}</th>
-              <th onClick={() => setSort("projectId")}   style={{ cursor: "pointer", whiteSpace: "nowrap" }}>Group {sortIcon("projectId")}</th>
-              <th onClick={() => setSort("tsMs")}        style={{ cursor: "pointer" }}>Timestamp {sortIcon("tsMs")}</th>
-              <th>Status</th>
-              <th onClick={() => setSort("technical")}   style={{ cursor: "pointer" }}>Technical /30 {sortIcon("technical")}</th>
-              <th onClick={() => setSort("design")}      style={{ cursor: "pointer" }}>Written /30 {sortIcon("design")}</th>
-              <th onClick={() => setSort("delivery")}    style={{ cursor: "pointer" }}>Oral /30 {sortIcon("delivery")}</th>
-              <th onClick={() => setSort("teamwork")}    style={{ cursor: "pointer" }}>Team /10 {sortIcon("teamwork")}</th>
-              <th onClick={() => setSort("total")}       style={{ cursor: "pointer" }}>Total {sortIcon("total")}</th>
-              <th>Comments</th>
+              {/* Juror */}
+              <th style={{ position: "relative", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span onClick={() => setSort("juryName")}>Juror {sortIcon("juryName")}</span>
+                  <button
+                    className={`col-filter-btn${filterJuror !== "ALL" ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror"); }}
+                    title="Filter by juror"
+                  >▼</button>
+                </div>
+                {activeFilterCol === "juror" && (
+                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      autoFocus
+                      value={filterJuror}
+                      onChange={(e) => { setFilterJuror(e.target.value); setActiveFilterCol(null); }}
+                    >
+                      <option value="ALL">All jurors</option>
+                      {jurors.map((j) => (
+                        <option key={j.key} value={j.key}>
+                          {j.name}{j.dept ? ` (${j.dept})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {filterJuror !== "ALL" && (
+                      <button className="col-filter-clear" onClick={() => { setFilterJuror("ALL"); setActiveFilterCol(null); }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+
+              {/* Department */}
+              <th style={{ position: "relative", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span onClick={() => setSort("juryDept")}>Department {sortIcon("juryDept")}</span>
+                  <button
+                    className={`col-filter-btn${filterDept ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept"); }}
+                    title="Filter by department"
+                  >▼</button>
+                </div>
+                {activeFilterCol === "dept" && (
+                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      autoFocus
+                      placeholder="Filter department…"
+                      value={filterDept}
+                      onChange={(e) => setFilterDept(e.target.value)}
+                    />
+                    {filterDept && (
+                      <button className="col-filter-clear" onClick={() => { setFilterDept(""); setActiveFilterCol(null); }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+
+              {/* Group */}
+              <th style={{ position: "relative", cursor: "pointer", whiteSpace: "nowrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span onClick={() => setSort("projectId")}>Group {sortIcon("projectId")}</span>
+                  <button
+                    className={`col-filter-btn${filterGroup !== "ALL" ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("group"); }}
+                    title="Filter by group"
+                  >▼</button>
+                </div>
+                {activeFilterCol === "group" && (
+                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      autoFocus
+                      value={filterGroup}
+                      onChange={(e) => { setFilterGroup(e.target.value); setActiveFilterCol(null); }}
+                    >
+                      <option value="ALL">All groups</option>
+                      {groups.map((g) => (
+                        <option key={g.id} value={String(g.id)}>{g.label}</option>
+                      ))}
+                    </select>
+                    {filterGroup !== "ALL" && (
+                      <button className="col-filter-clear" onClick={() => { setFilterGroup("ALL"); setActiveFilterCol(null); }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+
+              {/* Timestamp */}
+              <th style={{ position: "relative", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span onClick={() => setSort("tsMs")}>Timestamp {sortIcon("tsMs")}</span>
+                  <button
+                    className={`col-filter-btn${(dateFrom || dateTo) ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp"); }}
+                    title="Filter by date"
+                  >▼</button>
+                </div>
+                {activeFilterCol === "timestamp" && (
+                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
+                    <label style={{ fontSize: 11, color: "#64748b" }}>From</label>
+                    <input autoFocus type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                    <label style={{ fontSize: 11, color: "#64748b" }}>To</label>
+                    <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                    {(dateFrom || dateTo) && (
+                      <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); setActiveFilterCol(null); }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+
+              {/* Status */}
+              <th style={{ position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  Status
+                  <button
+                    className={`col-filter-btn${filterStatuses.size > 0 ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("status"); }}
+                    title="Filter by status"
+                  >▼</button>
+                </div>
+                {activeFilterCol === "status" && (
+                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
+                    {STATUS_OPTIONS.map(({ key, label }) => (
+                      <label key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={filterStatuses.has(key)}
+                          onChange={() => toggleStatus(key)}
+                          style={{ width: "auto" }}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                    {filterStatuses.size > 0 && (
+                      <button className="col-filter-clear" onClick={() => { setFilterStatuses(new Set()); setActiveFilterCol(null); }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
+
+              {/* Score columns */}
+              {SCORE_COLS.map(({ key: col, label }) => (
+                <th key={col} style={{ position: "relative", cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span onClick={() => setSort(col)}>{label} {sortIcon(col)}</span>
+                    <button
+                      className={`col-filter-btn${scoreFilters[col] ? " active" : ""}`}
+                      onClick={(e) => { e.stopPropagation(); toggleFilterCol(col); }}
+                      title={`Filter ${label}`}
+                    >▼</button>
+                  </div>
+                  {activeFilterCol === col && (
+                    <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>
+                      <NumericFilter
+                        value={scoreFilters[col]}
+                        onChange={(v) => setScoreFilter(col, v)}
+                      />
+                      {scoreFilters[col] && (
+                        <button className="col-filter-clear" onClick={() => { clearScoreFilter(col); setActiveFilterCol(null); }}>
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </th>
+              ))}
+
+              {/* Comments */}
+              <th style={{ position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  Comments
+                  <button
+                    className={`col-filter-btn${filterComment ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments"); }}
+                    title="Filter by comments"
+                  >▼</button>
+                </div>
+                {activeFilterCol === "comments" && (
+                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>
+                    <input
+                      autoFocus
+                      placeholder="Search comments…"
+                      value={filterComment}
+                      onChange={(e) => setFilterComment(e.target.value)}
+                    />
+                    {filterComment && (
+                      <button className="col-filter-clear" onClick={() => { setFilterComment(""); setActiveFilterCol(null); }}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -214,7 +452,7 @@ export default function DetailsTab({ data, jurors }) {
               const isIP = row.status === "in_progress";
               return (
                 <tr
-                  key={`${row.juryName}-${row.projectId}-${i}`}
+                  key={`${rowKey(row)}-${row.projectId}-${i}`}
                   className={i % 2 === 1 ? "row-even" : ""}
                 >
                   <td>{row.juryName}</td>
@@ -239,7 +477,6 @@ export default function DetailsTab({ data, jurors }) {
                   <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>
                     {formatTs(row.timestamp)}
                   </td>
-                  {/* Pass editingFlag so the badge shows "✏️ Editing" when applicable */}
                   <td><StatusBadge status={row.status} editingFlag={row.editingFlag} /></td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.technical)}</td>
                   <td style={{ color: isIP ? "#94a3b8" : undefined }}>{displayScore(row.design)}</td>

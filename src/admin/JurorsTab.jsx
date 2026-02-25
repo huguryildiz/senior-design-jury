@@ -12,18 +12,19 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
 );
 const TOTAL_GROUPS = PROJECT_LIST.length;
 
+// jurors prop: { key, name, dept, jurorId }[]
 export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
   const [jurorFilter, setJurorFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
   const filtered = useMemo(() => {
     let list = jurorStats;
-    if (jurorFilter !== "ALL") list = list.filter((s) => s.jury === jurorFilter);
+    if (jurorFilter !== "ALL") list = list.filter((s) => s.key === jurorFilter);
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       list = list.filter((s) =>
         s.jury.toLowerCase().includes(q) ||
-        (s.latestRow?.juryDept || "").toLowerCase().includes(q)
+        (s.dept || s.latestRow?.juryDept || "").toLowerCase().includes(q)
       );
     }
     return list;
@@ -39,7 +40,11 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
           onChange={(e) => setJurorFilter(e.target.value)}
         >
           <option value="ALL">All jurors</option>
-          {jurors.map((j) => <option key={j} value={j}>{j}</option>)}
+          {jurors.map((j) => (
+            <option key={j.key} value={j.key}>
+              {j.name}{j.dept ? ` (${j.dept})` : ""}
+            </option>
+          ))}
         </select>
 
         <div className="juror-search-wrap">
@@ -62,7 +67,9 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
       )}
 
       <div className="jurors-grid jurors-grid-full">
-        {filtered.map(({ jury, rows, submitted, overall, latestTs, latestRow }) => {
+        {filtered.map((stat) => {
+          const { key, jury, rows, submitted, overall, latestTs, latestRow } = stat;
+
           // Progress bar: matches Jury Form sticky header (criteria filled / total criteria).
           const pct = adminCompletionPct(rows);
 
@@ -81,7 +88,7 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
             : "";
 
           return (
-            <div key={jury} className={`juror-card ${statusClass}`}>
+            <div key={key} className={`juror-card ${statusClass}`}>
 
               <div className="juror-card-header">
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -153,11 +160,18 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
                   .map((d) => {
                     const grp = PROJECT_LIST.find((p) => p.id === d.projectId);
                     return (
-                      <div key={`${jury}-${d.projectId}`} className="juror-row">
+                      <div key={`${key}-${d.projectId}`} className="juror-row">
                         <div className="juror-row-main">
-                          <span className="juror-row-name">Group {d.projectId}</span>
+                          <span className="juror-row-name">
+                            🧩 {grp?.name || `Group ${d.projectId}`}
+                          </span>
                           {grp?.desc && (
-                            <span className="juror-row-desc">{grp.desc}</span>
+                            <span className="juror-row-desc">📝 {grp.desc}</span>
+                          )}
+                          {grp?.students?.length > 0 && (
+                            <span className="juror-row-students">
+                              👥 {grp.students.join(" · ")}
+                            </span>
                           )}
                         </div>
                         <div className="juror-row-right">

@@ -38,7 +38,7 @@ export default function SummaryTab({ ranked, submittedData }) {
       </div>
       <div className="rank-list">
       {ranked.map((p, i) => (
-        <div key={p.name} className="rank-card" style={i < 3 ? {
+        <div key={p.id ?? `${p.name}-${i}`} className="rank-card" style={i < 3 ? {
           background: "#ECFDF5",
           boxShadow: "0 0 0 1px #BBF7D0, 0 10px 40px rgba(34,197,94,0.35)",
           border: "1px solid #86EFAC",
@@ -71,12 +71,12 @@ export default function SummaryTab({ ranked, submittedData }) {
                   <div className="mini-bar-track">
                     <div className="mini-bar-fill" style={{ width: `${((p.avg[c.id] || 0) / c.max) * 100}%` }} />
                   </div>
-                  <span className="mini-val">{(p.avg[c.id] || 0).toFixed(1)}</span>
+                  <span className="mini-val">{(p.avg[c.id] || 0).toFixed(2)}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rank-total"><span>{p.totalAvg.toFixed(1)}</span><small>avg.</small></div>
+          <div className="rank-total"><span>{p.totalAvg.toFixed(2)}</span><small>avg.</small></div>
         </div>
       ))}
       </div>
