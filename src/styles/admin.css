@@ -348,7 +348,12 @@
   color: #64748b;
   margin-bottom: 12px;
 }
-.matrix-scroll   { overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; }
+.matrix-scroll   {
+  overflow: auto;
+  max-height: 70vh;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
 .matrix-table    { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
 .matrix-table th {
   background: #f8fafc;
@@ -358,9 +363,19 @@
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
   text-align: center;
+  /* Sticky header */
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .matrix-corner   { text-align: left !important; }
 .matrix-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+/* Frozen first column */
+.matrix-table th:first-child,
+.matrix-table td:first-child { position: sticky; left: 0; }
+.matrix-table th:first-child { z-index: 3; background: #f8fafc; }
+.matrix-table td:first-child { z-index: 1; background: white; }
+.matrix-table tfoot td:first-child { background: #fef2f2; }
 .matrix-juror    { text-align: left !important; font-weight: 500; color: #0f172a; white-space: nowrap; }
 .matrix-juror-dept  { font-size: 11px; color: #94a3b8; font-weight: 400; }
 .matrix-progress-cell { white-space: nowrap; }
@@ -383,34 +398,38 @@
   flex-wrap: wrap;
   align-items: center;
   margin-bottom: 10px;
+  min-height: 0;
 }
-.matrix-search-wrap   { position: relative; }
-.matrix-search-input  {
-  padding: 7px 28px 7px 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+
+/* Column sort button inside group <th> */
+.matrix-col-sort {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-size: 13px;
-  min-width: 180px;
-}
-.matrix-search-clear  {
-  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 12px;
-}
-.matrix-sort-bar   { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.matrix-sort-label { font-size: 12px; color: #64748b; }
-.matrix-sort-btn {
-  padding: 5px 10px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  font-size: 12px;
   font-weight: 600;
   color: #475569;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
 }
-.matrix-sort-btn:hover  { background: #e0f2fe; border-color: #93c5fd; }
-.matrix-sort-btn.active { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
+.matrix-col-sort:hover { color: #1d4ed8; }
+.matrix-col-sort .sort-icon { font-size: 10px; color: #94a3b8; }
+.matrix-col-sort.active .sort-icon { color: #1d4ed8; }
+
+/* In-progress badge inside matrix cell */
+.matrix-ip-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: #fde047;
+  color: #713f12;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  display: inline-block;
+}
 
 /* Matrix Average row */
 .matrix-avg-row   { background: #fef2f2; }
@@ -645,8 +664,6 @@
 
   /* Matrix controls stack */
   .matrix-controls { flex-direction: column; align-items: stretch; }
-  .matrix-search-input { min-width: unset; width: 100%; }
-  .matrix-sort-bar { justify-content: flex-start; }
 
   /* Dashboard toolbar */
   .pdf-export-btn { width: 100%; text-align: center; }
