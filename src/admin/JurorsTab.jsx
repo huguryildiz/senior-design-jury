@@ -10,43 +10,24 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
     ? { id: i + 1, name: p, desc: "", students: [] }
     : { id: p.id ?? i + 1, name: p.name ?? `Group ${i + 1}`, desc: p.desc ?? "", students: p.students ?? [] }
 );
-const TOTAL_GROUPS = PROJECT_LIST.length;
 
 // jurors prop: { key, name, dept, jurorId }[]
-export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
-  const [jurorFilter, setJurorFilter] = useState("ALL");
+export default function JurorsTab({ jurorStats, onPinReset }) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filtered = useMemo(() => {
-    let list = jurorStats;
-    if (jurorFilter !== "ALL") list = list.filter((s) => s.key === jurorFilter);
     const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter((s) =>
-        s.jury.toLowerCase().includes(q) ||
-        (s.dept || s.latestRow?.juryDept || "").toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [jurorStats, jurorFilter, searchQuery]);
+    if (!q) return jurorStats;
+    return jurorStats.filter((s) =>
+      s.jury.toLowerCase().includes(q) ||
+      (s.dept || s.latestRow?.juryDept || "").toLowerCase().includes(q)
+    );
+  }, [jurorStats, searchQuery]);
 
   return (
     <div className="jurors-tab-wrap">
-      {/* Filter bar */}
+      {/* Search bar */}
       <div className="juror-filter-bar">
-        <select
-          className="juror-filter-select"
-          value={jurorFilter}
-          onChange={(e) => setJurorFilter(e.target.value)}
-        >
-          <option value="ALL">All jurors</option>
-          {jurors.map((j) => (
-            <option key={j.key} value={j.key}>
-              {j.name}{j.dept ? ` (${j.dept})` : ""}
-            </option>
-          ))}
-        </select>
-
         <div className="juror-search-wrap">
           <input
             className="juror-search-input"
@@ -68,7 +49,7 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
 
       <div className="jurors-grid jurors-grid-full">
         {filtered.map((stat) => {
-          const { key, jury, rows, submitted, overall, latestTs, latestRow } = stat;
+          const { key, jury, rows, overall, latestTs, latestRow } = stat;
 
           // Progress bar: matches Jury Form sticky header (criteria filled / total criteria).
           const pct = adminCompletionPct(rows);
@@ -128,16 +109,6 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
                       </span>
                     </div>
                   )}
-                  <div style={{
-                    fontSize:   13,
-                    color:      submitted.length < TOTAL_GROUPS ? "#b45309" : "#166534",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}>
-                    {submitted.length === TOTAL_GROUPS
-                      ? "✓ All completed"
-                      : `${submitted.length}/${TOTAL_GROUPS} completed`}
-                  </div>
                 </div>
               </div>
 
@@ -163,10 +134,10 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
                       <div key={`${key}-${d.projectId}`} className="juror-row">
                         <div className="juror-row-main">
                           <span className="juror-row-name">
-                            🧩 {grp?.name || `Group ${d.projectId}`}
+                            {grp?.name || `Group ${d.projectId}`}
                           </span>
                           {grp?.desc && (
-                            <span className="juror-row-desc">📝 {grp.desc}</span>
+                            <span className="juror-row-desc">{grp.desc}</span>
                           )}
                           {grp?.students?.length > 0 && (
                             <span className="juror-row-students">
