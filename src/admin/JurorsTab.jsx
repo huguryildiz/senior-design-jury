@@ -100,15 +100,6 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                       ? <StatusBadge status={overall} editingFlag="editing" />
                       : <StatusBadge status={overall} />
                     }
-                    {onPinReset && (
-                      <button
-                        className="pin-reset-btn"
-                        title={`Reset PIN for ${jury}`}
-                        onClick={() => onPinReset(jury, latestRow?.juryDept || "", latestRow?.jurorId || "")}
-                      >
-                        🔑 Reset PIN
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -120,6 +111,15 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                         {formatTs(latestRow?.timestamp)}
                       </span>
                     </div>
+                  )}
+                  {onPinReset && (
+                    <button
+                      className="pin-reset-btn"
+                      title={`Reset PIN for ${jury}`}
+                      onClick={() => onPinReset(jury, latestRow?.juryDept || "", latestRow?.jurorId || "")}
+                    >
+                      🔑 Reset PIN
+                    </button>
                   )}
                 </div>
               </div>

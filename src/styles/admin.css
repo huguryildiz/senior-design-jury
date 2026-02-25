@@ -337,6 +337,10 @@
   line-height: 1;
   margin-left: 0;
 }
+.juror-meta .pin-reset-btn {
+  align-self: flex-end;
+  margin-top: 6px;
+}
 
 /* ── Group accordion — JurorsTab-specific styles ─────────── */
 /* Shared base rules (.group-accordion-*) live in shared.css  */
@@ -782,7 +786,7 @@ th .sort-icon svg { vertical-align: middle; }
   /* Per-group rows: flex layout is already correct at all widths */
   .juror-score { font-size: 13px; }
 
-  /* Reset PIN — smaller, left-aligned on mobile */
+  /* Reset PIN — smaller, right-aligned under last activity on mobile */
   .pin-reset-btn {
     display: inline-flex;
     width: fit-content;
@@ -792,10 +796,11 @@ th .sort-icon svg { vertical-align: middle; }
     margin-top: 4px;
     margin-left: 0;
     margin-right: 0;
-    justify-content: flex-start;
+    justify-content: center;
   }
   .juror-header-actions .status-badge,
   .juror-header-actions .pin-reset-btn { height: 26px; }
+  .juror-meta .pin-reset-btn { align-self: flex-end; }
 
   /* Tab bar text smaller */
   .tab { font-size: 12px; padding: 10px 10px; }
