@@ -54,6 +54,11 @@ const SortDescSVG = () => (
     <path d="M3 4.5L6 7.5L9 4.5"/>
   </svg>
 );
+const FilterSVG = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+    <path d="M2.2 3h9.6L8.2 7.2v3.6L5.8 12V7.2L2.2 3z" />
+  </svg>
+);
 const ClearSVG = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
     <path d="M2 2L10 10M10 2L2 10"/>
@@ -242,7 +247,9 @@ export default function DetailsTab({ data, jurors }) {
                     className={`col-filter-hotspot${filterJuror !== "ALL" ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror"); }}
                     title="Filter by juror"
-                  />
+                  >
+                    <FilterSVG />
+                  </div>
                 </div>
                 {activeFilterCol === "juror" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -277,7 +284,9 @@ export default function DetailsTab({ data, jurors }) {
                     className={`col-filter-hotspot${filterDept ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept"); }}
                     title="Filter by department"
-                  />
+                  >
+                    <FilterSVG />
+                  </div>
                 </div>
                 {activeFilterCol === "dept" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -310,7 +319,9 @@ export default function DetailsTab({ data, jurors }) {
                     className={`col-filter-hotspot${filterGroup !== "ALL" ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("group"); }}
                     title="Filter by group"
-                  />
+                  >
+                    <FilterSVG />
+                  </div>
                 </div>
                 {activeFilterCol === "group" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -343,7 +354,9 @@ export default function DetailsTab({ data, jurors }) {
                     className={`col-filter-hotspot${(dateFrom || dateTo) ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp"); }}
                     title="Filter by date"
-                  />
+                  >
+                    <FilterSVG />
+                  </div>
                 </div>
                 {activeFilterCol === "timestamp" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -368,7 +381,9 @@ export default function DetailsTab({ data, jurors }) {
                     className={`col-filter-hotspot${filterStatuses.size > 0 ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("status"); }}
                     title="Filter by status"
-                  />
+                  >
+                    <FilterSVG />
+                  </div>
                 </div>
                 {activeFilterCol === "status" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -409,7 +424,9 @@ export default function DetailsTab({ data, jurors }) {
                     className={`col-filter-hotspot${filterComment ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments"); }}
                     title="Filter by comments"
-                  />
+                  >
+                    <FilterSVG />
+                  </div>
                 </div>
                 {activeFilterCol === "comments" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>

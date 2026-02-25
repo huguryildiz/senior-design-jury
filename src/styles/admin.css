@@ -650,15 +650,19 @@
 
 /* Invisible hotspot at right edge of filterable column headers */
 .col-filter-hotspot {
-  width: 14px; height: 18px; flex-shrink: 0; cursor: pointer;
+  width: 16px; height: 18px; flex-shrink: 0; cursor: pointer;
   border-radius: 3px; opacity: 0; transition: opacity 0.15s;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #94a3b8;
 }
-th:hover .col-filter-hotspot { opacity: 0.45; background: rgba(100,116,139,0.18); }
+th:hover .col-filter-hotspot { opacity: 0.6; background: rgba(100,116,139,0.18); }
 .col-filter-hotspot.active {
   opacity: 1;
   background: radial-gradient(circle, #3b82f6 38%, transparent 39%);
   background-size: 6px 6px; background-repeat: no-repeat; background-position: center;
+  color: #2563eb;
 }
+th .col-filter-hotspot svg { display: block; }
 
 /* Sort label + icon inside sortable column headers */
 .col-sort-label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }

@@ -104,6 +104,12 @@ export const jurorDot = (n) => hsl2hex(hashInt(n || "?") % 360, 65, 55);
 // Column order matches the spec: Juror Name, Dept, Timestamp, Group Name,
 // Group Desc, Students, Technical (30), Written (30), Oral (30),
 // Teamwork (10), Total (100), Comments.
+function exportScoreValue(v) {
+  if (v === "" || v === null || v === undefined) return "";
+  if (typeof v === "string" && v.trim() === "") return "";
+  if (typeof v === "number" && !Number.isFinite(v)) return "";
+  return v;
+}
 export function exportCSV(rows) {
   const headers = [
     "Juror Name", "Department / Institution", "Timestamp",
@@ -131,11 +137,11 @@ export function exportCSV(rows) {
         r.projectName,
         grp.desc,
         grp.students.join(" · "),
-        r.technical,
-        r.design,
-        r.delivery,
-        r.teamwork,
-        r.total,
+        exportScoreValue(r.technical),
+        exportScoreValue(r.design),
+        exportScoreValue(r.delivery),
+        exportScoreValue(r.teamwork),
+        exportScoreValue(r.total),
         r.comments,
       ].map(esc).join(",");
     }),
@@ -174,11 +180,11 @@ export async function exportXLSX(rows) {
       r.projectName ?? "",
       grp.desc,
       grp.students.join(" · "),
-      r.technical ?? "",
-      r.design    ?? "",
-      r.delivery  ?? "",
-      r.teamwork  ?? "",
-      r.total     ?? "",
+      exportScoreValue(r.technical),
+      exportScoreValue(r.design),
+      exportScoreValue(r.delivery),
+      exportScoreValue(r.teamwork),
+      exportScoreValue(r.total),
       r.comments  ?? "",
     ];
   });
