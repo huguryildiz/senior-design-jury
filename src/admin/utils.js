@@ -4,7 +4,6 @@
 // No React, no side-effects — safe to import anywhere.
 // ============================================================
 
-import * as XLSX from "xlsx";
 import { PROJECTS, CRITERIA } from "../config";
 
 const PROJECT_MAP = new Map(
@@ -158,7 +157,8 @@ export function exportCSV(rows) {
 }
 
 // ── Excel (.xlsx) export ──────────────────────────────────────
-export function exportXLSX(rows) {
+export async function exportXLSX(rows) {
+  const XLSX = await import("xlsx");
   const headers = [
     "Juror Name", "Department / Institution", "Timestamp",
     "Group Name", "Group Desc", "Students",

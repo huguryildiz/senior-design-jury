@@ -207,7 +207,7 @@ export default function DetailsTab({ data, jurors }) {
             <ClearSVG /> Clear Filters
           </button>
         )}
-        <button className="xlsx-export-btn" onClick={() => exportXLSX(rows)}>
+        <button className="xlsx-export-btn" onClick={() => { void exportXLSX(rows); }}>
           <DownloadSVG />
           <span className="export-label-long">Export Excel</span>
           <span className="export-label-short">Excel</span>
