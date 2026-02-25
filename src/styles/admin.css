@@ -287,6 +287,12 @@
 .juror-score     { font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); white-space: nowrap; flex-shrink: 0; }
 .juror-row-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
 
+/* StatusBadge → Reset PIN horizontal gap (desktop + landscape) */
+.status-badge + .pin-reset-btn { margin-left: 6px; }
+
+/* Matrix SVG icon alignment */
+.matrix-wrap svg { display: inline-block; vertical-align: middle; }
+
 /* PIN reset button in juror cards */
 .pin-reset-btn {
   margin-top: 6px;
@@ -657,6 +663,11 @@
   .juror-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
   .juror-row-right { flex-direction: column; align-items: flex-end; gap: 2px; }
   .juror-score { font-size: 12px; }
+
+  /* Mobile: reorder right-side elements — score first, badge second, timestamp last */
+  .juror-row-right .juror-score   { order: 1; }
+  .juror-row-right .status-badge  { order: 2; }
+  .juror-row-right > :first-child { order: 3; }
 
   /* Reset PIN — smaller, left-aligned on mobile */
   .pin-reset-btn { width: auto; display: block; font-size: 11px; padding: 3px 8px; margin-top: 4px; }

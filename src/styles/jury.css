@@ -212,6 +212,11 @@
 
 /* ── Eval step — sticky combined header ─────────────────────── */
 .eval-screen {
+  /* Explicit scroll container so position:sticky works in all browsers */
+  height: 100vh;
+  height: 100dvh; /* adjusts for mobile browser address bar */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   -webkit-text-size-adjust: 100%;
