@@ -647,11 +647,6 @@
   .juror-filter-bar { flex-direction: column; }
   .juror-filter-select, .juror-search-wrap { width: 100%; }
 
-  /* Juror card header wraps: meta drops below name */
-  .juror-card-header { flex-wrap: wrap; }
-  .juror-meta { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; width: 100%; align-items: center; }
-  .juror-last-submit { align-items: flex-start; }
-
   /* Per-group rows: 2-column grid (text | right side) */
   .juror-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
   .juror-row-right { flex-direction: column; align-items: flex-end; gap: 2px; }

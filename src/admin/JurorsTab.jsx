@@ -49,7 +49,7 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
 
       <div className="jurors-grid jurors-grid-full">
         {filtered.map((stat) => {
-          const { key, jury, rows, overall, latestTs, latestRow } = stat;
+          const { key, jury, rows, overall, latestRow } = stat;
 
           // Progress bar: matches Jury Form sticky header (criteria filled / total criteria).
           const pct = adminCompletionPct(rows);
@@ -101,7 +101,7 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                 </div>
 
                 <div className="juror-meta">
-                  {latestTs > 0 && (
+                  {latestRow?.timestamp && (
                     <div className="juror-last-submit">
                       <span className="juror-last-submit-label">Last activity</span>
                       <span className="juror-last-submit-time">
