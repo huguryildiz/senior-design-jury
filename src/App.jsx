@@ -16,24 +16,32 @@
 // ============================================================
 
 import { useRef, useState } from "react";
-import JuryForm   from "./JuryForm";
+import JuryForm   from "./JuryJury Member InformationForm";
 import AdminPanel from "./AdminPanel";
 import "./styles/home.css";
 
 import teduLogo from "./assets/tedu-logo.png";
 
 export default function App() {
-  const [page,          setPage]         = useState("home");
-  const adminPassRef    = useRef("");
-  const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminInput,    setAdminInput]    = useState("");
+  const [page,           setPage]          = useState("home");
+  const adminPassRef     = useRef("");
+  const [adminUnlocked,  setAdminUnlocked]  = useState(false);
+  const [adminInput,     setAdminInput]     = useState("");
+  const [adminAuthError, setAdminAuthError] = useState("");
 
   function handleAdminLogin() {
     const pass = adminInput.trim();
-    if (!pass) { alert("Please enter the admin password."); return; }
+    if (!pass) { setAdminAuthError("Please enter the admin password."); return; }
     adminPassRef.current = pass;
     setAdminInput("");
+    setAdminAuthError("");
     setAdminUnlocked(true);
+  }
+
+  function handleAuthFail(msg) {
+    setAdminUnlocked(false);
+    adminPassRef.current = "";
+    setAdminAuthError(msg || "Authentication failed.");
   }
 
   // ── Jury form ─────────────────────────────────────────────
@@ -54,16 +62,22 @@ export default function App() {
             <div className="lock-icon">🔒</div>
             <h2>Results Panel</h2>
             <p>Enter the admin password to view results</p>
+            {adminAuthError && (
+              <div className="login-error">{adminAuthError}</div>
+            )}
             <input
               type="password"
               placeholder="Password"
               value={adminInput}
-              onChange={(e) => setAdminInput(e.target.value)}
+              onChange={(e) => {
+                setAdminInput(e.target.value);
+                if (adminAuthError) setAdminAuthError("");
+              }}
               onKeyDown={(e) => { if (e.key === "Enter") handleAdminLogin(); }}
               autoFocus
             />
             <button className="btn-primary" onClick={handleAdminLogin}>Login</button>
-            <button className="btn-ghost"   onClick={() => setPage("home")}>← Back</button>
+            <button className="btn-ghost"   onClick={() => { setPage("home"); setAdminAuthError(""); }}>← Back</button>
           </div>
         </div>
       );
@@ -71,9 +85,11 @@ export default function App() {
     return (
       <AdminPanel
         adminPass={adminPassRef.current}
+        onAuthError={handleAuthFail}
         onBack={() => {
           setPage("home");
           setAdminUnlocked(false);
+          setAdminAuthError("");
           adminPassRef.current = "";
         }}
       />

@@ -44,7 +44,7 @@ const TABS = [
   { id: "matrix",    label: "🔢 Matrix"    },
 ];
 
-export default function AdminPanel({ adminPass, onBack }) {
+export default function AdminPanel({ adminPass, onBack, onAuthError }) {
   const [data,        setData]        = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState("");
@@ -77,6 +77,7 @@ export default function AdminPanel({ adminPass, onBack }) {
 
       if (json?.status === "unauthorized") {
         setData([]);
+        if (onAuthError) { onAuthError("Invalid password"); return; }
         setAuthError("Incorrect password.");
         return;
       }
@@ -111,6 +112,7 @@ export default function AdminPanel({ adminPass, onBack }) {
       setLastRefresh(new Date());
       setAuthError("");
     } catch (e) {
+      if (onAuthError) { onAuthError("Connection error — try again."); return; }
       setError("Could not load data: " + e.message);
       setData([]);
     } finally {

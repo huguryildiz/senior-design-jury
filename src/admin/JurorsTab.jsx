@@ -63,7 +63,9 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
 
       <div className="jurors-grid jurors-grid-full">
         {filtered.map(({ jury, rows, submitted, overall, latestTs, latestRow }) => {
-          const pct = Math.round((submitted.length / TOTAL_GROUPS) * 100);
+          // Progress bar: any group touched (in_progress included), matching jury form's own progress.
+          // "submitted" text counter still shows only fully-completed groups.
+          const pct = Math.round((rows.length / TOTAL_GROUPS) * 100);
 
           const barColor =
             pct === 100 ? "#22c55e" :
@@ -153,13 +155,15 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
                             <span className="juror-row-desc">{grp.desc}</span>
                           )}
                         </div>
-                        <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>
-                          {formatTs(d.timestamp)}
-                        </span>
-                        <StatusBadge status={d.status} editingFlag={d.editingFlag} />
-                        {(d.status === "all_submitted" || d.status === "group_submitted") && (
-                          <span className="juror-score">{d.total} / 100</span>
-                        )}
+                        <div className="juror-row-right">
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                            {formatTs(d.timestamp)}
+                          </span>
+                          <StatusBadge status={d.status} editingFlag={d.editingFlag} />
+                          {(d.status === "all_submitted" || d.status === "group_submitted") && (
+                            <span className="juror-score">{d.total} / 100</span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
