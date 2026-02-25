@@ -2,6 +2,7 @@
 // ── Ranking summary with medal badges ────────────────────────
 
 import { APP_CONFIG, CRITERIA } from "../config";
+import { MedalGold, MedalSilver, MedalBronze } from "../shared/Icons";
 
 const CRITERIA_LIST = CRITERIA.map((c) => ({ id: c.id, label: c.label, shortLabel: c.shortLabel, max: c.max }));
 
@@ -11,7 +12,11 @@ const rankTheme = (i) => [
   { bg: "#B45309", fg: "#FFF7ED", ring: "#FDBA74" },
 ][i] ?? { bg: "#475569", fg: "#F1F5F9", ring: "#94A3B8" };
 
-const rankEmoji = (i) => ["🥇", "🥈", "🥉"][i] ?? String(i + 1);
+const MEDALS = [MedalGold, MedalSilver, MedalBronze];
+const rankBadge = (i) => {
+  const Medal = MEDALS[i];
+  return Medal ? <Medal /> : String(i + 1);
+};
 
 export default function SummaryTab({ ranked, submittedData }) {
   if (submittedData.length === 0) {
@@ -41,11 +46,14 @@ export default function SummaryTab({ ranked, submittedData }) {
           <div className="rank-num" style={{
             width: 52, height: 52, borderRadius: 999, display: "grid", placeItems: "center",
             fontSize: i < 3 ? 22 : 18, fontWeight: 800,
-            background: rankTheme(i).bg, color: rankTheme(i).fg,
+            background: i < 3 ? "transparent" : rankTheme(i).bg,
+            color: rankTheme(i).fg,
             boxShadow: i < 3 ? "0 0 0 6px rgba(34,197,94,0.35)" : "0 6px 18px rgba(15,23,42,0.12)",
-            border: `3px solid ${rankTheme(i).ring}`,
+            border: i < 3 ? "none" : `3px solid ${rankTheme(i).ring}`,
+            overflow: "hidden",
+            padding: 0,
           }}>
-            {rankEmoji(i)}
+            {rankBadge(i)}
           </div>
           <div className="rank-info">
             <div className="rank-name-block">

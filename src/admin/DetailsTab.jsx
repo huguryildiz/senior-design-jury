@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { cmp, exportCSV, jurorBg, jurorDot, formatTs } from "./utils";
+import { cmp, exportCSV, formatTs } from "./utils";
 import { StatusBadge } from "./components";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
@@ -26,7 +26,7 @@ function displayScore(val) {
   return n;
 }
 
-export default function DetailsTab({ data, jurors, jurorColorMap }) {
+export default function DetailsTab({ data, jurors }) {
   const [filterJuror,  setFilterJuror]  = useState("ALL");
   const [filterGroup,  setFilterGroup]  = useState("ALL");
   const [searchText,   setSearchText]   = useState("");
@@ -138,28 +138,14 @@ export default function DetailsTab({ data, jurors, jurorColorMap }) {
               </tr>
             )}
             {rows.map((row, i) => {
-              const isNewBlock = i === 0 || rows[i - 1].juryName !== row.juryName;
-              const bg  = jurorColorMap.get(row.juryName)?.bg  || "transparent";
-              const dot = jurorColorMap.get(row.juryName)?.dot || "#64748b";
               const grp = PROJECT_LIST.find((p) => p.id === row.projectId);
               const isIP = row.status === "in_progress";
               return (
                 <tr
                   key={`${row.juryName}-${row.projectId}-${i}`}
-                  style={{
-                    backgroundColor: bg,
-                    borderTop: isNewBlock ? "2px solid #e5e7eb" : undefined,
-                  }}
+                  className={i % 2 === 1 ? "row-even" : ""}
                 >
-                  <td>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <span style={{
-                        width: 10, height: 10, borderRadius: 999,
-                        background: dot, border: "2px solid #cbd5e1", flexShrink: 0,
-                      }} />
-                      {row.juryName}
-                    </span>
-                  </td>
+                  <td>{row.juryName}</td>
                   <td style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <div

@@ -4,6 +4,16 @@
 // No React, no side-effects — safe to import anywhere.
 // ============================================================
 
+import { PROJECTS } from "../config";
+
+const PROJECT_MAP = new Map(
+  PROJECTS.map((p, i) =>
+    typeof p === "string"
+      ? [i + 1, { desc: "", students: [] }]
+      : [(p.id ?? i + 1), { desc: p.desc ?? "", students: p.students ?? [] }]
+  )
+);
+
 // ── Numeric coercion ──────────────────────────────────────────
 // Strips surrounding quotes (Sheets sometimes wraps numbers in
 // quotes) and converts to a finite number, defaulting to 0.
@@ -91,11 +101,15 @@ export const jurorDot = (n) => hsl2hex(hashInt(n || "?") % 360, 65, 55);
 
 // ── CSV export ────────────────────────────────────────────────
 // UTF-8 BOM prefix makes Turkish characters render correctly in Excel.
+// Column order matches the spec: Juror Name, Dept, Timestamp, Group Name,
+// Group Desc, Students, Technical (30), Written (30), Oral (30),
+// Teamwork (10), Total (100), Comments.
 export function exportCSV(rows) {
   const headers = [
-    "Juror", "Department", "Group No", "Group Name",
-    "Design/20", "Technical/40", "Delivery/30", "Teamwork/10",
-    "Total/100", "Timestamp", "Comments", "Status",
+    "Juror Name", "Department / Institution", "Timestamp",
+    "Group Name", "Group Desc", "Students",
+    "Technical (30)", "Written (30)", "Oral (30)", "Teamwork (10)",
+    "Total (100)", "Comments",
   ];
 
   // Escape a value for CSV: wrap in quotes if it contains commas,
@@ -108,14 +122,28 @@ export function exportCSV(rows) {
 
   const lines = [
     headers.map(esc).join(","),
-    ...rows.map((r) =>
-      [
-        r.juryName, r.juryDept, r.projectId, r.projectName,
-        r.design, r.technical, r.delivery, r.teamwork,
-        r.total, r.timestamp, r.comments, r.status,
-      ].map(esc).join(",")
-    ),
+    ...rows.map((r) => {
+      const grp = PROJECT_MAP.get(r.projectId) || { desc: "", students: [] };
+      return [
+        r.juryName,
+        r.juryDept,
+        r.timestamp,
+        r.projectName,
+        grp.desc,
+        grp.students.join(" · "),
+        r.technical,
+        r.design,
+        r.delivery,
+        r.teamwork,
+        r.total,
+        r.comments,
+      ].map(esc).join(",");
+    }),
   ];
+
+  const now  = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}`;
 
   const blob = new Blob(["\uFEFF" + lines.join("\n")], {
     type: "text/csv;charset=utf-8;",
@@ -123,7 +151,7 @@ export function exportCSV(rows) {
   const url = URL.createObjectURL(blob);
   Object.assign(document.createElement("a"), {
     href:     url,
-    download: `jury_results_${new Date().toISOString().slice(0, 10)}.csv`,
+    download: `jury_export_${date}_${hhmm}.csv`,
   }).click();
   URL.revokeObjectURL(url);
 }

@@ -88,6 +88,21 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
                     ? <StatusBadge status={overall} editingFlag="editing" />
                     : <StatusBadge status={overall} />
                   }
+                  {onPinReset && (
+                    <button
+                      className="pin-reset-btn"
+                      title={`Reset PIN for ${jury}`}
+                      onClick={() => {
+                        if (window.confirm(
+                          `Reset PIN for ${jury}?\n\nThey will be assigned a new PIN on their next login.`
+                        )) {
+                          onPinReset(jury, latestRow?.juryDept || "", latestRow?.jurorId || "");
+                        }
+                      }}
+                    >
+                      🔑 Reset PIN
+                    </button>
+                  )}
                 </div>
 
                 <div className="juror-meta">
@@ -109,22 +124,6 @@ export default function JurorsTab({ jurorStats, jurors, onPinReset }) {
                       ? "✓ All completed"
                       : `${submitted.length}/${TOTAL_GROUPS} completed`}
                   </div>
-
-                  {onPinReset && (
-                    <button
-                      className="pin-reset-btn"
-                      title={`Reset PIN for ${jury}`}
-                      onClick={() => {
-                        if (window.confirm(
-                          `Reset PIN for ${jury}?\n\nThey will be assigned a new PIN on their next login.`
-                        )) {
-                          onPinReset(jury, latestRow?.juryDept || "");
-                        }
-                      }}
-                    >
-                      🔑 Reset PIN
-                    </button>
-                  )}
                 </div>
               </div>
 

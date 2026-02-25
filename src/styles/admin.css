@@ -44,14 +44,15 @@
 }
 .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 
-/* Refresh button */
+/* Refresh button — icon only */
 .refresh-btn {
   background: var(--gray-100);
   border: none;
   border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: var(--gray-700);
 }
@@ -105,8 +106,8 @@
 .rank-info         { flex: 1; min-width: 0; }
 .rank-name-block   { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
 .rank-group-name   { font-size: 15px; font-weight: 800; color: #0f172a; }
-.rank-desc-line    { font-size: 12px; color: #475569; font-weight: 500; line-height: 1.4; }
-.rank-students-line { font-size: 11px; color: #64748b; line-height: 1.4; }
+.rank-desc-line    { font-size: 12px; color: #94a3b8; font-weight: 400; line-height: 1.4; }
+.rank-students-line { font-size: 11px; color: #94a3b8; line-height: 1.4; }
 .rank-eval-count   { font-size: 11px; color: #94a3b8; font-style: italic; }
 .rank-desc         { font-size: 12px; color: #475569; font-weight: 500; }
 
@@ -165,9 +166,10 @@
 .csv-export-btn    { padding: 7px 14px; border-radius: 10px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .csv-export-btn:hover { background: #dbeafe; }
 
-.detail-table-wrap { overflow-x: auto; }
+.detail-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .detail-table {
   width: 100%;
+  min-width: 700px;
   border-collapse: collapse;
   background: white;
   border-radius: var(--radius);
@@ -183,9 +185,10 @@
   font-size: 12px;
   white-space: nowrap;
 }
-.detail-table td           { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
-.detail-table tr:last-child td { border-bottom: none; }
-.detail-table tr:hover td  { background: var(--gray-50); }
+.detail-table td                        { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
+.detail-table tr:last-child td          { border-bottom: none; }
+.detail-table tbody tr.row-even td      { background: #f8fafc; }
+.detail-table tr:hover td               { background: #e9ecef !important; }
 .comment-cell              { font-size: 12px; color: var(--gray-500); max-width: 200px; }
 
 /* ── Jurors tab ─────────────────────────────────────────────── */
@@ -412,7 +415,31 @@
 @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .dashboard-grid { grid-template-columns: 1fr; } }
 @media (max-width: 480px) {
+  /* Header wraps on very small screens */
+  .admin-screen .form-header { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+  .admin-screen .form-header h2 { font-size: 16px; }
+  .admin-screen .form-header > div:nth-child(2) { width: 100%; }
+
+  /* Admin body padding */
+  .admin-body { padding: 12px; }
+
+  /* Filter bar stacks vertically */
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-item { flex-direction: row; width: 100%; }
+  .filter-item select,
+  .filter-item input { flex: 1; }
+  .filter-search { min-width: unset; }
+  .filter-reset { width: 100%; }
+  .filter-count { margin-left: 0; }
+  .csv-export-btn { width: 100%; text-align: center; }
+
+  /* Rank cards wrap */
   .rank-card { flex-wrap: wrap; }
+
+  /* Jurors tab filter */
   .juror-filter-bar { flex-direction: column; }
   .juror-filter-select, .juror-search-wrap { width: 100%; }
+
+  /* Tab bar text smaller */
+  .tab { font-size: 12px; padding: 10px 10px; }
 }

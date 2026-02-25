@@ -5,7 +5,7 @@
 // only need one import path.
 // ============================================================
 
-export { HomeIcon } from "../shared/Icons";
+export { HomeIcon, RefreshIcon } from "../shared/Icons";
 
 // ── Status badge ──────────────────────────────────────────────
 // editingFlag = "editing" takes highest visual priority —

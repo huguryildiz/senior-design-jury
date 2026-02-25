@@ -59,6 +59,55 @@ export function UsersIcon() {
   );
 }
 
+// Medal SVGs — fill the 52×52 rank-num container exactly.
+// Ribbon tab at top + circular medal face.
+export function MedalGold() {
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="19" y="2" width="14" height="14" rx="3" fill="#FCD34D"/>
+      <rect x="22" y="2" width="8" height="18" rx="2" fill="#F59E0B"/>
+      <circle cx="26" cy="34" r="16" fill="#F59E0B"/>
+      <circle cx="26" cy="34" r="12" fill="#FCD34D"/>
+      <text x="26" y="39" textAnchor="middle" fontSize="13" fontWeight="800" fill="#92400E" fontFamily="sans-serif">1</text>
+    </svg>
+  );
+}
+
+export function MedalSilver() {
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="19" y="2" width="14" height="14" rx="3" fill="#CBD5E1"/>
+      <rect x="22" y="2" width="8" height="18" rx="2" fill="#94A3B8"/>
+      <circle cx="26" cy="34" r="16" fill="#94A3B8"/>
+      <circle cx="26" cy="34" r="12" fill="#CBD5E1"/>
+      <text x="26" y="39" textAnchor="middle" fontSize="13" fontWeight="800" fill="#334155" fontFamily="sans-serif">2</text>
+    </svg>
+  );
+}
+
+export function MedalBronze() {
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="19" y="2" width="14" height="14" rx="3" fill="#FDBA74"/>
+      <rect x="22" y="2" width="8" height="18" rx="2" fill="#B45309"/>
+      <circle cx="26" cy="34" r="16" fill="#B45309"/>
+      <circle cx="26" cy="34" r="12" fill="#FDBA74"/>
+      <text x="26" y="39" textAnchor="middle" fontSize="13" fontWeight="800" fill="#7C2D12" fontFamily="sans-serif">3</text>
+    </svg>
+  );
+}
+
+export function RefreshIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 4v6h-6"/>
+      <path d="M1 20v-6h6"/>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+  );
+}
+
 export function ChevronLeftIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"

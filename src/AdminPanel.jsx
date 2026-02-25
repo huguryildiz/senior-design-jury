@@ -13,10 +13,10 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PROJECTS, CRITERIA, APP_CONFIG } from "./config";
-import { getFromSheet, postToSheet }         from "./shared/api";
+import { PROJECTS, CRITERIA } from "./config";
+import { getFromSheet }       from "./shared/api";
 import { toNum, tsToMillis, cmp, jurorBg, jurorDot, dedupeAndSort } from "./admin/utils";
-import { HomeIcon }  from "./admin/components";
+import { HomeIcon, RefreshIcon } from "./admin/components";
 import SummaryTab    from "./admin/SummaryTab";
 import DashboardTab  from "./admin/DashboardTab";
 import DetailsTab    from "./admin/DetailsTab";
@@ -125,15 +125,14 @@ export default function AdminPanel({ adminPass, onBack }) {
   }, []); // interval never needs to restart — passRef always has latest pass
 
   // ── PIN reset ─────────────────────────────────────────────
-  const handlePinReset = async (juryName, juryDept) => {
+  const handlePinReset = async (juryName, juryDept, jurorId) => {
     setPinResetTarget({ juryName, juryDept });
     setPinResetStatus("loading");
     try {
       const pass = passRef.current || sessionStorage.getItem("ee492_admin_pass") || "";
       const json = await getFromSheet({
         action: "resetPin",
-        juryName: juryName.trim(),
-        juryDept: juryDept.trim(),
+        jurorId: jurorId.trim(),
         pass,
       });
       setPinResetStatus(json.status === "ok" ? "ok" : "error");
@@ -271,7 +270,7 @@ export default function AdminPanel({ adminPass, onBack }) {
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-          <button className="refresh-btn" onClick={fetchData}>↻ Refresh</button>
+          <button className="refresh-btn" onClick={fetchData} aria-label="Refresh" title="Refresh"><RefreshIcon /></button>
           {lastRefresh && (
             <span style={{ fontSize: 10, color: "#94a3b8" }}>
               {lastRefresh.toLocaleTimeString("en-GB", {
