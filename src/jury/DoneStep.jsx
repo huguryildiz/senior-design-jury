@@ -14,16 +14,13 @@ function groupTotal(scores, pid) {
 
 export default function DoneStep({
   doneScores,
-  doneComments,
   scores,
-  comments,
   onEditScores,
   onBack,
 }) {
-  // Fall back to live scores/comments if done-snapshots are null
+  // Fall back to live scores if done-snapshots are null
   // (e.g. when navigating to done screen from the info page).
-  const displayScores   = doneScores   || scores;
-  const displayComments = doneComments || comments;
+  const displayScores = doneScores || scores;
 
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   function toggleGroup(id) {
@@ -47,18 +44,7 @@ export default function DoneStep({
           {PROJECTS.map((p) => {
             const isExpanded = expandedGroups.has(p.id);
             const panelId = `done-group-panel-${p.id}`;
-            const hasDetails =
-              !!p.desc || p.students?.length > 0 || !!displayComments?.[p.id];
-            const filledCount = CRITERIA.filter(c => {
-              const v = displayScores[p.id]?.[c.id];
-              return v !== undefined && v !== null && v !== "";
-            }).length;
-            const groupPct = Math.round(filledCount / CRITERIA.length * 100);
-            const groupBarColor =
-              groupPct === 100 ? "#22c55e" :
-              groupPct > 66    ? "#84cc16" :
-              groupPct > 33    ? "#eab308" :
-              groupPct > 0     ? "#f97316" : "#e2e8f0";
+            const hasDetails = !!p.desc || p.students?.length > 0;
           return (
               <div key={p.id} className="done-row-wrap">
                 {/* Clickable header — always visible */}
@@ -91,14 +77,11 @@ export default function DoneStep({
                   {/* RIGHT: KPI stack */}
                   <div className="done-row-right">
                     <span className="done-score">
-                      {groupTotal(displayScores, p.id)} / 100
+                      <span className="done-score-main">
+                        {groupTotal(displayScores, p.id)}
+                      </span>
+                      <span className="done-score-max"> / 100</span>
                     </span>
-                    <div className="done-row-mini-progress-wrap">
-                      <div
-                        className="done-row-mini-progress-fill"
-                        style={{ width: `${groupPct}%`, background: groupBarColor }}
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -108,9 +91,6 @@ export default function DoneStep({
                     {p.desc && <span className="done-row-desc">{p.desc}</span>}
                     {p.students?.length > 0 && (
                       <span className="done-row-students">👥 {p.students.join(" · ")}</span>
-                    )}
-                    {displayComments?.[p.id] && (
-                      <div className="done-comment">💬 {displayComments[p.id]}</div>
                     )}
                   </div>
                 </div>

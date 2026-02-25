@@ -95,19 +95,21 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                       <span className="juror-dept-inline"> ({latestRow.juryDept})</span>
                     )}
                   </div>
-                  {isEditing
-                    ? <StatusBadge status={overall} editingFlag="editing" />
-                    : <StatusBadge status={overall} />
-                  }
-                  {onPinReset && (
-                    <button
-                      className="pin-reset-btn"
-                      title={`Reset PIN for ${jury}`}
-                      onClick={() => onPinReset(jury, latestRow?.juryDept || "", latestRow?.jurorId || "")}
-                    >
-                      🔑 Reset PIN
-                    </button>
-                  )}
+                  <div className="juror-header-actions">
+                    {isEditing
+                      ? <StatusBadge status={overall} editingFlag="editing" />
+                      : <StatusBadge status={overall} />
+                    }
+                    {onPinReset && (
+                      <button
+                        className="pin-reset-btn"
+                        title={`Reset PIN for ${jury}`}
+                        onClick={() => onPinReset(jury, latestRow?.juryDept || "", latestRow?.jurorId || "")}
+                      >
+                        🔑 Reset PIN
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="juror-meta">

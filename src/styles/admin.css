@@ -316,8 +316,27 @@
 }
 .juror-row-ts    { font-size: 11px; color: #94a3b8; white-space: nowrap; }
 
-/* StatusBadge → Reset PIN horizontal gap (desktop + landscape) */
-.status-badge + .pin-reset-btn { margin-left: 6px; }
+/* Juror header actions (StatusBadge + Reset PIN) */
+.juror-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.juror-header-actions .status-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  line-height: 1;
+}
+.juror-header-actions .pin-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  line-height: 1;
+  margin-left: 0;
+}
 
 /* ── Group accordion — JurorsTab-specific styles ─────────── */
 /* Shared base rules (.group-accordion-*) live in shared.css  */
@@ -775,7 +794,8 @@ th .sort-icon svg { vertical-align: middle; }
     margin-right: 0;
     justify-content: flex-start;
   }
-  .status-badge + .pin-reset-btn { margin-left: 0; }
+  .juror-header-actions .status-badge,
+  .juror-header-actions .pin-reset-btn { height: 26px; }
 
   /* Tab bar text smaller */
   .tab { font-size: 12px; padding: 10px 10px; }
