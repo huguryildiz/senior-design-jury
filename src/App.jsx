@@ -16,7 +16,7 @@
 // ============================================================
 
 import { useRef, useState } from "react";
-import JuryForm   from "./JuryJury Member InformationForm";
+import JuryForm   from "./JuryForm";
 import AdminPanel from "./AdminPanel";
 import "./styles/home.css";
 
