@@ -182,7 +182,13 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                             )}
                             <StatusBadge status={d.status} editingFlag={d.editingFlag} />
                             {(d.status === "all_submitted" || d.status === "group_submitted") && (
-                              <span className="juror-score">{d.total} / 100</span>
+                              <span
+                                className="juror-score"
+                                title="/ 100"
+                                aria-label={`${d.total} / 100`}
+                              >
+                                {d.total}
+                              </span>
                             )}
                           </div>
                         </div>
