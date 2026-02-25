@@ -4,3 +4,4 @@ dist/
 .env.local
 .env.local.example
 CLAUDE.md
+dummy_data.csv
