@@ -13,6 +13,8 @@
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 .admin-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 
