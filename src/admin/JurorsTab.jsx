@@ -1,6 +1,6 @@
 // src/admin/JurorsTab.jsx
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PROJECTS } from "../config";
 import { formatTs, adminCompletionPct } from "./utils";
 import { StatusBadge } from "./components";
@@ -13,16 +13,22 @@ const PROJECT_LIST = PROJECTS.map((p, i) =>
 
 // jurors prop: { key, name, dept, jurorId }[]
 export default function JurorsTab({ jurorStats, onPinReset }) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery,   setSearchQuery]   = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(searchQuery), 200);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
 
   const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     if (!q) return jurorStats;
     return jurorStats.filter((s) =>
       s.jury.toLowerCase().includes(q) ||
       (s.dept || s.latestRow?.juryDept || "").toLowerCase().includes(q)
     );
-  }, [jurorStats, searchQuery]);
+  }, [jurorStats, debouncedQuery]);
 
   return (
     <div className="jurors-tab-wrap">

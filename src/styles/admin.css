@@ -647,6 +647,10 @@
   .juror-filter-bar { flex-direction: column; }
   .juror-filter-select, .juror-search-wrap { width: 100%; }
 
+  /* Juror name: swipe-scrollable instead of ellipsis */
+  .juror-name { overflow-x: auto; text-overflow: clip; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .juror-name::-webkit-scrollbar { display: none; }
+
   /* Per-group rows: 2-column grid (text | right side) */
   .juror-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
   .juror-row-right { flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -657,6 +661,10 @@
 
   /* Tab bar text smaller */
   .tab { font-size: 12px; padding: 10px 10px; }
+
+  /* Matrix juror cell: swipe-scrollable on mobile */
+  .matrix-juror { max-width: 130px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .matrix-juror::-webkit-scrollbar { display: none; }
 
   /* Matrix controls stack */
   .matrix-controls { flex-direction: column; align-items: stretch; }
