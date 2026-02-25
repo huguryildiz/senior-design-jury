@@ -83,11 +83,12 @@
 .rank-card {
   background: white;
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 28px 32px;
   box-shadow: var(--shadow);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .rank-num {
   width: 36px; height: 36px;
@@ -106,23 +107,30 @@
 .rank-card:nth-child(3) .rank-num { background: #92400e; }
 
 .rank-info         { flex: 1; min-width: 0; }
-.rank-name-block   { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.rank-name-block   { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .rank-group-name   { font-size: 15px; font-weight: 800; color: #0f172a; }
 .rank-desc-line    { font-size: 12px; color: #94a3b8; font-weight: 400; line-height: 1.4; }
 .rank-students-line { font-size: 11px; color: #94a3b8; line-height: 1.4; }
 .rank-eval-count   { font-size: 11px; color: #94a3b8; font-style: italic; }
 .rank-desc         { font-size: 12px; color: #475569; font-weight: 500; }
 
-.rank-total        { text-align: center; flex-shrink: 0; }
-.rank-total span   { font-size: 28px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--blue); display: block; }
-.rank-total small  { font-size: 11px; color: var(--gray-500); }
+.rank-total        { text-align: center; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+.rank-total span   { font-size: 26px; font-weight: 800; font-family: 'DM Mono', monospace; color: #1e3a8a; display: block; order: 2; }
+.rank-total small  { font-size: 11px; color: var(--gray-500); letter-spacing: 0.04em; text-transform: lowercase; order: 1; margin-bottom: 2px; }
 
 .rank-bars         { flex: 1; min-width: 0; }
-.mini-bar-row      { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.mini-bar-row      { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .mini-label        { font-size: 11px; color: var(--gray-500); width: 52px; flex-shrink: 0; }
 .mini-bar-track    { flex: 1; height: 5px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
 .mini-bar-fill     { height: 100%; background: var(--blue); border-radius: 99px; transition: width .3s; }
 .mini-val          { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--gray-700); min-width: 28px; text-align: right; }
+
+@media (hover: hover) and (min-width: 481px) {
+  .rank-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12) !important;
+  }
+}
 
 /* Completion summary */
 .completion-summary {
@@ -284,13 +292,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px; /* clearer separation between group title and details */
+  gap: 12px; /* clearer separation between group title and details */
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .juror-row-main::-webkit-scrollbar { display: none; }
-.juror-row-name  { font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; line-height: 1.25; }
+.juror-row-name  { font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; line-height: 1.25; margin-bottom: 4px; }
 .juror-row-desc     { font-size: 11px; color: #64748b; white-space: nowrap; line-height: 1.25; }
 .juror-row-students { font-size: 11px; color: #64748b; white-space: nowrap; line-height: 1.25; }
 .juror-score     { font-weight: 700; font-family: 'DM Mono', monospace; color: var(--blue); white-space: nowrap; flex-shrink: 0; }
@@ -661,7 +669,27 @@
   .status-pill { font-size: 11px; padding: 3px 10px; }
 
   /* Rank cards wrap */
-  .rank-card { flex-wrap: wrap; }
+  .rank-card { flex-wrap: wrap; padding: 18px 18px; gap: 16px; }
+
+  /* Summary: swipe-scrollable text lines */
+  .rank-group-name,
+  .rank-desc-line,
+  .rank-students-line {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .rank-group-name::-webkit-scrollbar,
+  .rank-desc-line::-webkit-scrollbar,
+  .rank-students-line::-webkit-scrollbar { display: none; }
+
+  /* Summary total: slightly smaller on mobile */
+  .rank-total span  { font-size: 24px; }
+  .rank-total small { font-size: 10px; }
+
+  /* Summary note: tighter on mobile */
+  .summary-note { padding: 8px 12px !important; font-size: 12px !important; }
 
   /* Jurors tab filter */
   .juror-filter-bar { flex-direction: column; }

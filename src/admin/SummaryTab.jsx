@@ -40,7 +40,7 @@ export default function SummaryTab({ ranked, submittedData }) {
       {ranked.map((p, i) => (
         <div key={p.id ?? `${p.name}-${i}`} className="rank-card" style={i < 3 ? {
           background: "#ECFDF5",
-          boxShadow: "0 0 0 1px #BBF7D0, 0 10px 40px rgba(34,197,94,0.35)",
+          boxShadow: "0 0 0 1px #BBF7D0, 0 8px 22px rgba(34,197,94,0.18)",
           border: "1px solid #86EFAC",
         } : undefined}>
           <div className="rank-num" style={{
@@ -48,7 +48,7 @@ export default function SummaryTab({ ranked, submittedData }) {
             fontSize: i < 3 ? 22 : 18, fontWeight: 800,
             background: i < 3 ? "transparent" : rankTheme(i).bg,
             color: rankTheme(i).fg,
-            boxShadow: i < 3 ? "0 0 0 6px rgba(34,197,94,0.35)" : "0 6px 18px rgba(15,23,42,0.12)",
+            boxShadow: i < 3 ? "0 0 0 5px rgba(34,197,94,0.25)" : "0 6px 18px rgba(15,23,42,0.12)",
             border: i < 3 ? "none" : `3px solid ${rankTheme(i).ring}`,
             overflow: "hidden",
             padding: 0,
