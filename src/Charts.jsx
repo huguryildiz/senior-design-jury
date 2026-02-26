@@ -5,8 +5,8 @@
 // All SVGs use viewBox + width:100% for mobile responsiveness.
 //
 // Exports:
-//   OutcomeByGroupChart     – MŨDEK outcome achievement by group (normalized %)
-//   OutcomeOverviewChart    – programme-level MŨDEK outcome averages (normalized %)
+//   OutcomeByGroupChart     – MÜDEK outcome achievement by group (normalized %)
+//   OutcomeOverviewChart    – programme-level MÜDEK outcome averages (normalized %)
 //   CompetencyRadarChart    – competency profile per group (radar)
 //   CriterionBoxPlotChart   – score distribution by criterion (boxplot)
 //   JurorConsistencyHeatmap – juror consistency heatmap (CV)
@@ -17,7 +17,7 @@ import { useState, useEffect, useRef } from "react";
 import { CRITERIA, MUDEK_OUTCOMES, BAND_COLORS, MUDEK_THRESHOLD } from "./config";
 import { GraduationCapIcon, ChevronDownIcon } from "./shared/Icons";
 
-// ── Per-chart MŨDEK outcome code lists ───────────────────────
+// ── Per-chart MÜDEK outcome code lists ───────────────────────
 // All charts use the same set per spec §3.
 const CHART_OUTCOMES = ["9.1", "9.2", "1.2", "2", "3.1", "3.2", "8.1", "8.2"];
 
@@ -64,8 +64,8 @@ function ChartEmpty({ msg }) {
 }
 
 // ════════════════════════════════════════════════════════════
-// MŨDEK BADGE — per-chart dropdown with two tabs
-// Tab 1: MŨDEK outcome codes + EN descriptions (TR on hover)
+// MÜDEK BADGE — per-chart dropdown with two tabs
+// Tab 1: MÜDEK outcome codes + EN descriptions (TR on hover)
 // Tab 2: Rubric bands per criterion (from CRITERIA config)
 // ════════════════════════════════════════════════════════════
 function MudekOutcomesTab({ codes }) {
@@ -178,20 +178,20 @@ export function MudekBadge({ outcomeCodes = CHART_OUTCOMES }) {
         ref={btnRef}
         className="mudek-badge"
         onClick={() => setOpen((v) => !v)}
-        aria-label="MŨDEK outcome mapping"
+        aria-label="MÜDEK outcome mapping"
         aria-expanded={open}
       >
         <GraduationCapIcon />
-        <span>MŨDEK</span>
+        <span>MÜDEK</span>
         <span className={`mudek-chevron${open ? " open" : ""}`} aria-hidden="true">
           <ChevronDownIcon />
         </span>
       </button>
 
       {open && (
-        <div className="mudek-dropdown" role="dialog" aria-label="MŨDEK outcome mapping">
+        <div className="mudek-dropdown" role="dialog" aria-label="MÜDEK outcome mapping">
           <div className="mudek-dropdown-header">
-            <span>MŨDEK Outcome Mapping</span>
+            <span>MÜDEK Outcome Mapping</span>
             <button
               className="mudek-dropdown-close"
               onClick={() => { setOpen(false); btnRef.current?.focus(); }}
@@ -202,7 +202,7 @@ export function MudekBadge({ outcomeCodes = CHART_OUTCOMES }) {
             <button
               className={`mudek-tab-btn${tab === "outcomes" ? " active" : ""}`}
               onClick={() => setTab("outcomes")}
-            >MŨDEK Outcomes</button>
+            >MÜDEK Outcomes</button>
             <button
               className={`mudek-tab-btn${tab === "rubric" ? " active" : ""}`}
               onClick={() => setTab("rubric")}
@@ -222,7 +222,7 @@ export function MudekBadge({ outcomeCodes = CHART_OUTCOMES }) {
 }
 
 // ════════════════════════════════════════════════════════════
-// CHART 2 — Programme-Level MŨDEK Outcome Averages
+// CHART 2 — Programme-Level MÜDEK Outcome Averages
 // Vertical bars: one per criterion, grand mean ±1 SD whiskers,
 // horizontal dashed 70% reference line
 // ════════════════════════════════════════════════════════════
@@ -291,7 +291,7 @@ export function OutcomeOverviewChart({ data }) {
             y={padTop + chartH / 2}
             transform={`rotate(-90 10 ${padTop + chartH / 2})`}
             fontSize="8"
-            fill="#64748b"
+            fill="#94a3b8"
             textAnchor="middle"
           >
             Normalized (%)
@@ -371,7 +371,7 @@ export function OutcomeOverviewChart({ data }) {
 }
 
 // ════════════════════════════════════════════════════════════
-// CHART 1 — Outcome Achievement by Group (MŨDEK)
+// CHART 1 — Outcome Achievement by Group (MÜDEK)
 // Each group = one cluster; each bar in cluster = one outcome (normalized %)
 // ════════════════════════════════════════════════════════════
 export function OutcomeByGroupChart({ stats }) {
@@ -393,7 +393,7 @@ export function OutcomeByGroupChart({ stats }) {
       <div className="chart-title-row">
         <div>
           <div className="chart-title">Outcome Achievement by Group</div>
-          <div className="chart-note">Compares each group's normalized score across all four MŨDEK-mapped criteria.</div>
+          <div className="chart-note">Compares each group's normalized score across all four MÜDEK-mapped criteria.</div>
         </div>
       </div>
 
@@ -407,7 +407,7 @@ export function OutcomeByGroupChart({ stats }) {
             x="10"
             y={chartPadTop + chartH / 2}
             transform={`rotate(-90 10 ${chartPadTop + chartH / 2})`}
-            fontSize="8" fill="#64748b" textAnchor="middle"
+            fontSize="8" fill="#94a3b8" textAnchor="middle"
           >
             Normalized (%)
           </text>
@@ -686,7 +686,7 @@ export function CriterionBoxPlotChart({ data }) {
             y={chartPadTop + chartH / 2}
             transform={`rotate(-90 10 ${chartPadTop + chartH / 2})`}
             fontSize="8"
-            fill="#64748b"
+            fill="#94a3b8"
             textAnchor="middle"
           >
             Normalized (%)
@@ -934,7 +934,7 @@ export function RubricAchievementChart({ data }) {
       <div className="chart-title-row">
         <div>
           <div className="chart-title">Achievement Level Distribution</div>
-          <div className="chart-note">% of evaluations per rubric band — directly maps to MŨDEK continuous improvement evidence.</div>
+          <div className="chart-note">% of evaluations per rubric band — directly maps to MÜDEK continuous improvement evidence.</div>
         </div>
       </div>
 

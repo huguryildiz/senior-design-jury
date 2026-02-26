@@ -3,11 +3,12 @@
 // Sortable details table with Excel-style column header filters.
 // ============================================================
 
-import { useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PROJECTS } from "../config";
 import { cmp, exportXLSX, formatTs, tsToMillis } from "./utils";
 import { StatusBadge } from "./components";
-import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDownIcon, ArrowUpIcon } from "../shared/Icons";
+import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDownIcon, ArrowUpIcon, XIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -26,9 +27,8 @@ function displayScore(val) {
 
 const STATUS_OPTIONS = [
   { key: "in_progress",     label: "In Progress" },
-  { key: "group_submitted", label: "Submitted"   },
-  { key: "all_submitted",   label: "Final"       },
   { key: "editing",         label: "Editing"     },
+  { key: "submitted",       label: "Submitted"   },
 ];
 
 const SCORE_COLS = [
@@ -46,6 +46,69 @@ function rowKey(r) {
     : `${(r.juryName || "").trim().toLowerCase()}__${(r.juryDept || "").trim().toLowerCase()}`;
 }
 
+function FilterPopoverPortal({ open, anchorRect, onClose, className, contentKey, mode = "anchor", children }) {
+  const popRef = useRef(null);
+  const [style, setStyle] = useState({ left: 0, top: 0, visibility: "hidden" });
+
+  useLayoutEffect(() => {
+    if (!open || !popRef.current) return;
+    const pop = popRef.current;
+    const measureAndPlace = () => {
+      if (mode === "center") {
+        setStyle({ left: "50%", top: "50%", transform: "translate(-50%, -50%)", visibility: "visible" });
+        return;
+      }
+      if (!anchorRect) return;
+      const margin = 8;
+      const popW = pop.offsetWidth;
+      const popH = pop.offsetHeight;
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+
+      let left = anchorRect.left;
+      left = Math.min(left, viewportW - popW - margin);
+      left = Math.max(margin, left);
+
+      let top = anchorRect.bottom + 6;
+      if (top + popH + margin > viewportH) {
+        const above = anchorRect.top - popH - 6;
+        if (above >= margin) top = above;
+        else top = Math.max(margin, viewportH - popH - margin);
+      }
+
+      setStyle({ left, top, transform: "none", visibility: "visible" });
+    };
+
+    measureAndPlace();
+    window.addEventListener("resize", measureAndPlace);
+    window.addEventListener("orientationchange", measureAndPlace);
+    return () => {
+      window.removeEventListener("resize", measureAndPlace);
+      window.removeEventListener("orientationchange", measureAndPlace);
+    };
+  }, [open, anchorRect, contentKey, mode]);
+
+  if (!open || (mode !== "center" && !anchorRect)) return null;
+
+  return createPortal(
+    <>
+      <div className="filter-overlay" onClick={onClose} />
+      <div
+        ref={popRef}
+        className={className}
+        style={style}
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // jurors prop: { key, name, dept }[]
 export default function DetailsTab({ data, jurors }) {
   const [filterJuror,    setFilterJuror]    = useState("ALL");
@@ -58,6 +121,10 @@ export default function DetailsTab({ data, jurors }) {
   const [sortKey,        setSortKey]        = useState("tsMs");
   const [sortDir,        setSortDir]        = useState("desc");
   const [activeFilterCol, setActiveFilterCol] = useState(null);
+  const [anchorRect, setAnchorRect] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches
+  ));
 
   const groups = useMemo(
     () => PROJECT_LIST.map((p) => ({ id: p.id, label: `Group ${p.id}`, name: p.name }))
@@ -76,11 +143,38 @@ export default function DetailsTab({ data, jurors }) {
       .map(([key, label]) => ({ key, label }));
   }, [jurors]);
 
-  const hasAnyFilter = useMemo(() =>
-    filterJuror !== "ALL" || filterDept !== "ALL" || filterGroup !== "ALL" ||
-    filterStatuses.size > 0 || dateFrom || dateTo || filterComment,
-    [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, filterComment]
-  );
+  useEffect(() => {
+    if (!isMobile) return;
+    if (activeFilterCol !== "timestamp") return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [activeFilterCol, isMobile]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 480px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.addEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterJuror !== "ALL") count += 1;
+    if (filterDept !== "ALL") count += 1;
+    if (filterGroup !== "ALL") count += 1;
+    if (filterStatuses.size > 0) count += 1;
+    if (dateFrom || dateTo) count += 1;
+    if (filterComment) count += 1;
+    return count;
+  }, [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, filterComment]);
+  const hasAnyFilter = activeFilterCount > 0;
 
   function resetFilters() {
     setFilterJuror("ALL");
@@ -93,6 +187,7 @@ export default function DetailsTab({ data, jurors }) {
     setSortKey("tsMs");
     setSortDir("desc");
     setActiveFilterCol(null);
+    setAnchorRect(null);
   }
 
   function toggleStatus(key) {
@@ -104,8 +199,19 @@ export default function DetailsTab({ data, jurors }) {
     });
   }
 
-  function toggleFilterCol(colId) {
-    setActiveFilterCol((prev) => (prev === colId ? null : colId));
+  function closePopover() {
+    setActiveFilterCol(null);
+    setAnchorRect(null);
+  }
+
+  function toggleFilterCol(colId, evt) {
+    const rect = evt?.currentTarget?.getBoundingClientRect?.();
+    setActiveFilterCol((prev) => {
+      const next = prev === colId ? null : colId;
+      if (next && rect) setAnchorRect(rect);
+      if (!next) setAnchorRect(null);
+      return next;
+    });
   }
 
   function isMissing(val) {
@@ -133,20 +239,14 @@ export default function DetailsTab({ data, jurors }) {
     }
     if (filterStatuses.size > 0) {
       list = list.filter((r) => {
-        const isEditing = r.editingFlag === "editing";
+        const isEditing = r.editingFlag === "editing" || r.status === "editing";
         const isSubmittedStatus = r.status === "group_submitted" || r.status === "all_submitted";
         const isInProgressStatus = r.status === "in_progress";
 
-        if (isEditing) {
-          if (filterStatuses.has("editing")) return true;
-          if (filterStatuses.has("in_progress") && isInProgressStatus) return true;
-          if (filterStatuses.has("group_submitted") && isSubmittedStatus) return true;
-          return false;
-        }
-
-        if (filterStatuses.has("group_submitted") && isSubmittedStatus) return true;
+        if (filterStatuses.has("editing") && isEditing) return true;
+        if (filterStatuses.has("submitted") && isSubmittedStatus) return true;
         if (filterStatuses.has("in_progress") && isInProgressStatus) return true;
-        return filterStatuses.has(r.status);
+        return false;
       });
     }
     if (dateFrom || dateTo) {
@@ -181,6 +281,170 @@ export default function DetailsTab({ data, jurors }) {
   const sortIcon = (key) =>
     sortKey !== key ? <ArrowUpDownIcon /> : sortDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />;
 
+  const popoverConfig = (() => {
+    if (activeFilterCol === "juror") {
+      return {
+        className: "col-filter-popover col-filter-popover-portal",
+        contentKey: filterJuror,
+        content: (
+          <>
+            <select
+              autoFocus
+              value={filterJuror}
+              onChange={(e) => { setFilterJuror(e.target.value); closePopover(); }}
+            >
+              <option value="ALL">All jurors</option>
+              {jurors.map((j) => (
+                <option key={j.key} value={j.key}>
+                  {j.name}{j.dept ? ` (${j.dept})` : ""}
+                </option>
+              ))}
+            </select>
+            {filterJuror !== "ALL" && (
+              <button className="col-filter-clear" onClick={() => { setFilterJuror("ALL"); closePopover(); }}>
+                Clear
+              </button>
+            )}
+          </>
+        ),
+      };
+    }
+    if (activeFilterCol === "dept") {
+      return {
+        className: "col-filter-popover col-filter-popover-portal",
+        contentKey: filterDept,
+        content: (
+          <>
+            <select
+              autoFocus
+              value={filterDept}
+              onChange={(e) => { setFilterDept(e.target.value); closePopover(); }}
+            >
+              <option value="ALL">All departments</option>
+              {deptOptions.map((d) => (
+                <option key={d.key} value={d.key}>{d.label}</option>
+              ))}
+            </select>
+            {filterDept !== "ALL" && (
+              <button className="col-filter-clear" onClick={() => { setFilterDept("ALL"); closePopover(); }}>
+                Clear
+              </button>
+            )}
+          </>
+        ),
+      };
+    }
+    if (activeFilterCol === "group") {
+      return {
+        className: "col-filter-popover col-filter-popover-portal",
+        contentKey: filterGroup,
+        content: (
+          <>
+            <select
+              autoFocus
+              value={filterGroup}
+              onChange={(e) => { setFilterGroup(e.target.value); closePopover(); }}
+            >
+              <option value="ALL">All groups</option>
+              {groups.map((g) => (
+                <option key={g.id} value={String(g.id)}>{g.label}</option>
+              ))}
+            </select>
+            {filterGroup !== "ALL" && (
+              <button className="col-filter-clear" onClick={() => { setFilterGroup("ALL"); closePopover(); }}>
+                Clear
+              </button>
+            )}
+          </>
+        ),
+      };
+    }
+    if (activeFilterCol === "timestamp") {
+      return {
+        className: `col-filter-popover col-filter-popover-portal col-filter-popover-timestamp${isMobile ? " is-centered" : ""}`,
+        contentKey: `${dateFrom}|${dateTo}`,
+        mode: isMobile ? "center" : "anchor",
+        content: (
+          <>
+            <div className="timestamp-field">
+              <label>From</label>
+              <input autoFocus type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+            <div className="timestamp-field">
+              <label>To</label>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+            {isMobile ? (
+              <div className="timestamp-actions">
+                {(dateFrom || dateTo) && (
+                  <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                    Clear
+                  </button>
+                )}
+                <button className="timestamp-done-btn" onClick={closePopover}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              (dateFrom || dateTo) && (
+                <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                  Clear
+                </button>
+              )
+            )}
+          </>
+        ),
+      };
+    }
+    if (activeFilterCol === "status") {
+      return {
+        className: "col-filter-popover col-filter-popover-portal col-filter-popover-status",
+        contentKey: Array.from(filterStatuses).sort().join("|"),
+        content: (
+          <>
+            {STATUS_OPTIONS.map(({ key, label }) => (
+              <label key={key} className="status-option">
+                <input
+                  type="checkbox"
+                  checked={filterStatuses.has(key)}
+                  onChange={() => toggleStatus(key)}
+                />
+                {label}
+              </label>
+            ))}
+            {filterStatuses.size > 0 && (
+              <button className="col-filter-clear" onClick={() => { setFilterStatuses(new Set()); closePopover(); }}>
+                Clear
+              </button>
+            )}
+          </>
+        ),
+      };
+    }
+    if (activeFilterCol === "comments") {
+      return {
+        className: "col-filter-popover col-filter-popover-portal",
+        contentKey: filterComment,
+        content: (
+          <>
+            <input
+              autoFocus
+              placeholder="Search comments…"
+              value={filterComment}
+              onChange={(e) => setFilterComment(e.target.value)}
+            />
+            {filterComment && (
+              <button className="col-filter-clear" onClick={() => { setFilterComment(""); closePopover(); }}>
+                Clear
+              </button>
+            )}
+          </>
+        ),
+      };
+    }
+    return null;
+  })();
+
   return (
     <>
       {/* Compact toolbar: row count + clear + export */}
@@ -189,9 +453,18 @@ export default function DetailsTab({ data, jurors }) {
           Showing <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
         </span>
         {hasAnyFilter && (
-          <button className="filter-reset" onClick={resetFilters}>
-            ✕ Clear Filters
-          </button>
+          <>
+            <span className="filters-active-pill">Filters: {activeFilterCount}</span>
+            <button
+              type="button"
+              className="filters-clear-btn"
+              onClick={resetFilters}
+              aria-label="Clear filters"
+              title="Clear filters"
+            >
+              <XIcon />
+            </button>
+          </>
         )}
         <button className="xlsx-export-btn" onClick={() => { void exportXLSX(rows); }}>
           <DownloadIcon />
@@ -200,13 +473,16 @@ export default function DetailsTab({ data, jurors }) {
         </button>
       </div>
 
-      {/* Close-layer: click outside popover to dismiss */}
-      {activeFilterCol !== null && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 50 }}
-          onClick={() => setActiveFilterCol(null)}
-        />
-      )}
+      <FilterPopoverPortal
+        open={!!popoverConfig}
+        anchorRect={anchorRect}
+        onClose={closePopover}
+        className={popoverConfig?.className}
+        contentKey={popoverConfig?.contentKey}
+        mode={popoverConfig?.mode}
+      >
+        {popoverConfig?.content}
+      </FilterPopoverPortal>
 
       {/* Table */}
       <div className="detail-table-wrap">
@@ -221,33 +497,12 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${filterJuror !== "ALL" ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror"); }}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror", e); }}
                     title="Filter by juror"
                   >
                     <FilterIcon />
                   </div>
                 </div>
-                {activeFilterCol === "juror" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      autoFocus
-                      value={filterJuror}
-                      onChange={(e) => { setFilterJuror(e.target.value); setActiveFilterCol(null); }}
-                    >
-                      <option value="ALL">All jurors</option>
-                      {jurors.map((j) => (
-                        <option key={j.key} value={j.key}>
-                          {j.name}{j.dept ? ` (${j.dept})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {filterJuror !== "ALL" && (
-                      <button className="col-filter-clear" onClick={() => { setFilterJuror("ALL"); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
               </th>
 
               {/* Department */}
@@ -257,32 +512,13 @@ export default function DetailsTab({ data, jurors }) {
                     Department
                   </span>
                   <div
-                    className={`col-filter-hotspot${filterDept ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept"); }}
+                    className={`col-filter-hotspot${filterDept !== "ALL" ? " active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept", e); }}
                     title="Filter by department"
                   >
                     <FilterIcon />
                   </div>
                 </div>
-                {activeFilterCol === "dept" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      autoFocus
-                      value={filterDept}
-                      onChange={(e) => { setFilterDept(e.target.value); setActiveFilterCol(null); }}
-                    >
-                      <option value="ALL">All departments</option>
-                      {deptOptions.map((d) => (
-                        <option key={d.key} value={d.key}>{d.label}</option>
-                      ))}
-                    </select>
-                    {filterDept !== "ALL" && (
-                      <button className="col-filter-clear" onClick={() => { setFilterDept("ALL"); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
               </th>
 
               {/* Group */}
@@ -293,31 +529,12 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${filterGroup !== "ALL" ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("group"); }}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("group", e); }}
                     title="Filter by group"
                   >
                     <FilterIcon />
                   </div>
                 </div>
-                {activeFilterCol === "group" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      autoFocus
-                      value={filterGroup}
-                      onChange={(e) => { setFilterGroup(e.target.value); setActiveFilterCol(null); }}
-                    >
-                      <option value="ALL">All groups</option>
-                      {groups.map((g) => (
-                        <option key={g.id} value={String(g.id)}>{g.label}</option>
-                      ))}
-                    </select>
-                    {filterGroup !== "ALL" && (
-                      <button className="col-filter-clear" onClick={() => { setFilterGroup("ALL"); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
               </th>
 
               {/* Timestamp */}
@@ -328,25 +545,12 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${(dateFrom || dateTo) ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp"); }}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp", e); }}
                     title="Filter by date"
                   >
                     <FilterIcon />
                   </div>
                 </div>
-                {activeFilterCol === "timestamp" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <label style={{ fontSize: 11 }}>From</label>
-                    <input autoFocus type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-                    <label style={{ fontSize: 11 }}>To</label>
-                    <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-                    {(dateFrom || dateTo) && (
-                      <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
               </th>
 
               {/* Status — filter only (no sort) */}
@@ -355,32 +559,12 @@ export default function DetailsTab({ data, jurors }) {
                   <span>Status</span>
                   <div
                     className={`col-filter-hotspot${filterStatuses.size > 0 ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("status"); }}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("status", e); }}
                     title="Filter by status"
                   >
                     <FilterIcon />
                   </div>
                 </div>
-                {activeFilterCol === "status" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    {STATUS_OPTIONS.map(({ key, label }) => (
-                      <label key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={filterStatuses.has(key)}
-                          onChange={() => toggleStatus(key)}
-                          style={{ width: "auto" }}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                    {filterStatuses.size > 0 && (
-                      <button className="col-filter-clear" onClick={() => { setFilterStatuses(new Set()); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
               </th>
 
               {/* Score columns — sort only, no filter */}
@@ -398,27 +582,12 @@ export default function DetailsTab({ data, jurors }) {
                   <span>Comments</span>
                   <div
                     className={`col-filter-hotspot${filterComment ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments"); }}
+                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments", e); }}
                     title="Filter by comments"
                   >
                     <FilterIcon />
                   </div>
                 </div>
-                {activeFilterCol === "comments" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()} style={{ left: "auto", right: 0 }}>
-                    <input
-                      autoFocus
-                      placeholder="Search comments…"
-                      value={filterComment}
-                      onChange={(e) => setFilterComment(e.target.value)}
-                    />
-                    {filterComment && (
-                      <button className="col-filter-clear" onClick={() => { setFilterComment(""); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
               </th>
             </tr>
           </thead>

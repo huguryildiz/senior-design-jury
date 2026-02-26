@@ -188,11 +188,35 @@ export default function MatrixTab({ data, jurors, groups }) {
 
       {/* Info note + legend */}
       <p className="matrix-info-note"><InfoIcon /> Averages include only <strong>completed</strong> submissions.</p>
-      <p className="matrix-subtitle">
-        <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
-        <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
-        <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
-      </p>
+      <div className="matrix-subtitle">
+        <span className="matrix-legend-group matrix-icon-legend">
+          <span className="matrix-icon-legend-item">
+            <span className="matrix-status-icon completed"><CircleCheckBigIcon /></span>
+            Completed
+          </span>
+          <span className="matrix-icon-legend-item">
+            <span className="matrix-legend-icons">
+              <span className="matrix-legend-dot submitted-dot"/>
+            </span>
+            Submitted
+          </span>
+          <span className="matrix-icon-legend-item">
+            <span className="matrix-status-icon editing"><PencilIcon /></span>
+            Editing
+          </span>
+          <span className="matrix-icon-legend-item">
+            <span className="matrix-legend-icons">
+              <span className="matrix-legend-dot progress-dot"/>
+              <span className="matrix-status-icon in_progress"><HourglassIcon /></span>
+            </span>
+            In Progress
+          </span>
+          <span className="matrix-icon-legend-item">
+            <span className="matrix-legend-dot empty-dot"/>
+            Not Started
+          </span>
+        </span>
+      </div>
 
       {/* Close-layer: click outside filter popover to dismiss */}
       {activeFilterCol !== null && (
@@ -258,18 +282,23 @@ export default function MatrixTab({ data, jurors, groups }) {
                 <td className="matrix-juror">
                   {(() => {
                     const status = jurorStatus(juror.key);
+                    const fullName = juror.dept ? `${juror.name} (${juror.dept})` : juror.name;
                     return (
-                      <span
-                        className={`matrix-status-icon ${status}`}
-                        title={statusLabel[status]}
-                        aria-hidden="true"
-                      >
-                        {statusIcon[status]}
-                      </span>
+                      <>
+                        <span
+                          className={`matrix-status-icon ${status}`}
+                          title={statusLabel[status]}
+                          aria-hidden="true"
+                        >
+                          {statusIcon[status]}
+                        </span>
+                        <span className="matrix-juror-name" title={fullName}>
+                          {juror.name}
+                          {juror.dept && <span className="matrix-juror-dept"> ({juror.dept})</span>}
+                        </span>
+                      </>
                     );
                   })()}
-                  {juror.name}
-                  {juror.dept && <span className="matrix-juror-dept"> ({juror.dept})</span>}
                 </td>
                 {groups.map((g) => {
                   const entry = lookup[juror.key]?.[g.id] ?? null;

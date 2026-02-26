@@ -67,7 +67,7 @@ export const PROJECTS = [
 //
 // id:         React key + data field name in rows (matches GAS export)
 // color:      Chart color token used consistently across all dashboard charts
-// mudek:      Array of MŨDEK outcome codes this criterion maps to
+// mudek:      Array of MÜDEK outcome codes this criterion maps to
 // rubric[].min/max: Numeric bounds for band classification logic
 export const CRITERIA = [
   {
@@ -128,13 +128,13 @@ export const CRITERIA = [
   },
 ];
 
-// ── MŨDEK Dashboard constants ──────────────────────────────────
+// ── MÜDEK Dashboard constants ──────────────────────────────────
 
 // Reference threshold line shown on Charts 1 and 2.
 // Update here if the department formally adopts a different value.
 export const MUDEK_THRESHOLD = 70;
 
-// Achievement band colours — used by Chart 6 and the MŨDEK dropdown rubric tab.
+// Achievement band colours — used by Chart 6 and the MÜDEK dropdown rubric tab.
 export const BAND_COLORS = {
   Excellent:    { bg: "#DCFCE7", text: "#16A34A" },
   Good:         { bg: "#F7FEE7", text: "#65A30D" },
@@ -142,7 +142,7 @@ export const BAND_COLORS = {
   Insufficient: { bg: "#FEE2E2", text: "#DC2626" },
 };
 
-// All 18 MŨDEK outcome codes with English and Turkish text.
+// All 18 MÜDEK outcome codes with English and Turkish text.
 // Each CRITERIA entry's mudek[] array references codes from this object.
 export const MUDEK_OUTCOMES = {
   "1.1": {

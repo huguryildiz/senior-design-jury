@@ -48,7 +48,7 @@ const CRITERIA_LIST = CRITERIA.map((c) => ({
   id: c.id, label: c.label, shortLabel: c.shortLabel, max: c.max,
 }));
 const TOTAL_GROUPS  = PROJECT_LIST.length;
-const AUTO_REFRESH  = 2 * 60 * 1000; // 2 minutes
+const AUTO_REFRESH  = null; // disabled
 
 function toNumOrEmpty(v) {
   if (v === "" || v === null || v === undefined) return "";
@@ -195,6 +195,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => {
+    if (!AUTO_REFRESH) return;
     const id = setInterval(fetchData, AUTO_REFRESH);
     return () => clearInterval(id);
   }, []); // interval never needs to restart — passRef always has latest pass
@@ -338,7 +339,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   ).length;
   const statusMetrics = useMemo(() => {
     const totalJurors = uniqueJurors.length;
-    const completedEvaluations = submittedData.length;
+    const completedEvaluations = completedData.length;
     const totalEvaluations = totalJurors * TOTAL_GROUPS;
     const finalByJuror = new Map();
     data.forEach((r) => {
@@ -371,7 +372,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       inProgressJurors,
       editingJurors,
     };
-  }, [data, submittedData, uniqueJurors, rowKey]);
+  }, [data, submittedData, completedData, uniqueJurors, rowKey]);
 
   // ── Render ────────────────────────────────────────────────
   return (
