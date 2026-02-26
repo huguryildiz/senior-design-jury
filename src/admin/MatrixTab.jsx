@@ -7,40 +7,18 @@
 
 import { useState, useMemo } from "react";
 import { cmp } from "./utils";
-
-// ── SVG icon set (stroke-based, currentColor, one family) ─────
-const IconFilter = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-    <path d="M1 2h8M2.5 5h5M4 7.5h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-const IconSortBoth = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path d="M4 4.5L6 2l2 2.5M4 7.5L6 10l2-2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
-  </svg>
-);
-const IconSortDesc = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path d="M6 2.5v7M3.5 7L6 9.5l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconSortAsc = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path d="M6 9.5v-7M3.5 5L6 2.5l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconX = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-const IconInfo = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-    <circle cx="7" cy="7" r="5.75" stroke="currentColor" strokeWidth="1.2"/>
-    <path d="M7 6.5v3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    <circle cx="7" cy="4.5" r="0.7" fill="currentColor"/>
-  </svg>
-);
+import {
+  FilterIcon,
+  ArrowUpDownIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  InfoIcon,
+  CheckIcon,
+  HourglassIcon,
+  PencilIcon,
+  CircleCheckBigIcon,
+  CircleIcon,
+} from "../shared/Icons";
 
 // ── Cell helpers ──────────────────────────────────────────────
 
@@ -82,7 +60,7 @@ export default function MatrixTab({ data, jurors, groups }) {
         ? r.jurorId
         : `${(r.juryName || "").trim().toLowerCase()}__${(r.juryDept || "").trim().toLowerCase()}`;
       if (!map[key]) map[key] = {};
-      map[key][r.projectId] = { total: r.total, status: r.status };
+      map[key][r.projectId] = { total: r.total, status: r.status, editingFlag: r.editingFlag };
     });
     return map;
   }, [data]);
@@ -101,8 +79,8 @@ export default function MatrixTab({ data, jurors, groups }) {
   }
 
   const groupSortIcon = (gId) => {
-    if (sortGroupId !== gId) return <IconSortBoth />;
-    return sortGroupDir === "desc" ? <IconSortDesc /> : <IconSortAsc />;
+    if (sortGroupId !== gId) return <ArrowUpDownIcon />;
+    return sortGroupDir === "desc" ? <ArrowDownIcon /> : <ArrowUpIcon />;
   };
 
   function clearAllFilters() {
@@ -141,6 +119,39 @@ export default function MatrixTab({ data, jurors, groups }) {
     return list;
   }, [jurors, jurorFilter, sortGroupId, sortGroupDir, lookup]);
 
+  const jurorStatus = (jurorKey) => {
+    const entries = groups.map((g) => {
+      const entry = lookup[jurorKey]?.[g.id];
+      const normalizedStatus =
+        entry?.status === "group_submitted" || entry?.status === "all_submitted"
+          ? "submitted"
+          : entry?.status || "not_started";
+      return { status: normalizedStatus, editing: entry?.editingFlag === "editing" };
+    });
+    if (entries.every((e) => e.status === "not_started")) return "not_started";
+    if (entries.some((e) => e.editing)) return "editing";
+    if (entries.every((e) => e.status === "submitted")) return "completed";
+    if (entries.some((e) => e.status === "in_progress")) return "in_progress";
+    if (entries.some((e) => e.status === "submitted")) return "submitted";
+    return "not_started";
+  };
+
+  const statusLabel = {
+    completed: "Completed",
+    submitted: "Submitted",
+    in_progress: "In Progress",
+    editing: "Editing",
+    not_started: "Not Started",
+  };
+
+  const statusIcon = {
+    completed: <CircleCheckBigIcon />,
+    submitted: <CheckIcon />,
+    in_progress: <HourglassIcon />,
+    editing: <PencilIcon />,
+    not_started: <CircleIcon />,
+  };
+
   // Average row: final-only entries from visibleJurors, 2 decimal places.
   const groupAverages = useMemo(() =>
     groups.map((g) => {
@@ -164,7 +175,7 @@ export default function MatrixTab({ data, jurors, groups }) {
         <div className="matrix-controls">
           {jurorFilter && (
             <button className="matrix-clear-filters" onClick={clearAllFilters}>
-              <IconX /> Clear Filters
+              ✕ Clear Filters
             </button>
           )}
           {visibleJurors.length < jurors.length && (
@@ -176,7 +187,7 @@ export default function MatrixTab({ data, jurors, groups }) {
       )}
 
       {/* Info note + legend */}
-      <p className="matrix-info-note"><IconInfo /> <strong>Averages include only final submissions.</strong></p>
+      <p className="matrix-info-note"><InfoIcon /> Averages include only <strong>completed</strong> submissions.</p>
       <p className="matrix-subtitle">
         <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
         <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
@@ -200,10 +211,10 @@ export default function MatrixTab({ data, jurors, groups }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   Juror / Group
                   <button
-                    className={`col-filter-btn${jurorFilter ? " active" : ""}`}
+                    className={`col-filter-hotspot${jurorFilter ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); setActiveFilterCol((p) => p === "juror" ? null : "juror"); }}
                     title="Filter jurors"
-                  ><IconFilter /></button>
+                  ><FilterIcon /></button>
                 </div>
                 {activeFilterCol === "juror" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -245,6 +256,18 @@ export default function MatrixTab({ data, jurors, groups }) {
             {visibleJurors.map((juror) => (
               <tr key={juror.key}>
                 <td className="matrix-juror">
+                  {(() => {
+                    const status = jurorStatus(juror.key);
+                    return (
+                      <span
+                        className={`matrix-status-icon ${status}`}
+                        title={statusLabel[status]}
+                        aria-hidden="true"
+                      >
+                        {statusIcon[status]}
+                      </span>
+                    );
+                  })()}
                   {juror.name}
                   {juror.dept && <span className="matrix-juror-dept"> ({juror.dept})</span>}
                 </td>

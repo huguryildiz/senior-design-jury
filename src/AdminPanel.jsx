@@ -5,7 +5,7 @@
 // Changes in this version:
 //   - AUTO_REFRESH reduced from 30 s to 2 minutes (less noise).
 //   - Parses EditingFlag (column 13) so JurorsTab can show the
-//     "✏️ Editing" badge when a juror is actively re-editing.
+//     "Editing" badge when a juror is actively re-editing.
 //   - PIN reset button per juror (admin password required).
 //   - Juror deduplication is case-insensitive so "Ali" and "ALI"
 //     don't appear as two separate jurors.
@@ -17,6 +17,20 @@ import { PROJECTS, CRITERIA } from "./config";
 import { getFromSheet }       from "./shared/api";
 import { toNum, tsToMillis, cmp, jurorBg, jurorDot, dedupeAndSort } from "./admin/utils";
 import { HomeIcon, RefreshIcon } from "./admin/components";
+import {
+  UsersLucideIcon,
+  HourglassIcon,
+  PencilIcon,
+  CheckCircle2Icon,
+  ListChecksIcon,
+  TrophyIcon,
+  ChartIcon,
+  ClipboardIcon,
+  UserIcon,
+  GridIcon,
+  ClockIcon,
+  ChevronRightIcon,
+} from "./shared/Icons";
 import SummaryTab    from "./admin/SummaryTab";
 import DashboardTab  from "./admin/DashboardTab";
 import DetailsTab    from "./admin/DetailsTab";
@@ -36,19 +50,71 @@ const CRITERIA_LIST = CRITERIA.map((c) => ({
 const TOTAL_GROUPS  = PROJECT_LIST.length;
 const AUTO_REFRESH  = 2 * 60 * 1000; // 2 minutes
 
+function toNumOrEmpty(v) {
+  if (v === "" || v === null || v === undefined) return "";
+  if (typeof v === "string" && v.trim() === "") return "";
+  const n = Number(
+    String(v ?? "").trim().replace(/^"+|"+$/g, "").replace(",", ".")
+  );
+  return Number.isFinite(n) ? n : "";
+}
+
 const TABS = [
-  { id: "summary",   label: "🏆 Summary"  },
-  { id: "dashboard", label: "📈 Dashboard" },
-  { id: "detail",    label: "📋 Details"   },
-  { id: "jurors",    label: "👤 Jurors"    },
-  { id: "matrix",    label: "🔢 Matrix"    },
+  { id: "summary",   label: "Summary",   icon: TrophyIcon  },
+  { id: "dashboard", label: "Dashboard", icon: ChartIcon   },
+  { id: "detail",    label: "Details",   icon: ClipboardIcon },
+  { id: "jurors",    label: "Jurors",    icon: UserIcon    },
+  { id: "matrix",    label: "Matrix",    icon: GridIcon    },
 ];
+
+function ResultsStatusBar({ metrics, id }) {
+  const {
+    completedJurors,
+    totalJurors,
+    completedEvaluations,
+    totalEvaluations,
+    inProgressJurors,
+    editingJurors,
+  } = metrics;
+  return (
+    <div id={id} className="results-status-bar" role="group" aria-label="Results status metrics">
+      <span className="status-chip status-jurors">
+        <UsersLucideIcon />
+        <span className="status-label">Jurors</span>
+        <span className="status-value">{totalJurors}</span>
+        <span className="status-sep" aria-hidden="true">·</span>
+        <span className="status-breakdown">
+          <span className="status-breakdown-item">
+            <CheckCircle2Icon />
+            {completedJurors}
+          </span>
+          <span className="status-sep" aria-hidden="true">·</span>
+          <span className="status-breakdown-item">
+            <HourglassIcon />
+            {inProgressJurors}
+          </span>
+          <span className="status-sep" aria-hidden="true">·</span>
+          <span className="status-breakdown-item">
+            <PencilIcon />
+            {editingJurors}
+          </span>
+        </span>
+      </span>
+      <span className="status-chip status-evaluated">
+        <ListChecksIcon />
+        <span className="status-label">Evaluated</span>
+        <span className="status-value">{completedEvaluations}/{totalEvaluations}</span>
+      </span>
+    </div>
+  );
+}
 
 export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLoadDone }) {
   const [data,        setData]        = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState("");
   const [authError,   setAuthError]   = useState("");
+  const [showStatus,  setShowStatus]  = useState(true);
   const [activeTab,   setActiveTab]   = useState("summary");
   const [lastRefresh, setLastRefresh] = useState(null);
 
@@ -99,11 +165,11 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
         projectId:   toNum(row["Group No"]),
         projectName: String(row["Group Name"] ?? ""),
         jurorId:     String(row["Juror ID"] ?? ""),
-        technical:   toNum(row["Technical (30)"]),
-        design:      toNum(row["Written (30)"]),
-        delivery:    toNum(row["Oral (30)"]),
-        teamwork:    toNum(row["Teamwork (10)"]),
-        total:       toNum(row["Total (100)"]),
+        technical:   toNumOrEmpty(row["Technical (30)"]),
+        design:      toNumOrEmpty(row["Written (30)"]),
+        delivery:    toNumOrEmpty(row["Oral (30)"]),
+        teamwork:    toNumOrEmpty(row["Teamwork (10)"]),
+        total:       toNumOrEmpty(row["Total (100)"]),
         comments:    row["Comments"] || "",
         status:      String(row["Status"] ?? "all_submitted"),
         // EditingFlag (column 13) — set to "editing" by resetJuror,
@@ -270,6 +336,42 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const editingCount    = jurorStats.filter((s) =>
     s.rows.some((r) => r.editingFlag === "editing")
   ).length;
+  const statusMetrics = useMemo(() => {
+    const totalJurors = uniqueJurors.length;
+    const completedEvaluations = submittedData.length;
+    const totalEvaluations = totalJurors * TOTAL_GROUPS;
+    const finalByJuror = new Map();
+    data.forEach((r) => {
+      if (r.status !== "all_submitted") return;
+      const key = rowKey(r);
+      if (!finalByJuror.has(key)) finalByJuror.set(key, new Set());
+      finalByJuror.get(key).add(r.projectId);
+    });
+    const completedJurors = uniqueJurors.filter(
+      (j) => (finalByJuror.get(j.key)?.size || 0) >= TOTAL_GROUPS
+    ).length;
+    const editingKeys = new Set(
+      data
+        .filter((r) => r.status === "editing" || r.editingFlag === "editing")
+        .map((r) => rowKey(r))
+    );
+    const inProgressKeys = new Set(
+      data
+        .filter((r) => r.status === "in_progress")
+        .map((r) => rowKey(r))
+        .filter((k) => !editingKeys.has(k))
+    );
+    const inProgressJurors = inProgressKeys.size;
+    const editingJurors = editingKeys.size;
+    return {
+      completedJurors,
+      totalJurors,
+      completedEvaluations,
+      totalEvaluations,
+      inProgressJurors,
+      editingJurors,
+    };
+  }, [data, submittedData, uniqueJurors, rowKey]);
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -277,46 +379,59 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
       {/* Header */}
       <div className="form-header">
-        <button className="back-btn" onClick={onBack} aria-label="Back to home">
-          <HomeIcon />
-        </button>
-        <div>
-          <h2>Results Panel</h2>
-          <p>
-            {uniqueJurors.length} juror{uniqueJurors.length !== 1 ? "s" : ""}
-            {" · "}{completedData.length} completed
-            {" · "}{submittedData.length} final
-            {inProgressCount > 0 && (
-              <span className="live-indicator"> · {inProgressCount} in progress</span>
-            )}
-            {editingCount > 0 && (
-              <span className="editing-indicator"> · {editingCount} editing</span>
-            )}
-          </p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-          <button className="refresh-btn" onClick={fetchData} aria-label="Refresh" title="Refresh"><RefreshIcon /></button>
-          {lastRefresh && (
-            <span style={{ fontSize: 10, color: "#94a3b8" }}>
-              {lastRefresh.toLocaleTimeString("en-GB", {
-                hour: "2-digit", minute: "2-digit", second: "2-digit",
-              })}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Tab bar */}
-      <div className="tab-bar">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`tab ${activeTab === t.id ? "active" : ""}`}
-            onClick={() => setActiveTab(t.id)}
-          >
-            {t.label}
+        <div className="form-header-main">
+          <button className="back-btn" onClick={onBack} aria-label="Back to home">
+            <HomeIcon />
           </button>
-        ))}
+          <div>
+            <div className="results-title-row">
+              <h2>Results Panel</h2>
+              <button
+                className="results-toggle"
+                type="button"
+                aria-label={showStatus ? "Hide status metrics" : "Show status metrics"}
+                aria-expanded={showStatus}
+                aria-controls="results-status-bar"
+                onClick={() => setShowStatus((v) => !v)}
+              >
+                <span className={`results-toggle-icon${showStatus ? " open" : ""}`} aria-hidden="true">▾</span>
+              </button>
+            </div>
+          </div>
+          <div className="header-actions">
+            {lastRefresh && (
+              <span className="last-updated">
+                <ClockIcon />
+                {lastRefresh.toLocaleString("tr-TR", {
+                  timeZone: "Europe/Istanbul",
+                  day: "2-digit", month: "2-digit", year: "numeric",
+                  hour: "2-digit", minute: "2-digit",
+                }).replace(",", " ·")}
+              </span>
+            )}
+            <button className="refresh-btn" onClick={fetchData} aria-label="Refresh" title="Refresh"><RefreshIcon /></button>
+          </div>
+        </div>
+        {showStatus && <ResultsStatusBar id="results-status-bar" metrics={statusMetrics} />}
+
+        {/* Tab bar */}
+        <div className="tab-bar-wrap">
+          <div className="tab-bar">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={`tab ${activeTab === t.id ? "active" : ""}`}
+                onClick={() => setActiveTab(t.id)}
+              >
+                <t.icon />
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <span className="tab-scroll-hint" aria-hidden="true">
+            <ChevronRightIcon />
+          </span>
+        </div>
       </div>
 
       {/* Status messages */}
@@ -338,7 +453,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
             )}
             {pinResetStatus === "ok" && (
               <>
-                <div className="pin-reset-modal-icon">✅</div>
+                <div className="pin-reset-modal-icon ok">✅</div>
                 <div className="pin-reset-modal-msg">
                   PIN reset. <strong>{pinResetTarget.juryName}</strong> will receive a new PIN on next login.
                 </div>
@@ -346,7 +461,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
             )}
             {pinResetStatus === "error" && (
               <>
-                <div className="pin-reset-modal-icon">❌</div>
+                <div className="pin-reset-modal-icon error">❌</div>
                 <div className="pin-reset-modal-msg">
                   Could not reset PIN for <strong>{pinResetTarget.juryName}</strong>.
                 </div>
@@ -360,7 +475,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       {!loading && !error && !authError && (
         <div className="admin-body">
           {activeTab === "summary"   && <SummaryTab   ranked={ranked} submittedData={submittedData} />}
-          {activeTab === "dashboard" && <DashboardTab dashboardStats={dashboardStats} submittedData={submittedData} />}
+          {activeTab === "dashboard" && <DashboardTab dashboardStats={dashboardStats} submittedData={submittedData} lastRefresh={lastRefresh} loading={loading} error={error} />}
           {activeTab === "detail"    && <DetailsTab   data={data} jurors={uniqueJurors} jurorColorMap={jurorColorMap} />}
           {activeTab === "jurors"    && (
             <JurorsTab

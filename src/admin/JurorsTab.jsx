@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { PROJECTS } from "../config";
 import { formatTs, adminCompletionPct } from "./utils";
 import { StatusBadge } from "./components";
-import { ChevronDownIcon } from "../shared/Icons";
+import { CircleCheckBigIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -77,6 +77,17 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
             pct > 0     ? "#f97316" : "#e2e8f0";
 
           const isEditing = rows.some((r) => r.editingFlag === "editing");
+          const groups = PROJECT_LIST.map((p) => {
+            const row = rows.find((r) => r.projectId === p.id);
+            const normalizedStatus =
+              row?.status === "group_submitted" || row?.status === "all_submitted"
+                ? "submitted"
+                : row?.status || "not_started";
+            return { id: p.id, status: normalizedStatus };
+          });
+          const isCompleted =
+            groups.length > 0 &&
+            groups.every((g) => g.status === "submitted");
 
           const statusClass = isEditing
             ? "juror-card-editing"
@@ -96,10 +107,18 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                     )}
                   </div>
                   <div className="juror-header-actions">
-                    {isEditing
-                      ? <StatusBadge status={overall} editingFlag="editing" />
-                      : <StatusBadge status={overall} />
-                    }
+                    {isEditing ? (
+                      <StatusBadge status={overall} editingFlag="editing" />
+                    ) : isCompleted ? (
+                      <StatusBadge
+                        variant="completed"
+                        icon={<CircleCheckBigIcon />}
+                      >
+                        Completed
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge status={overall} />
+                    )}
                   </div>
                 </div>
 
@@ -171,9 +190,7 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                                 {grp?.name || `Group ${d.projectId}`}
                               </span>
                               {hasDetails && (
-                                <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
-                                  <ChevronDownIcon />
-                                </span>
+                                <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>▾</span>
                               )}
                             </div>
                           </div>

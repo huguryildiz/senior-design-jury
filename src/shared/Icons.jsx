@@ -8,9 +8,9 @@
 export function HomeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z" />
-      <polyline points="9 21 9 12 15 12 15 21" />
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   );
 }
@@ -59,6 +59,273 @@ export function UsersIcon() {
   );
 }
 
+export function UsersLucideIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  );
+}
+
+export function CheckCircleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
+  );
+}
+
+export function CheckCircle2Icon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function FlagIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 6 2 8 2 4-1 4-1V3s-1 1-4 1-6-2-8-2-4 1-4 1z"/>
+      <line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  );
+}
+
+export function BadgeCheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.85 8.62a4 4 0 1 1 7.29-5.17" />
+      <path d="M3.85 15.38a4 4 0 1 0 7.29 5.17" />
+      <path d="M20.15 8.62a4 4 0 1 0-7.29-5.17" />
+      <path d="M20.15 15.38a4 4 0 1 1-7.29 5.17" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function CircleCheckBigIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function ClockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
+export function HourglassIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 2h14" />
+      <path d="M5 22h14" />
+      <path d="M7 2c0 6 10 6 10 10s-10 4-10 10" />
+      <path d="M17 2c0 6-10 6-10 10s10 4 10 10" />
+    </svg>
+  );
+}
+export function PencilIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.85 2.85 0 1 1 4 4L7 21H3v-4L17 3z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  );
+}
+
+export function ListChecksIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 6 2 2 4-4" />
+      <path d="m3 12 2 2 4-4" />
+      <path d="m3 18 2 2 4-4" />
+      <path d="M11 6h10" />
+      <path d="M11 12h10" />
+      <path d="M11 18h10" />
+    </svg>
+  );
+}
+
+export function FilterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 3H2l8 9v7l4 2v-9l8-9z" />
+    </svg>
+  );
+}
+
+export function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
+
+export function ArrowUpDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21 16-4 4-4-4" />
+      <path d="M17 20V4" />
+      <path d="m3 8 4-4 4 4" />
+      <path d="M7 4v16" />
+    </svg>
+  );
+}
+
+export function ArrowUpIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 12 7-7 7 7" />
+      <path d="M12 19V5" />
+    </svg>
+  );
+}
+
+export function ArrowDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14" />
+      <path d="m19 12-7 7-7-7" />
+    </svg>
+  );
+}
+
+export function InfoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  );
+}
+
+export function CircleIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+
+export function TrophyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 4h8v3a4 4 0 0 1-8 0V4z"/>
+      <path d="M5 6h3v2a4 4 0 0 1-3 3"/>
+      <path d="M19 6h-3v2a4 4 0 0 0 3 3"/>
+      <path d="M12 11v4"/>
+      <path d="M8 19h8"/>
+      <path d="M10 15h4"/>
+    </svg>
+  );
+}
+
+export function ChartIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18"/>
+      <path d="M7 14l4-4 3 3 5-6"/>
+    </svg>
+  );
+}
+
+export function ClipboardIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="4" rx="1"/>
+      <path d="M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/>
+    </svg>
+  );
+}
+
+export function GridIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/>
+      <rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/>
+      <rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  );
+}
+
+export function GraduationCapIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10v6" />
+      <path d="M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c3 3 9 3 12 0v-5" />
+    </svg>
+  );
+}
+
+export function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7"/>
+      <path d="M20 20l-3.5-3.5"/>
+    </svg>
+  );
+}
+
+export function XIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12M18 6l-12 12"/>
+    </svg>
+  );
+}
+
+export function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12l4 4 10-10"/>
+    </svg>
+  );
+}
+
 // Medal SVGs — fill the 52×52 rank-num container exactly.
 // Ribbon tab at top + circular medal face.
 export function MedalGold() {
@@ -100,10 +367,11 @@ export function MedalBronze() {
 export function RefreshIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M23 4v6h-6"/>
-      <path d="M1 20v-6h6"/>
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2v6h-6"/>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+      <path d="M3 22v-6h6"/>
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
     </svg>
   );
 }

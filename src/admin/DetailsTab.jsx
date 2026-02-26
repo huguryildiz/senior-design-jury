@@ -5,8 +5,9 @@
 
 import { useState, useMemo } from "react";
 import { PROJECTS } from "../config";
-import { cmp, exportCSV, exportXLSX, formatTs, tsToMillis } from "./utils";
+import { cmp, exportXLSX, formatTs, tsToMillis } from "./utils";
 import { StatusBadge } from "./components";
+import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDownIcon, ArrowUpIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -25,7 +26,7 @@ function displayScore(val) {
 
 const STATUS_OPTIONS = [
   { key: "in_progress",     label: "In Progress" },
-  { key: "group_submitted", label: "Completed"   },
+  { key: "group_submitted", label: "Submitted"   },
   { key: "all_submitted",   label: "Final"       },
   { key: "editing",         label: "Editing"     },
 ];
@@ -37,38 +38,6 @@ const SCORE_COLS = [
   { key: "teamwork",  label: "Teamwork /10"  },
   { key: "total",     label: "Total"         },
 ];
-
-// ── Inline SVG icons ─────────────────────────────────────────
-const SortBothSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M3 4.5L6 1.5L9 4.5"/><path d="M3 7.5L6 10.5L9 7.5"/>
-  </svg>
-);
-const SortAscSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M3 7.5L6 4.5L9 7.5"/>
-  </svg>
-);
-const SortDescSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M3 4.5L6 7.5L9 4.5"/>
-  </svg>
-);
-const FilterSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M2.2 3h9.6L8.2 7.2v3.6L5.8 12V7.2L2.2 3z" />
-  </svg>
-);
-const ClearSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M2 2L10 10M10 2L2 10"/>
-  </svg>
-);
-const DownloadSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
-    <path d="M7 2v7M4 6.5L7 9.5L10 6.5"/><path d="M2 11.5h10"/>
-  </svg>
-);
 
 // Stable per-row key matching AdminPanel's rowKey.
 function rowKey(r) {
@@ -164,7 +133,19 @@ export default function DetailsTab({ data, jurors }) {
     }
     if (filterStatuses.size > 0) {
       list = list.filter((r) => {
-        if (filterStatuses.has("editing") && r.editingFlag === "editing") return true;
+        const isEditing = r.editingFlag === "editing";
+        const isSubmittedStatus = r.status === "group_submitted" || r.status === "all_submitted";
+        const isInProgressStatus = r.status === "in_progress";
+
+        if (isEditing) {
+          if (filterStatuses.has("editing")) return true;
+          if (filterStatuses.has("in_progress") && isInProgressStatus) return true;
+          if (filterStatuses.has("group_submitted") && isSubmittedStatus) return true;
+          return false;
+        }
+
+        if (filterStatuses.has("group_submitted") && isSubmittedStatus) return true;
+        if (filterStatuses.has("in_progress") && isInProgressStatus) return true;
         return filterStatuses.has(r.status);
       });
     }
@@ -198,7 +179,7 @@ export default function DetailsTab({ data, jurors }) {
     else { setSortKey(key); setSortDir("desc"); }
   }
   const sortIcon = (key) =>
-    sortKey !== key ? <SortBothSVG /> : sortDir === "asc" ? <SortAscSVG /> : <SortDescSVG />;
+    sortKey !== key ? <ArrowUpDownIcon /> : sortDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />;
 
   return (
     <>
@@ -209,18 +190,13 @@ export default function DetailsTab({ data, jurors }) {
         </span>
         {hasAnyFilter && (
           <button className="filter-reset" onClick={resetFilters}>
-            <ClearSVG /> Clear Filters
+            ✕ Clear Filters
           </button>
         )}
         <button className="xlsx-export-btn" onClick={() => { void exportXLSX(rows); }}>
-          <DownloadSVG />
+          <DownloadIcon />
           <span className="export-label-long">Export Excel</span>
           <span className="export-label-short">Excel</span>
-        </button>
-        <button className="csv-export-btn" onClick={() => exportCSV(rows)}>
-          <DownloadSVG />
-          <span className="export-label-long">Export CSV</span>
-          <span className="export-label-short">CSV</span>
         </button>
       </div>
 
@@ -241,14 +217,14 @@ export default function DetailsTab({ data, jurors }) {
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <span className="col-sort-label" onClick={() => setSort("juryName")}>
-                    Juror <span className="sort-icon">{sortIcon("juryName")}</span>
+                    Juror
                   </span>
                   <div
                     className={`col-filter-hotspot${filterJuror !== "ALL" ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror"); }}
                     title="Filter by juror"
                   >
-                    <FilterSVG />
+                    <FilterIcon />
                   </div>
                 </div>
                 {activeFilterCol === "juror" && (
@@ -278,14 +254,14 @@ export default function DetailsTab({ data, jurors }) {
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <span className="col-sort-label" onClick={() => setSort("juryDept")}>
-                    Department <span className="sort-icon">{sortIcon("juryDept")}</span>
+                    Department
                   </span>
                   <div
                     className={`col-filter-hotspot${filterDept ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept"); }}
                     title="Filter by department"
                   >
-                    <FilterSVG />
+                    <FilterIcon />
                   </div>
                 </div>
                 {activeFilterCol === "dept" && (
@@ -313,14 +289,14 @@ export default function DetailsTab({ data, jurors }) {
               <th style={{ position: "relative", whiteSpace: "nowrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <span className="col-sort-label" onClick={() => setSort("projectId")}>
-                    Group <span className="sort-icon">{sortIcon("projectId")}</span>
+                    Group
                   </span>
                   <div
                     className={`col-filter-hotspot${filterGroup !== "ALL" ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("group"); }}
                     title="Filter by group"
                   >
-                    <FilterSVG />
+                    <FilterIcon />
                   </div>
                 </div>
                 {activeFilterCol === "group" && (
@@ -348,14 +324,14 @@ export default function DetailsTab({ data, jurors }) {
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <span className="col-sort-label" onClick={() => setSort("tsMs")}>
-                    Timestamp <span className="sort-icon">{sortIcon("tsMs")}</span>
+                    Timestamp
                   </span>
                   <div
                     className={`col-filter-hotspot${(dateFrom || dateTo) ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp"); }}
                     title="Filter by date"
                   >
-                    <FilterSVG />
+                    <FilterIcon />
                   </div>
                 </div>
                 {activeFilterCol === "timestamp" && (
@@ -382,7 +358,7 @@ export default function DetailsTab({ data, jurors }) {
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("status"); }}
                     title="Filter by status"
                   >
-                    <FilterSVG />
+                    <FilterIcon />
                   </div>
                 </div>
                 {activeFilterCol === "status" && (
@@ -425,7 +401,7 @@ export default function DetailsTab({ data, jurors }) {
                     onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments"); }}
                     title="Filter by comments"
                   >
-                    <FilterSVG />
+                    <FilterIcon />
                   </div>
                 </div>
                 {activeFilterCol === "comments" && (
@@ -467,19 +443,10 @@ export default function DetailsTab({ data, jurors }) {
                   <td className="cell-group" style={{ whiteSpace: "nowrap" }}>
                     <div
                       className="cell-group-wrap"
-                      title={grp?.desc ? `Group ${row.projectId} — ${grp.desc}` : `Group ${row.projectId}`}
+                      title={`Group ${row.projectId}`}
                       style={{ cursor: "default" }}
                     >
                       <strong className="cell-group-title">Group {row.projectId}</strong>
-                      {grp?.desc && (
-                        <span className="cell-group-desc" style={{
-                          display: "block", fontSize: 11, color: "#94a3b8",
-                          fontWeight: 400, maxWidth: 180,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}>
-                          {grp.desc}
-                        </span>
-                      )}
                     </div>
                   </td>
                   <td style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>
