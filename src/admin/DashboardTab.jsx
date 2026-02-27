@@ -170,6 +170,7 @@ export default function DashboardTab({ dashboardStats, submittedData, lastRefres
         <div className="dashboard-toolbar-left">
           <MudekBadge />
         </div>
+        <span className="dashboard-toolbar-divider" aria-hidden="true" />
         <button className="pdf-export-btn" onClick={handleExportPdf} disabled={exporting}>
           <DownloadIcon />
           {exporting ? "Preparing PDF…" : "Export PDF"}
@@ -177,35 +178,39 @@ export default function DashboardTab({ dashboardStats, submittedData, lastRefres
       </div>
 
       {/* Row 1: Outcome by Group — full width */}
-      <div className="dashboard-grid">
-        <div className="chart-span-2" id="chart-1">
+      <div className="dashboard-section-label" lang="en">Outcome Distribution</div>
+      <div className="dashboard-grid dashboard-row" data-row="1">
+        <div className="chart-span-2 chart-card dashboard-card" id="chart-1">
           <OutcomeByGroupChart stats={dashboardStats} />
         </div>
       </div>
 
       {/* Row 2: Programme Averages (left) + Radar (right) */}
-      <div className="dashboard-grid">
-        <div id="chart-2">
+      <div className="dashboard-section-label" lang="en">Programme Overview</div>
+      <div className="dashboard-grid dashboard-row" data-row="2">
+        <div className="chart-card dashboard-card" id="chart-2">
           <OutcomeOverviewChart data={submittedData} />
         </div>
-        <div id="chart-3">
+        <div className="chart-card dashboard-card" id="chart-3">
           <CompetencyRadarChart stats={dashboardStats} />
         </div>
       </div>
 
       {/* Row 3: Juror Consistency Heatmap — full width */}
-      <div className="dashboard-grid">
-        <div className="chart-span-2" id="chart-4">
+      <div className="dashboard-section-label" lang="en">Juror Consistency</div>
+      <div className="dashboard-grid dashboard-row" data-row="3">
+        <div className="chart-span-2 chart-card dashboard-card" id="chart-4">
           <JurorConsistencyHeatmap stats={dashboardStats} data={submittedData} />
         </div>
       </div>
 
       {/* Row 4: Boxplot (left) + Rubric Achievement (right) */}
-      <div className="dashboard-grid">
-        <div id="chart-5">
+      <div className="dashboard-section-label" lang="en">Criterion Analysis</div>
+      <div className="dashboard-grid dashboard-row" data-row="4">
+        <div className="chart-card dashboard-card" id="chart-5">
           <CriterionBoxPlotChart data={submittedData} />
         </div>
-        <div id="chart-6">
+        <div className="chart-card dashboard-card" id="chart-6">
           <RubricAchievementChart data={submittedData} />
         </div>
       </div>

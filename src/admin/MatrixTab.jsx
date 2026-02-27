@@ -18,6 +18,7 @@ import {
   PencilIcon,
   CircleCheckBigIcon,
   CircleIcon,
+  XIcon,
 } from "../shared/Icons";
 
 // ── Cell helpers ──────────────────────────────────────────────
@@ -25,7 +26,7 @@ import {
 const cellStyle = (entry) => {
   if (!entry) return { background: "#f8fafc", color: "#94a3b8" };
   if (entry.status === "all_submitted")   return { background: "#dcfce7", color: "#166534", fontWeight: 700 };
-  if (entry.status === "group_submitted") return { background: "#dcfce7", color: "#166534", fontWeight: 700 };
+  if (entry.status === "group_submitted") return { background: "#ecfdf3", color: "#16a34a", fontWeight: 600 };
   if (entry.status === "in_progress")     return { background: "#fef9c3", color: "#92400e" };
   return { background: "#f8fafc", color: "#94a3b8" };
 };
@@ -47,6 +48,8 @@ export default function MatrixTab({ data, jurors, groups }) {
   // Group column sort state
   const [sortGroupId,  setSortGroupId]  = useState(null);   // group id | null
   const [sortGroupDir, setSortGroupDir] = useState("desc");  // "desc" | "asc"
+  const [sortJurorDir, setSortJurorDir] = useState("asc");   // "asc" | "desc"
+  const [sortMode,     setSortMode]     = useState("juror"); // "juror" | "group"
 
   // Juror text filter
   const [jurorFilter,     setJurorFilter]     = useState("");
@@ -70,26 +73,34 @@ export default function MatrixTab({ data, jurors, groups }) {
     if (sortGroupId !== gId) {
       setSortGroupId(gId);
       setSortGroupDir("desc");
+      setSortMode("group");
     } else if (sortGroupDir === "desc") {
       setSortGroupDir("asc");
+      setSortMode("group");
     } else {
       setSortGroupId(null);
       setSortGroupDir("desc");
+      setSortMode("group");
     }
   }
 
   const groupSortIcon = (gId) => {
-    if (sortGroupId !== gId) return <ArrowUpDownIcon />;
+    if (sortMode !== "group" || sortGroupId !== gId) return <ArrowUpDownIcon />;
     return sortGroupDir === "desc" ? <ArrowDownIcon /> : <ArrowUpIcon />;
   };
-
-  function clearAllFilters() {
-    setJurorFilter("");
-    setActiveFilterCol(null);
+  const jurorSortIcon = () =>
+    sortMode !== "juror" ? <ArrowUpDownIcon /> : (sortJurorDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />);
+  function toggleJurorSort() {
+    if (sortMode !== "juror") {
+      setSortMode("juror");
+      setSortJurorDir("asc");
+    } else {
+      setSortJurorDir((d) => (d === "asc" ? "desc" : "asc"));
+    }
   }
 
   const visibleJurors = useMemo(() => {
-    let list = jurors.slice();
+    let list = jurors.slice().sort((a, b) => cmp(a.name, b.name));
 
     // Apply juror name text filter.
     if (jurorFilter) {
@@ -97,8 +108,13 @@ export default function MatrixTab({ data, jurors, groups }) {
       list = list.filter((j) => j.name.toLowerCase().includes(q));
     }
 
+    if (sortMode === "juror") {
+      list = list.slice().sort((a, b) =>
+        sortJurorDir === "asc" ? cmp(a.name, b.name) : cmp(b.name, a.name)
+      );
+    }
     // Sort by active group column (only all_submitted; missing/non-final → bottom).
-    if (sortGroupId !== null) {
+    if (sortMode === "group" && sortGroupId !== null) {
       list = [...list].sort((a, b) => {
         const ea = lookup[a.key]?.[sortGroupId];
         const eb = lookup[b.key]?.[sortGroupId];
@@ -114,10 +130,10 @@ export default function MatrixTab({ data, jurors, groups }) {
         return diff !== 0 ? diff : cmp(a.name, b.name); // stable tie-breaker
       });
     }
-    // Default order: jurors are alpha-sorted from AdminPanel.
+    // Default order: alpha-sorted by juror name (same comparator as DetailsTab).
 
     return list;
-  }, [jurors, jurorFilter, sortGroupId, sortGroupDir, lookup]);
+  }, [jurors, jurorFilter, sortGroupId, sortGroupDir, sortMode, sortJurorDir, lookup]);
 
   const jurorStatus = (jurorKey) => {
     const entries = groups.map((g) => {
@@ -170,34 +186,23 @@ export default function MatrixTab({ data, jurors, groups }) {
   return (
     <div className="matrix-wrap">
 
-      {/* Controls bar — only rendered when there's something to show */}
-      {(jurorFilter || visibleJurors.length < jurors.length) && (
-        <div className="matrix-controls">
-          {jurorFilter && (
-            <button className="matrix-clear-filters" onClick={clearAllFilters}>
-              ✕ Clear Filters
-            </button>
-          )}
-          {visibleJurors.length < jurors.length && (
-            <span style={{ fontSize: 12, color: "#3b82f6", fontWeight: 600 }}>
-              Showing {visibleJurors.length}/{jurors.length} jurors
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Info note + legend */}
-      <p className="matrix-info-note"><InfoIcon /> Averages include only <strong>completed</strong> submissions.</p>
+      {/* Legend */}
       <div className="matrix-subtitle">
-        <span className="matrix-legend-group matrix-icon-legend">
+        <div className="matrix-legend-row">
+          <span className="matrix-legend-label">Cells</span>
+          <span className="matrix-legend-item"><span className="matrix-legend-dot completed-dot"/>Completed</span>
+          <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
+          <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
+          <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
+        </div>
+        <div className="matrix-legend-row matrix-icon-legend">
+          <span className="matrix-legend-label">Juror</span>
           <span className="matrix-icon-legend-item">
             <span className="matrix-status-icon completed"><CircleCheckBigIcon /></span>
             Completed
           </span>
           <span className="matrix-icon-legend-item">
-            <span className="matrix-legend-icons">
-              <span className="matrix-legend-dot submitted-dot"/>
-            </span>
+            <span className="matrix-status-icon submitted"><CheckIcon /></span>
             Submitted
           </span>
           <span className="matrix-icon-legend-item">
@@ -205,17 +210,19 @@ export default function MatrixTab({ data, jurors, groups }) {
             Editing
           </span>
           <span className="matrix-icon-legend-item">
-            <span className="matrix-legend-icons">
-              <span className="matrix-legend-dot progress-dot"/>
-              <span className="matrix-status-icon in_progress"><HourglassIcon /></span>
-            </span>
+            <span className="matrix-status-icon in_progress"><HourglassIcon /></span>
             In Progress
           </span>
           <span className="matrix-icon-legend-item">
-            <span className="matrix-legend-dot empty-dot"/>
+            <span className="matrix-status-icon not_started"><CircleIcon /></span>
             Not Started
           </span>
-        </span>
+        </div>
+        {visibleJurors.length < jurors.length && (
+          <span className="matrix-legend-count">
+            Showing {visibleJurors.length}/{jurors.length} jurors
+          </span>
+        )}
       </div>
 
       {/* Close-layer: click outside filter popover to dismiss */}
@@ -233,7 +240,10 @@ export default function MatrixTab({ data, jurors, groups }) {
               {/* Juror column — text filter only */}
               <th className="matrix-corner">
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  Juror / Group
+                  <span className="col-sort-label" onClick={toggleJurorSort}>
+                    Juror / Group
+                    <span className="sort-icon">{jurorSortIcon()}</span>
+                  </span>
                   <button
                     className={`col-filter-hotspot${jurorFilter ? " active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); setActiveFilterCol((p) => p === "juror" ? null : "juror"); }}
@@ -242,17 +252,24 @@ export default function MatrixTab({ data, jurors, groups }) {
                 </div>
                 {activeFilterCol === "juror" && (
                   <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      autoFocus
-                      placeholder="Filter juror name…"
-                      value={jurorFilter}
-                      onChange={(e) => setJurorFilter(e.target.value)}
-                    />
-                    {jurorFilter && (
-                      <button className="col-filter-clear" onClick={() => { setJurorFilter(""); setActiveFilterCol(null); }}>
-                        Clear
-                      </button>
-                    )}
+                    <div className="matrix-filter-input">
+                      <input
+                        autoFocus
+                        placeholder="Filter juror name…"
+                        value={jurorFilter}
+                        onChange={(e) => setJurorFilter(e.target.value)}
+                      />
+                      {jurorFilter && (
+                        <button
+                          className="matrix-filter-clear"
+                          onClick={() => setJurorFilter("")}
+                          aria-label="Clear filter"
+                          title="Clear filter"
+                        >
+                          <XIcon />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </th>
@@ -322,6 +339,9 @@ export default function MatrixTab({ data, jurors, groups }) {
           </tfoot>
         </table>
       </div>
+
+      {/* Info note */}
+      <p className="matrix-info-note"><InfoIcon /> Averages include only <strong>completed</strong> submissions.</p>
     </div>
   );
 }

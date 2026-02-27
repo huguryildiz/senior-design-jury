@@ -26,7 +26,7 @@ import {
   TrophyIcon,
   ChartIcon,
   ClipboardIcon,
-  UserIcon,
+  UserCheckIcon,
   GridIcon,
   ClockIcon,
   ChevronRightIcon,
@@ -63,7 +63,7 @@ const TABS = [
   { id: "summary",   label: "Summary",   icon: TrophyIcon  },
   { id: "dashboard", label: "Dashboard", icon: ChartIcon   },
   { id: "detail",    label: "Details",   icon: ClipboardIcon },
-  { id: "jurors",    label: "Jurors",    icon: UserIcon    },
+  { id: "jurors",    label: "Jurors",    icon: UserCheckIcon    },
   { id: "matrix",    label: "Matrix",    icon: GridIcon    },
 ];
 
@@ -117,6 +117,8 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const [showStatus,  setShowStatus]  = useState(true);
   const [activeTab,   setActiveTab]   = useState("summary");
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [showTabHint, setShowTabHint] = useState(false);
+  const tabBarRef = useRef(null);
 
   // PIN reset feedback
   const [pinResetTarget, setPinResetTarget] = useState(null); // { juryName, juryDept }
@@ -199,6 +201,17 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     const id = setInterval(fetchData, AUTO_REFRESH);
     return () => clearInterval(id);
   }, []); // interval never needs to restart — passRef always has latest pass
+
+  useEffect(() => {
+    const el = tabBarRef.current;
+    if (!el) return;
+    const update = () => {
+      setShowTabHint(el.scrollWidth > el.clientWidth + 2);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [activeTab, showStatus]);
 
   // Lock body scroll while PIN reset modal is open.
   useEffect(() => {
@@ -381,43 +394,53 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       {/* Header */}
       <div className="form-header">
         <div className="form-header-main">
-          <button className="back-btn" onClick={onBack} aria-label="Back to home">
-            <HomeIcon />
-          </button>
-          <div>
-            <div className="results-title-row">
-              <h2>Results Panel</h2>
-              <button
-                className="results-toggle"
-                type="button"
-                aria-label={showStatus ? "Hide status metrics" : "Show status metrics"}
-                aria-expanded={showStatus}
-                aria-controls="results-status-bar"
-                onClick={() => setShowStatus((v) => !v)}
-              >
-                <span className={`results-toggle-icon${showStatus ? " open" : ""}`} aria-hidden="true">▾</span>
-              </button>
+          <div className="header-left">
+            <button className="back-btn" onClick={onBack} aria-label="Back to home">
+              <HomeIcon />
+            </button>
+            <div className="header-title">
+              <div className="results-title-row">
+                <h2>Results Panel</h2>
+                <button
+                  className="results-toggle"
+                  type="button"
+                  aria-label={showStatus ? "Hide status metrics" : "Show status metrics"}
+                  aria-expanded={showStatus}
+                  aria-controls="results-status-bar"
+                  onClick={() => setShowStatus((v) => !v)}
+                >
+                  <span className={`results-toggle-icon${showStatus ? " open" : ""}`} aria-hidden="true">▾</span>
+                </button>
+              </div>
             </div>
           </div>
-          <div className="header-actions">
+          <div className="header-right">
             {lastRefresh && (
               <span className="last-updated">
                 <ClockIcon />
-                {lastRefresh.toLocaleString("tr-TR", {
+                {lastRefresh.toLocaleString("en-GB", {
                   timeZone: "Europe/Istanbul",
-                  day: "2-digit", month: "2-digit", year: "numeric",
-                  hour: "2-digit", minute: "2-digit",
-                }).replace(",", " ·")}
+                  day: "2-digit", month: "short", year: "numeric",
+                  hour: "2-digit", minute: "2-digit", second: "2-digit",
+                  hour12: false,
+                })}
               </span>
             )}
-            <button className="refresh-btn" onClick={fetchData} aria-label="Refresh" title="Refresh"><RefreshIcon /></button>
+            <button
+              className={`refresh-btn${loading ? " is-loading" : ""}`}
+              onClick={fetchData}
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              <RefreshIcon />
+            </button>
           </div>
         </div>
         {showStatus && <ResultsStatusBar id="results-status-bar" metrics={statusMetrics} />}
 
         {/* Tab bar */}
         <div className="tab-bar-wrap">
-          <div className="tab-bar">
+          <div className="tab-bar" ref={tabBarRef}>
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -429,9 +452,11 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               </button>
             ))}
           </div>
-          <span className="tab-scroll-hint" aria-hidden="true">
-            <ChevronRightIcon />
-          </span>
+          {showTabHint && (
+            <span className="tab-scroll-hint" aria-hidden="true">
+              <ChevronRightIcon />
+            </span>
+          )}
         </div>
       </div>
 

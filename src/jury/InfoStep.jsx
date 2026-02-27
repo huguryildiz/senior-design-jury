@@ -11,7 +11,7 @@
 // and delegates everything else downstream.
 // ============================================================
 
-import { HomeIcon } from "../shared/Icons";
+import { HomeIcon, LockIcon, AlertCircleIcon } from "../shared/Icons";
 
 export default function InfoStep({
   juryName, setJuryName,
@@ -29,9 +29,11 @@ export default function InfoStep({
         <button className="back-btn" onClick={onBack} aria-label="Back to home">
           <HomeIcon />
         </button>
-        <div>
-          <h2>Evaluation Form</h2>
-          <p>EE 491/492 — Senior Project Poster Day</p>
+        <div className="form-title-wrap">
+          <div className="form-title-row">
+            <h2>Evaluation Form</h2>
+          </div>
+          <p>EE 492 — Senior Project Poster Day</p>
         </div>
       </div>
 
@@ -40,8 +42,11 @@ export default function InfoStep({
 
         {/* Identity is locked once evaluation starts */}
         <div className="identity-warning">
-          ⚠️ Please enter your name and department carefully. Once you begin the
-          evaluation, these cannot be changed.
+          <span className="warning-icon" aria-hidden="true"><AlertCircleIcon /></span>
+          <span>
+            Please enter your name and department carefully. Once you begin the
+            evaluation, these cannot be changed.
+          </span>
         </div>
 
         <div className="field">
@@ -68,9 +73,14 @@ export default function InfoStep({
         </div>
 
         <p className="draft-device-note">
-          ℹ️ Scores save automatically when you fill in each field or navigate between groups.
-          Your PIN lets you continue from any device.
+          ℹ️ Scores save automatically as you fill each field or switch groups. Next, we’ll authenticate your session and
+          ask for your PIN so you can continue from any device.
         </p>
+
+        <div className="trust-note">
+          <LockIcon />
+          Authenticating session before PIN verification
+        </div>
 
         <button
           className="btn-primary"

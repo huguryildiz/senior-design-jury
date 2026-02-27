@@ -282,11 +282,12 @@ export function OutcomeOverviewChart({ data }) {
                   x1={padL} y1={y} x2={W - padR} y2={y}
                   stroke={v === 0 ? "#cbd5e1" : "#e2e8f0"} strokeWidth={v === 0 ? 1.2 : 1}
                 />
-                <text x={padL - 4} y={y + 3.5} textAnchor="end" fontSize="7" fill="#94a3b8">{v}</text>
+                <text className="chart-y-tick" x={padL - 4} y={y + 3.5} textAnchor="end" fontSize="7" fill="#94a3b8">{v}</text>
               </g>
             );
           })}
           <text
+            className="chart-y-label"
             x="10"
             y={padTop + chartH / 2}
             transform={`rotate(-90 10 ${padTop + chartH / 2})`}
@@ -341,6 +342,7 @@ export function OutcomeOverviewChart({ data }) {
 
                 {/* Value label inside bar (numeric only) */}
                 <text
+                  className="chart-bar-value"
                   x={cx}
                   y={topY + barHpx / 2 + 3}
                   textAnchor="middle"
@@ -356,6 +358,7 @@ export function OutcomeOverviewChart({ data }) {
 
                 {/* X-axis label */}
                 <text
+                  className="chart-x-label"
                   x={cx} y={padTop + chartH + 13}
                   textAnchor="middle" fontSize="8.5" fill="#374151" fontWeight="500"
                 >

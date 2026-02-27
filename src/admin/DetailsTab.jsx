@@ -497,7 +497,7 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${filterJuror !== "ALL" ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("juror", e); }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("juror", e); }}
                     title="Filter by juror"
                   >
                     <FilterIcon />
@@ -513,7 +513,7 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${filterDept !== "ALL" ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("dept", e); }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("dept", e); }}
                     title="Filter by department"
                   >
                     <FilterIcon />
@@ -529,7 +529,7 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${filterGroup !== "ALL" ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("group", e); }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("group", e); }}
                     title="Filter by group"
                   >
                     <FilterIcon />
@@ -545,7 +545,7 @@ export default function DetailsTab({ data, jurors }) {
                   </span>
                   <div
                     className={`col-filter-hotspot${(dateFrom || dateTo) ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("timestamp", e); }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("timestamp", e); }}
                     title="Filter by date"
                   >
                     <FilterIcon />
@@ -556,10 +556,12 @@ export default function DetailsTab({ data, jurors }) {
               {/* Status — filter only (no sort) */}
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span>Status</span>
+                  <span className="col-sort-label" onClick={() => setSort("status")}>
+                    Status
+                  </span>
                   <div
                     className={`col-filter-hotspot${filterStatuses.size > 0 ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("status", e); }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("status", e); }}
                     title="Filter by status"
                   >
                     <FilterIcon />
@@ -582,7 +584,7 @@ export default function DetailsTab({ data, jurors }) {
                   <span>Comments</span>
                   <div
                     className={`col-filter-hotspot${filterComment ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFilterCol("comments", e); }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("comments", e); }}
                     title="Filter by comments"
                   >
                     <FilterIcon />

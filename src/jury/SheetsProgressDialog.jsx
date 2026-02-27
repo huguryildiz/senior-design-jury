@@ -15,6 +15,7 @@
 // ============================================================
 
 import { PROJECTS } from "../config";
+import { BadgeCheckIcon, ClipboardIcon, HourglassIcon, SaveIcon } from "../shared/Icons";
 
 // Status label + colour for each row returned by myscores.
 function rowStatusChip(status) {
@@ -33,9 +34,9 @@ export default function SheetsProgressDialog({ progress, onConfirm, onFresh }) {
       <div className="spd-overlay">
         <div className="spd-card">
           <div className="spd-header">
-            <div className="spd-icon">⏳</div>
+            <div className="spd-icon spd-icon-animated" aria-hidden="true"><HourglassIcon /></div>
             <div>
-              <div className="spd-title">Checking your progress…</div>
+              <div className="spd-title">Authenticating your session…</div>
               <div className="spd-sub">Connecting to server</div>
             </div>
           </div>
@@ -53,7 +54,9 @@ export default function SheetsProgressDialog({ progress, onConfirm, onFresh }) {
 
         {/* Header */}
         <div className="spd-header">
-          <div className="spd-icon">{allSubmitted ? "✅" : hasData ? "☁️" : "📋"}</div>
+          <div className="spd-icon spd-icon-state" aria-hidden="true">
+            {allSubmitted ? <BadgeCheckIcon /> : hasData ? <SaveIcon /> : <ClipboardIcon />}
+          </div>
           <div>
             <div className="spd-title">
               {allSubmitted

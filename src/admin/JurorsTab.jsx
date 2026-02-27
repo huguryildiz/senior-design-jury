@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { PROJECTS } from "../config";
-import { formatTs, adminCompletionPct } from "./utils";
+import { formatTs, adminCompletionPct, cmp } from "./utils";
 import { StatusBadge } from "./components";
-import { CircleCheckBigIcon } from "../shared/Icons";
+import { CircleCheckBigIcon, SearchIcon, XIcon, UsersRoundIcon, FolderKanbanIcon, ClockIcon, UserCheckIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -32,9 +32,12 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
   }
 
   const filtered = useMemo(() => {
+    const list = jurorStats
+      .slice()
+      .sort((a, b) => cmp(a.jury, b.jury));
     const q = debouncedQuery.trim().toLowerCase();
-    if (!q) return jurorStats;
-    return jurorStats.filter((s) =>
+    if (!q) return list;
+    return list.filter((s) =>
       s.jury.toLowerCase().includes(q) ||
       (s.dept || s.latestRow?.juryDept || "").toLowerCase().includes(q)
     );
@@ -45,15 +48,21 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
       {/* Search bar */}
       <div className="juror-filter-bar">
         <div className="juror-search-wrap">
+          <span className="juror-search-icon" aria-hidden="true"><SearchIcon /></span>
           <input
             className="juror-search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="🔍 Search by name or department…"
+            placeholder="Search by name or department…"
           />
           {searchQuery && (
-            <button className="juror-search-clear" onClick={() => setSearchQuery("")}>
-              ✕
+            <button
+              className="juror-search-clear"
+              onClick={() => setSearchQuery("")}
+              aria-label="Clear search"
+              title="Clear search"
+            >
+              <XIcon />
             </button>
           )}
         </div>
@@ -101,10 +110,13 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
               <div className="juror-card-header">
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="juror-name" style={{ wordBreak: "break-word" }}>
-                    👤 {jury}
-                    {latestRow?.juryDept && (
-                      <span className="juror-dept-inline"> ({latestRow.juryDept})</span>
-                    )}
+                    <span className="juror-name-icon" aria-hidden="true"><UserCheckIcon /></span>
+                    <span className="juror-name-text">
+                      {jury}
+                      {latestRow?.juryDept && (
+                        <span className="juror-dept-inline"> ({latestRow.juryDept})</span>
+                      )}
+                    </span>
                   </div>
                   <div className="juror-header-actions">
                     {isEditing ? (
@@ -197,7 +209,10 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                           {/* RIGHT: KPI stack */}
                           <div className="juror-row-right">
                             {d.timestamp && (
-                              <span className="juror-row-ts">{formatTs(d.timestamp)}</span>
+                              <span className="juror-row-ts">
+                                <span className="juror-row-ts-icon" aria-hidden="true"><ClockIcon /></span>
+                                {formatTs(d.timestamp)}
+                              </span>
                             )}
                             <StatusBadge status={d.status} editingFlag={d.editingFlag} />
                             {(d.status === "all_submitted" || d.status === "group_submitted") && (
@@ -219,11 +234,15 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                         >
                           <div className="group-accordion-panel-inner juror-accordion-inner">
                             {grp?.desc && (
-                              <span className="juror-row-desc">{grp.desc}</span>
+                              <span className="juror-row-desc group-card-desc">
+                                <span className="group-card-desc-icon" aria-hidden="true"><FolderKanbanIcon /></span>
+                                <span className="group-card-desc-text">{grp.desc}</span>
+                              </span>
                             )}
                             {grp?.students?.length > 0 && (
-                              <span className="juror-row-students">
-                                👥 {grp.students.join(" · ")}
+                              <span className="juror-row-students group-card-students">
+                                <span className="group-card-students-icon" aria-hidden="true"><UsersRoundIcon /></span>
+                                <span className="group-card-students-text">{grp.students.join(" · ")}</span>
                               </span>
                             )}
                           </div>

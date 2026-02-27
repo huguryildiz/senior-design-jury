@@ -128,48 +128,116 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gray-100);
+  background: radial-gradient(circle at 30% 20%, #2f4db3 0%, #1e3a8a 60%, #0f172a 100%);
   padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.lock-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.35) 70%);
+  pointer-events: none;
 }
 .lock-card {
   background: white;
-  border-radius: 20px;
-  padding: 40px;
+  border-radius: 24px;
+  padding: 48px;
   width: 100%;
-  max-width: 380px;
-  box-shadow: var(--shadow-lg);
+  max-width: 420px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   text-align: center;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  z-index: 1;
 }
-.lock-icon    { font-size: 40px; }
-.lock-card h2 { font-size: 22px; font-weight: 700; }
-.lock-card p  { color: var(--gray-500); font-size: 14px; margin-bottom: 4px; }
+.lock-icon svg { width: 40px; height: 40px; color: #1e3a8a; opacity: 0.85; }
+.lock-title { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: #0f172a; }
+.lock-subtitle  { color: #64748b; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.lock-input-wrap {
+  position: relative;
+  width: 100%;
+}
 .lock-card input {
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius);
+  height: 56px;
+  padding: 0 46px 0 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
   font-size: 16px;
   font-family: 'DM Sans', sans-serif;
   outline: none;
-  text-align: center;
-  letter-spacing: .1em;
+  text-align: left;
+  letter-spacing: normal;
+  background: #f8fafc;
+  transition: all 150ms ease;
 }
-.lock-card input:focus { border-color: var(--blue); }
+.lock-card input:focus {
+  border-color: #3b5bdb;
+  box-shadow: 0 0 0 3px rgba(59,91,219,0.15);
+  background: #ffffff;
+}
+.lock-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: #94a3b8;
+}
+.lock-toggle:hover { color: #475569; }
+.lock-toggle svg { width: 18px; height: 18px; }
+.lock-login-btn {
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3b5bdb, #274cdb);
+  box-shadow: 0 12px 24px rgba(37,76,219,0.25);
+  transition: all 150ms ease;
+}
+.lock-login-btn:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 16px 30px rgba(37,76,219,0.32);
+}
+.lock-login-btn:disabled { opacity: 0.6; box-shadow: none; }
+.lock-back-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 6px 0;
+  transition: color 150ms ease;
+}
+.lock-back-btn:hover { color: #334155; text-decoration: underline; }
+.lock-footnote {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
+}
 
 /* Login error banner — shown inside lock-card on bad password */
 .login-error {
-  background: var(--red-light);
-  color: var(--red);
-  border: 1px solid #fca5a5;
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #dc2626;
+  font-size: 14px;
   font-weight: 500;
   text-align: center;
 }
+.login-error svg { width: 16px; height: 16px; }
 
 /* ── Shared utility ────────────────────────────────────────── */
 .loading   { text-align: center; padding: 40px; color: var(--gray-500); }

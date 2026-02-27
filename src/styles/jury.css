@@ -6,19 +6,44 @@
 /* ── Shared form screen shell ───────────────────────────────── */
 .form-screen {
   min-height: 100vh;
-  background: var(--gray-50);
+  background: transparent;
   display: flex;
   flex-direction: column;
-  max-width: 820px;
+  max-width: 900px;
   margin: 0 auto;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+}
+.form-screen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1000px 600px at 20% -10%, #1e3a8a 0%, transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, #1d4ed8 0%, transparent 60%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  z-index: -2;
+}
+.form-screen::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  opacity: 0.18;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* Sticky header bar (used by InfoStep) */
 .form-header {
-  background: white;
-  border-bottom: 1px solid var(--gray-200);
+  background: rgba(255,255,255,0.92);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   padding: 16px 20px;
   display: flex;
   align-items: center;
@@ -27,55 +52,81 @@
   top: 0;
   z-index: 10;
 }
-.form-header h2  { font-size: 18px; font-weight: 700; line-height: 1.2; }
-.form-header p   { font-size: 13px; color: var(--gray-500); }
+.form-title-wrap { display: flex; flex-direction: column; gap: 4px; }
+.form-title-row  { display: inline-flex; align-items: center; gap: 8px; }
+.form-title-icon svg { width: 18px; height: 18px; color: #1e3a8a; }
+.form-header h2  { font-size: 24px; font-weight: 700; line-height: 1.2; color: #0f172a; }
+.form-header p   { font-size: 13px; color: #64748b; }
 .form-header > div:nth-child(2) { flex: 1; }
 
 /* Back / home icon button */
 .back-btn {
-  background: var(--gray-100);
-  border: none;
-  border-radius: 8px;
-  width: 36px;
-  height: 36px;
+  background: #f1f5f9;
+  border: 1px solid #d5dde8;
+  border-radius: 12px;
+  width: 40px;
+  height: 40px;
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gray-700);
+  color: #334155;
   flex-shrink: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
-.back-btn:hover { background: var(--gray-200); }
+.back-btn:hover { background: #e2e8f0; box-shadow: 0 6px 14px rgba(15,23,42,0.08); transform: translateY(-1px); }
+.back-btn svg { width: 18px; height: 18px; }
 
 /* ── Info card (identity form, PIN card) ────────────────────── */
 .info-card {
-  background: white;
-  margin: 20px auto;
-  max-width: 520px;
-  width: min(520px, 92vw);
-  border-radius: var(--radius);
-  padding: 28px;
-  box-shadow: var(--shadow);
+  background: rgba(255,255,255,0.95);
+  margin: 28px auto;
+  max-width: 680px;
+  width: min(680px, 92vw);
+  border-radius: 16px;
+  padding: 36px 40px;
+  box-shadow: 0 10px 30px rgba(0,30,80,0.08);
+  border: 1px solid rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
-.info-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.info-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 2px; color: #0f172a; }
+
+/* Primary action button (form screens) */
+.form-screen .btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 14px 32px rgba(37,99,235,0.28);
+  transition: all 0.25s ease;
+}
+.form-screen .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 18px 40px rgba(37,99,235,0.35);
+  transform: translateY(-2px);
+}
+.form-screen .btn-primary:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+}
 
 /* Labelled input field */
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+.field label { font-size: 13px; font-weight: 600; color: #334155; }
 .req { color: #ef4444; }
 .field input {
-  padding: 11px 14px;
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius);
+  padding: 12px 16px;
+  min-height: 50px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
   font-size: 15px;
   font-family: 'DM Sans', sans-serif;
   outline: none;
+  background: #f8fafc;
 }
-.field input:focus { border-color: var(--blue); }
+.field input::placeholder { color: #94a3b8; }
+.field input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); background: #fff; }
 .field input.invalid {
   border-color: rgba(220,38,38,0.75) !important;
   background: rgba(254,226,226,0.55);
@@ -83,18 +134,50 @@
 
 /* Identity lock warning */
 .identity-warning {
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 8px;
+  background: #fff8ed;
+  border: 1px solid #f1e3c7;
+  border-left: 3px solid #e7c07a;
+  border-radius: 12px;
   padding: 10px 14px;
-  font-size: 13px;
-  color: #92400e;
+  font-size: 12.5px;
+  color: #8a5b2a;
   line-height: 1.5;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
 }
+.identity-warning .warning-icon svg { width: 14px; height: 14px; color: #c1872a; margin-top: 2px; }
 
 /* Cloud status indicators on InfoStep */
 .cloud-checking   { font-size: 13px; color: #64748b; padding: 8px 0; }
 .draft-device-note { font-size: 12px; color: #94a3b8; margin-bottom: 14px; line-height: 1.5; }
+.trust-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+.trust-note svg { width: 14px; height: 14px; color: #64748b; }
+
+/* Primary action button (form screens) */
+.form-screen .btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-radius: 12px;
+  min-height: 52px;
+  font-weight: 600;
+  box-shadow: 0 10px 24px rgba(37,99,235,0.25);
+  transition: all 0.2s ease;
+}
+.form-screen .btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(37,99,235,0.32);
+}
+.form-screen .btn-primary:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+}
 
 /* Cloud draft banner (in-progress progress found) */
 .cloud-draft-banner {
@@ -748,34 +831,52 @@
 .spd-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 300;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  animation: spdFadeIn 0.18s ease;
 }
 
 .spd-card {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.98);
   border-radius: 20px;
-  padding: 28px 24px 24px;
-  width: min(440px, 100%);
+  padding: 30px;
+  width: min(520px, 100%);
   display: flex;
   flex-direction: column;
   gap: 18px;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  animation: spdCardIn 0.18s ease;
 }
 
 .spd-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
 }
-.spd-icon  { font-size: 32px; line-height: 1; flex-shrink: 0; }
-.spd-title { font-size: 17px; font-weight: 700; color: #0f172a; }
-.spd-sub   { font-size: 13px; color: #64748b; margin-top: 3px; }
+.spd-icon  { font-size: 32px; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.spd-icon svg {
+  width: 30px;
+  height: 30px;
+  color: #1e3a8a;
+}
+.spd-icon-animated svg {
+  animation: spdSpin 1.5s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0 2px 8px rgba(30, 58, 138, 0.25));
+}
+.spd-icon-state svg {
+  width: 26px;
+  height: 26px;
+  color: #1e3a8a;
+}
+.spd-title { font-size: 19px; font-weight: 700; color: #0f172a; }
+.spd-sub   { font-size: 13px; color: #64748b; margin-top: 4px; }
 
 /* Per-group status rows */
 .spd-list {
@@ -829,6 +930,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@keyframes spdSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes spdFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes spdCardIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── Session-kicked dialog ──────────────────────────────────── */
