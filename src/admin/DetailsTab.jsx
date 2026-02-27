@@ -117,6 +117,7 @@ export default function DetailsTab({ data, jurors }) {
   const [filterStatuses, setFilterStatuses] = useState(new Set());
   const [dateFrom,       setDateFrom]       = useState("");
   const [dateTo,         setDateTo]         = useState("");
+  const [dateError,      setDateError]      = useState(null);
   const [filterComment,  setFilterComment]  = useState("");
   const [sortKey,        setSortKey]        = useState("tsMs");
   const [sortDir,        setSortDir]        = useState("desc");
@@ -164,6 +165,22 @@ export default function DetailsTab({ data, jurors }) {
     };
   }, []);
 
+  const isInvalidRange = useMemo(() => {
+    if (!dateFrom || !dateTo) return false;
+    const fromMs = new Date(dateFrom).getTime();
+    const toMs = new Date(dateTo).getTime();
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return false;
+    return fromMs > toMs;
+  }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (isInvalidRange) {
+      setDateError("The 'From' date cannot be later than the 'To' date.");
+    } else {
+      setDateError(null);
+    }
+  }, [isInvalidRange]);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filterJuror !== "ALL") count += 1;
@@ -183,6 +200,7 @@ export default function DetailsTab({ data, jurors }) {
     setFilterStatuses(new Set());
     setDateFrom("");
     setDateTo("");
+    setDateError(null);
     setFilterComment("");
     setSortKey("tsMs");
     setSortDir("desc");
@@ -249,7 +267,7 @@ export default function DetailsTab({ data, jurors }) {
         return false;
       });
     }
-    if (dateFrom || dateTo) {
+    if ((dateFrom || dateTo) && !isInvalidRange) {
       list = list.filter((r) => {
         const ms = r.tsMs || tsToMillis(r.timestamp);
         return ms >= fromMs && ms <= toMs;
@@ -360,6 +378,29 @@ export default function DetailsTab({ data, jurors }) {
       };
     }
     if (activeFilterCol === "timestamp") {
+      const handleFromChange = (val) => {
+        setDateFrom(val);
+        if (dateTo && val && new Date(val).getTime() > new Date(dateTo).getTime()) {
+          setDateError("The 'From' date cannot be later than the 'To' date.");
+        } else {
+          setDateError(null);
+        }
+      };
+      const handleToChange = (val) => {
+        setDateTo(val);
+        if (dateFrom && val && new Date(dateFrom).getTime() > new Date(val).getTime()) {
+          setDateError("The 'From' date cannot be later than the 'To' date.");
+        } else {
+          setDateError(null);
+        }
+      };
+      const handleDateBlur = () => {
+        if (dateFrom && dateTo && new Date(dateFrom).getTime() > new Date(dateTo).getTime()) {
+          setDateError("The 'From' date cannot be later than the 'To' date.");
+        } else {
+          setDateError(null);
+        }
+      };
       return {
         className: `col-filter-popover col-filter-popover-portal col-filter-popover-timestamp${isMobile ? " is-centered" : ""}`,
         contentKey: `${dateFrom}|${dateTo}`,
@@ -368,12 +409,32 @@ export default function DetailsTab({ data, jurors }) {
           <>
             <div className="timestamp-field">
               <label>From</label>
-              <input autoFocus type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <input
+                autoFocus
+                type="date"
+                value={dateFrom}
+                onChange={(e) => handleFromChange(e.target.value)}
+                onBlur={handleDateBlur}
+                className={dateError ? "is-invalid" : ""}
+                aria-invalid={!!dateError}
+              />
             </div>
             <div className="timestamp-field">
               <label>To</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => handleToChange(e.target.value)}
+                onBlur={handleDateBlur}
+                className={dateError ? "is-invalid" : ""}
+                aria-invalid={!!dateError}
+              />
             </div>
+            {dateError && (
+              <div className="timestamp-error" role="alert">
+                {dateError}
+              </div>
+            )}
             {isMobile ? (
               <div className="timestamp-actions">
                 {(dateFrom || dateTo) && (
@@ -381,7 +442,7 @@ export default function DetailsTab({ data, jurors }) {
                     Clear
                   </button>
                 )}
-                <button className="timestamp-done-btn" onClick={closePopover}>
+                <button className="timestamp-done-btn" onClick={closePopover} disabled={!!dateError}>
                   Done
                 </button>
               </div>

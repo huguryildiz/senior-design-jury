@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { PROJECTS } from "../config";
 import { formatTs, adminCompletionPct, cmp } from "./utils";
 import { StatusBadge } from "./components";
-import { CircleCheckBigIcon, SearchIcon, XIcon, UsersRoundIcon, FolderKanbanIcon, ClockIcon, UserCheckIcon } from "../shared/Icons";
+import { CircleCheckBigIcon, SearchIcon, XIcon, UsersRoundIcon, FolderKanbanIcon, ClockIcon, UserCheckIcon, ChevronDownIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -202,7 +202,9 @@ export default function JurorsTab({ jurorStats, onPinReset }) {
                                 {grp?.name || `Group ${d.projectId}`}
                               </span>
                               {hasDetails && (
-                                <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>▾</span>
+                                <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
+                                  <ChevronDownIcon />
+                                </span>
                               )}
                             </div>
                           </div>

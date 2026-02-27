@@ -29,6 +29,7 @@ import {
   UserCheckIcon,
   GridIcon,
   ClockIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
 } from "./shared/Icons";
 import SummaryTab    from "./admin/SummaryTab";
@@ -76,34 +77,63 @@ function ResultsStatusBar({ metrics, id }) {
     inProgressJurors,
     editingJurors,
   } = metrics;
+  const safeTotalJurors = Number.isFinite(totalJurors) ? Math.max(0, totalJurors) : 0;
+  const safeCompletedJurors = Number.isFinite(completedJurors)
+    ? Math.min(Math.max(0, completedJurors), safeTotalJurors)
+    : 0;
+  const safeInProgressJurors = Number.isFinite(inProgressJurors) ? Math.max(0, inProgressJurors) : 0;
+  const safeEditingJurors = Number.isFinite(editingJurors) ? Math.max(0, editingJurors) : 0;
+  const safeTotalEvaluations = Number.isFinite(totalEvaluations) ? Math.max(0, totalEvaluations) : 0;
+  const safeCompletedEvaluations = Number.isFinite(completedEvaluations)
+    ? Math.min(Math.max(0, completedEvaluations), safeTotalEvaluations)
+    : 0;
+  const isEmpty =
+    safeTotalJurors === 0 &&
+    safeCompletedJurors === 0 &&
+    safeInProgressJurors === 0 &&
+    safeEditingJurors === 0;
+  const jurorTheme = isEmpty
+    ? "empty"
+    : (safeInProgressJurors === 0 && safeEditingJurors === 0 ? "completed" : "inprogress");
+  const evalTheme = safeTotalEvaluations === 0
+    ? "empty"
+    : (safeCompletedEvaluations === safeTotalEvaluations ? "completed" : "inprogress");
+  const jurorValue = (v) => (isEmpty ? "—" : v);
+  const evalValue = safeTotalEvaluations === 0 ? "—" : `${safeCompletedEvaluations}/${safeTotalEvaluations}`;
   return (
     <div id={id} className="results-status-bar" role="group" aria-label="Results status metrics">
-      <span className="status-chip status-jurors">
-        <UsersLucideIcon />
-        <span className="status-label">Jurors</span>
-        <span className="status-value">{totalJurors}</span>
+      <span
+        className={`status-chip status-chip--${jurorTheme}`}
+        aria-label={`Jurors: total ${safeTotalJurors}, completed ${safeCompletedJurors}, in progress ${safeInProgressJurors}, editing ${safeEditingJurors}`}
+      >
+        <span className="status-block">
+          <UsersLucideIcon />
+          <span className="status-value">{jurorValue(safeTotalJurors)}</span>
+        </span>
         <span className="status-sep" aria-hidden="true">·</span>
-        <span className="status-breakdown">
-          <span className="status-breakdown-item">
-            <CheckCircle2Icon />
-            {completedJurors}
-          </span>
-          <span className="status-sep" aria-hidden="true">·</span>
-          <span className="status-breakdown-item">
-            <HourglassIcon />
-            {inProgressJurors}
-          </span>
-          <span className="status-sep" aria-hidden="true">·</span>
-          <span className="status-breakdown-item">
-            <PencilIcon />
-            {editingJurors}
-          </span>
+        <span className="status-block">
+          <CheckCircle2Icon />
+          <span className="status-value">{jurorValue(safeCompletedJurors)}</span>
+        </span>
+        <span className="status-sep" aria-hidden="true">·</span>
+        <span className="status-block">
+          <HourglassIcon />
+          <span className="status-value">{jurorValue(safeInProgressJurors)}</span>
+        </span>
+        <span className="status-sep" aria-hidden="true">·</span>
+        <span className="status-block">
+          <PencilIcon />
+          <span className="status-value">{jurorValue(safeEditingJurors)}</span>
         </span>
       </span>
-      <span className="status-chip status-evaluated">
-        <ListChecksIcon />
-        <span className="status-label">Evaluated</span>
-        <span className="status-value">{completedEvaluations}/{totalEvaluations}</span>
+      <span
+        className={`status-chip status-chip--${evalTheme}`}
+        aria-label={`Evaluated: ${safeCompletedEvaluations} out of ${safeTotalEvaluations}`}
+      >
+        <span className="status-block">
+          <ListChecksIcon />
+          <span className="status-value">{evalValue}</span>
+        </span>
       </span>
     </div>
   );
@@ -117,7 +147,9 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const [showStatus,  setShowStatus]  = useState(true);
   const [activeTab,   setActiveTab]   = useState("summary");
   const [lastRefresh, setLastRefresh] = useState(null);
-  const [showTabHint, setShowTabHint] = useState(false);
+  const [tabOverflow, setTabOverflow] = useState(false);
+  const [tabHintLeft, setTabHintLeft] = useState(false);
+  const [tabHintRight, setTabHintRight] = useState(false);
   const tabBarRef = useRef(null);
 
   // PIN reset feedback
@@ -202,15 +234,27 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     return () => clearInterval(id);
   }, []); // interval never needs to restart — passRef always has latest pass
 
-  useEffect(() => {
+  const updateTabHints = () => {
     const el = tabBarRef.current;
     if (!el) return;
-    const update = () => {
-      setShowTabHint(el.scrollWidth > el.clientWidth + 2);
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const hasOverflow = maxScroll > 2;
+    setTabOverflow(hasOverflow);
+    if (!hasOverflow) {
+      setTabHintLeft(false);
+      setTabHintRight(false);
+      return;
+    }
+    const left = el.scrollLeft > 4;
+    const right = el.scrollLeft < maxScroll - 4;
+    setTabHintLeft(left);
+    setTabHintRight(right);
+  };
+
+  useEffect(() => {
+    updateTabHints();
+    window.addEventListener("resize", updateTabHints);
+    return () => window.removeEventListener("resize", updateTabHints);
   }, [activeTab, showStatus]);
 
   // Lock body scroll while PIN reset modal is open.
@@ -387,6 +431,38 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     };
   }, [data, submittedData, completedData, uniqueJurors, rowKey]);
 
+  useEffect(() => {
+    if (!lastRefresh) return;
+    try {
+      sessionStorage.setItem(
+        "ee492_home_meta",
+        JSON.stringify({
+          totalJurors: statusMetrics.totalJurors,
+          completedJurors: statusMetrics.completedJurors,
+          lastUpdated: lastRefresh.toISOString(),
+        })
+      );
+    } catch {}
+  }, [statusMetrics.totalJurors, statusMetrics.completedJurors, lastRefresh]);
+
+  const lastRefreshDate = lastRefresh
+    ? new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Istanbul",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(lastRefresh)
+    : "";
+  const lastRefreshTime = lastRefresh
+    ? new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Istanbul",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(lastRefresh)
+    : "";
+
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="admin-screen">
@@ -418,12 +494,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
             {lastRefresh && (
               <span className="last-updated">
                 <ClockIcon />
-                {lastRefresh.toLocaleString("en-GB", {
-                  timeZone: "Europe/Istanbul",
-                  day: "2-digit", month: "short", year: "numeric",
-                  hour: "2-digit", minute: "2-digit", second: "2-digit",
-                  hour12: false,
-                })}
+                <span className="last-updated-text">
+                  <span className="last-updated-date">{lastRefreshDate}</span>
+                  <span className="last-updated-time">{lastRefreshTime}</span>
+                </span>
               </span>
             )}
             <button
@@ -440,7 +514,11 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
         {/* Tab bar */}
         <div className="tab-bar-wrap">
-          <div className="tab-bar" ref={tabBarRef}>
+          <div
+            className="tab-bar"
+            ref={tabBarRef}
+            onScroll={updateTabHints}
+          >
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -452,10 +530,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               </button>
             ))}
           </div>
-          {showTabHint && (
-            <span className="tab-scroll-hint" aria-hidden="true">
-              <ChevronRightIcon />
-            </span>
+          {tabOverflow && (
+            <div className="tab-hints" aria-hidden="true">
+              <span className={`tab-fade left${tabHintLeft ? "" : " is-hidden"}`} />
+              <span className={`tab-fade right${tabHintRight ? "" : " is-hidden"}`} />
+              <span className={`tab-hint left${tabHintLeft ? "" : " is-hidden"}`}><ChevronLeftIcon /></span>
+              <span className={`tab-hint right${tabHintRight ? "" : " is-hidden"}`}><ChevronRightIcon /></span>
+            </div>
           )}
         </div>
       </div>

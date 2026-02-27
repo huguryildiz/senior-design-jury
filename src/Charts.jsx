@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CRITERIA, MUDEK_OUTCOMES, BAND_COLORS, MUDEK_THRESHOLD } from "./config";
-import { GraduationCapIcon, ChevronDownIcon } from "./shared/Icons";
+import { GraduationCapIcon, ChevronDownIcon, SearchIcon } from "./shared/Icons";
 
 // ── Per-chart MÜDEK outcome code lists ───────────────────────
 // All charts use the same set per spec §3.
@@ -58,6 +58,24 @@ function outcomeValues(rows, key) {
     .filter((v) => Number.isFinite(v));
 }
 
+function parseOutcomeCode(code) {
+  const [majorRaw, minorRaw] = String(code).split(".");
+  const major = parseInt(majorRaw, 10);
+  const minor = parseInt(minorRaw ?? "0", 10);
+  return {
+    major: Number.isFinite(major) ? major : 0,
+    minor: Number.isFinite(minor) ? minor : 0,
+  };
+}
+
+function compareOutcomeCodes(a, b) {
+  const A = parseOutcomeCode(a);
+  const B = parseOutcomeCode(b);
+  if (A.major !== B.major) return A.major - B.major;
+  if (A.minor !== B.minor) return A.minor - B.minor;
+  return String(a).localeCompare(String(b));
+}
+
 // ── Shared empty state ────────────────────────────────────────
 function ChartEmpty({ msg }) {
   return <div className="chart-empty">{msg || "Not enough data yet."}</div>;
@@ -69,27 +87,85 @@ function ChartEmpty({ msg }) {
 // Tab 2: Rubric bands per criterion (from CRITERIA config)
 // ════════════════════════════════════════════════════════════
 function MudekOutcomesTab({ codes }) {
+  const [lang, setLang] = useState("en");
+  const [query, setQuery] = useState("");
+
+  const items = (codes || [])
+    .map((code) => ({ code, ...(MUDEK_OUTCOMES[code] || {}) }))
+    .filter((o) => o.code && (o.en || o.tr))
+    .sort((a, b) => compareOutcomeCodes(a.code, b.code));
+
+  const q = query.trim().toLowerCase();
+  const filtered = !q
+    ? items
+    : items.filter((o) => {
+        const en = (o.en || "").toLowerCase();
+        const tr = (o.tr || "").toLowerCase();
+        const code = (o.code || "").toLowerCase();
+        return code.includes(q) || en.includes(q) || tr.includes(q);
+      });
+
+  const renderOutcome = (o) => {
+    const en = o.en || "";
+    const tr = o.tr || "";
+    if (lang === "tr") {
+      return <div className="mudek-outcome-text">{tr || en}</div>;
+    }
+    return <div className="mudek-outcome-text">{en || tr}</div>;
+  };
+
   return (
-    <table className="mudek-table">
-      <thead>
-        <tr>
-          <th className="mudek-table-code">Code</th>
-          <th>Outcome (EN) — hover for Turkish</th>
-        </tr>
-      </thead>
-      <tbody>
-        {codes.map((code) => {
-          const o = MUDEK_OUTCOMES[code];
-          if (!o) return null;
-          return (
-            <tr key={code} title={o.tr}>
-              <td className="mudek-table-code-cell">{code}</td>
-              <td>{o.en}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="mudek-outcomes">
+      <div className="mudek-outcomes-controls">
+        <label className="mudek-search" aria-label="Search outcomes">
+          <span className="mudek-search-icon" aria-hidden="true"><SearchIcon /></span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by code or text"
+          />
+        </label>
+        <button
+          type="button"
+          className="mudek-lang-toggle"
+          onClick={() => setLang((prev) => (prev === "en" ? "tr" : "en"))}
+          aria-label={lang === "en" ? "Switch to Turkish" : "Switch to English"}
+          title={lang === "en" ? "Türkçe" : "English"}
+        >
+          <span aria-hidden="true">{lang === "en" ? "🇬🇧" : "🇹🇷"}</span>
+        </button>
+        {q && (
+          <span className="mudek-results-count">{filtered.length} results</span>
+        )}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="mudek-empty">No outcomes match your search.</div>
+      )}
+
+      <div className="mudek-table-scroll">
+        <div className="mudek-outcomes-table">
+          <div className="mudek-outcomes-head">
+            <div className="mudek-col-code">{lang === "tr" ? "Kod" : "Code"}</div>
+            <div className="mudek-col-outcome">
+              {lang === "tr" ? "Çıktı" : "Outcome"}
+            </div>
+          </div>
+          <div className="mudek-outcomes-body">
+            {filtered.map((o) => (
+              <div key={o.code} className="mudek-outcomes-row">
+                <div className="mudek-col-code">
+                  <span className="mudek-code">{o.code}</span>
+                </div>
+                <div className="mudek-col-outcome">
+                  {renderOutcome(o)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -106,34 +182,36 @@ function MudekRubricTab() {
                 ({c.mudek.join(", ")}) · max {c.max} pts
               </span>
             </div>
-            <table className="mudek-table">
-              <thead>
-                <tr>
-                  <th>Range</th>
-                  <th>Level</th>
-                  <th>Descriptor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {c.rubric.map((band) => {
-                  const colors = bc[band.level] || {};
-                  return (
-                    <tr key={band.level}>
-                      <td>{band.range}</td>
-                      <td>
-                        <span
-                          className="mudek-band-badge"
-                          style={{ background: colors.bg, color: colors.text }}
-                        >
-                          {band.level}
-                        </span>
-                      </td>
-                      <td>{band.desc}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="mudek-table-scroll">
+              <table className="mudek-table">
+                <thead>
+                  <tr>
+                    <th>Range</th>
+                    <th>Level</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.rubric.map((band) => {
+                    const colors = bc[band.level] || {};
+                    return (
+                      <tr key={band.level}>
+                        <td data-label="Range">{band.range}</td>
+                        <td data-label="Level">
+                          <span
+                            className="mudek-band-badge"
+                            style={{ background: colors.bg, color: colors.text }}
+                          >
+                            {band.level}
+                          </span>
+                        </td>
+                        <td data-label="Description">{band.desc}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
       })}
@@ -258,7 +336,7 @@ export function OutcomeOverviewChart({ data }) {
   const threshY = pctY(MUDEK_THRESHOLD);
 
   return (
-    <div className="chart-card chart-compact-equal chart-fill-card">
+    <div className="chart-card chart-compact-equal chart-fill-card dashboard-chart-card">
       <div className="chart-title-row">
         <div>
           <div className="chart-title">Programme-Level Outcome Averages</div>
@@ -663,7 +741,7 @@ export function CriterionBoxPlotChart({ data }) {
   }
 
   return (
-    <div className="chart-card chart-equal-bottom">
+    <div className="chart-card chart-equal-bottom dashboard-chart-card">
       <div className="chart-title-row">
         <div>
           <div className="chart-title">Score Distribution by Criterion</div>
@@ -933,7 +1011,7 @@ export function RubricAchievementChart({ data }) {
   const yScale  = (pct) => (pct / 100) * chartH;
 
   return (
-    <div className="chart-card chart-equal-bottom">
+    <div className="chart-card chart-equal-bottom dashboard-chart-card">
       <div className="chart-title-row">
         <div>
           <div className="chart-title">Achievement Level Distribution</div>

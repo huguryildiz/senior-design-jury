@@ -188,35 +188,39 @@ export default function MatrixTab({ data, jurors, groups }) {
 
       {/* Legend */}
       <div className="matrix-subtitle">
-        <div className="matrix-legend-row">
-          <span className="matrix-legend-label">Cells</span>
-          <span className="matrix-legend-item"><span className="matrix-legend-dot completed-dot"/>Completed</span>
-          <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
-          <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
-          <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
+        <div className="matrix-legend-row legend-scroll-row">
+          <div className="matrix-legend-scroll" aria-label="Cells legend">
+            <span className="matrix-legend-label">Cells</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot completed-dot"/>Completed</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
+          </div>
         </div>
-        <div className="matrix-legend-row matrix-icon-legend">
-          <span className="matrix-legend-label">Juror</span>
-          <span className="matrix-icon-legend-item">
-            <span className="matrix-status-icon completed"><CircleCheckBigIcon /></span>
-            Completed
-          </span>
-          <span className="matrix-icon-legend-item">
-            <span className="matrix-status-icon submitted"><CheckIcon /></span>
-            Submitted
-          </span>
-          <span className="matrix-icon-legend-item">
-            <span className="matrix-status-icon editing"><PencilIcon /></span>
-            Editing
-          </span>
-          <span className="matrix-icon-legend-item">
-            <span className="matrix-status-icon in_progress"><HourglassIcon /></span>
-            In Progress
-          </span>
-          <span className="matrix-icon-legend-item">
-            <span className="matrix-status-icon not_started"><CircleIcon /></span>
-            Not Started
-          </span>
+        <div className="matrix-legend-row matrix-icon-legend legend-scroll-row">
+          <div className="matrix-legend-scroll" aria-label="Juror legend">
+            <span className="matrix-legend-label">Juror</span>
+            <span className="matrix-icon-legend-item">
+              <span className="matrix-status-icon completed"><CircleCheckBigIcon /></span>
+              Completed
+            </span>
+            <span className="matrix-icon-legend-item">
+              <span className="matrix-status-icon submitted"><CheckIcon /></span>
+              Submitted
+            </span>
+            <span className="matrix-icon-legend-item">
+              <span className="matrix-status-icon editing"><PencilIcon /></span>
+              Editing
+            </span>
+            <span className="matrix-icon-legend-item">
+              <span className="matrix-status-icon in_progress"><HourglassIcon /></span>
+              In Progress
+            </span>
+            <span className="matrix-icon-legend-item">
+              <span className="matrix-status-icon not_started"><CircleIcon /></span>
+              Not Started
+            </span>
+          </div>
         </div>
         {visibleJurors.length < jurors.length && (
           <span className="matrix-legend-count">
@@ -233,8 +237,9 @@ export default function MatrixTab({ data, jurors, groups }) {
         />
       )}
 
-      <div className="matrix-scroll">
-        <table className="matrix-table">
+      <div className="matrix-scroll-wrap">
+        <div className="matrix-scroll">
+          <table className="matrix-table">
           <thead>
             <tr>
               {/* Juror column — text filter only */}
@@ -337,7 +342,8 @@ export default function MatrixTab({ data, jurors, groups }) {
               ))}
             </tr>
           </tfoot>
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* Info note */}

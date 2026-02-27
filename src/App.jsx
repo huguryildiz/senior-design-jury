@@ -15,14 +15,17 @@
 // is gone.
 // ============================================================
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import JuryForm   from "./JuryForm";
 import AdminPanel from "./AdminPanel";
+import { PROJECTS } from "./config";
 import {
   ClipboardIcon,
   ChartIcon,
   InfoIcon,
   ClockIcon,
+  UsersLucideIcon,
+  FolderCheckIcon,
   LockIcon,
   AlertCircleIcon,
   EyeIcon,
@@ -41,6 +44,54 @@ export default function App() {
   const [adminInput,     setAdminInput]     = useState("");
   const [adminAuthError, setAdminAuthError] = useState("");
   const [adminShowPass,  setAdminShowPass]  = useState(false);
+  const [homeMeta,       setHomeMeta]       = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("ee492_home_meta") || "null");
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (page !== "home") return;
+    try {
+      setHomeMeta(JSON.parse(sessionStorage.getItem("ee492_home_meta") || "null"));
+    } catch {
+      setHomeMeta(null);
+    }
+  }, [page]);
+
+  const totalGroups = PROJECTS.length;
+  const safeTotalGroups = Number.isFinite(totalGroups) ? Math.max(0, totalGroups) : 0;
+  const rawTotalJurors = Number(homeMeta?.totalJurors);
+  const rawCompletedJurors = Number(homeMeta?.completedJurors);
+  const safeTotalJurors = Number.isFinite(rawTotalJurors) ? Math.max(0, rawTotalJurors) : 0;
+  const safeCompletedJurors = Number.isFinite(rawCompletedJurors)
+    ? Math.min(Math.max(0, rawCompletedJurors), safeTotalJurors)
+    : 0;
+  const hasJurorStats = safeTotalJurors > 0;
+  const isAllCompleted = hasJurorStats && safeCompletedJurors >= safeTotalJurors;
+  const metaTheme = hasJurorStats ? (isAllCompleted ? "completed" : "inprogress") : "empty";
+
+  const lastUpdated = homeMeta?.lastUpdated ? new Date(homeMeta.lastUpdated) : null;
+  const hasLastUpdated = !!lastUpdated && Number.isFinite(lastUpdated.getTime());
+  const metaDate = hasLastUpdated
+    ? new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Istanbul",
+        day: "2-digit",
+        month: "short",
+      }).format(lastUpdated)
+    : "—";
+  const metaTime = hasLastUpdated
+    ? new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Istanbul",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(lastUpdated)
+    : "—";
+  const jurorCount = hasJurorStats ? `${safeCompletedJurors}/${safeTotalJurors}` : "—";
+  const groupCount = safeTotalGroups > 0 ? String(safeTotalGroups) : "—";
 
   function handleAdminLogin() {
     const pass = adminInput.trim();
@@ -168,13 +219,25 @@ export default function App() {
           Dept. of Electrical &amp; Electronics Engineering
         </p>
 
-        <div className="home-meta-line">
-          <span>10 Jurors</span>
-          <span className="home-meta-sep">·</span>
-          <span>6 Groups</span>
-          <span className="home-meta-sep">·</span>
-          <span className="home-meta-icon" aria-hidden="true"><ClockIcon /></span>
-          <span>26 Feb 2026 · 14:30</span>
+        <div className="home-meta">
+          <span className={`home-meta-pill home-meta-pill--${metaTheme}`}>
+            <span className="home-meta-block">
+              <span className="home-meta-icon" aria-hidden="true"><UsersLucideIcon /></span>
+              <span className="home-meta-value">{jurorCount}</span>
+            </span>
+            <span className="home-meta-block">
+              <span className="home-meta-sep">·</span>
+              <span className="home-meta-icon" aria-hidden="true"><FolderCheckIcon /></span>
+            <span className="home-meta-value">{groupCount}</span>
+            </span>
+            <span className="home-meta-block">
+              <span className="home-meta-sep">·</span>
+              <span className="home-meta-icon" aria-hidden="true"><ClockIcon /></span>
+              <span className="home-meta-time">{metaDate}</span>
+              <span className="home-meta-sep">·</span>
+              <span className="home-meta-time">{metaTime}</span>
+            </span>
+          </span>
         </div>
 
         <div className="home-buttons">

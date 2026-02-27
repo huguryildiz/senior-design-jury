@@ -136,6 +136,16 @@ export function FolderKanbanIcon() {
   );
 }
 
+export function FolderCheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.6-.8l-1.2-1.6A2 2 0 0 0 7.5 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+      <path d="m9 13 2 2 4-4"/>
+    </svg>
+  );
+}
+
 export function UsersLucideIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"

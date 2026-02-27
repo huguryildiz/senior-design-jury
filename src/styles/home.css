@@ -89,20 +89,72 @@
   letter-spacing: 0.2px;
   margin-bottom: 12px;
 }
-.home-meta-line {
-  display: inline-flex;
-  align-items: center;
+.home-meta {
+  display: flex;
   justify-content: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #94a3b8;
-  white-space: nowrap;
   margin-top: 4px;
   margin-bottom: 16px;
+  color: #6b7280;
+}
+.home-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
   max-width: 100%;
 }
-.home-meta-sep { color: #cbd5e1; }
-.home-meta-icon svg { width: 14px; height: 14px; color: #94a3b8; }
+.home-meta-pill--completed {
+  background: #bbf7d0;
+  border-color: #4ade80;
+  color: #14532d;
+}
+.home-meta-pill--inprogress {
+  background: #fef9c3;
+  border-color: #fef9c3;
+  color: #92400e;
+}
+.home-meta-pill--empty {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+.home-meta-block {
+  display: inline-flex;
+  align-items: center;
+}
+.home-meta-sep {
+  color: currentColor;
+  opacity: 0.5;
+  margin: 0 8px;
+}
+.home-meta-icon {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-right: 6px;
+}
+.home-meta-icon svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  stroke-width: 2;
+  vertical-align: middle;
+  display: block;
+}
+.home-meta-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.home-meta-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
 
 /* ── Buttons row ────────────────────────────────────────────── */
 .home-buttons {
@@ -231,10 +283,12 @@
   .home-card   { padding: 32px 24px; }
   .home-card h1 { font-size: 28px; }
   .home-info   { font-size: 12px; }
-  .home-meta-line {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  .home-meta-pill {
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 6px;
+    white-space: normal;
+    text-align: center;
   }
-  .home-meta-line::-webkit-scrollbar { display: none; }
 }
