@@ -88,8 +88,6 @@ export default function MatrixTab({ data, jurors, groups }) {
     if (sortMode !== "group" || sortGroupId !== gId) return <ArrowUpDownIcon />;
     return sortGroupDir === "desc" ? <ArrowDownIcon /> : <ArrowUpIcon />;
   };
-  const jurorSortIcon = () =>
-    sortMode !== "juror" ? <ArrowUpDownIcon /> : (sortJurorDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />);
   function toggleJurorSort() {
     if (sortMode !== "juror") {
       setSortMode("juror");
@@ -205,10 +203,6 @@ export default function MatrixTab({ data, jurors, groups }) {
               Completed
             </span>
             <span className="matrix-icon-legend-item">
-              <span className="matrix-status-icon submitted"><CheckIcon /></span>
-              Submitted
-            </span>
-            <span className="matrix-icon-legend-item">
               <span className="matrix-status-icon editing"><PencilIcon /></span>
               Editing
             </span>
@@ -240,29 +234,32 @@ export default function MatrixTab({ data, jurors, groups }) {
       <div className="matrix-scroll-wrap">
         <div className="matrix-scroll">
           <table className="matrix-table">
-          <thead>
-            <tr>
-              {/* Juror column — text filter only */}
-              <th className="matrix-corner">
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span className="col-sort-label" onClick={toggleJurorSort}>
-                    Juror / Group
-                    <span className="sort-icon">{jurorSortIcon()}</span>
-                  </span>
-                  <button
-                    className={`col-filter-hotspot${jurorFilter ? " active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); setActiveFilterCol((p) => p === "juror" ? null : "juror"); }}
-                    title="Filter jurors"
-                  ><FilterIcon /></button>
-                </div>
-                {activeFilterCol === "juror" && (
-                  <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                    <div className="matrix-filter-input">
+            <thead>
+              <tr>
+                {/* Juror column — text filter only */}
+                <th className="matrix-corner">
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span
+                      className={`col-sort-label${(jurorFilter || activeFilterCol === "juror") ? " filtered" : ""}`}
+                      onClick={toggleJurorSort}
+                    >
+                      Juror / Group
+                    </span>
+                    <button
+                      className={`col-filter-hotspot${(jurorFilter || activeFilterCol === "juror") ? " active filter-icon-active" : ""}`}
+                      onClick={(e) => { e.stopPropagation(); setActiveFilterCol((p) => p === "juror" ? null : "juror"); }}
+                      title="Filter jurors"
+                    ><FilterIcon /></button>
+                  </div>
+                  {activeFilterCol === "juror" && (
+                    <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
+                      <div className={`matrix-filter-input${(jurorFilter || activeFilterCol === "juror") ? " filter-active-box" : ""}`}>
                       <input
                         autoFocus
                         placeholder="Filter juror name…"
                         value={jurorFilter}
                         onChange={(e) => setJurorFilter(e.target.value)}
+                        className={(jurorFilter || activeFilterCol === "juror") ? "filter-input-active" : ""}
                       />
                       {jurorFilter && (
                         <button
@@ -315,8 +312,10 @@ export default function MatrixTab({ data, jurors, groups }) {
                           {statusIcon[status]}
                         </span>
                         <span className="matrix-juror-name" title={fullName}>
-                          {juror.name}
-                          {juror.dept && <span className="matrix-juror-dept"> ({juror.dept})</span>}
+                          <span className="matrix-juror-name-scroll">
+                            {juror.name}
+                            {juror.dept && <span className="matrix-juror-dept"> ({juror.dept})</span>}
+                          </span>
                         </span>
                       </>
                     );

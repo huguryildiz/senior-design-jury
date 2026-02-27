@@ -31,6 +31,7 @@ import {
   ClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
 } from "./shared/Icons";
 import SummaryTab    from "./admin/SummaryTab";
 import DashboardTab  from "./admin/DashboardTab";
@@ -485,7 +486,9 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
                   aria-controls="results-status-bar"
                   onClick={() => setShowStatus((v) => !v)}
                 >
-                  <span className={`results-toggle-icon${showStatus ? " open" : ""}`} aria-hidden="true">▾</span>
+                  <span className={`results-toggle-icon${showStatus ? " open" : ""}`} aria-hidden="true">
+                    <ChevronDownIcon />
+                  </span>
                 </button>
               </div>
             </div>

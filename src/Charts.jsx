@@ -89,6 +89,29 @@ function ChartEmpty({ msg }) {
 function MudekOutcomesTab({ codes }) {
   const [lang, setLang] = useState("en");
   const [query, setQuery] = useState("");
+  const [isMobile, setIsMobile] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches
+  ));
+  const [expanded, setExpanded] = useState(() => !(
+    typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches
+  ));
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.addEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  useEffect(() => {
+    setExpanded(!isMobile);
+  }, [isMobile]);
 
   const items = (codes || [])
     .map((code) => ({ code, ...(MUDEK_OUTCOMES[code] || {}) }))
@@ -144,7 +167,7 @@ function MudekOutcomesTab({ codes }) {
       )}
 
       <div className="mudek-table-scroll">
-        <div className="mudek-outcomes-table">
+        <div className={`mudek-outcomes-table${isMobile && !expanded ? " compact" : ""}${isMobile && expanded ? " expanded" : ""}`}>
           <div className="mudek-outcomes-head">
             <div className="mudek-col-code">{lang === "tr" ? "Kod" : "Code"}</div>
             <div className="mudek-col-outcome">
@@ -152,7 +175,7 @@ function MudekOutcomesTab({ codes }) {
             </div>
           </div>
           <div className="mudek-outcomes-body">
-            {filtered.map((o) => (
+            {(isMobile && !expanded ? filtered.slice(0, 5) : filtered).map((o) => (
               <div key={o.code} className="mudek-outcomes-row">
                 <div className="mudek-col-code">
                   <span className="mudek-code">{o.code}</span>
@@ -165,6 +188,16 @@ function MudekOutcomesTab({ codes }) {
           </div>
         </div>
       </div>
+
+      {isMobile && filtered.length > 5 && (
+        <button
+          type="button"
+          className="mudek-outcomes-toggle"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Collapse ↑" : "Show all outcomes ↓"}
+        </button>
+      )}
     </div>
   );
 }

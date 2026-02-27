@@ -165,21 +165,48 @@ export default function DetailsTab({ data, jurors }) {
     };
   }, []);
 
+  function formatDateInput(value) {
+    const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
+    const part1 = digits.slice(0, 2);
+    const part2 = digits.slice(2, 4);
+    const part3 = digits.slice(4, 8);
+    if (digits.length <= 2) return part1;
+    if (digits.length <= 4) return `${part1}/${part2}`;
+    return `${part1}/${part2}/${part3}`;
+  }
+
+  function isValidDateString(value) {
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
+    const [dd, mm, yyyy] = value.split("/").map(Number);
+    if (yyyy < 2000 || yyyy > 2100) return false;
+    if (mm < 1 || mm > 12) return false;
+    if (dd < 1) return false;
+    const maxDays = new Date(yyyy, mm, 0).getDate();
+    return dd <= maxDays;
+  }
+
+  function parseDateString(value) {
+    if (!isValidDateString(value)) return null;
+    const [dd, mm, yyyy] = value.split("/").map(Number);
+    return new Date(yyyy, mm - 1, dd).getTime();
+  }
+
+  const parsedFromMs = useMemo(() => (dateFrom ? parseDateString(dateFrom) : null), [dateFrom]);
+  const parsedToMs = useMemo(() => (dateTo ? parseDateString(dateTo) : null), [dateTo]);
   const isInvalidRange = useMemo(() => {
-    if (!dateFrom || !dateTo) return false;
-    const fromMs = new Date(dateFrom).getTime();
-    const toMs = new Date(dateTo).getTime();
-    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return false;
-    return fromMs > toMs;
-  }, [dateFrom, dateTo]);
+    if (parsedFromMs === null || parsedToMs === null) return false;
+    return parsedFromMs > parsedToMs;
+  }, [parsedFromMs, parsedToMs]);
 
   useEffect(() => {
-    if (isInvalidRange) {
+    if ((dateFrom && parsedFromMs === null) || (dateTo && parsedToMs === null)) {
+      setDateError("Invalid date format (DD/MM/YYYY).");
+    } else if (isInvalidRange) {
       setDateError("The 'From' date cannot be later than the 'To' date.");
     } else {
       setDateError(null);
     }
-  }, [isInvalidRange]);
+  }, [dateFrom, dateTo, parsedFromMs, parsedToMs, isInvalidRange]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -192,6 +219,12 @@ export default function DetailsTab({ data, jurors }) {
     return count;
   }, [filterJuror, filterDept, filterGroup, filterStatuses, dateFrom, dateTo, filterComment]);
   const hasAnyFilter = activeFilterCount > 0;
+  const isJurorFilterActive = filterJuror !== "ALL" || activeFilterCol === "juror";
+  const isDeptFilterActive = filterDept !== "ALL" || activeFilterCol === "dept";
+  const isGroupFilterActive = filterGroup !== "ALL" || activeFilterCol === "group";
+  const isDateFilterActive = !!dateFrom || !!dateTo || activeFilterCol === "timestamp";
+  const isStatusFilterActive = filterStatuses.size > 0 || activeFilterCol === "status";
+  const isCommentFilterActive = !!filterComment || activeFilterCol === "comments";
 
   function resetFilters() {
     setFilterJuror("ALL");
@@ -240,8 +273,11 @@ export default function DetailsTab({ data, jurors }) {
   }
 
   const rows = useMemo(() => {
-    const fromMs = dateFrom ? new Date(dateFrom).getTime()               : 0;
-    const toMs   = dateTo   ? new Date(dateTo + "T23:59:59").getTime()   : Infinity;
+    const fromMs = parsedFromMs ?? 0;
+    const toMsBase = parsedToMs ?? Infinity;
+    const toMs = Number.isFinite(toMsBase)
+      ? toMsBase + 24 * 60 * 60 * 1000 - 1
+      : toMsBase;
 
     let list = data.slice();
 
@@ -267,7 +303,11 @@ export default function DetailsTab({ data, jurors }) {
         return false;
       });
     }
-    if ((dateFrom || dateTo) && !isInvalidRange) {
+    const canApplyDateFilter =
+      (!dateFrom || parsedFromMs !== null) &&
+      (!dateTo || parsedToMs !== null) &&
+      !isInvalidRange;
+    if ((dateFrom || dateTo) && canApplyDateFilter) {
       list = list.filter((r) => {
         const ms = r.tsMs || tsToMillis(r.timestamp);
         return ms >= fromMs && ms <= toMs;
@@ -310,6 +350,7 @@ export default function DetailsTab({ data, jurors }) {
               autoFocus
               value={filterJuror}
               onChange={(e) => { setFilterJuror(e.target.value); closePopover(); }}
+              className={isJurorFilterActive ? "filter-input-active" : ""}
             >
               <option value="ALL">All jurors</option>
               {jurors.map((j) => (
@@ -337,6 +378,7 @@ export default function DetailsTab({ data, jurors }) {
               autoFocus
               value={filterDept}
               onChange={(e) => { setFilterDept(e.target.value); closePopover(); }}
+              className={isDeptFilterActive ? "filter-input-active" : ""}
             >
               <option value="ALL">All departments</option>
               {deptOptions.map((d) => (
@@ -362,6 +404,7 @@ export default function DetailsTab({ data, jurors }) {
               autoFocus
               value={filterGroup}
               onChange={(e) => { setFilterGroup(e.target.value); closePopover(); }}
+              className={isGroupFilterActive ? "filter-input-active" : ""}
             >
               <option value="ALL">All groups</option>
               {groups.map((g) => (
@@ -379,23 +422,19 @@ export default function DetailsTab({ data, jurors }) {
     }
     if (activeFilterCol === "timestamp") {
       const handleFromChange = (val) => {
-        setDateFrom(val);
-        if (dateTo && val && new Date(val).getTime() > new Date(dateTo).getTime()) {
-          setDateError("The 'From' date cannot be later than the 'To' date.");
-        } else {
-          setDateError(null);
-        }
+        const formatted = formatDateInput(val);
+        setDateFrom(formatted);
       };
       const handleToChange = (val) => {
-        setDateTo(val);
-        if (dateFrom && val && new Date(dateFrom).getTime() > new Date(val).getTime()) {
-          setDateError("The 'From' date cannot be later than the 'To' date.");
-        } else {
-          setDateError(null);
-        }
+        const formatted = formatDateInput(val);
+        setDateTo(formatted);
       };
       const handleDateBlur = () => {
-        if (dateFrom && dateTo && new Date(dateFrom).getTime() > new Date(dateTo).getTime()) {
+        if ((dateFrom && parsedFromMs === null) || (dateTo && parsedToMs === null)) {
+          setDateError("Invalid date format (DD/MM/YYYY).");
+          return;
+        }
+        if (isInvalidRange) {
           setDateError("The 'From' date cannot be later than the 'To' date.");
         } else {
           setDateError(null);
@@ -411,22 +450,28 @@ export default function DetailsTab({ data, jurors }) {
               <label>From</label>
               <input
                 autoFocus
-                type="date"
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/YYYY"
                 value={dateFrom}
                 onChange={(e) => handleFromChange(e.target.value)}
                 onBlur={handleDateBlur}
-                className={dateError ? "is-invalid" : ""}
+                className={`timestamp-date-input ${dateError ? "is-invalid " : ""}${isDateFilterActive ? "filter-input-active" : ""}`}
                 aria-invalid={!!dateError}
               />
             </div>
             <div className="timestamp-field">
               <label>To</label>
               <input
-                type="date"
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/YYYY"
                 value={dateTo}
                 onChange={(e) => handleToChange(e.target.value)}
                 onBlur={handleDateBlur}
-                className={dateError ? "is-invalid" : ""}
+                className={`timestamp-date-input ${dateError ? "is-invalid " : ""}${isDateFilterActive ? "filter-input-active" : ""}`}
                 aria-invalid={!!dateError}
               />
             </div>
@@ -493,6 +538,7 @@ export default function DetailsTab({ data, jurors }) {
               placeholder="Search comments…"
               value={filterComment}
               onChange={(e) => setFilterComment(e.target.value)}
+              className={isCommentFilterActive ? "filter-input-active" : ""}
             />
             {filterComment && (
               <button className="col-filter-clear" onClick={() => { setFilterComment(""); closePopover(); }}>
@@ -553,11 +599,14 @@ export default function DetailsTab({ data, jurors }) {
               {/* Juror — sort label + filter hotspot */}
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span className="col-sort-label" onClick={() => setSort("juryName")}>
+                  <span
+                    className={`col-sort-label details-col-label${isJurorFilterActive ? " filtered" : ""}`}
+                    onClick={() => setSort("juryName")}
+                  >
                     Juror
                   </span>
                   <div
-                    className={`col-filter-hotspot${filterJuror !== "ALL" ? " active" : ""}`}
+                    className={`col-filter-hotspot${isJurorFilterActive ? " active filter-icon-active" : ""}`}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("juror", e); }}
                     title="Filter by juror"
                   >
@@ -569,11 +618,14 @@ export default function DetailsTab({ data, jurors }) {
               {/* Department */}
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span className="col-sort-label" onClick={() => setSort("juryDept")}>
+                  <span
+                    className={`col-sort-label details-col-label${isDeptFilterActive ? " filtered" : ""}`}
+                    onClick={() => setSort("juryDept")}
+                  >
                     Department
                   </span>
                   <div
-                    className={`col-filter-hotspot${filterDept !== "ALL" ? " active" : ""}`}
+                    className={`col-filter-hotspot${isDeptFilterActive ? " active filter-icon-active" : ""}`}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("dept", e); }}
                     title="Filter by department"
                   >
@@ -585,11 +637,14 @@ export default function DetailsTab({ data, jurors }) {
               {/* Group */}
               <th style={{ position: "relative", whiteSpace: "nowrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span className="col-sort-label" onClick={() => setSort("projectId")}>
+                  <span
+                    className={`col-sort-label details-col-label${isGroupFilterActive ? " filtered" : ""}`}
+                    onClick={() => setSort("projectId")}
+                  >
                     Group
                   </span>
                   <div
-                    className={`col-filter-hotspot${filterGroup !== "ALL" ? " active" : ""}`}
+                    className={`col-filter-hotspot${isGroupFilterActive ? " active filter-icon-active" : ""}`}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("group", e); }}
                     title="Filter by group"
                   >
@@ -601,11 +656,14 @@ export default function DetailsTab({ data, jurors }) {
               {/* Timestamp */}
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span className="col-sort-label" onClick={() => setSort("tsMs")}>
+                  <span
+                    className={`col-sort-label details-col-label${isDateFilterActive ? " filtered" : ""}`}
+                    onClick={() => setSort("tsMs")}
+                  >
                     Timestamp
                   </span>
                   <div
-                    className={`col-filter-hotspot${(dateFrom || dateTo) ? " active" : ""}`}
+                    className={`col-filter-hotspot${isDateFilterActive ? " active filter-icon-active" : ""}`}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("timestamp", e); }}
                     title="Filter by date"
                   >
@@ -617,11 +675,14 @@ export default function DetailsTab({ data, jurors }) {
               {/* Status — filter only (no sort) */}
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span className="col-sort-label" onClick={() => setSort("status")}>
+                  <span
+                    className={`col-sort-label details-col-label${isStatusFilterActive ? " filtered" : ""}`}
+                    onClick={() => setSort("status")}
+                  >
                     Status
                   </span>
                   <div
-                    className={`col-filter-hotspot${filterStatuses.size > 0 ? " active" : ""}`}
+                    className={`col-filter-hotspot${isStatusFilterActive ? " active filter-icon-active" : ""}`}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("status", e); }}
                     title="Filter by status"
                   >
@@ -633,8 +694,8 @@ export default function DetailsTab({ data, jurors }) {
               {/* Score columns — sort only, no filter */}
               {SCORE_COLS.map(({ key: col, label }) => (
                 <th key={col} style={{ cursor: "pointer", whiteSpace: "nowrap" }} onClick={() => setSort(col)}>
-                  <span className="col-sort-label">
-                    {label} <span className="sort-icon">{sortIcon(col)}</span>
+                  <span className={`col-sort-label details-col-label${sortKey === col ? " filtered" : ""}`}>
+                    {label} <span className={`sort-icon${sortKey === col ? " icon-active-box" : ""}`}>{sortIcon(col)}</span>
                   </span>
                 </th>
               ))}
@@ -642,9 +703,11 @@ export default function DetailsTab({ data, jurors }) {
               {/* Comments — filter only (no sort) */}
               <th style={{ position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span>Comments</span>
+                  <span className={`details-col-label${isCommentFilterActive ? " filtered" : ""}`}>
+                    Comments
+                  </span>
                   <div
-                    className={`col-filter-hotspot${filterComment ? " active" : ""}`}
+                    className={`col-filter-hotspot${isCommentFilterActive ? " active filter-icon-active" : ""}`}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("comments", e); }}
                     title="Filter by comments"
                   >
