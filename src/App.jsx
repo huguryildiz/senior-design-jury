@@ -18,20 +18,16 @@
 import { useEffect, useRef, useState } from "react";
 import JuryForm   from "./JuryForm";
 import AdminPanel from "./AdminPanel";
-import { PROJECTS } from "./config";
 import {
   ClipboardIcon,
   ChartIcon,
   InfoIcon,
-  ClockIcon,
-  UsersLucideIcon,
-  FolderCheckIcon,
   LockIcon,
   AlertCircleIcon,
   EyeIcon,
   EyeOffIcon,
-  Loader2Icon,
 } from "./shared/Icons";
+import MinimalLoaderOverlay from "./shared/MinimalLoaderOverlay";
 import "./styles/home.css";
 
 import teduLogo from "./assets/tedu-logo.png";
@@ -44,54 +40,6 @@ export default function App() {
   const [adminInput,     setAdminInput]     = useState("");
   const [adminAuthError, setAdminAuthError] = useState("");
   const [adminShowPass,  setAdminShowPass]  = useState(false);
-  const [homeMeta,       setHomeMeta]       = useState(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem("ee492_home_meta") || "null");
-    } catch {
-      return null;
-    }
-  });
-
-  useEffect(() => {
-    if (page !== "home") return;
-    try {
-      setHomeMeta(JSON.parse(sessionStorage.getItem("ee492_home_meta") || "null"));
-    } catch {
-      setHomeMeta(null);
-    }
-  }, [page]);
-
-  const totalGroups = PROJECTS.length;
-  const safeTotalGroups = Number.isFinite(totalGroups) ? Math.max(0, totalGroups) : 0;
-  const rawTotalJurors = Number(homeMeta?.totalJurors);
-  const rawCompletedJurors = Number(homeMeta?.completedJurors);
-  const safeTotalJurors = Number.isFinite(rawTotalJurors) ? Math.max(0, rawTotalJurors) : 0;
-  const safeCompletedJurors = Number.isFinite(rawCompletedJurors)
-    ? Math.min(Math.max(0, rawCompletedJurors), safeTotalJurors)
-    : 0;
-  const hasJurorStats = safeTotalJurors > 0;
-  const isAllCompleted = hasJurorStats && safeCompletedJurors >= safeTotalJurors;
-  const metaTheme = hasJurorStats ? (isAllCompleted ? "completed" : "inprogress") : "empty";
-
-  const lastUpdated = homeMeta?.lastUpdated ? new Date(homeMeta.lastUpdated) : null;
-  const hasLastUpdated = !!lastUpdated && Number.isFinite(lastUpdated.getTime());
-  const metaDate = hasLastUpdated
-    ? new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/Istanbul",
-        day: "2-digit",
-        month: "short",
-      }).format(lastUpdated)
-    : "—";
-  const metaTime = hasLastUpdated
-    ? new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/Istanbul",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }).format(lastUpdated)
-    : "—";
-  const jurorCount = hasJurorStats ? `${safeCompletedJurors}/${safeTotalJurors}` : "—";
-  const groupCount = safeTotalGroups > 0 ? String(safeTotalGroups) : "—";
 
   function handleAdminLogin() {
     const pass = adminInput.trim();
@@ -123,12 +71,14 @@ export default function App() {
   if (page === "admin") {
     if (!adminUnlocked) {
       return (
-        <div className="lock-screen">
-          <div className="lock-card">
-            <div className="lock-icon" aria-hidden="true"><LockIcon /></div>
-            <h2 className="lock-title">Results Panel</h2>
-            <p className="lock-subtitle">Enter the admin password to view results</p>
-            <div className="lock-input-wrap">
+        <div className="premium-screen">
+          <div className="premium-card">
+            <div className="premium-header">
+              <div className="premium-icon-square" aria-hidden="true"><LockIcon /></div>
+              <div className="premium-title">Results Panel</div>
+              <div className="premium-subtitle">Enter the admin password to view results</div>
+            </div>
+            <div className="premium-input-wrap">
               <input
                 type={adminShowPass ? "text" : "password"}
                 placeholder="Admin password"
@@ -140,10 +90,11 @@ export default function App() {
                 onKeyDown={(e) => { if (e.key === "Enter") handleAdminLogin(); }}
                 autoComplete="current-password"
                 autoFocus
+                className="premium-input"
               />
               <button
                 type="button"
-                className="lock-toggle"
+                className="premium-input-toggle"
                 onClick={() => setAdminShowPass((v) => !v)}
                 aria-label={adminShowPass ? "Hide password" : "Show password"}
                 title={adminShowPass ? "Hide password" : "Show password"}
@@ -152,18 +103,18 @@ export default function App() {
               </button>
             </div>
             {adminAuthError && (
-              <div className="login-error" role="alert">
+              <div className="premium-error-banner" role="alert">
                 <AlertCircleIcon />
                 <span>{adminAuthError}</span>
               </div>
             )}
-            <button className="btn-primary lock-login-btn" onClick={handleAdminLogin} disabled={adminChecking}>
+            <button className="premium-btn-primary" onClick={handleAdminLogin} disabled={adminChecking}>
               Login
             </button>
-            <button className="lock-back-btn" onClick={() => { setPage("home"); setAdminAuthError(""); }}>
+            <button className="premium-btn-link" onClick={() => { setPage("home"); setAdminAuthError(""); }}>
               ← Back to Home
             </button>
-            <div className="lock-footnote">Admin Access • Restricted</div>
+            <div className="premium-helper">Admin Access • Restricted</div>
           </div>
         </div>
       );
@@ -173,18 +124,7 @@ export default function App() {
       <>
         {/* Checking… overlay — shown while the first fetch is in flight */}
         {adminChecking && (
-          <div className="admin-checking-overlay">
-            <div className="admin-checking-card">
-              <div className="admin-checking-icon" aria-hidden="true"><Loader2Icon /></div>
-              <div className="admin-checking-msg">
-                Checking access
-                <span className="admin-checking-dots" aria-hidden="true">
-                  <span>.</span><span>.</span><span>.</span>
-                </span>
-              </div>
-              <div className="admin-checking-sub">Secure session validation in progress</div>
-            </div>
-          </div>
+          <MinimalLoaderOverlay open={adminChecking} minDuration={400} />
         )}
         <AdminPanel
           adminPass={adminPassRef.current}
@@ -218,27 +158,6 @@ export default function App() {
           TED University <br />
           Dept. of Electrical &amp; Electronics Engineering
         </p>
-
-        <div className="home-meta">
-          <span className={`home-meta-pill home-meta-pill--${metaTheme}`}>
-            <span className="home-meta-block">
-              <span className="home-meta-icon" aria-hidden="true"><UsersLucideIcon /></span>
-              <span className="home-meta-value">{jurorCount}</span>
-            </span>
-            <span className="home-meta-block">
-              <span className="home-meta-sep">·</span>
-              <span className="home-meta-icon" aria-hidden="true"><FolderCheckIcon /></span>
-            <span className="home-meta-value">{groupCount}</span>
-            </span>
-            <span className="home-meta-block">
-              <span className="home-meta-sep">·</span>
-              <span className="home-meta-icon" aria-hidden="true"><ClockIcon /></span>
-              <span className="home-meta-time">{metaDate}</span>
-              <span className="home-meta-sep">·</span>
-              <span className="home-meta-time">{metaTime}</span>
-            </span>
-          </span>
-        </div>
 
         <div className="home-buttons">
           <button

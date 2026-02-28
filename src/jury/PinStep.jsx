@@ -14,7 +14,14 @@
 // ============================================================
 
 import { useState, useRef, useEffect } from "react";
-import { KeyIcon } from "../shared/Icons";
+import {
+  KeyIcon,
+  KeyRoundIcon,
+  LockIcon,
+  ClipboardIcon,
+  AlertCircleIcon,
+} from "../shared/Icons";
+import MinimalLoaderOverlay from "../shared/MinimalLoaderOverlay";
 
 // ── 4-box PIN input with explicit OK button ───────────────────
 function PinBoxes({ onSubmit, pinError }) {
@@ -99,19 +106,23 @@ function PinBoxes({ onSubmit, pinError }) {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={i === 0 ? handlePaste : undefined}
-            className="pin-box"
+            className={`pin-box${pinError ? " pin-box--error" : ""}`}
           />
         ))}
       </div>
       <button
-        className="btn-primary pin-ok-btn"
+        className="premium-btn-primary pin-ok-btn"
         onClick={handleOk}
         disabled={!isComplete}
       >
-        OK →
+        Verify PIN →
       </button>
     </div>
   );
+}
+
+function AuthOverlay({ open }) {
+  return <MinimalLoaderOverlay open={open} minDuration={400} />;
 }
 
 export default function PinStep({
@@ -119,72 +130,242 @@ export default function PinStep({
   pinError,
   newPin,
   attemptsLeft,
-  juryName,
-  onPinSubmit,       // (pin: string) => void
+    onPinSubmit,       // (pin: string) => void
   onPinAcknowledge,  // () => void
 }) {
+  const [copied, setCopied] = useState(false);
+  const [shake, setShake] = useState(false);
+  const [authOverlay, setAuthOverlay] = useState({ open: false, stage: "idle" });
+  const authRef = useRef({ seq: 0, start: 0, active: false });
+  const pinErrorRef = useRef(pinError);
+  const pinStepRef = useRef(pinStep);
+  const stageStartRef = useRef(0);
+
+  const handleCopy = async () => {
+    const text = String(newPin || "");
+    if (!text) return;
+    try {
+      if (navigator?.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+        return;
+      }
+    } catch {}
+    try {
+      const el = document.createElement("textarea");
+      el.value = text;
+      el.setAttribute("readonly", "");
+      el.style.position = "fixed";
+      el.style.top = "-9999px";
+      el.style.left = "-9999px";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      el.setSelectionRange(0, el.value.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(el);
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {}
+  };
+
+  const attemptsLeftNum = Number.isFinite(attemptsLeft) ? attemptsLeft : null;
+
+  useEffect(() => {
+    if (!pinError) return;
+    setShake(false);
+    const raf = requestAnimationFrame(() => setShake(true));
+    const t = setTimeout(() => setShake(false), 260);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [pinError, attemptsLeft]);
+
+  useEffect(() => {
+    pinErrorRef.current = pinError;
+  }, [pinError]);
+
+  useEffect(() => {
+    pinStepRef.current = pinStep;
+  }, [pinStep]);
+
+  useEffect(() => {
+    if (!authOverlay.open) {
+      document.body.classList.remove("auth-overlay-open");
+      return;
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.body.classList.add("auth-overlay-open");
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.classList.remove("auth-overlay-open");
+    };
+  }, [authOverlay.open]);
+
+  const setStage = (stage, open = true) => {
+    stageStartRef.current = Date.now();
+    setAuthOverlay({ open, stage });
+  };
+
+  const beginAuthOverlay = () => {
+    const seq = authRef.current.seq + 1;
+    authRef.current = { seq, start: Date.now(), active: true };
+    document.body.classList.add("auth-overlay-open");
+    setStage("checking", true);
+    return seq;
+  };
+
+  const closeAuthOverlay = (seq) => {
+    if (authRef.current.seq !== seq) return;
+    authRef.current.active = false;
+    setStage("idle", false);
+  };
+
   // ── New PIN: show once ────────────────────────────────────
   if (pinStep === "new") {
+    const overlay = <AuthOverlay open={authOverlay.open} />;
     return (
-      <div className="form-screen">
-        <div className="info-card pin-card">
-          <div className="pin-icon-wrap">
-            <KeyIcon />
+      <>
+        <div className="premium-screen">
+          <div className="premium-card">
+            <div className="premium-header">
+              <div className="premium-icon-square" aria-hidden="true">
+                <KeyRoundIcon />
+              </div>
+              <div className="premium-title">Secure Access PIN</div>
+            </div>
+            <p className="premium-body">
+              This 4-digit PIN protects your evaluation session. You’ll need it when signing in from another device.
+            </p>
+
+            <div className="pin-display" aria-label="Your PIN">
+              {String(newPin).split("").map((d, i) => (
+                <span key={i} className="pin-digit">{d}</span>
+              ))}
+            </div>
+
+            <button className="premium-btn-secondary" onClick={handleCopy} type="button">
+              <ClipboardIcon />
+              {copied ? "Copied" : "Copy PIN"}
+            </button>
+
+          <div className="premium-info-strip">
+            <span className="info-strip-icon" aria-hidden="true"><KeyIcon /></span>
+                          <span>Keep your PIN private. If you lose it, contact the administrator to reset access.</span>
+                      </div>
+
+            <button className="premium-btn-primary" onClick={onPinAcknowledge}>
+I’ve saved my PIN —               Continue →
+            </button>
           </div>
-          <h3>Your Access PIN</h3>
-          <p className="pin-intro">
-            Welcome, <strong>{juryName}</strong>! A 4-digit PIN has been assigned
-            to protect your evaluations. Please save it — you will need it every
-            time you log in from a new device or browser tab.
-          </p>
-
-          <div className="pin-display" aria-label="Your PIN">
-            {String(newPin).split("").map((d, i) => (
-              <span key={i} className="pin-digit">{d}</span>
-            ))}
-          </div>
-
-          <p className="pin-hint">
-            🔒 Keep this PIN private. If you lose it, contact the admin to reset it.
-          </p>
-
-          <button className="btn-primary" onClick={onPinAcknowledge}>
-            I've saved my PIN — Continue →
-          </button>
         </div>
-      </div>
+        {overlay}
+      </>
     );
   }
 
   // ── Locked ────────────────────────────────────────────────
   if (pinStep === "locked") {
+    const overlay = <AuthOverlay open={authOverlay.open} />;
     return (
-      <div className="form-screen">
-        <div className="info-card pin-card">
-          <div className="pin-icon-wrap lock-icon">🔒</div>
-          <h3>Account Locked</h3>
-          <p className="pin-error-msg">{pinError}</p>
+      <>
+        <div className="premium-screen">
+          <div className="premium-card">
+            <div className="premium-header">
+              <div className="premium-icon-square" aria-hidden="true">
+                <LockIcon />
+              </div>
+              <div className="premium-title">Too many attempts</div>
+              <div className="premium-subtitle">This session is locked for security.</div>
+            </div>
+                        <div className="premium-info-strip">
+              <span className="info-strip-icon" aria-hidden="true"><LockIcon /></span>
+                              <span>Contact the administrator to reset your access.</span>
+                          </div>
+            <button
+              className="premium-btn-link"
+              type="button"
+              onClick={() => { window.location.href = "/senior-design-jury/"; }}
+            >
+              ←               Return to Home
+            </button>
+          </div>
         </div>
-      </div>
+        {overlay}
+      </>
     );
   }
 
   // ── Enter PIN ─────────────────────────────────────────────
+  const overlay = <AuthOverlay open={authOverlay.open} />;
+  const handleVerify = async (pin) => {
+    if (authRef.current.active) return;
+    if (pinStepRef.current === "locked") return;
+    const baselineError = pinErrorRef.current;
+    const seq = beginAuthOverlay();
+    const started = stageStartRef.current || Date.now();
+    try {
+      await Promise.resolve(onPinSubmit(pin));
+    } catch {}
+    const elapsed = Date.now() - started;
+    const wait = Math.max(0, 800 - elapsed);
+    await new Promise((r) => setTimeout(r, wait));
+    if (authRef.current.seq !== seq) return;
+    if (pinStepRef.current === "entering" || pinStepRef.current === "locked") {
+      closeAuthOverlay(seq);
+      return;
+    }
+    if (pinErrorRef.current && pinErrorRef.current !== baselineError) {
+      closeAuthOverlay(seq);
+      return;
+    }
+    if (pinStepRef.current !== "entering") {
+      setStage("verified", true);
+      await new Promise((r) => setTimeout(r, 650));
+      if (authRef.current.seq !== seq) return;
+      // Do not show an extra loading stage here; fetchMyScores has its own loader.
+    }
+    closeAuthOverlay(seq);
+  };
   return (
-    <div className="form-screen">
-      <div className="info-card pin-card">
-        <div className="pin-icon-wrap">
-          <KeyIcon />
+    <>
+      <div className="premium-screen">
+        <div className={`premium-card${shake ? " premium-card--shake" : ""}`}>
+          <div className="premium-header">
+            <div className="premium-icon-square" aria-hidden="true">
+              <KeyRoundIcon />
+            </div>
+            <div className="premium-title">Enter your access PIN</div>
+            <div className="premium-subtitle">Enter your 4-digit PIN to continue.</div>
+          </div>
+          {!pinError && (
+            <div className="premium-helper">
+              Attempts remaining: {attemptsLeftNum !== null ? attemptsLeftNum : "…"}
+            </div>
+          )}
+          {pinError && (
+            <div className={`premium-error-banner${attemptsLeftNum !== null && attemptsLeftNum <= 1 ? " is-critical" : ""}`}>
+<AlertCircleIcon />
+              <div>
+              <div className="premium-error-title">Incorrect PIN</div>
+              <div className="premium-error-detail">
+                {attemptsLeftNum !== null
+                  ? `Please try again. ${attemptsLeftNum} attempts left.`
+                  : "Please try again."}
+</div>
+              </div>
+            </div>
+          )}
+
+          <PinBoxes onSubmit={handleVerify} pinError={pinError} />
+
         </div>
-        <h3>Enter Your PIN</h3>
-        <p className="pin-intro">
-          Welcome back, <strong>{juryName}</strong>. Enter your 4-digit PIN and press OK to continue.
-        </p>
-
-        <PinBoxes onSubmit={onPinSubmit} pinError={pinError} />
-
-        {pinError && <div className="pin-error-msg">{pinError}</div>}
       </div>
-    </div>
+      {overlay}
+    </>
   );
 }

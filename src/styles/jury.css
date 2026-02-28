@@ -21,21 +21,11 @@
   content: "";
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(1000px 600px at 20% -10%, #1e3a8a 0%, transparent 60%),
-    radial-gradient(900px 500px at 90% 0%, #1d4ed8 0%, transparent 60%),
-    linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(135deg, var(--navy-800) 0%, var(--navy-900) 100%);
   z-index: -2;
 }
 .form-screen::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-  opacity: 0.18;
-  mix-blend-mode: soft-light;
-  pointer-events: none;
-  z-index: -1;
+  display: none;
 }
 
 /* Sticky header bar (used by InfoStep) */
@@ -116,49 +106,55 @@
 .field label { font-size: 13px; font-weight: 600; color: #334155; }
 .req { color: #ef4444; }
 .field input {
-  padding: 12px 16px;
-  min-height: 50px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 15px;
+  padding: 0 16px;
+  min-height: 56px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 18px;
+  font-size: 16px;
   font-family: 'DM Sans', sans-serif;
   outline: none;
   background: #f8fafc;
 }
 .field input::placeholder { color: #94a3b8; }
-.field input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); background: #fff; }
+.field input:focus { border-color: var(--brand-600); box-shadow: 0 0 0 3px rgba(47,86,214,0.18); background: #fff; }
 .field input.invalid {
   border-color: rgba(220,38,38,0.75) !important;
   background: rgba(254,226,226,0.55);
 }
 
-/* Identity lock warning */
-.identity-warning {
-  background: #fff8ed;
-  border: 1px solid #f1e3c7;
-  border-left: 3px solid #e7c07a;
+/* Info strip (identity note) */
+.info-strip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
   border-radius: 12px;
   padding: 10px 14px;
   font-size: 12.5px;
-  color: #8a5b2a;
   line-height: 1.5;
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
 }
-.identity-warning .warning-icon svg { width: 14px; height: 14px; color: #c1872a; margin-top: 2px; }
+.info-strip--blue {
+  border-left: 3px solid #3b82f6;
+}
+.info-strip-icon svg {
+  width: 14px;
+  height: 14px;
+  color: var(--brand-600);
+  margin-top: 2px;
+}
+
+.info-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
 
 /* Cloud status indicators on InfoStep */
 .cloud-checking   { font-size: 13px; color: #64748b; padding: 8px 0; }
-.draft-device-note { font-size: 12px; color: #94a3b8; margin-bottom: 14px; line-height: 1.5; }
-.trust-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #64748b;
-}
-.trust-note svg { width: 14px; height: 14px; color: #64748b; }
 
 /* Primary action button (form screens) */
 .form-screen .btn-primary {
@@ -201,28 +197,91 @@
 /* ── PIN step ───────────────────────────────────────────────── */
 .pin-card {
   text-align: center;
-  max-width: 380px;
+  max-width: 420px;
   margin: 40px auto;
+  padding: 32px 36px 34px;
+  border-radius: 20px;
+  border: 1px solid rgba(148,163,184,0.35);
+  box-shadow:
+    0 18px 40px rgba(15,23,42,0.12),
+    0 6px 16px rgba(15,23,42,0.08);
+  position: relative;
+  overflow: hidden;
+  animation: pin-card-in 160ms ease-out both;
+}
+.pin-card--locked {
+  margin: 18vh auto;
+}
+.pin-card > * { position: relative; z-index: 1; }
+.pin-card::before {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -80px;
+  top: -100px;
+  background: radial-gradient(circle, rgba(59,130,246,0.22), transparent 70%);
+  filter: blur(6px);
+  z-index: 0;
+}
+
+.pin-title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.pin-title-block h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .pin-icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--blue-light);
-  color: var(--blue);
-  margin: 0 auto 16px;
-  font-size: 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(59,130,246,0.18);
+  font-size: 36px;
+}
+.pin-icon-wrap--locked {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 1px rgba(59,130,246,0.18);
+}
+.pin-icon-wrap svg {
+  color: currentColor;
+  stroke: currentColor;
+  width: 64%;
+  height: 64%;
 }
 
 .pin-intro {
   color: var(--gray-500);
   font-size: 14px;
-  margin-bottom: 24px;
-  line-height: 1.6;
+  margin: 6px auto 18px;
+  line-height: 1.7;
+  max-width: 320px;
+}
+.pin-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  margin: 6px 0 4px;
+}
+.pin-body {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 14px;
 }
 
 /* PIN shown once on first registration */
@@ -230,57 +289,160 @@
   display: flex;
   gap: 10px;
   justify-content: center;
-  margin: 20px 0 16px;
+  margin: 6px 0 6px;
 }
 .pin-digit {
-  width: 52px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--blue);
-  color: white;
-  font-size: 28px;
+  background: #f8fafc;
+  color: var(--text-900);
+  font-size: 26px;
   font-weight: 700;
-  border-radius: 10px;
+  border-radius: 18px;
+  border: 1.5px solid #cbd5e1;
   font-family: 'DM Mono', monospace;
-  box-shadow: 0 4px 12px rgba(29,78,216,0.35);
+  box-shadow: 0 10px 22px rgba(15,23,42,0.10);
+  animation: pin-digit-in 140ms ease-out both;
+}
+.pin-digit:nth-child(1) { animation-delay: 40ms; }
+.pin-digit:nth-child(2) { animation-delay: 120ms; }
+.pin-digit:nth-child(3) { animation-delay: 200ms; }
+.pin-digit:nth-child(4) { animation-delay: 280ms; }
+@media (hover: hover) and (pointer: fine) {
+  .pin-digit:hover { transform: translateY(-2px); }
 }
 
-.pin-hint {
-  font-size: 13px;
-  color: var(--gray-500);
-  background: var(--amber-light);
-  border: 1px solid #fcd34d;
+.pin-copy-btn {
+  margin: 8px auto 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
   border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 20px;
 }
+.pin-copy-btn svg { width: 14px; height: 14px; color: #64748b; }
+.pin-copy-btn:hover { background: rgba(148,163,184,0.16); color: #1f2937; }
+
+.pin-info-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 3px solid #60a5fa;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #334155;
+  text-align: left;
+  margin: 4px 0 10px;
+}
+.pin-info-strip--neutral {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  border-left-color: #94a3b8;
+}
+.pin-info-icon svg { width: 14px; height: 14px; color: #3b82f6; margin-top: 2px; }
+.pin-info-strip--neutral .pin-info-icon svg { color: #64748b; }
+.pin-info-text { display: flex; flex-direction: column; line-height: 1.4; }
+.pin-secondary-note {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0 0 22px;
+}
+
+.pin-attempts-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: -6px 0 10px;
+}
+
+.pin-error-banner {
+  text-align: left;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #f87171;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+  box-shadow: 0 6px 16px rgba(220,38,38,0.08);
+}
+.pin-error-banner.is-critical {
+  border-left-color: #ef4444;
+  background: #fee2e2;
+}
+.pin-error-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #b91c1c;
+  margin-bottom: 2px;
+}
+.pin-error-detail {
+  font-size: 12px;
+  color: #7f1d1d;
+}
+
+.pin-return-link {
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: #1e40af;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+}
+.pin-return-link:hover { color: #1d4ed8; }
+.pin-return-link svg { width: 14px; height: 14px; }
 
 /* 4-box PIN entry */
+.pin-input-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
 .pin-boxes-row {
   display: flex;
   gap: 12px;
   justify-content: center;
-  margin: 20px 0 8px;
 }
 .pin-box {
   width: 56px;
-  height: 64px;
+  height: 56px;
   text-align: center;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
-  border: 2px solid var(--gray-200);
-  border-radius: 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 18px;
   outline: none;
   font-family: 'DM Mono', monospace;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  background: #f8fafc;
   caret-color: transparent;
+  box-shadow:
+    0 8px 18px rgba(15,23,42,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.7);
 }
 .pin-box:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px rgba(47,86,214,0.18);
+  background: #fff;
+}
+.pin-box--error {
+  border-color: rgba(239,68,68,0.75);
+  box-shadow: 0 0 0 3px rgba(248,113,113,0.18);
 }
 
 .pin-error-msg {
@@ -291,6 +453,139 @@
   padding: 10px 14px;
   font-size: 13px;
   margin: 12px 0;
+}
+
+.pin-continue-btn {
+  box-shadow: 0 16px 34px rgba(37,99,235,0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.pin-continue-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(37,99,235,0.35);
+}
+.pin-continue-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 10px 24px rgba(37,99,235,0.25);
+}
+.pin-continue-btn .btn-arrow { display: inline-block; transition: transform 0.18s ease; }
+.pin-continue-btn:hover:not(:disabled) .btn-arrow { transform: translateX(3px); }
+
+.pin-ok-btn {
+  min-height: 56px;
+  padding: 0 22px;
+}
+.pin-ok-btn:disabled { opacity: 0.6; box-shadow: none; }
+
+/* ── PIN auth overlay ─────────────────────────────────────── */
+.pin-auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 360;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: pinAuthFade 0.18s ease;
+}
+.pin-auth-card {
+  width: min(520px, 100%);
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(148,163,184,0.25);
+  box-shadow: 0 20px 50px rgba(15,23,42,0.28);
+  padding: 18px 22px;
+  animation: pinAuthCardIn 0.18s ease;
+}
+.pin-auth-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pin-auth-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pin-auth-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(59,130,246,0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(59,130,246,0.18);
+  position: relative;
+  transition: transform 0.18s ease;
+}
+.pin-auth-icon.is-verified { transform: rotate(-6deg) scale(1.03); }
+.pin-auth-icon.is-spinning svg {
+  animation: pinAuthSpin 1.2s linear infinite;
+  transform-origin: 50% 50%;
+}
+.pin-auth-icon svg { width: 18px; height: 18px; color: #1d4ed8; stroke: #1d4ed8; }
+.pin-auth-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #22c55e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(34,197,94,0.35);
+}
+.pin-auth-check svg { width: 11px; height: 11px; stroke: #fff; color: #fff; }
+.pin-auth-title { font-size: 18px; font-weight: 700; color: #0f172a; }
+.pin-auth-sub { font-size: 13px; color: #64748b; }
+
+@keyframes pinAuthSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes pinAuthFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pinAuthCardIn {
+  from { opacity: 0; transform: scale(0.98) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.premium-card--shake {
+  animation: premium-shake 240ms ease-in-out;
+}
+
+@keyframes premium-shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+@media (max-width: 600px) {
+  .pin-boxes-row { gap: 10px; }
+  .pin-box { width: 48px; height: 48px; font-size: 20px; }
+  .pin-ok-btn { width: 100%; }
+  .pin-display { gap: 8px; }
+  .pin-digit { width: 48px; height: 48px; font-size: 22px; }
+}
+
+@keyframes pin-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pin-digit-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Eval step — sticky combined header ─────────────────────── */
@@ -769,7 +1064,7 @@
 .done-score-main   { font-weight: 700; font-size: 1.02em; }
 .done-score-max    { opacity: 0.35; font-weight: 500; font-size: 0.9em; }
 .done-row-wrap:hover .done-score-max { opacity: 1; }
-.done-actions      { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+.done-actions      { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 
 /* ── Done screen accordion ───────────────────────────────── */
 .done-row-wrap {
@@ -829,46 +1124,31 @@
 /* Full-screen modal overlay shown after PIN verification.       */
 /* Always displayed so the juror sees the server-side state.     */
 .spd-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: spdFadeIn 0.18s ease;
+  z-index: 360;
 }
 
 .spd-card {
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 20px;
-  padding: 30px;
   width: min(520px, 100%);
-  display: flex;
-  flex-direction: column;
   gap: 18px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-  animation: spdCardIn 0.18s ease;
+  text-align: left;
 }
 
 .spd-header {
   display: flex;
   align-items: center;
   gap: 14px;
+  text-align: left;
 }
 .spd-icon  { font-size: 32px; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 .spd-icon svg {
   width: 30px;
   height: 30px;
-  color: #1e3a8a;
+  color: var(--brand-600);
 }
 .spd-icon-animated svg {
   animation: spdSpin 1.5s ease-in-out infinite;
   transform-origin: 50% 50%;
-  filter: drop-shadow(0 2px 8px rgba(30, 58, 138, 0.25));
+  filter: drop-shadow(0 2px 8px rgba(47, 86, 214, 0.25));
 }
 .spd-icon-state svg {
   width: 26px;
@@ -920,16 +1200,9 @@
   flex-direction: column;
   gap: 10px;
 }
-.spd-actions .btn-primary,
-.spd-actions .btn-secondary {
+.spd-actions .premium-btn-primary,
+.spd-actions .premium-btn-secondary {
   width: 100%;
-  padding: 13px;
-  font-size: 15px;
-  border-radius: 12px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 @keyframes spdSpin {

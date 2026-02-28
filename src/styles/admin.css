@@ -1084,6 +1084,24 @@
 }
 .matrix-table th:hover .col-sort-label { color: #1d4ed8; }
 .matrix-corner   { text-align: left !important; }
+.matrix-table th.matrix-corner {
+  z-index: 210;
+  position: relative;
+}
+.matrix-corner {
+  position: relative;
+}
+@media (min-width: 769px) {
+  .matrix-corner { overflow: visible; }
+}
+.matrix-corner-head {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  justify-content: flex-start;
+}
 .matrix-table td {
   padding: 9px 12px;
   border-bottom: 1px solid rgba(15,23,42,0.08);
@@ -1189,32 +1207,6 @@
   .matrix-juror-name-scroll::-webkit-scrollbar { display: none; }
   .matrix-juror-name-scroll:hover { cursor: ew-resize; }
 }
-
-/* Matrix filter input with inline clear */
-.matrix-filter-input {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.matrix-filter-input input { padding-right: 30px; }
-.matrix-filter-clear {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: #94a3b8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.matrix-filter-clear:hover { color: #475569; background: #f1f5f9; }
-.matrix-filter-clear svg { width: 14px; height: 14px; }
 
 /* Column sort button inside group <th> */
 .matrix-col-sort {
@@ -2266,6 +2258,9 @@
   color: #cbd5e1;
   border: none;
   background: transparent;
+  padding: 0;
+  position: relative;
+  z-index: 20;
 }
 th:hover .col-filter-hotspot { opacity: 1; background: transparent; }
 .col-filter-hotspot.active {
@@ -2306,6 +2301,9 @@ th:hover .col-filter-hotspot { opacity: 1; background: transparent; }
   border-radius: 8px;
 }
 th .col-filter-hotspot svg { display: block; }
+@media (hover: none) {
+  .col-filter-hotspot { touch-action: manipulation; }
+}
 
 /* Sort label + icon inside sortable column headers */
 .col-sort-label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
@@ -2323,10 +2321,15 @@ th:hover .sort-icon { opacity: 0.95; }
 th .sort-icon svg { vertical-align: middle; }
 
 .col-filter-popover {
-  position: absolute; top: calc(100% + 4px); left: 0;
-  z-index: 90; min-width: 180px; max-width: min(92vw, 360px);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  z-index: 300; min-width: 180px; max-width: min(92vw, 360px);
   background: #fff; border: 1px solid #e2e8f0;
-  border-radius: 10px; padding: 10px; box-shadow: 0 8px 24px rgba(15,23,42,0.14);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
   display: flex; flex-direction: column; gap: 6px;
   color: #1e293b; /* prevent white-on-white from th color inheritance */
 }

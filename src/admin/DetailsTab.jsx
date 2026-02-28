@@ -7,8 +7,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PROJECTS } from "../config";
 import { cmp, exportXLSX, formatTs, tsToMillis } from "./utils";
-import { StatusBadge } from "./components";
-import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDownIcon, ArrowUpIcon, XIcon } from "../shared/Icons";
+import { StatusBadge, useOutsidePointerDown } from "./components";
+import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDown01Icon, ArrowDown10Icon, ArrowDownIcon, ArrowUpIcon, XIcon } from "../shared/Icons";
 
 const PROJECT_LIST = PROJECTS.map((p, i) =>
   typeof p === "string"
@@ -46,9 +46,11 @@ function rowKey(r) {
     : `${(r.juryName || "").trim().toLowerCase()}__${(r.juryDept || "").trim().toLowerCase()}`;
 }
 
-function FilterPopoverPortal({ open, anchorRect, onClose, className, contentKey, mode = "anchor", children }) {
+function FilterPopoverPortal({ open, anchorRect, anchorEl, onClose, className, contentKey, mode = "anchor", children }) {
   const popRef = useRef(null);
   const [style, setStyle] = useState({ left: 0, top: 0, visibility: "hidden" });
+
+  useOutsidePointerDown(open, [popRef, anchorEl], onClose);
 
   useLayoutEffect(() => {
     if (!open || !popRef.current) return;
@@ -91,20 +93,18 @@ function FilterPopoverPortal({ open, anchorRect, onClose, className, contentKey,
   if (!open || (mode !== "center" && !anchorRect)) return null;
 
   return createPortal(
-    <>
-      <div className="filter-overlay" onClick={onClose} />
-      <div
-        ref={popRef}
-        className={className}
-        style={style}
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </>,
+    <div
+      ref={popRef}
+      className={className}
+      style={style}
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
     document.body
   );
 }
@@ -123,6 +123,7 @@ export default function DetailsTab({ data, jurors }) {
   const [sortDir,        setSortDir]        = useState("desc");
   const [activeFilterCol, setActiveFilterCol] = useState(null);
   const [anchorRect, setAnchorRect] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const [isMobile, setIsMobile] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches
   ));
@@ -165,19 +166,7 @@ export default function DetailsTab({ data, jurors }) {
     };
   }, []);
 
-  function formatDateInput(value) {
-    const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
-    const part1 = digits.slice(0, 2);
-    const part2 = digits.slice(2, 4);
-    const part3 = digits.slice(4, 8);
-    if (digits.length <= 2) return part1;
-    if (digits.length <= 4) return `${part1}/${part2}`;
-    return `${part1}/${part2}/${part3}`;
-  }
-
-  function isValidDateString(value) {
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
-    const [dd, mm, yyyy] = value.split("/").map(Number);
+  function isValidDateParts(yyyy, mm, dd) {
     if (yyyy < 2000 || yyyy > 2100) return false;
     if (mm < 1 || mm > 12) return false;
     if (dd < 1) return false;
@@ -186,9 +175,18 @@ export default function DetailsTab({ data, jurors }) {
   }
 
   function parseDateString(value) {
-    if (!isValidDateString(value)) return null;
-    const [dd, mm, yyyy] = value.split("/").map(Number);
-    return new Date(yyyy, mm - 1, dd).getTime();
+    if (!value) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [yyyy, mm, dd] = value.split("-").map(Number);
+      if (!isValidDateParts(yyyy, mm, dd)) return null;
+      return new Date(yyyy, mm - 1, dd).getTime();
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      const [dd, mm, yyyy] = value.split("/").map(Number);
+      if (!isValidDateParts(yyyy, mm, dd)) return null;
+      return new Date(yyyy, mm - 1, dd).getTime();
+    }
+    return null;
   }
 
   const parsedFromMs = useMemo(() => (dateFrom ? parseDateString(dateFrom) : null), [dateFrom]);
@@ -200,7 +198,7 @@ export default function DetailsTab({ data, jurors }) {
 
   useEffect(() => {
     if ((dateFrom && parsedFromMs === null) || (dateTo && parsedToMs === null)) {
-      setDateError("Invalid date format (DD/MM/YYYY).");
+      setDateError("Invalid date format.");
     } else if (isInvalidRange) {
       setDateError("The 'From' date cannot be later than the 'To' date.");
     } else {
@@ -253,14 +251,22 @@ export default function DetailsTab({ data, jurors }) {
   function closePopover() {
     setActiveFilterCol(null);
     setAnchorRect(null);
+    setAnchorEl(null);
   }
 
   function toggleFilterCol(colId, evt) {
     const rect = evt?.currentTarget?.getBoundingClientRect?.();
+    const el = evt?.currentTarget ?? null;
     setActiveFilterCol((prev) => {
       const next = prev === colId ? null : colId;
-      if (next && rect) setAnchorRect(rect);
-      if (!next) setAnchorRect(null);
+      if (next && rect) {
+        setAnchorRect(rect);
+        setAnchorEl(el);
+      }
+      if (!next) {
+        setAnchorRect(null);
+        setAnchorEl(null);
+      }
       return next;
     });
   }
@@ -336,8 +342,15 @@ export default function DetailsTab({ data, jurors }) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("desc"); }
   }
-  const sortIcon = (key) =>
-    sortKey !== key ? <ArrowUpDownIcon /> : sortDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />;
+  const numericSortKeys = useMemo(
+    () => new Set(SCORE_COLS.map(({ key }) => key)),
+    []
+  );
+  const sortIcon = (key) => {
+    if (sortKey !== key) return <ArrowUpDownIcon />;
+    if (numericSortKeys.has(key)) return sortDir === "asc" ? <ArrowDown01Icon /> : <ArrowDown10Icon />;
+    return sortDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />;
+  };
 
   const popoverConfig = (() => {
     if (activeFilterCol === "juror") {
@@ -422,16 +435,14 @@ export default function DetailsTab({ data, jurors }) {
     }
     if (activeFilterCol === "timestamp") {
       const handleFromChange = (val) => {
-        const formatted = formatDateInput(val);
-        setDateFrom(formatted);
+        setDateFrom(val);
       };
       const handleToChange = (val) => {
-        const formatted = formatDateInput(val);
-        setDateTo(formatted);
+        setDateTo(val);
       };
       const handleDateBlur = () => {
         if ((dateFrom && parsedFromMs === null) || (dateTo && parsedToMs === null)) {
-          setDateError("Invalid date format (DD/MM/YYYY).");
+          setDateError("Invalid date format.");
           return;
         }
         if (isInvalidRange) {
@@ -450,10 +461,8 @@ export default function DetailsTab({ data, jurors }) {
               <label>From</label>
               <input
                 autoFocus
-                type="text"
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="DD/MM/YYYY"
+                type="date"
+                placeholder="YYYY-MM-DD"
                 value={dateFrom}
                 onChange={(e) => handleFromChange(e.target.value)}
                 onBlur={handleDateBlur}
@@ -464,10 +473,8 @@ export default function DetailsTab({ data, jurors }) {
             <div className="timestamp-field">
               <label>To</label>
               <input
-                type="text"
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="DD/MM/YYYY"
+                type="date"
+                placeholder="YYYY-MM-DD"
                 value={dateTo}
                 onChange={(e) => handleToChange(e.target.value)}
                 onBlur={handleDateBlur}
@@ -583,6 +590,7 @@ export default function DetailsTab({ data, jurors }) {
       <FilterPopoverPortal
         open={!!popoverConfig}
         anchorRect={anchorRect}
+        anchorEl={anchorEl}
         onClose={closePopover}
         className={popoverConfig?.className}
         contentKey={popoverConfig?.contentKey}
@@ -605,13 +613,14 @@ export default function DetailsTab({ data, jurors }) {
                   >
                     Juror
                   </span>
-                  <div
+                  <button
+                    type="button"
                     className={`col-filter-hotspot${isJurorFilterActive ? " active filter-icon-active" : ""}`}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("juror", e); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("juror", e); }}
                     title="Filter by juror"
                   >
                     <FilterIcon />
-                  </div>
+                  </button>
                 </div>
               </th>
 
@@ -624,13 +633,14 @@ export default function DetailsTab({ data, jurors }) {
                   >
                     Department
                   </span>
-                  <div
+                  <button
+                    type="button"
                     className={`col-filter-hotspot${isDeptFilterActive ? " active filter-icon-active" : ""}`}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("dept", e); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("dept", e); }}
                     title="Filter by department"
                   >
                     <FilterIcon />
-                  </div>
+                  </button>
                 </div>
               </th>
 
@@ -643,13 +653,14 @@ export default function DetailsTab({ data, jurors }) {
                   >
                     Group
                   </span>
-                  <div
+                  <button
+                    type="button"
                     className={`col-filter-hotspot${isGroupFilterActive ? " active filter-icon-active" : ""}`}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("group", e); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("group", e); }}
                     title="Filter by group"
                   >
                     <FilterIcon />
-                  </div>
+                  </button>
                 </div>
               </th>
 
@@ -662,13 +673,14 @@ export default function DetailsTab({ data, jurors }) {
                   >
                     Timestamp
                   </span>
-                  <div
+                  <button
+                    type="button"
                     className={`col-filter-hotspot${isDateFilterActive ? " active filter-icon-active" : ""}`}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("timestamp", e); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("timestamp", e); }}
                     title="Filter by date"
                   >
                     <FilterIcon />
-                  </div>
+                  </button>
                 </div>
               </th>
 
@@ -681,13 +693,14 @@ export default function DetailsTab({ data, jurors }) {
                   >
                     Status
                   </span>
-                  <div
+                  <button
+                    type="button"
                     className={`col-filter-hotspot${isStatusFilterActive ? " active filter-icon-active" : ""}`}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("status", e); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("status", e); }}
                     title="Filter by status"
                   >
                     <FilterIcon />
-                  </div>
+                  </button>
                 </div>
               </th>
 
@@ -706,13 +719,14 @@ export default function DetailsTab({ data, jurors }) {
                   <span className={`details-col-label${isCommentFilterActive ? " filtered" : ""}`}>
                     Comments
                   </span>
-                  <div
+                  <button
+                    type="button"
                     className={`col-filter-hotspot${isCommentFilterActive ? " active filter-icon-active" : ""}`}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("comments", e); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("comments", e); }}
                     title="Filter by comments"
                   >
                     <FilterIcon />
-                  </div>
+                  </button>
                 </div>
               </th>
             </tr>

@@ -11,7 +11,7 @@
 // and delegates everything else downstream.
 // ============================================================
 
-import { HomeIcon, LockIcon, AlertCircleIcon } from "../shared/Icons";
+import { InfoIcon, ArrowLeftIcon, UserRoundCheckIcon } from "../shared/Icons";
 
 export default function InfoStep({
   juryName, setJuryName,
@@ -22,72 +22,58 @@ export default function InfoStep({
   const canStart = juryName.trim().length > 0 && juryDept.trim().length > 0;
 
   return (
-    <div className="form-screen">
+    <div className="premium-screen">
+      <div className="premium-card">
+        <div className="premium-header">
+          <div className="premium-icon-square" aria-hidden="true"><UserRoundCheckIcon /></div>
+          <div className="premium-title">Jury Information</div>
+          <div className="premium-subtitle">EE 492 — Senior Project Evaluation</div>
+        </div>
 
-      {/* Header */}
-      <div className="form-header">
-        <button className="back-btn" onClick={onBack} aria-label="Back to home">
-          <HomeIcon />
-        </button>
-        <div className="form-title-wrap">
-          <div className="form-title-row">
-            <h2>Evaluation Form</h2>
+        <div className="premium-info-strip">
+          <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
+          <span>Your information will be securely recorded and cannot be changed after you begin.</span>
+        </div>
+
+        <div className="info-form">
+          <div className="field">
+            <label htmlFor="jury-name">Full Name <span className="req">*</span></label>
+            <input
+              id="jury-name"
+              value={juryName}
+              onChange={(e) => setJuryName(e.target.value)}
+              placeholder="e.g. Prof. Dr. Jane Smith"
+              autoComplete="name"
+              autoFocus
+              className="premium-input"
+            />
           </div>
-          <p>EE 492 — Senior Project Poster Day</p>
-        </div>
-      </div>
 
-      <div className="info-card">
-        <h3>Jury Member Information</h3>
-
-        {/* Identity is locked once evaluation starts */}
-        <div className="identity-warning">
-          <span className="warning-icon" aria-hidden="true"><AlertCircleIcon /></span>
-          <span>
-            Please enter your name and department carefully. Once you begin the
-            evaluation, these cannot be changed.
-          </span>
+          <div className="field">
+            <label htmlFor="jury-dept">Department or Institution <span className="req">*</span></label>
+            <input
+              id="jury-dept"
+              value={juryDept}
+              onChange={(e) => setJuryDept(e.target.value)}
+              placeholder="e.g. EEE Dept. / TED University"
+              onKeyDown={(e) => { if (e.key === "Enter" && canStart) onStart(); }}
+              className="premium-input"
+            />
+          </div>
         </div>
 
-        <div className="field">
-          <label htmlFor="jury-name">Full Name <span className="req">*</span></label>
-          <input
-            id="jury-name"
-            value={juryName}
-            onChange={(e) => setJuryName(e.target.value)}
-            placeholder="e.g. Prof. Dr. Jane Smith"
-            autoComplete="name"
-            autoFocus
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="jury-dept">Department / Institution <span className="req">*</span></label>
-          <input
-            id="jury-dept"
-            value={juryDept}
-            onChange={(e) => setJuryDept(e.target.value)}
-            placeholder="e.g. EEE Dept. / TED University"
-            onKeyDown={(e) => { if (e.key === "Enter" && canStart) onStart(); }}
-          />
-        </div>
-
-        <p className="draft-device-note">
-          ℹ️ Scores save automatically as you fill each field or switch groups. Next, we’ll authenticate your session and
-          ask for your PIN so you can continue from any device.
-        </p>
-
-        <div className="trust-note">
-          <LockIcon />
-          Authenticating session before PIN verification
-        </div>
+        <div className="premium-helper">Your evaluation is saved automatically.</div>
 
         <button
-          className="btn-primary"
+          className="premium-btn-primary"
           disabled={!canStart}
           onClick={onStart}
         >
           Start Evaluation →
+        </button>
+        <button className="premium-btn-link" onClick={onBack} type="button">
+          <ArrowLeftIcon />
+          Back to Home
         </button>
       </div>
     </div>

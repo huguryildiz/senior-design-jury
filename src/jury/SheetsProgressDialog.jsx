@@ -15,7 +15,8 @@
 // ============================================================
 
 import { PROJECTS } from "../config";
-import { BadgeCheckIcon, ClipboardIcon, HourglassIcon, SaveIcon } from "../shared/Icons";
+import { BadgeCheckIcon, ClipboardIcon, SaveIcon } from "../shared/Icons";
+import MinimalLoaderOverlay from "../shared/MinimalLoaderOverlay";
 
 // Status label + colour for each row returned by myscores.
 function rowStatusChip(status) {
@@ -29,28 +30,19 @@ export default function SheetsProgressDialog({ progress, onConfirm, onFresh }) {
   if (!progress) return null;
 
   // Loading sentinel — shown while fetchMyScores is in flight.
-  if (progress.loading) {
-    return (
-      <div className="spd-overlay">
-        <div className="spd-card">
-          <div className="spd-header">
-            <div className="spd-icon spd-icon-animated" aria-hidden="true"><HourglassIcon /></div>
-            <div>
-              <div className="spd-title">Authenticating your session…</div>
-              <div className="spd-sub">Connecting to server</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const suppress = typeof document !== "undefined" &&
+    document.body?.classList?.contains("auth-overlay-open");
+  const showLoader = progress.loading && !suppress;
 
   const { rows, filledCount, totalCount, allSubmitted } = progress;
   const hasData = rows && rows.length > 0;
 
   return (
-    <div className="spd-overlay">
-      <div className="spd-card">
+    <>
+      <MinimalLoaderOverlay open={showLoader} minDuration={400} />
+      {!progress.loading && (
+        <div className="premium-overlay spd-overlay">
+          <div className="premium-card spd-card">
 
         {/* Header */}
         <div className="spd-header">
@@ -100,17 +92,19 @@ export default function SheetsProgressDialog({ progress, onConfirm, onFresh }) {
 
         {/* Actions */}
         <div className="spd-actions">
-          <button className="btn-primary" onClick={onConfirm}>
+          <button className="premium-btn-primary" onClick={onConfirm}>
             {allSubmitted ? "View / Edit My Scores" : hasData ? "Continue from here" : "Start Evaluation"}
           </button>
           {hasData && !allSubmitted && (
-            <button className="btn-secondary" onClick={onFresh}>
+            <button className="premium-btn-secondary" onClick={onFresh}>
               Start Fresh
             </button>
           )}
         </div>
 
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

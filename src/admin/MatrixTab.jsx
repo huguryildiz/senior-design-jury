@@ -5,21 +5,86 @@
 // - Juror column text filter
 // - Final-only averages (all_submitted only)
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { cmp } from "./utils";
+import { useOutsidePointerDown } from "./components";
 import {
   FilterIcon,
   ArrowUpDownIcon,
-  ArrowDownIcon,
-  ArrowUpIcon,
+  ArrowDown01Icon,
+  ArrowDown10Icon,
   InfoIcon,
   CheckIcon,
   HourglassIcon,
   PencilIcon,
   CircleCheckBigIcon,
   CircleIcon,
-  XIcon,
 } from "../shared/Icons";
+
+// ── Portal popover (same component as DetailsTab) ─────────────
+function FilterPopoverPortal({ open, anchorRect, anchorEl, onClose, className, contentKey, mode = "anchor", children }) {
+  const popRef = useRef(null);
+  const [style, setStyle] = useState({ left: 0, top: 0, visibility: "hidden" });
+
+  useOutsidePointerDown(open, [popRef, anchorEl], onClose);
+
+  useLayoutEffect(() => {
+    if (!open || !popRef.current) return;
+    const pop = popRef.current;
+    const measureAndPlace = () => {
+      if (mode === "center") {
+        setStyle({ left: "50%", top: "50%", transform: "translate(-50%, -50%)", visibility: "visible" });
+        return;
+      }
+      if (!anchorRect) return;
+      const margin = 8;
+      const popW = pop.offsetWidth;
+      const popH = pop.offsetHeight;
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+
+      let left = anchorRect.left;
+      left = Math.min(left, viewportW - popW - margin);
+      left = Math.max(margin, left);
+
+      let top = anchorRect.bottom + 6;
+      if (top + popH + margin > viewportH) {
+        const above = anchorRect.top - popH - 6;
+        if (above >= margin) top = above;
+        else top = Math.max(margin, viewportH - popH - margin);
+      }
+
+      setStyle({ left, top, transform: "none", visibility: "visible" });
+    };
+
+    measureAndPlace();
+    window.addEventListener("resize", measureAndPlace);
+    window.addEventListener("orientationchange", measureAndPlace);
+    return () => {
+      window.removeEventListener("resize", measureAndPlace);
+      window.removeEventListener("orientationchange", measureAndPlace);
+    };
+  }, [open, anchorRect, contentKey, mode]);
+
+  if (!open || (mode !== "center" && !anchorRect)) return null;
+
+  return createPortal(
+    <div
+      ref={popRef}
+      className={className}
+      style={style}
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
 
 // ── Cell helpers ──────────────────────────────────────────────
 
@@ -54,6 +119,27 @@ export default function MatrixTab({ data, jurors, groups }) {
   // Juror text filter
   const [jurorFilter,     setJurorFilter]     = useState("");
   const [activeFilterCol, setActiveFilterCol] = useState(null);
+  const [anchorRect, setAnchorRect] = useState(null);
+  const [anchorEl,   setAnchorEl]   = useState(null);
+
+  const isJurorFilterActive = !!jurorFilter || activeFilterCol === "juror";
+
+  function closePopover() {
+    setActiveFilterCol(null);
+    setAnchorRect(null);
+    setAnchorEl(null);
+  }
+
+  function toggleFilterCol(colId, evt) {
+    const rect = evt?.currentTarget?.getBoundingClientRect?.();
+    const el = evt?.currentTarget ?? null;
+    setActiveFilterCol((prev) => {
+      const next = prev === colId ? null : colId;
+      if (next && rect) { setAnchorRect(rect); setAnchorEl(el); }
+      if (!next) { setAnchorRect(null); setAnchorEl(null); }
+      return next;
+    });
+  }
 
   // Build lookup: jurorKey → { [projectId]: { total, status } }
   const lookup = useMemo(() => {
@@ -86,7 +172,7 @@ export default function MatrixTab({ data, jurors, groups }) {
 
   const groupSortIcon = (gId) => {
     if (sortMode !== "group" || sortGroupId !== gId) return <ArrowUpDownIcon />;
-    return sortGroupDir === "desc" ? <ArrowDownIcon /> : <ArrowUpIcon />;
+    return sortGroupDir === "desc" ? <ArrowDown10Icon /> : <ArrowDown01Icon />;
   };
   function toggleJurorSort() {
     if (sortMode !== "juror") {
@@ -166,6 +252,7 @@ export default function MatrixTab({ data, jurors, groups }) {
     not_started: <CircleIcon />,
   };
 
+
   // Average row: final-only entries from visibleJurors, 2 decimal places.
   const groupAverages = useMemo(() =>
     groups.map((g) => {
@@ -223,14 +310,6 @@ export default function MatrixTab({ data, jurors, groups }) {
         )}
       </div>
 
-      {/* Close-layer: click outside filter popover to dismiss */}
-      {activeFilterCol !== null && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 50 }}
-          onClick={() => setActiveFilterCol(null)}
-        />
-      )}
-
       <div className="matrix-scroll-wrap">
         <div className="matrix-scroll">
           <table className="matrix-table">
@@ -238,43 +317,21 @@ export default function MatrixTab({ data, jurors, groups }) {
               <tr>
                 {/* Juror column — text filter only */}
                 <th className="matrix-corner">
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div className="matrix-corner-head">
                     <span
-                      className={`col-sort-label${(jurorFilter || activeFilterCol === "juror") ? " filtered" : ""}`}
+                      className={`col-sort-label${isJurorFilterActive ? " filtered" : ""}`}
                       onClick={toggleJurorSort}
                     >
                       Juror / Group
                     </span>
                     <button
-                      className={`col-filter-hotspot${(jurorFilter || activeFilterCol === "juror") ? " active filter-icon-active" : ""}`}
-                      onClick={(e) => { e.stopPropagation(); setActiveFilterCol((p) => p === "juror" ? null : "juror"); }}
+                      type="button"
+                      className={`col-filter-hotspot${isJurorFilterActive ? " active filter-icon-active" : ""}`}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFilterCol("juror", e); }}
                       title="Filter jurors"
                     ><FilterIcon /></button>
                   </div>
-                  {activeFilterCol === "juror" && (
-                    <div className="col-filter-popover" onClick={(e) => e.stopPropagation()}>
-                      <div className={`matrix-filter-input${(jurorFilter || activeFilterCol === "juror") ? " filter-active-box" : ""}`}>
-                      <input
-                        autoFocus
-                        placeholder="Filter juror name…"
-                        value={jurorFilter}
-                        onChange={(e) => setJurorFilter(e.target.value)}
-                        className={(jurorFilter || activeFilterCol === "juror") ? "filter-input-active" : ""}
-                      />
-                      {jurorFilter && (
-                        <button
-                          className="matrix-filter-clear"
-                          onClick={() => setJurorFilter("")}
-                          aria-label="Clear filter"
-                          title="Clear filter"
-                        >
-                          <XIcon />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </th>
+                </th>
 
               {/* Group columns — click-to-sort only, no filter */}
               {groups.map((g) => {
@@ -347,6 +404,28 @@ export default function MatrixTab({ data, jurors, groups }) {
 
       {/* Info note */}
       <p className="matrix-info-note"><InfoIcon /> Averages include only <strong>completed</strong> submissions.</p>
+
+      <FilterPopoverPortal
+        open={activeFilterCol === "juror"}
+        anchorRect={anchorRect}
+        anchorEl={anchorEl}
+        onClose={closePopover}
+        className="col-filter-popover col-filter-popover-portal"
+        contentKey={jurorFilter}
+      >
+        <input
+          autoFocus
+          placeholder="Filter juror name…"
+          value={jurorFilter}
+          onChange={(e) => setJurorFilter(e.target.value)}
+          className={isJurorFilterActive ? "filter-input-active" : ""}
+        />
+        {jurorFilter && (
+          <button className="col-filter-clear" onClick={() => { setJurorFilter(""); closePopover(); }}>
+            Clear
+          </button>
+        )}
+      </FilterPopoverPortal>
     </div>
   );
 }

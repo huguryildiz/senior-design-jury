@@ -81,6 +81,11 @@ export async function getFromSheetAuth(params) {
   return getFromSheet({ ...params, token: getToken() });
 }
 
+// ── Public summary (apiSecret-gated) ─────────────────────────
+export async function getHomeSummary() {
+  return getFromSheet({ action: "summary", secret: API_SECRET });
+}
+
 // ── Row builder ───────────────────────────────────────────────
 // Column order sent to GAS must match the sheet layout:
 //   technical, design (written), delivery (oral), teamwork

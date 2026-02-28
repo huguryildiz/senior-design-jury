@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { PROJECTS, CRITERIA } from "../config";
-import { HomeIcon, ChevronDownIcon } from "../shared/Icons";
+import { HomeIcon, ChevronDownIcon, BadgeCheckIcon } from "../shared/Icons";
 
 function groupTotal(scores, pid) {
   return CRITERIA.reduce((s, c) => s + (parseInt(scores[pid]?.[c.id], 10) || 0), 0);
@@ -32,13 +32,15 @@ export default function DoneStep({
   }
 
   return (
-    <div className="done-screen">
-      <div className="done-card">
-        <div className="done-icon">🎉</div>
-        <h2>Thank You!</h2>
-        <p className="done-subtitle">
-          Your evaluations have been recorded—thank you for your feedback.
-        </p>
+    <div className="premium-screen">
+      <div className="premium-card">
+        <div className="premium-header">
+          <div className="premium-icon-square" aria-hidden="true"><BadgeCheckIcon /></div>
+          <div className="premium-title">Thank You!</div>
+          <div className="premium-subtitle">
+            Your evaluations have been recorded—thank you for your feedback.
+          </div>
+        </div>
 
         <div className="done-summary">
           {PROJECTS.map((p) => {
@@ -100,10 +102,10 @@ export default function DoneStep({
         </div>
 
         <div className="done-actions">
-          <button className="btn-secondary" onClick={onEditScores}>
+          <button className="premium-btn-secondary" onClick={onEditScores}>
             ✏️ Edit Scores
           </button>
-          <button className="btn-primary" onClick={onBack}>
+          <button className="premium-btn-primary" onClick={onBack}>
             <HomeIcon /> Back to Home
           </button>
         </div>

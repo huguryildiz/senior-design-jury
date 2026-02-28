@@ -371,7 +371,17 @@ function doGet(e) {
     if (action === "checkpin") {
       if (!checkApiSecret(apiSec)) return respond({ status: "unauthorized" });
       if (!jurorId) return respond({ status: "error", message: "jurorId required" });
-      return respond({ status: "ok", exists: getPin(jurorId) !== null });
+      var attempts = getAttempts(jurorId);
+      var left = Math.max(0, MAX_PIN_ATTEMPTS - attempts);
+      if (isLocked(jurorId)) {
+        return respond({ status: "ok", exists: false, locked: true, attemptsLeft: 0 });
+      }
+      return respond({
+        status: "ok",
+        exists: getPin(jurorId) !== null,
+        locked: false,
+        attemptsLeft: left,
+      });
     }
 
     if (action === "createpin") {
@@ -403,7 +413,7 @@ function doGet(e) {
       var entered = String(e.parameter.pin || "").trim();
 
       if (isLocked(jurorId)) {
-        return respond({ status: "ok", valid: false, locked: true, attemptsLeft: 0 });
+        return respond({ status: "locked", valid: false, locked: true, attemptsLeft: 0 });
       }
 
       var stored = getPin(jurorId);
@@ -430,6 +440,60 @@ function doGet(e) {
       var left = Math.max(0, MAX_PIN_ATTEMPTS - attempts);
       if (left === 0) lockAccount(jurorId);
       return respond({ status: "ok", valid: false, locked: left === 0, attemptsLeft: left });
+    }
+
+    if (action === "summary") {
+      if (!checkApiSecret(apiSec)) return respond({ status: "unauthorized" });
+      var ss    = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName(EVAL_SHEET);
+      if (!sheet) return respond({ status: "ok", totalJurors: 0, completedJurors: 0, lastUpdated: "" });
+      var values = sheet.getDataRange().getValues();
+      if (!values || values.length < 2) {
+        return respond({ status: "ok", totalJurors: 0, completedJurors: 0, lastUpdated: "" });
+      }
+      var headers = values.shift();
+      var idx = {};
+      headers.forEach(function(h, i) { idx[String(h || "").trim()] = i; });
+      var jurorIdx  = (idx["Juror ID"] != null) ? idx["Juror ID"] : 2;
+      var tsIdx     = (idx["Timestamp"] != null) ? idx["Timestamp"] : 3;
+      var statusIdx = (idx["Status"] != null) ? idx["Status"] : 12;
+      var groupIdx  = (idx["Group No"] != null) ? idx["Group No"] : 4;
+
+      var jurorMap = {};
+      var finalByJuror = {};
+      var lastMs = 0;
+
+      values.forEach(function(r) {
+        var jid = String(r[jurorIdx] || "").trim();
+        if (!jid) return;
+        jurorMap[jid] = true;
+
+        var ts = String(r[tsIdx] || "");
+        var ms = parseFormattedTs(ts) || new Date(ts).getTime() || 0;
+        if (ms > lastMs) lastMs = ms;
+
+        var status = String(r[statusIdx] || "");
+        if (status !== "all_submitted") return;
+        var group = String(r[groupIdx] || "").trim();
+        if (!finalByJuror[jid]) finalByJuror[jid] = {};
+        finalByJuror[jid][group] = true;
+      });
+
+      var totalJurors = Object.keys(jurorMap).length;
+      var completedJurors = 0;
+      Object.keys(jurorMap).forEach(function(jid) {
+        var groups = finalByJuror[jid];
+        if (groups && Object.keys(groups).length >= PROJECTS_DATA.length) {
+          completedJurors++;
+        }
+      });
+
+      return respond({
+        status: "ok",
+        totalJurors: totalJurors,
+        completedJurors: completedJurors,
+        lastUpdated: lastMs ? new Date(lastMs).toISOString() : "",
+      });
     }
 
     // ── Token-gated GET endpoints ─────────────────────────────

@@ -1,9 +1,29 @@
 // src/admin/components.jsx
 // ============================================================
 // Shared JSX components for admin tab modules.
+import { useEffect } from "react";
 import { CheckIcon, HourglassIcon, PencilIcon } from "../shared/Icons";
 export { HomeIcon, RefreshIcon } from "../shared/Icons";
 // ============================================================
+
+// ── Outside click / tap (pointerdown) ────────────────────────
+// Closes on pointerdown outside of provided target(s).
+export function useOutsidePointerDown(isOpen, targets, onClose) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handle = (e) => {
+      const list = Array.isArray(targets) ? targets : [targets];
+      for (const t of list) {
+        const el = t?.current ?? t;
+        if (!el) continue;
+        if (el === e.target || (el.contains && el.contains(e.target))) return;
+      }
+      onClose?.();
+    };
+    document.addEventListener("pointerdown", handle, { capture: true });
+    return () => document.removeEventListener("pointerdown", handle, { capture: true });
+  }, [isOpen, targets, onClose]);
+}
 
 // ── Status badge ──────────────────────────────────────────────
 // editingFlag = "editing" takes highest visual priority —

@@ -13,7 +13,7 @@
 //     3. Group navigation           → writeGroup(currentPid) then navigate
 //
 //   NO timers. NO debounce. NO background sync. NO cloud draft.
-//   NO localStorage.
+//   LocalStorage is used only to persist lock state across refresh.
 //
 // ── Refs ─────────────────────────────────────────────────────
 //   pendingScoresRef / pendingCommentsRef:
@@ -41,6 +41,32 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────
 const EDITING_ROWS_DELAY = 1500; // ms to wait before downgrading status in edit mode
+const LOCK_PREFIX = "LOCKED__";
+
+const lockKey = (jid) => `${LOCK_PREFIX}${jid}`;
+const readLockFlag = (jid) => {
+  if (!jid || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(lockKey(jid)) === "1";
+  } catch {
+    return false;
+  }
+};
+const writeLockFlag = (jid) => {
+  if (!jid || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(lockKey(jid), "1");
+  } catch {}
+};
+const clearLockFlag = (jid) => {
+  if (!jid || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(lockKey(jid));
+  } catch {}
+};
+const isLockedNow = (_, currentPinStep) => {
+  return currentPinStep === "locked";
+};
 
 // ── Empty-state factories ─────────────────────────────────────
 
@@ -141,7 +167,7 @@ export default function useJuryState() {
   const [pinStep,      setPinStep]      = useState("idle");
   const [pinError,     setPinError]     = useState("");
   const [newPin,       setNewPin]       = useState("");
-  const [attemptsLeft, setAttemptsLeft] = useState(3);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
 
   // ── Session-kicked dialog state ───────────────────────────
   const [sessionKicked, setSessionKicked] = useState(false);
@@ -151,6 +177,7 @@ export default function useJuryState() {
   const doneFiredRef = useRef(false);
   const stateRef     = useRef({});
   stateRef.current   = { juryName, juryDept, scores, comments, groupSynced, current };
+  const lockCheckRef = useRef({ jid: "", done: false });
 
   // Always-fresh copies of scores/comments — updated synchronously
   // in onChange handlers ONLY. Never reset from render — doing so
@@ -346,9 +373,45 @@ export default function useJuryState() {
     setSessionKicked(false);
     setKickedMsg("");
     setPinError("");
+    const jid = jurorIdRef.current;
+    lockCheckRef.current = { jid, done: false };
     setPinStep("entering");
     setStep("pin");
   }, []);
+
+  // ── PIN lock re-check (safety gate) ───────────────────────
+  useEffect(() => {
+    if (step !== "pin" || pinStep !== "entering") return;
+    const jid = jurorIdRef.current;
+    if (!jid) return;
+    const cached = lockCheckRef.current;
+    if (cached.jid === jid && cached.done) return;
+    let cancelled = false;
+    setSheetProgress({ loading: true });
+    (async () => {
+      try {
+        const res = await checkPin(jid);
+        if (cancelled) return;
+        if (res.locked || res.status === "locked") {
+          writeLockFlag(jid);
+          setPinStep("locked");
+          setAttemptsLeft(0);
+          setPinError("");
+        } else if (res.status === "ok") {
+          clearLockFlag(jid);
+        }
+        if (typeof res.attemptsLeft === "number") {
+          setAttemptsLeft(res.attemptsLeft);
+        }
+      } catch (_) {
+        // Ignore lock check failures; allow PIN entry.
+      } finally {
+        if (!cancelled) setSheetProgress(null);
+        lockCheckRef.current = { jid, done: true };
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [step, pinStep]);
 
   // ── SINGLE ENTRY POINT after PIN ──────────────────────────
   const proceedAfterPin = useCallback(async () => {
@@ -512,43 +575,97 @@ export default function useJuryState() {
     if (!n.trim() || !d.trim()) return;
     const jid = generateId(n, d);
     jurorIdRef.current = jid;
+    setAttemptsLeft(null);
+
+    if (isLockedNow(jid, pinStep)) {
+      setSheetProgress(null);
+      setPinStep("locked");
+      setPinError("");
+      setAttemptsLeft(0);
+      setStep("pin");
+      lockCheckRef.current = { jid, done: true };
+      return;
+    }
 
     // Show overlay immediately — user sees "Checking…" without waiting.
     setSheetProgress({ loading: true });
 
     if (getToken()) {
+      try {
+        const res = await checkPin(jid);
+        if (res.locked || res.status === "locked") {
+          writeLockFlag(jid);
+          setSheetProgress(null);
+          setPinStep("locked");
+          setPinError("");
+          setAttemptsLeft(0);
+          setStep("pin");
+          lockCheckRef.current = { jid, done: true };
+          return;
+        }
+        if (typeof res.attemptsLeft === "number") {
+          setAttemptsLeft(res.attemptsLeft);
+        }
+        if (res.status === "ok") clearLockFlag(jid);
+        lockCheckRef.current = { jid, done: true };
+      } catch (_) {
+        // If lock check fails, fall back to existing session token.
+        lockCheckRef.current = { jid, done: true };
+      }
       await proceedAfterPin();
       return;
     }
 
     try {
       const res = await checkPin(jid);
+      if (res.locked || res.status === "locked") {
+        writeLockFlag(jid);
+        setSheetProgress(null);
+        setPinStep("locked");
+        setPinError("");
+        setAttemptsLeft(0);
+        setStep("pin");
+        lockCheckRef.current = { jid, done: true };
+        return;
+      }
+      if (typeof res.attemptsLeft === "number") {
+        setAttemptsLeft(res.attemptsLeft);
+      }
       if (res.status !== "ok") {
         setSheetProgress(null);
         setPinError("Could not reach the server. Please try again.");
         setPinStep("entering");
         setStep("pin");
+        lockCheckRef.current = { jid, done: true };
         return;
       }
       if (res.exists) {
+        clearLockFlag(jid);
         setSheetProgress(null);
         setPinStep("entering");
         setPinError("");
-        setAttemptsLeft(3);
+        if (typeof res.attemptsLeft === "number") {
+          setAttemptsLeft(res.attemptsLeft);
+        }
         setStep("pin");
+        lockCheckRef.current = { jid, done: true };
       } else {
         const r2 = await createPin(jid, n, d);
         if (r2.status === "ok") {
+          clearLockFlag(jid);
           setSheetProgress(null);
           storeToken(r2.token);
           setNewPin(r2.pin);
           setPinStep("new");
           setStep("pin");
+          setAttemptsLeft(null);
+          lockCheckRef.current = { jid, done: true };
         } else {
           setSheetProgress(null);
           setPinError("Could not create a PIN. Please try again.");
           setPinStep("entering");
           setStep("pin");
+          lockCheckRef.current = { jid, done: true };
         }
       }
     } catch (_) {
@@ -557,50 +674,68 @@ export default function useJuryState() {
       setPinStep("entering");
       setStep("pin");
     }
-  }, [proceedAfterPin]);
+  }, [proceedAfterPin, pinStep]);
 
   // ── PIN submit ────────────────────────────────────────────
   const handlePinSubmit = useCallback(async (enteredPin) => {
     const jid = jurorIdRef.current;
+    if (isLockedNow(jid, pinStep)) {
+      setPinStep("locked");
+      setAttemptsLeft(0);
+      setPinError("");
+      return;
+    }
     setSheetProgress({ loading: true });
     try {
       const res = await verifyPin(jid, enteredPin);
-      if (res.locked) {
+      if (res.locked || res.status === "locked") {
+        writeLockFlag(jid);
         setSheetProgress(null);
         setPinStep("locked");
+        setAttemptsLeft(0);
         setPinError("Too many failed attempts. Please contact the admin to reset your PIN.");
         return;
       }
       if (res.valid) {
+        clearLockFlag(jid);
         storeToken(res.token || "");
         setPinStep("idle");
         setPinError("");
+        if (typeof res.attemptsLeft === "number") {
+          setAttemptsLeft(res.attemptsLeft);
+        }
         await proceedAfterPin();
         return;
       }
       setSheetProgress(null);
-      const left = typeof res.attemptsLeft === "number" ? res.attemptsLeft : attemptsLeft - 1;
-      setAttemptsLeft(left);
-      if (left <= 0) {
+      const left = typeof res.attemptsLeft === "number" ? res.attemptsLeft : null;
+      if (left !== null) setAttemptsLeft(left);
+      if (left !== null && left <= 0) {
+        writeLockFlag(jid);
         setPinStep("locked");
         setPinError("Too many failed attempts. Please contact the admin.");
       } else {
-        setPinError(`Incorrect PIN. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
+        if (left !== null) {
+          setPinError(`Incorrect PIN. ${left} attempt${left !== 1 ? "s" : ""} remaining.`);
+        } else {
+          setPinError("Incorrect PIN. Please try again.");
+        }
       }
     } catch (_) {
       setSheetProgress(null);
       setPinError("Could not verify PIN. Please try again.");
     }
-  }, [attemptsLeft, proceedAfterPin]);
+  }, [proceedAfterPin, pinStep]);
 
   const handlePinAcknowledge = useCallback(async () => {
     await proceedAfterPin();
-  }, [proceedAfterPin]);
+  }, [proceedAfterPin, pinStep]);
 
   // ── Full reset ────────────────────────────────────────────
   const resetAll = useCallback(() => {
     const empty  = makeEmptyScores();
     const emptyC = makeEmptyComments();
+    const jid = jurorIdRef.current;
     pendingScoresRef.current   = empty;
     pendingCommentsRef.current = emptyC;
     setJuryName("");
@@ -619,10 +754,12 @@ export default function useJuryState() {
     setPinStep("idle");
     setPinError("");
     setNewPin("");
-    setAttemptsLeft(3);
+    setAttemptsLeft(null);
     doneFiredRef.current = false;
     jurorIdRef.current   = "";
     clearToken();
+    clearLockFlag(jid);
+    lockCheckRef.current = { jid: "", done: false };
   }, []);
 
   // ── Derived ───────────────────────────────────────────────

@@ -7,6 +7,7 @@ import PinStep              from "./jury/PinStep";
 import EvalStep             from "./jury/EvalStep";
 import DoneStep             from "./jury/DoneStep";
 import SheetsProgressDialog from "./jury/SheetsProgressDialog";
+import { LockIcon } from "./shared/Icons";
 import "./styles/jury.css";
 
 export default function JuryForm({ onBack }) {
@@ -38,12 +39,14 @@ export default function JuryForm({ onBack }) {
 
   if (sessionKicked) {
     return (
-      <div className="kicked-overlay">
-        <div className="kicked-card">
-          <div className="kicked-icon">🔐</div>
-          <div className="kicked-title">Session Ended</div>
-          <div className="kicked-body">{kickedMsg}</div>
-          <button className="btn-primary" onClick={handleKickedAcknowledge}>
+      <div className="premium-overlay">
+        <div className="premium-card compact">
+          <div className="premium-header">
+            <div className="premium-icon-square" aria-hidden="true"><LockIcon /></div>
+            <div className="premium-title">Session Ended</div>
+            <div className="premium-subtitle">{kickedMsg}</div>
+          </div>
+          <button className="premium-btn-primary" onClick={handleKickedAcknowledge}>
             Sign in again
           </button>
         </div>
