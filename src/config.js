@@ -35,6 +35,7 @@ export const CRITERIA = [
     color: "#F59E0B",
     mudek: ["1.2", "2", "3.1", "3.2"],
     max: 30,
+    blurb: "Evaluate the engineering depth of the project, clarity of the problem definition, and justification of technical decisions.",
     rubric: [
       { range: "27–30", level: "Excellent",    min: 27, max: 30, desc: "Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident." },
       { range: "21–26", level: "Good",         min: 21, max: 26, desc: "Design is mostly clear and technically justified. Engineering decisions are largely supported." },
@@ -49,6 +50,7 @@ export const CRITERIA = [
     color: "#22C55E",
     mudek: ["9.2"],
     max: 30,
+    blurb: "Evaluate the clarity, structure, and visual effectiveness of the poster and written materials.",
     rubric: [
       { range: "27–30", level: "Excellent",    min: 27, max: 30, desc: "Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is presented in a way that is accessible to both technical and non-technical readers." },
       { range: "21–26", level: "Good",         min: 21, max: 26, desc: "Layout is mostly logical. Visuals are readable with minor gaps. Technical content is largely clear with small areas for improvement." },
@@ -63,6 +65,7 @@ export const CRITERIA = [
     color: "#3B82F6",
     mudek: ["9.1"],
     max: 30,
+    blurb: "Evaluate the clarity of the presentation, pacing, and the quality of answers during the Q&A.",
     rubric: [
       { range: "27–30", level: "Excellent",    min: 27, max: 30, desc: "Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate." },
       { range: "21–26", level: "Good",         min: 21, max: 26, desc: "Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident." },
@@ -77,6 +80,7 @@ export const CRITERIA = [
     color: "#EF4444",
     mudek: ["8.1", "8.2"],
     max: 10,
+    blurb: "Evaluate how effectively team members collaborate and contribute to the project.",
     rubric: [
       { range: "9–10", level: "Excellent",    min: 9, max: 10, desc: "All members participate actively and equally. Professional and ethical conduct observed throughout." },
       { range: "7–8",  level: "Good",         min: 7, max: 8,  desc: "Most members contribute. Minor knowledge gaps. Professionalism mostly observed." },

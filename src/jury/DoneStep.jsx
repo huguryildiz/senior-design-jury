@@ -16,7 +16,7 @@ function groupTotal(scores, pid) {
 }
 
 function groupTimestamp(project) {
-  const ts = project?.final_submitted_at || "";
+  const ts = project?.updated_at || "";
   if (!ts) return "—";
   return formatShortTs(ts);
 }
@@ -31,6 +31,31 @@ export default function DoneStep({
 }) {
   const displayScores = doneScores || scores;
   const [expandedGroups, setExpandedGroups] = useState(new Set());
+  const isEditMode = Boolean(onEditScores);
+  const titleText = isEditMode
+    ? "Edit mode is enabled"
+    : `Thank You${juryName ? `, ${juryName}` : ""}!`;
+  const subtitleText = isEditMode
+    ? "Your submission is saved. You can update scores and re-submit when you’re done."
+    : "Your evaluations have been submitted. Contact the administrator if you need changes.";
+  const headerIcon = isEditMode ? (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-icon lucide-pencil">
+      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  ) : (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-party-popper">
+      <path d="M5.8 11.3 2 22l10.7-3.79" />
+      <path d="M4 3h.01" />
+      <path d="M22 8h.01" />
+      <path d="M15 2h.01" />
+      <path d="M22 20h.01" />
+      <path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" />
+      <path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17" />
+      <path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7" />
+      <path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z" />
+    </svg>
+  );
 
   function toggleGroup(pid) {
     setExpandedGroups((prev) => {
@@ -41,17 +66,17 @@ export default function DoneStep({
   }
 
   return (
-    <div className="premium-screen">
-      <div className="premium-card">
+    <div className="premium-screen done-screen">
+      <div className="premium-card done-card">
         <div className="premium-header">
-          <div className="premium-icon-square confetti-icon" aria-hidden="true">
-            <span className="confetti-burst confetti-a" />
-            <span className="confetti-burst confetti-b" />
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-party-popper"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>
+          <div className={`premium-icon-square${isEditMode ? "" : " confetti-icon"}`} aria-hidden="true">
+            {!isEditMode && <span className="confetti-burst confetti-a" />}
+            {!isEditMode && <span className="confetti-burst confetti-b" />}
+            {headerIcon}
           </div>
-          <div className="premium-title">Thank You{juryName ? `, ${juryName}` : ""}!</div>
+          <div className="premium-title">{titleText}</div>
           <div className="premium-subtitle done-subtitle">
-            <span>Your evaluations have been submitted. Contact the administrator if you need to make changes.</span>
+            <span>{subtitleText}</span>
           </div>
         </div>
 
@@ -133,7 +158,7 @@ export default function DoneStep({
             </button>
           )}
           <button className="premium-btn-primary" onClick={onBack} type="button">
-            <HomeIcon /> Back to Home
+            <HomeIcon /> Return Home
           </button>
         </div>
       </div>

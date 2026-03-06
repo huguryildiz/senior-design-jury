@@ -35,7 +35,7 @@ export default function SemesterStep({ semesters, onSelect, onBack }) {
             <div className="premium-subtitle">Please contact the administrator.</div>
           </div>
           <button className="premium-btn-link" type="button" onClick={onBack}>
-            ← Back to Home
+            ← Return Home
           </button>
         </div>
       </div>
@@ -72,7 +72,7 @@ export default function SemesterStep({ semesters, onSelect, onBack }) {
         </div>
 
         <button className="premium-btn-link" type="button" onClick={onBack}>
-          ← Back to Home
+          ← Return Home
         </button>
       </div>
     </div>

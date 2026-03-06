@@ -12,8 +12,6 @@ export default function ManagePermissionsPanel({
   onToggle,
   onSave,
   onToggleEdit,
-  activityMap,
-  activeSemesterId,
 }) {
   const [local, setLocal] = useState(settings);
   const [showAll, setShowAll] = useState(false);
@@ -29,6 +27,7 @@ export default function ManagePermissionsPanel({
     onSave?.(next);
   };
   const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
+  const evalLockActive = toBool(local?.evalLockActive ?? settings?.evalLockActive);
   const orderedJurors = Array.isArray(jurors)
     ? [...jurors].sort((a, b) => {
         const aName = (a.juryName || a.juror_name || "").toLowerCase();
@@ -105,18 +104,23 @@ export default function ManagePermissionsPanel({
               const completedProjects = Number(j.completedProjects ?? j.completed_projects ?? 0);
               const finalSubmittedAt = j.finalSubmittedAt ?? j.final_submitted_at ?? null;
               const isCompleted = Boolean(finalSubmittedAt);
+              const isFullyComplete = totalProjects === 0 || completedProjects >= totalProjects;
               const completionHint = `Finalize submission first (${completedProjects}/${totalProjects})`;
+              const disableHint = `Cannot disable edit mode until all scores are re-submitted (${completedProjects}/${totalProjects}).`;
               const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
-              const permissionKey = activeSemesterId ? `${jurorId}:${activeSemesterId}` : null;
-              const entry = permissionKey ? activityMap?.get(permissionKey) : null;
               const lastActivityAt =
-                entry?.value
-                || entry
-                || j.lastSeenAt
+                j.lastSeenAt
                 || j.last_seen_at
                 || j.lastActivityAt
                 || j.last_activity_at
                 || "";
+              const lockHint = evalLockActive
+                ? "Evaluations are locked. Unlock to let jurors edit."
+                : "";
+              const baseTitle = editEnabled
+                ? (!isFullyComplete ? disableHint : "")
+                : (!isCompleted ? completionHint : "");
+              const editTitle = [baseTitle, lockHint].filter(Boolean).join(" ");
               return (
                 <div key={jurorId} className="manage-item">
                   <div>
@@ -133,6 +137,16 @@ export default function ManagePermissionsPanel({
                           {completionHint}
                         </span>
                       )}
+                      {editEnabled && !isFullyComplete && (
+                        <span className="manage-item-helper is-warning">
+                          {disableHint}
+                        </span>
+                      )}
+                      {evalLockActive && (
+                        <span className="manage-item-helper is-warning">
+                          {lockHint}
+                        </span>
+                      )}
                     </div>
                     <div className="manage-item-sub manage-meta-line">
                       <LastActivity value={lastActivityAt} />
@@ -141,14 +155,14 @@ export default function ManagePermissionsPanel({
                   <div className="manage-item-actions">
                     <div className="manage-toggle-wrap">
                       <span className="manage-toggle-label">Edit Mode</span>
-                      <label className={`manage-switch${isCompleted ? " is-ready" : " is-locked"}`}>
+                      <label className={`manage-switch${(editEnabled ? isFullyComplete : isCompleted) ? " is-ready" : " is-locked"}`}>
                         <input
                           type="checkbox"
                           checked={editEnabled}
-                          disabled={!isCompleted}
-                          title={!isCompleted ? completionHint : ""}
+                          disabled={editEnabled ? !isFullyComplete : !isCompleted}
+                          title={editTitle}
                           onChange={(e) => {
-                            if (!isCompleted) return;
+                            if (editEnabled ? !isFullyComplete : !isCompleted) return;
                             onToggleEdit?.({
                               jurorId: j.jurorId || j.juror_id,
                               enabled: e.target.checked,

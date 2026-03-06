@@ -162,7 +162,7 @@ export default function InfoStep({
         </button>
         <button className="premium-btn-link" onClick={onBack} type="button">
           <span aria-hidden="true">←</span>
-          Back to Home
+          Return Home
         </button>
       </div>
     </div>

@@ -64,7 +64,6 @@ export default function ManageProjectsPanel({
   onAddGroup,
   onEditGroup,
   onDeleteProject,
-  activityMap,
 }) {
   const fileRef = useRef(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -107,8 +106,7 @@ export default function ManageProjectsPanel({
     const groupLabel = Number.isFinite(Number(p.group_no)) && Number(p.group_no) > 0
       ? Number(p.group_no)
       : idx + 1;
-    const entry = activityMap?.get(p.id);
-    const lastActivity = entry?.value || entry || p.updated_at || p.updatedAt || null;
+    const lastActivity = p.updated_at || p.updatedAt || null;
     return (
       <div key={p.id || `${p.group_no}-${p.project_title}`} className="manage-item">
         <div>

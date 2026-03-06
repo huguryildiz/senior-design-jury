@@ -15,7 +15,6 @@ export default function ManageSemesterPanel({
   onCreateSemester,
   onUpdateSemester,
   onDeleteSemester,
-  activityMap,
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -87,10 +86,7 @@ export default function ManageSemesterPanel({
   const visibleSemesters = normalizedSearch
     ? filteredSemesters
     : (showAll ? orderedSemesters : orderedSemesters.slice(0, 4));
-  const getLastActivity = (s) => {
-    const entry = activityMap?.get(s.id);
-    return entry?.value || entry || s.updated_at || s.updatedAt || null;
-  };
+  const getLastActivity = (s) => s.updated_at || s.updatedAt || null;
   const normalizeDateInput = (value) => {
     if (!value) return "";
     return String(value).slice(0, 10);

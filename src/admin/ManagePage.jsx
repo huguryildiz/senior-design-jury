@@ -205,10 +205,19 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
   const [auditError, setAuditError] = useState("");
   const [auditFilters, setAuditFilters] = useState(defaultAuditFilters);
   const [auditSearch, setAuditSearch] = useState("");
-  const [activityLogs, setActivityLogs] = useState([]);
-  const liveTimerRef = useRef(null);
+  const jurorTimerRef = useRef(null);  // debounce for loadJurors-only refetch
+  const auditTimerRef = useRef(null);  // debounce for loadAuditLogs refetch
   const adminSecurityRef = useRef(null);
   const auditCardRef = useRef(null);
+
+  useEffect(() => {
+    if (!message && !error) return;
+    const timer = setTimeout(() => {
+      setMessage("");
+      setError("");
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [message, error]);
 
   const activeSemester = useMemo(
     () => semesterList.find((s) => s.id === activeSemesterId) || null,
@@ -270,21 +279,67 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     }
   }, [adminPass]);
 
-  const loadActivityLogs = useCallback(async () => {
-    if (!adminPass) return;
-    try {
-      const rows = await adminListAuditLogs({
-        startAt: null,
-        endAt: null,
-        actorTypes: null,
-        actions: null,
-        limit: 500,
-      }, adminPass);
-      setActivityLogs(rows || []);
-    } catch {
-      setActivityLogs([]);
-    }
-  }, [adminPass]);
+  const applySemesterPatch = useCallback((patch) => {
+    if (!patch?.id) return;
+    setSemesterList((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((s) => s.id === patch.id);
+      if (idx >= 0) {
+        next[idx] = {
+          ...next[idx],
+          ...patch,
+          updated_at: patch.updated_at || next[idx].updated_at || new Date().toISOString(),
+        };
+      } else {
+        next.push({
+          ...patch,
+          updated_at: patch.updated_at || new Date().toISOString(),
+        });
+      }
+      return next;
+    });
+  }, []);
+
+  const applyProjectPatch = useCallback((patch) => {
+    if (!patch) return;
+    setProjects((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex(
+        (p) =>
+          (patch.id && p.id === patch.id)
+          || (
+            patch.group_no != null
+            && p.group_no === patch.group_no
+            && (!patch.semester_id || p.semester_id === patch.semester_id)
+          )
+      );
+      const updated = {
+        ...((idx >= 0 ? next[idx] : {}) || {}),
+        ...patch,
+        updated_at: patch.updated_at || (idx >= 0 ? next[idx]?.updated_at : null) || new Date().toISOString(),
+      };
+      if (idx >= 0) next[idx] = updated;
+      else next.push(updated);
+      return next;
+    });
+  }, []);
+
+  const applyJurorPatch = useCallback((patch) => {
+    if (!patch) return;
+    const jurorId = patch.juror_id || patch.jurorId || patch.id;
+    if (!jurorId) return;
+    setJurors((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((j) => (j.juror_id || j.jurorId) === jurorId);
+      const updated = {
+        ...((idx >= 0 ? next[idx] : {}) || {}),
+        ...patch,
+      };
+      if (idx >= 0) next[idx] = updated;
+      else next.push(updated);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -314,11 +369,6 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     if (!adminPass) return;
     loadAuditLogs(auditFilters);
   }, [adminPass, auditFilters, loadAuditLogs]);
-
-  useEffect(() => {
-    if (!adminPass) return;
-    loadActivityLogs();
-  }, [adminPass, loadActivityLogs]);
 
   const visibleAuditLogs = useMemo(() => {
     const query = auditSearch.trim().toLowerCase();
@@ -373,138 +423,100 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     };
   }, [isMobile, openPanels.security]);
 
-  const activityMaps = useMemo(() => {
-    const maps = {
-      semester: new Map(),
-      project: new Map(),
-      juror: new Map(),
-      permission: new Map(),
-    };
-
-    const normalizeMeta = (meta) => {
-      if (!meta) return null;
-      if (typeof meta === "object") return meta;
-      try {
-        return JSON.parse(meta);
-      } catch {
-        return null;
-      }
-    };
-
-    const updateLatest = (map, key, value) => {
-      if (!key || !value) return;
-      const ms = Date.parse(value);
-      if (!Number.isFinite(ms)) return;
-      const prev = map.get(key);
-      if (!prev || ms > prev.ms) {
-        map.set(key, { value, ms });
-      }
-    };
-
-    (activityLogs || []).forEach((log) => {
-      const ts = log?.created_at;
-      if (!ts) return;
-
-      if (log.entity_type === "semester" && log.entity_id) {
-        updateLatest(maps.semester, log.entity_id, ts);
-      }
-      if (log.entity_type === "project" && log.entity_id) {
-        updateLatest(maps.project, log.entity_id, ts);
-      }
-      if (log.entity_type === "juror" && log.entity_id) {
-        updateLatest(maps.juror, log.entity_id, ts);
-      }
-      if (log.actor_type === "juror" && log.actor_id) {
-        updateLatest(maps.juror, log.actor_id, ts);
-      }
-
-      if (log.action === "admin_juror_edit_toggle" && log.entity_id) {
-        const meta = normalizeMeta(log.metadata);
-        const semId = meta?.semester_id;
-        if (semId) {
-          updateLatest(maps.permission, `${log.entity_id}:${semId}`, ts);
-        }
-      }
-    });
-
-    return maps;
-  }, [activityLogs]);
-
-  const scheduleLiveRefresh = useCallback(() => {
+  // Debounced juror-only refetch (enriched data: auth status, completion counts, etc.)
+  const scheduleJurorRefresh = useCallback(() => {
     if (!adminPass) return;
-    if (liveTimerRef.current) return;
-    liveTimerRef.current = setTimeout(() => {
-      liveTimerRef.current = null;
-      loadSemesters().catch(() => {});
-      if (activeSemesterId) {
-        loadProjects(activeSemesterId).catch(() => {});
-        loadJurors().catch(() => {});
-      }
-      loadSettings().catch(() => {});
+    if (jurorTimerRef.current) return;
+    jurorTimerRef.current = setTimeout(() => {
+      jurorTimerRef.current = null;
+      loadJurors().catch(() => {});
+    }, 400);
+  }, [adminPass, loadJurors]);
+
+  // Debounced audit log refetch (respects current filters)
+  const scheduleAuditRefresh = useCallback(() => {
+    if (!adminPass) return;
+    if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
+    auditTimerRef.current = setTimeout(() => {
+      auditTimerRef.current = null;
       loadAuditLogs(auditFilters).catch(() => {});
-      loadActivityLogs().catch(() => {});
-    }, 500);
-  }, [
-    adminPass,
-    activeSemesterId,
-    auditFilters,
-    loadSemesters,
-    loadProjects,
-    loadJurors,
-    loadSettings,
-    loadAuditLogs,
-    loadActivityLogs,
-  ]);
+    }, 600);
+  }, [adminPass, auditFilters, loadAuditLogs]);
 
   useEffect(() => {
     if (!adminPass) return;
+
     const channel = supabase
       .channel("admin-manage-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "juror_semester_auth" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "scores" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "jurors" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "projects" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "semesters" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "settings" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "audit_logs" },
-        scheduleLiveRefresh
-      )
+
+      // ── semesters: patch in-place, no full reload ──────────
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "semesters" }, (payload) => {
+        if (payload.new?.id) applySemesterPatch(payload.new);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "semesters" }, (payload) => {
+        if (payload.new?.id) {
+          applySemesterPatch(payload.new);
+          if (payload.new.is_active) setActiveSemesterId(payload.new.id);
+        }
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "semesters" }, (payload) => {
+        const deletedId = payload.old?.id;
+        if (!deletedId) return;
+        setSemesterList((prev) => {
+          const next = prev.filter((s) => s.id !== deletedId);
+          setActiveSemesterId((cur) => {
+            if (cur !== deletedId) return cur;
+            const active = next.find((s) => s.is_active) || next[0];
+            return active?.id || "";
+          });
+          return next;
+        });
+      })
+
+      // ── projects: patch in-place for active semester ───────
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "projects" }, (payload) => {
+        if (payload.new?.semester_id === activeSemesterId) applyProjectPatch(payload.new);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "projects" }, (payload) => {
+        if (payload.new?.semester_id === activeSemesterId) applyProjectPatch(payload.new);
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "projects" }, (payload) => {
+        const deletedId = payload.old?.id;
+        if (deletedId) setProjects((prev) => prev.filter((p) => p.id !== deletedId));
+      })
+
+      // ── settings: patch settings state inline ─────────────
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, (payload) => {
+        const row = payload.new;
+        if (!row?.key) return;
+        if (row.key === SETTINGS_KEYS.evalLock) {
+          setSettings((prev) => ({ ...prev, evalLockActive: row.value === "true" }));
+        }
+      })
+
+      // ── jurors / auth / scores: enriched → refetch jurors only
+      .on("postgres_changes", { event: "*", schema: "public", table: "jurors" }, scheduleJurorRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "juror_semester_auth" }, scheduleJurorRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "scores" }, scheduleJurorRefresh)
+
+      // ── audit_logs: debounced reload respecting filters ────
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "audit_logs" }, scheduleAuditRefresh)
+
       .subscribe();
 
     return () => {
-      if (liveTimerRef.current) {
-        clearTimeout(liveTimerRef.current);
-        liveTimerRef.current = null;
-      }
+      if (jurorTimerRef.current) { clearTimeout(jurorTimerRef.current); jurorTimerRef.current = null; }
+      if (auditTimerRef.current) { clearTimeout(auditTimerRef.current); auditTimerRef.current = null; }
       supabase.removeChannel(channel);
     };
-  }, [adminPass, scheduleLiveRefresh]);
+  }, [
+    adminPass,
+    activeSemesterId,
+    applySemesterPatch,
+    applyProjectPatch,
+    scheduleJurorRefresh,
+    scheduleAuditRefresh,
+  ]);
 
   const handleSetActiveSemester = async (semesterId) => {
     setMessage("");
@@ -513,7 +525,10 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setLoading(true);
     try {
       await adminSetActiveSemester(semesterId, adminPass);
-      await loadSemesters();
+      setSemesterList((prev) =>
+        prev.map((s) => ({ ...s, is_active: s.id === semesterId }))
+      );
+      setActiveSemesterId(semesterId);
       setMessage("Active semester updated.");
     } catch (e) {
       setError(e?.message || "Could not update active semester.");
@@ -528,8 +543,18 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     if (!adminPass) return setError("Admin password missing.");
     setLoading(true);
     try {
-      await adminCreateSemester(payload, adminPass);
-      await loadSemesters();
+      const created = await adminCreateSemester(payload, adminPass);
+      if (created?.id) {
+        applySemesterPatch(created);
+      } else {
+        applySemesterPatch({
+          id: `temp-${Date.now()}`,
+          name: payload.name,
+          starts_on: payload.starts_on,
+          ends_on: payload.ends_on,
+          is_active: false,
+        });
+      }
       setMessage("Semester created.");
     } catch (e) {
       setError(e?.message || "Could not create semester.");
@@ -545,7 +570,12 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setLoading(true);
     try {
       await adminUpdateSemester(payload, adminPass);
-      await loadSemesters();
+      applySemesterPatch({
+        id: payload.id,
+        name: payload.name,
+        starts_on: payload.starts_on,
+        ends_on: payload.ends_on,
+      });
       setMessage("Semester updated.");
     } catch (e) {
       setError(e?.message || "Could not update semester.");
@@ -561,9 +591,15 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setLoading(true);
     try {
       for (const row of rows) {
-        await adminUpsertProject({ ...row, semesterId: activeSemesterId }, adminPass);
+        const res = await adminUpsertProject({ ...row, semesterId: activeSemesterId }, adminPass);
+        applyProjectPatch({
+          id: res?.project_id || res?.projectId || undefined,
+          semester_id: activeSemesterId,
+          group_no: row.group_no,
+          project_title: row.project_title,
+          group_students: row.group_students,
+        });
       }
-      await loadProjects(activeSemesterId);
       setMessage("Projects imported.");
     } catch (e) {
       setError(e?.message || "Could not import projects.");
@@ -578,8 +614,14 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setError("");
     setLoading(true);
     try {
-      await adminUpsertProject({ ...row, semesterId: activeSemesterId }, adminPass);
-      await loadProjects(activeSemesterId);
+      const res = await adminUpsertProject({ ...row, semesterId: activeSemesterId }, adminPass);
+      applyProjectPatch({
+        id: res?.project_id || res?.projectId || undefined,
+        semester_id: activeSemesterId,
+        group_no: row.group_no,
+        project_title: row.project_title,
+        group_students: row.group_students,
+      });
       setMessage("Group saved.");
     } catch (e) {
       setError(e?.message || "Could not save group.");
@@ -594,8 +636,14 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setError("");
     setLoading(true);
     try {
-      await adminUpsertProject({ ...row, semesterId: activeSemesterId }, adminPass);
-      await loadProjects(activeSemesterId);
+      const res = await adminUpsertProject({ ...row, semesterId: activeSemesterId }, adminPass);
+      applyProjectPatch({
+        id: res?.project_id || res?.projectId || undefined,
+        semester_id: activeSemesterId,
+        group_no: row.group_no,
+        project_title: row.project_title,
+        group_students: row.group_students,
+      });
       setMessage("Group updated.");
     } catch (e) {
       setError(e?.message || "Could not update group.");
@@ -610,8 +658,24 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setError("");
     setLoading(true);
     try {
-      await adminCreateJuror(row, adminPass);
-      await loadJurors();
+      const created = await adminCreateJuror(row, adminPass);
+      if (created?.juror_id) {
+        applyJurorPatch({
+          juror_id: created.juror_id,
+          juror_name: created.juror_name,
+          juror_inst: created.juror_inst,
+          locked_until: null,
+          last_seen_at: null,
+          is_locked: false,
+          is_assigned: false,
+          scored_semesters: [],
+          edit_enabled: false,
+          final_submitted_at: null,
+          last_activity_at: null,
+          total_projects: projects.length,
+          completed_projects: 0,
+        });
+      }
       setMessage("Juror added.");
     } catch (e) {
       setError(e?.message || "Could not add juror.");
@@ -626,9 +690,25 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setLoading(true);
     try {
       for (const row of rows) {
-        await adminCreateJuror(row, adminPass);
+        const created = await adminCreateJuror(row, adminPass);
+        if (created?.juror_id) {
+          applyJurorPatch({
+            juror_id: created.juror_id,
+            juror_name: created.juror_name,
+            juror_inst: created.juror_inst,
+            locked_until: null,
+            last_seen_at: null,
+            is_locked: false,
+            is_assigned: false,
+            scored_semesters: [],
+            edit_enabled: false,
+            final_submitted_at: null,
+            last_activity_at: null,
+            total_projects: projects.length,
+            completed_projects: 0,
+          });
+        }
       }
-      await loadJurors();
       setMessage("Jurors imported.");
     } catch (e) {
       setError(e?.message || "Could not import jurors.");
@@ -644,7 +724,11 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setLoading(true);
     try {
       await adminUpdateJuror(row, adminPass);
-      await loadJurors();
+      applyJurorPatch({
+        juror_id: row.jurorId,
+        juror_name: row.juror_name,
+        juror_inst: row.juror_inst,
+      });
       setMessage("Juror updated.");
     } catch (e) {
       setError(e?.message || "Could not update juror.");
@@ -668,6 +752,13 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
         juror_name: jurorName || res?.juror_name || null,
         juror_inst: jurorInst || res?.juror_inst || null,
       });
+      applyJurorPatch({
+        juror_id: jurorId,
+        locked_until: null,
+        failed_attempts: 0,
+        is_locked: false,
+        last_seen_at: null,
+      });
       setMessage("PIN reset.");
     } catch (e) {
       setError(e?.message || "Could not reset PIN.");
@@ -680,20 +771,29 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     if (!activeSemesterId || !jurorId) return;
     setMessage("");
     setError("");
+    // Optimistic update — revert below if the RPC fails
+    applyJurorPatch({ juror_id: jurorId, edit_enabled: !!enabled });
     setLoading(true);
     try {
       await adminSetJurorEditMode(
-        {
-          semesterId: activeSemesterId,
-          jurorId,
-          enabled,
-        },
+        { semesterId: activeSemesterId, jurorId, enabled },
         adminPass
       );
-      await loadJurors();
       setMessage(enabled ? "Edit mode enabled." : "Edit mode disabled.");
     } catch (e) {
-      setError(e?.message || "Could not update edit mode.");
+      applyJurorPatch({ juror_id: jurorId, edit_enabled: !enabled }); // revert
+      const msg = String(e?.message || "");
+      if (msg.includes("final_submit_required")) {
+        setError("Cannot disable edit mode until all scores are re-submitted.");
+      } else if (msg.includes("no_pin")) {
+        setError("Juror PIN is missing for this semester. Reset the PIN first.");
+      } else if (msg.includes("semester_inactive")) {
+        setError("Only the active semester can be edited.");
+      } else if (msg.includes("unauthorized")) {
+        setError("Admin password is invalid. Please re-login.");
+      } else {
+        setError(e?.message || "Could not update edit mode.");
+      }
     } finally {
       setLoading(false);
     }
@@ -760,11 +860,17 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     setError("");
     await adminDeleteEntity({ targetType: type, targetId: id, deletePassword: password });
     if (type === "semester") {
-      await loadSemesters();
+      setSemesterList((prev) => {
+        const remaining = prev.filter((s) => s.id !== id);
+        if (activeSemesterId === id) {
+          setActiveSemesterId(remaining[0]?.id || "");
+        }
+        return remaining;
+      });
     } else if (type === "project") {
-      await loadProjects(activeSemesterId);
+      setProjects((prev) => prev.filter((p) => p.id !== id));
     } else if (type === "juror") {
-      await loadJurors();
+      setJurors((prev) => prev.filter((j) => (j.juror_id || j.jurorId) !== id));
     }
     setMessage(`Deleted ${label}.`);
   };
@@ -880,7 +986,6 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
                   label: `Semester ${s?.name || ""}`.trim(),
                 })
               }
-              activityMap={activityMaps.semester}
             />
 
             <ManageProjectsPanel
@@ -899,7 +1004,6 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
                   label: `Group ${groupLabel}${p?.project_title ? ` — ${p.project_title}` : ""}`,
                 })
               }
-              activityMap={activityMaps.project}
             />
 
             <ManageJurorsPanel
@@ -918,7 +1022,6 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
                   label: `Juror ${j?.juryName || j?.juror_name || ""}`.trim(),
                 })
               }
-              activityMap={activityMaps.juror}
             />
 
             <ManagePermissionsPanel
@@ -929,8 +1032,6 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               onToggle={() => togglePanel("permissions")}
               onSave={handleSaveSettings}
               onToggleEdit={handleToggleJurorEdit}
-              activityMap={activityMaps.permission}
-              activeSemesterId={activeSemesterId}
             />
           </div>
         </section>

@@ -68,7 +68,6 @@ export default function ManageJurorsPanel({
   onEditJuror,
   onResetPin,
   onDeleteJuror,
-  activityMap,
 }) {
   const fileRef = useRef(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -271,11 +270,8 @@ export default function ManageJurorsPanel({
                   : [];
               const scoredLabel = scoredSemesters.join(" · ");
               const jurorId = j.jurorId || j.juror_id;
-              const entry = activityMap?.get(jurorId);
               const lastActivityAt =
-                entry?.value
-                || entry
-                || j.lastActivityAt
+                j.lastActivityAt
                 || j.last_activity_at
                 || j.lastSeenAt
                 || j.last_seen_at

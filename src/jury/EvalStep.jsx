@@ -89,6 +89,7 @@ export default function EvalStep({
   groupSynced, editMode,
   progressPct, allComplete,
   saveStatus,
+  submitError,
   handleScore, handleScoreBlur,
   handleCommentChange, handleCommentBlur,
   handleFinalSubmit,
@@ -101,6 +102,13 @@ export default function EvalStep({
   const scrollRef = useRef(null);
 
   const project = projects[current];
+  const updateDescScrollState = (el) => {
+    if (!el) return;
+    const hasOverflow = el.scrollWidth > el.clientWidth;
+    el.classList.toggle("has-overflow", hasOverflow);
+    el.classList.toggle("is-scrolled", el.scrollLeft > 0);
+  };
+  const handleDescScroll = (e) => updateDescScrollState(e.currentTarget);
 
   // Reset group info on project change
   useEffect(() => { setGroupInfoOpen(false); }, [current]);
@@ -289,7 +297,7 @@ export default function EvalStep({
         {editMode && (
           <div className="group-done-banner edit-mode-banner">
             <PencilIcon />
-            Edit mode — adjust scores then click Submit Final.
+            Edit mode enabled — adjust scores and click "Submit Final Scores" when ready.
           </div>
         )}
 
@@ -302,9 +310,20 @@ export default function EvalStep({
           return (
             <div key={crit.id} className={`crit-card${showMissing ? " invalid" : ""}`}>
               <div className="crit-header">
-                <div>
+                <div className="crit-meta">
                   <div className="crit-label">{crit.label}</div>
                   <div className="crit-max">Maximum: {crit.max} pts</div>
+                  {crit.blurb && (
+                    <div
+                      className="crit-desc swipe-x"
+                      ref={updateDescScrollState}
+                      onScroll={handleDescScroll}
+                      onPointerEnter={handleDescScroll}
+                      onTouchStart={handleDescScroll}
+                    >
+                      {crit.blurb}
+                    </div>
+                  )}
                 </div>
                 <button
                   className="rubric-btn"
@@ -366,7 +385,7 @@ export default function EvalStep({
             value={comments[pid] || ""}
             onChange={(e) => handleCommentChange(pid, e.target.value)}
             onBlur={()    => handleCommentBlur(pid)}
-            placeholder="Any additional feedback about this group…"
+            placeholder="Optional feedback about the project, presentation, or teamwork…"
             rows={3}
           />
         </div>
@@ -394,14 +413,25 @@ export default function EvalStep({
         {/* Submit Final — edit mode only */}
         {editMode && (
           <button
-            className="premium-btn-primary eval-submit-btn"
+            className="premium-btn-primary eval-submit-btn eval-submit-glow"
             style={{ width: "100%", marginTop: 8, opacity: allComplete ? 1 : 0.65 }}
             onClick={handleFinalSubmit}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-icon lucide-send" aria-hidden="true">
+              <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+              <path d="m21.854 2.147-10.94 10.939" />
+            </svg>
             {allComplete
-              ? "Submit Final"
-              : `Submit Final (${countFilled(scores, projects)} / ${projects.length * CRITERIA.length} filled)`}
+              ? "Submit Final Scores"
+              : `Submit Final Scores(${countFilled(scores, projects)} / ${projects.length * CRITERIA.length} filled)`}
           </button>
+        )}
+
+        {submitError && (
+          <div className="premium-error-banner" role="alert" style={{ marginTop: 12 }}>
+            <div className="premium-error-title">Submission failed</div>
+            <div className="premium-error-detail">{submitError}</div>
+          </div>
         )}
 
       </div>
@@ -419,7 +449,7 @@ export default function EvalStep({
               onClick={() => { setShowBackMenu(false); onGoHome(); }}
             >
               <HomeIcon />
-              Go Home
+              Return Home
             </button>
             <button
               className="back-menu-btn secondary"

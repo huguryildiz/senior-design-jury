@@ -219,6 +219,77 @@ CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx
 CREATE INDEX IF NOT EXISTS audit_logs_actor_action_idx
   ON public.audit_logs (actor_type, action, created_at DESC);
 
+-- ── Realtime publication (Supabase) ───────────────────────
+-- Ensure tables are added to supabase_realtime for live updates.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'semesters'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.semesters;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'projects'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'jurors'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.jurors;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'juror_semester_auth'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.juror_semester_auth;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'scores'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.scores;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'settings'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = 'audit_logs'
+    ) THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
+    END IF;
+  END IF;
+END;
+$$;
+
 -- ── Triggers ────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.trg_set_updated_at()
@@ -485,6 +556,7 @@ DECLARE
   v_group_no integer;
   v_project_title text;
   v_juror_name text;
+  v_sem_name text;
   v_new_comment text;
   v_new_tech integer;
   v_new_writ integer;
@@ -507,6 +579,10 @@ BEGIN
   SELECT juror_name INTO v_juror_name
   FROM jurors
   WHERE id = p_juror_id;
+
+  SELECT name INTO v_sem_name
+  FROM semesters
+  WHERE id = p_semester_id;
 
   SELECT * INTO v_prev
   FROM scores
@@ -601,12 +677,14 @@ BEGIN
       'project',
       p_project_id,
       format(
-        'Juror %s started evaluating Group %s',
+        'Juror %s started evaluating Group %s (%s)',
         COALESCE(v_juror_name, p_juror_id::text),
-        COALESCE(v_group_no::text, '?')
+        COALESCE(v_group_no::text, '?'),
+        COALESCE(v_sem_name, p_semester_id::text)
       ),
       jsonb_build_object(
         'semester_id', p_semester_id,
+        'semester_name', v_sem_name,
         'group_no', v_group_no,
         'project_title', v_project_title
       )
@@ -621,12 +699,14 @@ BEGIN
       'project',
       p_project_id,
       format(
-        'Juror %s completed evaluation for Group %s',
+        'Juror %s completed evaluation for Group %s (%s)',
         COALESCE(v_juror_name, p_juror_id::text),
-        COALESCE(v_group_no::text, '?')
+        COALESCE(v_group_no::text, '?'),
+        COALESCE(v_sem_name, p_semester_id::text)
       ),
       jsonb_build_object(
         'semester_id', p_semester_id,
+        'semester_name', v_sem_name,
         'group_no', v_group_no,
         'project_title', v_project_title
       )
@@ -641,11 +721,13 @@ BEGIN
       'semester',
       p_semester_id,
       format(
-        'Juror %s completed all project evaluations',
-        COALESCE(v_juror_name, p_juror_id::text)
+        'Juror %s completed all project evaluations (%s)',
+        COALESCE(v_juror_name, p_juror_id::text),
+        COALESCE(v_sem_name, p_semester_id::text)
       ),
       jsonb_build_object(
         'semester_id', p_semester_id,
+        'semester_name', v_sem_name,
         'completed_projects', v_completed_after,
         'total_projects', v_total_projects
       )
@@ -1731,6 +1813,8 @@ AS $$
 DECLARE
   v_name text;
   v_sem_name text;
+  v_total_projects integer := 0;
+  v_completed_projects integer := 0;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1742,6 +1826,25 @@ BEGIN
       AND s.is_active = true
   ) THEN
     RAISE EXCEPTION 'semester_inactive';
+  END IF;
+
+  IF COALESCE(p_enabled, false) = false THEN
+    SELECT COUNT(*)::int INTO v_total_projects
+    FROM projects p
+    WHERE p.semester_id = p_semester_id;
+
+    SELECT COUNT(*)::int INTO v_completed_projects
+    FROM scores sc
+    WHERE sc.semester_id = p_semester_id
+      AND sc.juror_id = p_juror_id
+      AND sc.technical IS NOT NULL
+      AND sc.written   IS NOT NULL
+      AND sc.oral      IS NOT NULL
+      AND sc.teamwork  IS NOT NULL;
+
+    IF v_total_projects > 0 AND v_completed_projects < v_total_projects THEN
+      RAISE EXCEPTION 'final_submit_required';
+    END IF;
   END IF;
 
   UPDATE juror_semester_auth

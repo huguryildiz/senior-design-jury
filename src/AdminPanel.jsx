@@ -314,54 +314,51 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
   useEffect(() => { fetchData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Live refresh (Supabase Realtime)
-  const fetchDataRef = useRef(fetchData);
-  const liveTimerRef = useRef(null);
-  useEffect(() => { fetchDataRef.current = fetchData; }, [fetchData]);
+  // Background (silent) refresh — no loading spinner, used by Realtime subscription
+  const bgTimerRef = useRef(null);
+  const bgRefresh = useRef(null);
+  bgRefresh.current = async () => {
+    const pass = getAdminPass();
+    if (!pass) return;
+    const semId = selectedSemesterRef.current;
+    if (!semId) return;
+    try {
+      const [scores, summary, jurors] = await Promise.all([
+        adminGetScores(semId, pass),
+        adminProjectSummary(semId, pass),
+        adminListJurors(semId, pass).catch(() => []),
+      ]);
+      setRawScores(scores);
+      setSummaryData(summary);
+      setAllJurors(jurors);
+      setLastRefresh(new Date());
+    } catch {
+      // silent — don't flash error on background sync
+    }
+  };
+
+  // Live refresh (Supabase Realtime) — uses bgRefresh to avoid loading flicker
   useEffect(() => {
     if (!getAdminPass()) return;
-    const scheduleLiveRefresh = () => {
-      if (liveTimerRef.current) return;
-      liveTimerRef.current = setTimeout(() => {
-        liveTimerRef.current = null;
-        fetchDataRef.current?.();
+    const scheduleBgRefresh = () => {
+      if (bgTimerRef.current) return;
+      bgTimerRef.current = setTimeout(() => {
+        bgTimerRef.current = null;
+        bgRefresh.current?.();
       }, 600);
     };
 
     const channel = supabase
       .channel("admin-panel-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "scores" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "juror_semester_auth" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "projects" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "semesters" },
-        scheduleLiveRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "jurors" },
-        scheduleLiveRefresh
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "scores" }, scheduleBgRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "juror_semester_auth" }, scheduleBgRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, scheduleBgRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "semesters" }, scheduleBgRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "jurors" }, scheduleBgRefresh)
       .subscribe();
 
     return () => {
-      if (liveTimerRef.current) {
-        clearTimeout(liveTimerRef.current);
-        liveTimerRef.current = null;
-      }
+      if (bgTimerRef.current) { clearTimeout(bgTimerRef.current); bgTimerRef.current = null; }
       supabase.removeChannel(channel);
     };
   }, [adminPassState]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -640,7 +637,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       <div className="form-header">
         <div className="form-header-main">
           <div className="header-left">
-            <button className="back-btn" onClick={onBack} aria-label="Back to home">
+            <button className="back-btn" onClick={onBack} aria-label="Return Home">
               <HomeIcon />
             </button>
             <div className="header-title">

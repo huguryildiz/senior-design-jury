@@ -12,14 +12,14 @@
 //   onBack      : () => void
 // ============================================================
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { KeyRoundIcon, AlertCircleIcon, LockIcon } from "../shared/Icons";
-import MinimalLoaderOverlay from "../shared/MinimalLoaderOverlay";
 
 // ── 4-box PIN input with explicit OK button ───────────────────
 function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   const PIN_LEN = 4;
   const [digits, setDigits] = useState(Array.from({ length: PIN_LEN }, () => ""));
+  const inputId = useId();
   const inputRefs = Array.from({ length: PIN_LEN }, () => useRef(null));
 
   // Reset boxes whenever an error is shown so the user can retry cleanly.
@@ -86,12 +86,15 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
             inputMode="numeric"
             maxLength={1}
             value={d}
+            name={`${inputId}-pin-${i}`}
             autoFocus={i === 0}
-            autoComplete="off"
+            autoComplete="new-password"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
             data-lpignore="true"
+            data-1p-ignore="true"
+            data-bwignore="true"
             data-form-type="other"
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
@@ -122,7 +125,6 @@ export default function PinStep({
   onBack,
 }) {
   const [shake,       setShake]       = useState(false);
-  const [authOverlay, setAuthOverlay] = useState(false);
   const authActiveRef = useRef(false);
   const isLocked = pinErrorCode === "locked";
   const attemptsLeft = typeof pinAttemptsLeft === "number" ? Math.max(0, pinAttemptsLeft) : null;
@@ -167,16 +169,10 @@ export default function PinStep({
   const handleVerify = async (pin) => {
     if (authActiveRef.current) return;
     authActiveRef.current = true;
-    setAuthOverlay(true);
-    const start = Date.now();
     try {
       await Promise.resolve(onPinSubmit(pin));
     } catch {}
-    const elapsed = Date.now() - start;
-    const wait = Math.max(0, 800 - elapsed);
-    await new Promise((r) => setTimeout(r, wait));
     authActiveRef.current = false;
-    setAuthOverlay(false);
   };
 
   if (isLocked) {
@@ -210,12 +206,11 @@ export default function PinStep({
             {onBack && (
               <button className="premium-btn-link" type="button" onClick={onBack}
                 style={{ marginTop: 4 }}>
-                ← Return to Home
+                ← Return Home
               </button>
             )}
           </div>
         </div>
-        <MinimalLoaderOverlay open={authOverlay} minDuration={400} />
       </>
     );
   }
@@ -252,12 +247,11 @@ export default function PinStep({
           {onBack && (
             <button className="premium-btn-link" type="button" onClick={onBack}
               style={{ marginTop: 16 }}>
-              ← Back to Home
+              ← Return Home
             </button>
           )}
         </div>
       </div>
-      <MinimalLoaderOverlay open={authOverlay} minDuration={400} />
     </>
   );
 }

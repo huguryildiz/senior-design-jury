@@ -112,7 +112,7 @@ export default function App() {
               Log In
             </button>
             <button className="premium-btn-link" onClick={() => { setPage("home"); setAdminAuthError(""); }}>
-              ← Back to Home
+              ← Return Home
             </button>
           
           </div>
@@ -152,10 +152,10 @@ export default function App() {
           <img className="home-logo" src={teduLogo} alt="TED University" loading="eager" />
         </div>
 
-        <h1>Senior Project Poster Day <br/> Jury Portal</h1>
+        <h1>Senior Project Poster Day Jury Portal</h1>
 
         <p className="home-sub">
-          TED University <br/> Department of Electrical and Electronics Engineering
+          TED University <br/> Dept. of Electrical and Electronics Engineering
         </p>
 
         <div className="home-buttons">

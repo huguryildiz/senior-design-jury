@@ -183,6 +183,7 @@ export default function useJuryState() {
 
   // ── Submission confirmation ───────────────────────────────
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // ── Refs ──────────────────────────────────────────────────
   const doneFiredRef     = useRef(false);
@@ -220,7 +221,7 @@ export default function useJuryState() {
   const writeGroup = useCallback(
     async (pid) => {
       const { jurorId: jid, semesterId: sid } = stateRef.current;
-      if (!jid || !sid || !pid) return;
+      if (!jid || !sid || !pid) return false;
 
       const s = pendingScoresRef.current;
       const c = pendingCommentsRef.current;
@@ -228,12 +229,12 @@ export default function useJuryState() {
       const snapshot = buildScoreSnapshot(s[pid], currentComment);
 
       if (!snapshot.hasAnyScores && !snapshot.hasComment && !lastWrittenRef.current[pid]) {
-        return; // truly untouched, skip
+        return true; // truly untouched, skip
       }
 
       const last  = lastWrittenRef.current[pid];
       if (last && last.key === snapshot.key) {
-        return; // no data changes
+        return true; // no data changes
       }
 
       setSaveStatus("saving");
@@ -246,9 +247,11 @@ export default function useJuryState() {
         if (isAllFilled(s, pid)) {
           setGroupSynced((prev) => ({ ...prev, [pid]: true }));
         }
+        return true;
       } catch (_) {
         setSaveStatus("error");
         setTimeout(() => setSaveStatus("idle"), 3000);
+        return false;
       }
     },
     [] // stateRef and refs are stable
@@ -350,6 +353,7 @@ export default function useJuryState() {
   // ── Submit handlers ───────────────────────────────────────
 
   const handleRequestSubmit = useCallback(() => {
+    setSubmitError("");
     const { scores: s, projects: projs } = stateRef.current;
     if (!isAllComplete(s, projs)) {
       setTouched(makeAllTouched(projs));
@@ -363,22 +367,48 @@ export default function useJuryState() {
     setConfirmingSubmit(true);
   }, []);
 
-  const handleConfirmSubmit = useCallback(() => {
+  const handleConfirmSubmit = useCallback(async () => {
     setConfirmingSubmit(false);
-    submitPendingRef.current = false;
-    doneFiredRef.current = true;
-    const { scores: s, comments: c, jurorId: jid, semesterId: sid } = stateRef.current;
-    setDoneScores({ ...s });
-    setDoneComments({ ...c });
-    setEditMode(false);
-    setStep("done");
+    setSubmitError("");
+    setLoadingState({ stage: "loading", message: "Submitting scores…" });
 
-    if (jid && sid) {
-      finalizeJurorSubmission(sid, jid)
-        .then(() => {
-          setEditAllowed(false);
-        })
-        .catch(() => {});
+    const {
+      scores: s,
+      comments: c,
+      jurorId: jid,
+      semesterId: sid,
+      projects: projs,
+    } = stateRef.current;
+
+    if (!jid || !sid || !Array.isArray(projs) || projs.length === 0) {
+      setLoadingState(null);
+      submitPendingRef.current = false;
+      return;
+    }
+
+    // Flush any pending edits before finalizing.
+    let allSaved = true;
+    for (const p of projs) {
+      const ok = await writeGroup(p.project_id);
+      if (!ok) allSaved = false;
+    }
+    if (!allSaved) {
+      setLoadingState(null);
+      setSubmitError("Could not save all scores. Please check your connection and try again.");
+      submitPendingRef.current = false;
+      return;
+    }
+
+    try {
+      const ok = await finalizeJurorSubmission(sid, jid);
+      if (!ok) throw new Error("finalize_failed");
+
+      doneFiredRef.current = true;
+      setDoneScores({ ...s });
+      setDoneComments({ ...c });
+      setEditMode(false);
+      setStep("done");
+      setEditAllowed(false);
 
       // Refresh projects to get submission timestamps for DoneStep.
       listProjects(sid, jid)
@@ -389,17 +419,44 @@ export default function useJuryState() {
             project_title:  p.project_title,
             group_students: p.group_students,
             final_submitted_at: p.final_submitted_at,
+            updated_at: p.updated_at,
           }));
           setProjects(uiProjects);
         })
         .catch(() => {});
+    } catch (_) {
+      // Keep user in eval mode; submission didn't finalize.
+      setSubmitError("Final submission failed. Please try again.");
+    } finally {
+      setLoadingState(null);
+      submitPendingRef.current = false;
     }
-  }, []);
+  }, [writeGroup]);
 
   const handleCancelSubmit = useCallback(() => {
     setConfirmingSubmit(false);
     submitPendingRef.current = false;
   }, []);
+
+  useEffect(() => {
+    if (step !== "done" || !jurorId || !semesterId) return;
+    let alive = true;
+    const refreshEditState = async () => {
+      try {
+        const editState = await getJurorEditState(semesterId, jurorId);
+        if (!alive) return;
+        setEditAllowed(!!editState?.edit_allowed);
+        setEditLockActive(!!editState?.lock_active);
+      } catch {}
+    };
+
+    refreshEditState();
+    const timer = setInterval(refreshEditState, 15000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [step, jurorId, semesterId]);
 
   // ── Edit-mode from DoneStep ───────────────────────────────
   const handleEditScores = useCallback(() => {
@@ -436,14 +493,19 @@ export default function useJuryState() {
     setLoadingState({ stage: "loading", message: "Loading semesters…" });
     try {
       const semesterList = await listSemesters();
-      setSemesters((semesterList || []).filter((s) => s.is_active));
+      const active = (semesterList || []).filter((s) => s.is_active);
+      setSemesters(active);
+      if (active.length === 1) {
+        await handleSemesterSelect(active[0]);
+        return;
+      }
       setLoadingState(null);
       setStep("semester");
     } catch (_) {
       setLoadingState(null);
       setAuthError("Could not load semesters. Please try again.");
     }
-  }, [juryName, juryDept]);
+  }, [juryName, juryDept]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let alive = true;
@@ -582,13 +644,14 @@ export default function useJuryState() {
       );
 
       // Strip to just the fields the UI needs (scores live in state separately)
-      const uiProjects = projectList.map((p) => ({
-        project_id:     p.project_id,
-        group_no:       p.group_no,
-        project_title:  p.project_title,
-        group_students: p.group_students,
-        final_submitted_at: p.final_submitted_at,
-      }));
+          const uiProjects = projectList.map((p) => ({
+            project_id:     p.project_id,
+            group_no:       p.group_no,
+            project_title:  p.project_title,
+            group_students: p.group_students,
+            final_submitted_at: p.final_submitted_at,
+            updated_at: p.updated_at,
+          }));
 
       pendingScoresRef.current   = seedScores;
       pendingCommentsRef.current = seedComments;
@@ -853,6 +916,7 @@ export default function useJuryState() {
 
     // Submit
     confirmingSubmit,
+    submitError,
     handleRequestSubmit,
     handleConfirmSubmit,
     handleCancelSubmit,
