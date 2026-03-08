@@ -102,7 +102,7 @@ export function StatusBadge({ status, editingFlag, variant, icon, children }) {
     );
   }
   if (editingFlag === "editing")    return <span className="status-badge editing"><PencilIcon />Editing</span>;
-  if (status === "submitted" || status === "all_submitted" || status === "group_submitted")
+  if (status === "submitted" || status === "completed" || status === "all_submitted" || status === "group_submitted")
     return <span className="status-badge submitted"><CheckIcon />Submitted</span>;
   if (status === "in_progress")     return <span className="status-badge in-progress"><HourglassIcon />In Progress</span>;
   return <span className="status-badge not-started"><CircleIcon />Not started</span>;

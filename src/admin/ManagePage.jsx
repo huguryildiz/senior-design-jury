@@ -4,6 +4,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useToast } from "../components/toast/useToast";
 import {
   listSemesters,
   adminListJurors,
@@ -27,7 +28,7 @@ import {
   adminFullImport,
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
-import { ChevronDownIcon, DatabaseIcon, DownloadIcon, HistoryIcon, UploadIcon } from "../shared/Icons";
+import { ChevronDownIcon, DatabaseIcon, DownloadIcon, HistoryIcon, UploadIcon, KeyRoundIcon } from "../shared/Icons";
 import { exportXLSX, buildExportFilename } from "./utils";
 import ManageSemesterPanel from "./ManageSemesterPanel";
 import ManageProjectsPanel from "./ManageProjectsPanel";
@@ -43,6 +44,8 @@ const SETTINGS_KEYS = {
 const defaultSettings = {
   evalLockActive: false,
 };
+
+const AUDIT_PAGE_SIZE = 120;
 
 const defaultAuditFilters = {
   startDate: "",
@@ -108,7 +111,7 @@ const getAuditDateRangeError = (filters) => {
   return "";
 };
 
-const buildAuditParams = (filters) => {
+const buildAuditParams = (filters, limit, cursor) => {
   let startAt = null;
   let endAt = null;
   if (filters.startDate) {
@@ -129,7 +132,9 @@ const buildAuditParams = (filters) => {
     endAt: endAt ? endAt.toISOString() : null,
     actorTypes: null,
     actions: null,
-    limit: 120,
+    limit: limit || AUDIT_PAGE_SIZE,
+    beforeAt: cursor?.beforeAt || null,
+    beforeId: cursor?.beforeId || null,
   };
 };
 
@@ -170,9 +175,11 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
   const [jurors, setJurors] = useState([]);
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const _toast = useToast();
+  const setMessage = (msg) => { if (msg) _toast.success(msg); };
+  const setError   = (err) => { if (err) _toast.error(err); };
   const [resetPinInfo, setResetPinInfo] = useState(null);
+  const [pinCopied, setPinCopied] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteCounts, setDeleteCounts] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -180,8 +187,11 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
   const [auditError, setAuditError] = useState("");
   const [auditFilters, setAuditFilters] = useState(defaultAuditFilters);
   const [auditSearch, setAuditSearch] = useState("");
+  const [auditHasMore, setAuditHasMore] = useState(true);
+  const [auditCursor, setAuditCursor] = useState(null);
   const jurorTimerRef = useRef(null);  // debounce for loadJurors-only refetch
   const auditTimerRef = useRef(null);  // debounce for loadAuditLogs refetch
+  const pinCopyTimerRef = useRef(null);
   const adminSecurityRef = useRef(null);
   const auditCardRef = useRef(null);
   const importFileRef = useRef(null);
@@ -192,14 +202,39 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
   const [dbBackupLoading, setDbBackupLoading] = useState(false);
   const [dbBackupError, setDbBackupError] = useState("");
 
+  const copyPinToClipboard = async (pinValue) => {
+    if (!pinValue) return false;
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(pinValue);
+        return true;
+      }
+    } catch (copyError) {
+      // fallback below
+    }
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = pinValue;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok;
+    } catch (fallbackError) {
+      return false;
+    }
+  };
+
   useEffect(() => {
-    if (!message && !error) return;
-    const timer = setTimeout(() => {
-      setMessage("");
-      setError("");
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [message, error]);
+    setPinCopied(false);
+    if (pinCopyTimerRef.current) {
+      clearTimeout(pinCopyTimerRef.current);
+      pinCopyTimerRef.current = null;
+    }
+  }, [resetPinInfo]);
 
   const activeSemester = useMemo(
     () => semesterList.find((s) => s.id === activeSemesterId) || null,
@@ -248,21 +283,34 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     });
   }, [adminPass]);
 
-  const loadAuditLogs = useCallback(async (filters) => {
+  const loadAuditLogs = useCallback(async (filters, options = {}) => {
     if (!adminPass) return;
+    const mode = options.mode || "replace";
+    const cursor = options.cursor || null;
     setAuditLoading(true);
     setAuditError("");
     const rangeError = getAuditDateRangeError(filters || defaultAuditFilters);
     if (rangeError) {
       setAuditError(rangeError);
       setAuditLogs([]);
+      setAuditCursor(null);
+      setAuditHasMore(false);
       setAuditLoading(false);
       return;
     }
     try {
-      const params = buildAuditParams(filters || defaultAuditFilters);
+      const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor);
       const rows = await adminListAuditLogs(params, adminPass);
-      setAuditLogs(rows || []);
+      if (mode === "append") {
+        setAuditLogs((prev) => [...prev, ...(rows || [])]);
+      } else {
+        setAuditLogs(rows || []);
+      }
+      setAuditHasMore((rows || []).length >= (params.limit || AUDIT_PAGE_SIZE));
+      if (rows && rows.length > 0) {
+        const last = rows[rows.length - 1];
+        setAuditCursor({ beforeAt: last.created_at, beforeId: last.id });
+      }
     } catch (e) {
       setAuditError(e?.message || "Could not load audit logs.");
     } finally {
@@ -358,7 +406,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
 
   useEffect(() => {
     if (!adminPass) return;
-    loadAuditLogs(auditFilters);
+    loadAuditLogs(auditFilters, { mode: "replace", cursor: null });
   }, [adminPass, auditFilters, loadAuditLogs]);
 
   // Background refresh (no full-page reload).
@@ -445,7 +493,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
     auditTimerRef.current = setTimeout(() => {
       auditTimerRef.current = null;
-      loadAuditLogs(auditFilters).catch(() => {});
+      loadAuditLogs(auditFilters, { mode: "replace", cursor: null }).catch(() => {});
     }, 600);
   }, [adminPass, auditFilters, loadAuditLogs]);
 
@@ -556,8 +604,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
         applySemesterPatch({
           id: `temp-${Date.now()}`,
           name: payload.name,
-          starts_on: payload.starts_on,
-          ends_on: payload.ends_on,
+          poster_date: payload.poster_date,
           is_active: false,
         });
       }
@@ -589,8 +636,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
       applySemesterPatch({
         id: payload.id,
         name: payload.name,
-        starts_on: payload.starts_on,
-        ends_on: payload.ends_on,
+        poster_date: payload.poster_date,
       });
       setMessage("Semester updated.");
     } catch (e) {
@@ -911,12 +957,19 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
   };
 
   const handleAuditRefresh = () => {
-    loadAuditLogs(auditFilters);
+    loadAuditLogs(auditFilters, { mode: "replace", cursor: null });
   };
 
   const handleAuditReset = () => {
     setAuditFilters(defaultAuditFilters);
     setAuditSearch("");
+    setAuditCursor(null);
+    setAuditHasMore(true);
+  };
+
+  const handleAuditLoadMore = () => {
+    if (!auditHasMore || auditLoading) return;
+    loadAuditLogs(auditFilters, { mode: "append", cursor: auditCursor });
   };
 
   const handleRequestDelete = async (target) => {
@@ -1075,36 +1128,58 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
 
   return (
     <div className="manage-page">
-      {(loading || error || message) && (
-        <div className="manage-alerts">
-          {loading && <span className="manage-alert">Working…</span>}
-          {message && <span className="manage-alert success">{message}</span>}
-          {error && <span className="manage-alert error">{error}</span>}
+      {loading && (
+        <div className="manage-alerts-sticky">
+          <div className="manage-alerts">
+            <span className="manage-alert">Working…</span>
+          </div>
         </div>
       )}
       {resetPinInfo?.pin_plain_once && (
         <div className="manage-modal">
-          <div className="manage-modal-card">
-            <div className="manage-modal-title">New PIN Created</div>
-            <div className="manage-modal-body">
-              <div className="manage-hint">
-                {resetPinInfo.juror_name || resetPinInfo.juror_id}
-                {resetPinInfo.juror_inst ? ` — ${resetPinInfo.juror_inst}` : ""}
-              </div>
-              <div className="manage-pin-code">{resetPinInfo.pin_plain_once}</div>
+          <div className="manage-modal-card manage-modal-card--pin">
+            <div className="manage-pin-head">
+              <span className="manage-pin-icon-round" aria-hidden="true"><KeyRoundIcon /></span>
+              <div className="manage-pin-title">New PIN Created</div>
             </div>
-            <div className="manage-modal-actions">
-              <button
-                className="manage-btn"
-                type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText(resetPinInfo.pin_plain_once).catch(() => {});
-                }}
-              >
-                Copy PIN
-              </button>
+            <div className="manage-pin-sub">
+              A new PIN for{" "}
+              <strong>{resetPinInfo.juror_name || resetPinInfo.juror_id}</strong>
+              {resetPinInfo.juror_inst ? ` (${resetPinInfo.juror_inst})` : ""} has been created.
+            </div>
+            <div className="manage-pin-boxes">
+              {String(resetPinInfo.pin_plain_once || "")
+                .padStart(4, "0")
+                .slice(0, 4)
+                .split("")
+                .map((digit, idx) => (
+                  <span key={`pin-digit-${idx}`} className="manage-pin-box">{digit}</span>
+                ))}
+            </div>
+            <div className="manage-pin-note">Share this PIN with the juror.</div>
+            <div className="manage-pin-actions">
               <button
                 className="manage-btn primary"
+                type="button"
+                onClick={async () => {
+                  const pinValue = resetPinInfo.pin_plain_once;
+                  if (!pinValue) return;
+                  const ok = await copyPinToClipboard(pinValue);
+                  if (ok) {
+                    setPinCopied(true);
+                    if (pinCopyTimerRef.current) {
+                      clearTimeout(pinCopyTimerRef.current);
+                    }
+                    pinCopyTimerRef.current = setTimeout(() => {
+                      setPinCopied(false);
+                    }, 2000);
+                  }
+                }}
+              >
+                {pinCopied ? "Copied" : "Copy PIN"}
+              </button>
+              <button
+                className="manage-btn"
                 type="button"
                 onClick={() => setResetPinInfo(null)}
               >
@@ -1294,6 +1369,18 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
                       </div>
                     )}
                   </div>
+                  {!auditLoading && auditHasMore && (
+                    <div className="manage-audit-footer">
+                      <button
+                        className="manage-btn ghost"
+                        type="button"
+                        onClick={handleAuditLoadMore}
+                        disabled={auditLoading || !auditHasMore}
+                      >
+                        Load more
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

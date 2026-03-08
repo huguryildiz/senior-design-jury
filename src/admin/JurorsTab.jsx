@@ -15,6 +15,9 @@ import {
 } from "../shared/Icons";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 
+const isSubmittedStatus = (status) => status === "submitted" || status === "completed";
+const isInProgressStatus = (status) => status === "in_progress" || status === "editing";
+
 // jurorStats prop: { key, name, dept, jurorId, rows, overall, latestRow }[]
 // groups prop: { id (uuid), groupNo, label }[]
 export default function JurorsTab({ jurorStats, groups = [] }) {
@@ -115,12 +118,14 @@ export default function JurorsTab({ jurorStats, groups = [] }) {
             };
           });
           const grpStatuses = perGroupRows.map((d) =>
-            d.status === "submitted" ? "submitted" : (d.status || "not_started")
+            isSubmittedStatus(d.status)
+              ? "submitted"
+              : (isInProgressStatus(d.status) ? "in_progress" : "not_started")
           );
           const isCompleted =
             grpStatuses.length > 0 && grpStatuses.every((s) => s === "submitted");
           const hasAnyProgress = rows.some((r) =>
-            r.status === "submitted" || r.status === "in_progress"
+            isSubmittedStatus(r.status) || isInProgressStatus(r.status)
           );
           const overallStatus = isCompleted
             ? "all_submitted"
@@ -235,8 +240,8 @@ export default function JurorsTab({ jurorStats, groups = [] }) {
                               </span>
                             )}
                             <div className="juror-row-right-meta">
-                              <StatusBadge status={d.status} />
-                              {d.status === "submitted" && (
+                              <StatusBadge status={d.status} editingFlag={d.editingFlag} />
+                              {isSubmittedStatus(d.status) && (
                                 <span
                                   className="juror-score"
                                   title="/ 100"

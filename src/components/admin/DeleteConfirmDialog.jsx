@@ -65,13 +65,13 @@ export default function DeleteConfirmDialog({
 
   return (
     <div className="manage-modal" role="dialog" aria-modal="true">
-      <div className="manage-modal-card">
-        <div className="manage-modal-title manage-title-with-icon">
-          <span className="manage-title-icon" aria-hidden="true"><TriangleAlertLucideIcon /></span>
-          Delete Confirmation
+      <div className="manage-modal-card manage-modal-card--delete">
+        <div className="delete-dialog__header">
+          <span className="delete-dialog__icon" aria-hidden="true"><TriangleAlertLucideIcon /></span>
+          <div className="delete-dialog__title">Delete Confirmation</div>
         </div>
-        <div className="manage-modal-body">
-          <div className="manage-hint manage-hint-inline">
+        <div className="delete-dialog__body">
+          <div className="delete-dialog__line">
             {isSemesterLabel ? (
               <>
                 {semesterPrefix}
@@ -97,12 +97,14 @@ export default function DeleteConfirmDialog({
             )}
           </div>
           {buildCountSummary(counts) && (
-            <div className="manage-hint manage-delete-impact">
+            <div className="delete-dialog__impact manage-delete-impact">
               {buildCountSummary(counts)}
             </div>
           )}
-          <div className="manage-hint">Enter the delete password to confirm.</div>
-          <div className="manage-field">
+          <div className="delete-dialog__line delete-dialog__sub">
+            Enter the delete password to confirm.
+          </div>
+          <div className="delete-dialog__field">
             <label className="manage-label">Delete Password</label>
             <input
               type="password"
@@ -114,7 +116,7 @@ export default function DeleteConfirmDialog({
             {error && <div className="manage-field-error">{error}</div>}
           </div>
         </div>
-        <div className="manage-modal-actions">
+        <div className="delete-dialog__actions">
           <button className="manage-btn" type="button" onClick={handleClose} disabled={loading}>
             Cancel
           </button>

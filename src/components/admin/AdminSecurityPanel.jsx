@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDownIcon, ShieldUserIcon, TriangleAlertLucideIcon } from "../../shared/Icons";
 import { adminBootstrapPassword, adminChangePassword, adminChangeDeletePassword, adminBootstrapBackupPassword, adminChangeBackupPassword } from "../../shared/api";
+import { useToast } from "../toast/useToast";
 
 export default function AdminSecurityPanel({
   isMobile,
@@ -17,16 +18,12 @@ export default function AdminSecurityPanel({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
   const [missingHash, setMissingHash] = useState(false);
   const [deleteCurrent, setDeleteCurrent] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteErrors, setDeleteErrors] = useState({});
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteSuccess, setDeleteSuccess] = useState("");
-  const [deleteError, setDeleteError] = useState("");
 
   const [backupMissingHash, setBackupMissingHash] = useState(false);
   const [backupCurrent, setBackupCurrent] = useState("");
@@ -34,8 +31,14 @@ export default function AdminSecurityPanel({
   const [backupConfirm, setBackupConfirm] = useState("");
   const [backupErrors, setBackupErrors] = useState({});
   const [backupLoading, setBackupLoading] = useState(false);
-  const [backupSuccess, setBackupSuccess] = useState("");
-  const [backupError, setBackupError] = useState("");
+
+  const _toast = useToast();
+  const setSuccess       = (m) => { if (m) _toast.success(m); };
+  const setError         = (m) => { if (m) _toast.error(m); };
+  const setDeleteSuccess = (m) => { if (m) _toast.success(m); };
+  const setDeleteError   = (m) => { if (m) _toast.error(m); };
+  const setBackupSuccess = (m) => { if (m) _toast.success(m); };
+  const setBackupError   = (m) => { if (m) _toast.error(m); };
   const [activeTab, setActiveTab] = useState("admin");
 
   const validate = () => {
@@ -280,13 +283,6 @@ export default function AdminSecurityPanel({
                     {errors.confirm && <div className="manage-field-error">{errors.confirm}</div>}
                   </div>
 
-                  {(success || error) && (
-                    <div className="manage-alerts">
-                      {success && <span className="manage-alert success">{success}</span>}
-                      {error && <span className="manage-alert error">{error}</span>}
-                    </div>
-                  )}
-
                   {missingHash && (
                     <div className="manage-hint">
                       Admin password is not configured. Set an initial password below.
@@ -313,10 +309,6 @@ export default function AdminSecurityPanel({
 
             {activeTab === "delete" && (
               <div className="manage-mini-card">
-                <div className="manage-mini-card-title manage-title-with-icon">
-                  <span className="manage-title-icon" aria-hidden="true"><TriangleAlertLucideIcon /></span>
-                  Delete Password
-                </div>
                 <div className="manage-mini-card-body">
                   <div className="manage-field">
                     <label className="manage-label">Current Delete Password</label>
@@ -352,13 +344,6 @@ export default function AdminSecurityPanel({
                     />
                     {deleteErrors.confirm && <div className="manage-field-error">{deleteErrors.confirm}</div>}
                   </div>
-
-                  {(deleteSuccess || deleteError) && (
-                    <div className="manage-alerts">
-                      {deleteSuccess && <span className="manage-alert success">{deleteSuccess}</span>}
-                      {deleteError && <span className="manage-alert error">{deleteError}</span>}
-                    </div>
-                  )}
 
                   <div className="manage-card-actions">
                     <button
@@ -410,13 +395,6 @@ export default function AdminSecurityPanel({
                     />
                     {backupErrors.confirm && <div className="manage-field-error">{backupErrors.confirm}</div>}
                   </div>
-
-                  {(backupSuccess || backupError) && (
-                    <div className="manage-alerts">
-                      {backupSuccess && <span className="manage-alert success">{backupSuccess}</span>}
-                      {backupError && <span className="manage-alert error">{backupError}</span>}
-                    </div>
-                  )}
 
                   {backupMissingHash && (
                     <div className="manage-hint">

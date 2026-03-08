@@ -28,6 +28,7 @@ const cellStyle = (status) => {
   if (!status || status === "not_started") return { background: "#f8fafc", color: "#94a3b8" };
   if (status === "completed") return { background: "#dcfce7", color: "#166534", fontWeight: 700 };
   if (status === "submitted") return { background: "#ecfdf3", color: "#166534", fontWeight: 700 };
+  if (status === "editing") return { background: "#ffedd5", color: "#9a3412", fontWeight: 700 };
   if (status === "in_progress") return { background: "#fef9c3", color: "#92400e" };
   return { background: "#f8fafc", color: "#94a3b8" };
 };
@@ -112,10 +113,11 @@ export default function MatrixTab({ data, jurors, groups }) {
   );
 
   const isSubmittedStatus = (status) =>
-    status === "submitted" || status === "group_submitted" || status === "all_submitted";
+    status === "submitted" || status === "completed" || status === "group_submitted" || status === "all_submitted";
 
   const cellStatus = (entry, isFinal) => {
     if (!entry) return "not_started";
+    if (entry.editingFlag === "editing" || entry.status === "editing") return "editing";
     if (entry.status === "completed") return "completed";
     if (entry.status === "in_progress") return "in_progress";
     if (isSubmittedStatus(entry.status)) return isFinal ? "completed" : "submitted";
@@ -228,7 +230,7 @@ export default function MatrixTab({ data, jurors, groups }) {
     });
     const hasAnyProgress = groups.some((g) => {
       const status = lookup[juror.key]?.[g.id]?.status;
-      return status === "submitted" || status === "completed" || status === "in_progress";
+      return status === "submitted" || status === "completed" || status === "in_progress" || status === "editing";
     });
     if (isFinal) return "completed";
     if (allSubmitted) return "submitted";

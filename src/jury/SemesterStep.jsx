@@ -7,7 +7,7 @@
 // semester exists — the user never sees this screen in that case.
 //
 // Props:
-//   semesters  : [{ id, name, is_active, starts_on, ends_on }]
+//   semesters  : [{ id, name, is_active, poster_date }]
 //   onSelect   : (semester) => void
 //   onBack     : () => void
 // ============================================================

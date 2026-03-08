@@ -339,7 +339,7 @@ export default function ManageProjectsPanel({
           <div className="manage-list">
             {visibleProjects.map((p, idx) => renderProject(p, idx))}
             {!normalizedSearch && orderedProjects.length === 0 && (
-              <div className="manage-empty">No projects for the active semester.</div>
+              <div className="manage-empty manage-empty-search">No projects for the active semester.</div>
             )}
             {normalizedSearch && filteredProjects.length === 0 && (
               <div className="manage-empty manage-empty-search">No results.</div>

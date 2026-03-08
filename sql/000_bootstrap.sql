@@ -26,13 +26,12 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 -- ── Tables ───────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.semesters (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       text NOT NULL,
-  is_active  boolean NOT NULL DEFAULT false,
-  starts_on  date,
-  ends_on    date,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
+  is_active   boolean NOT NULL DEFAULT false,
+  poster_date date,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS public.projects (
@@ -58,6 +57,7 @@ CREATE TABLE IF NOT EXISTS public.scores (
   semester_id  uuid NOT NULL REFERENCES public.semesters(id) ON DELETE CASCADE,
   project_id   uuid NOT NULL REFERENCES public.projects(id)  ON DELETE CASCADE,
   juror_id     uuid NOT NULL REFERENCES public.jurors(id)    ON DELETE CASCADE,
+  poster_date  date,
   technical    integer,
   written      integer,
   oral         integer,
@@ -108,6 +108,7 @@ ON CONFLICT (key) DO NOTHING;
 
 -- ── Schema upgrades / legacy cleanup (idempotent) ───────────
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS poster_date date;
 ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
 -- Enforce unique group numbers per semester (safety for concurrent inserts).
@@ -189,6 +190,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS semesters_name_ci_unique
   ON public.semesters (lower(trim(name)));
 ALTER TABLE public.jurors    ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE public.scores    ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE public.scores    ADD COLUMN IF NOT EXISTS poster_date date;
 ALTER TABLE public.scores    ADD COLUMN IF NOT EXISTS final_submitted_at timestamptz;
 ALTER TABLE public.scores    DROP COLUMN IF EXISTS submitted_at;
 ALTER TABLE public.juror_semester_auth ADD COLUMN IF NOT EXISTS edit_enabled boolean NOT NULL DEFAULT false;
@@ -196,8 +198,19 @@ ALTER TABLE public.juror_semester_auth ADD COLUMN IF NOT EXISTS pin_reveal_pendi
 ALTER TABLE public.juror_semester_auth ADD COLUMN IF NOT EXISTS pin_plain_once text;
 
 -- Remove legacy columns if present
+ALTER TABLE public.semesters          DROP COLUMN IF EXISTS starts_on;
+ALTER TABLE public.semesters          DROP COLUMN IF EXISTS ends_on;
+ALTER TABLE public.scores             DROP COLUMN IF EXISTS starts_on;
+ALTER TABLE public.scores             DROP COLUMN IF EXISTS ends_on;
 ALTER TABLE public.juror_semester_auth DROP COLUMN IF EXISTS edit_expires_at;
 ALTER TABLE public.juror_semester_auth DROP COLUMN IF EXISTS final_submitted_at;
+
+-- Backfill scores.poster_date from semesters if missing
+UPDATE public.scores sc
+SET poster_date = s.poster_date
+FROM public.semesters s
+WHERE sc.semester_id = s.id
+  AND sc.poster_date IS NULL;
 
 -- ── Constraints / indexes (idempotent) ───────────────────────
 
@@ -400,11 +413,18 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  NEW.total :=
-    COALESCE(NEW.technical, 0) +
-    COALESCE(NEW.written,   0) +
-    COALESCE(NEW.oral,      0) +
-    COALESCE(NEW.teamwork,  0);
+  IF NEW.technical IS NULL
+     OR NEW.written IS NULL
+     OR NEW.oral IS NULL
+     OR NEW.teamwork IS NULL THEN
+    NEW.total := NULL;
+  ELSE
+    NEW.total :=
+      NEW.technical +
+      NEW.written +
+      NEW.oral +
+      NEW.teamwork;
+  END IF;
   RETURN NEW;
 END;
 $$;
@@ -413,6 +433,23 @@ DROP TRIGGER IF EXISTS trg_scores_total ON public.scores;
 CREATE TRIGGER trg_scores_total
   BEFORE INSERT OR UPDATE ON public.scores
   FOR EACH ROW EXECUTE FUNCTION public.trg_scores_compute_total();
+
+CREATE OR REPLACE FUNCTION public.trg_scores_set_poster_date()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  SELECT poster_date INTO NEW.poster_date
+  FROM semesters
+  WHERE id = NEW.semester_id;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_scores_poster_date ON public.scores;
+CREATE TRIGGER trg_scores_poster_date
+  BEFORE INSERT OR UPDATE OF semester_id ON public.scores
+  FOR EACH ROW EXECUTE FUNCTION public.trg_scores_set_poster_date();
 
 -- updated_at should change ONLY when score content changes
 CREATE OR REPLACE FUNCTION public.trg_scores_set_updated_at()
@@ -475,6 +512,7 @@ SELECT sc.id AS score_id,
        sc.teamwork,
        sc.total,
        sc.comment,
+       sc.poster_date,
        sc.final_submitted_at,
        sc.created_at,
        sc.updated_at
@@ -520,36 +558,34 @@ $$;
 DROP FUNCTION IF EXISTS public.rpc_list_semesters();
 CREATE OR REPLACE FUNCTION public.rpc_list_semesters()
 RETURNS TABLE (
-  id         uuid,
-  name       text,
-  is_active  boolean,
-  starts_on  date,
-  ends_on    date,
-  updated_at timestamptz
+  id          uuid,
+  name        text,
+  is_active   boolean,
+  poster_date date,
+  updated_at  timestamptz
 )
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
-  SELECT id, name, is_active, starts_on, ends_on, updated_at
+  SELECT id, name, is_active, poster_date, updated_at
   FROM semesters
-  ORDER BY starts_on DESC;
+  ORDER BY poster_date DESC NULLS LAST;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_get_active_semester();
 CREATE OR REPLACE FUNCTION public.rpc_get_active_semester()
 RETURNS TABLE (
-  id         uuid,
-  name       text,
-  is_active  boolean,
-  starts_on  date,
-  ends_on    date
+  id          uuid,
+  name        text,
+  is_active   boolean,
+  poster_date date
 )
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
-  SELECT id, name, is_active, starts_on, ends_on
+  SELECT id, name, is_active, poster_date
   FROM semesters
   WHERE is_active = true
   LIMIT 1;
@@ -565,6 +601,7 @@ RETURNS TABLE (
   group_no       integer,
   project_title  text,
   group_students text,
+  poster_date    date,
   technical      integer,
   written        integer,
   oral           integer,
@@ -583,6 +620,7 @@ AS $$
     p.group_no,
     p.project_title,
     p.group_students,
+    COALESCE(s.poster_date, sem.poster_date) AS poster_date,
     s.technical,
     s.written,
     s.oral,
@@ -1083,22 +1121,20 @@ BEGIN
 
   -- 1. Semesters (no FK deps)
   FOR r IN SELECT * FROM jsonb_array_elements(COALESCE(p_data->'semesters', '[]'::jsonb)) LOOP
-    INSERT INTO semesters (id, name, is_active, starts_on, ends_on, created_at, updated_at)
+    INSERT INTO semesters (id, name, is_active, poster_date, created_at, updated_at)
     VALUES (
       (r->>'id')::uuid,
       r->>'name',
       COALESCE((r->>'is_active')::boolean, false),
-      (r->>'starts_on')::date,
-      (r->>'ends_on')::date,
+      (r->>'poster_date')::date,
       COALESCE((r->>'created_at')::timestamptz, now()),
       COALESCE((r->>'updated_at')::timestamptz, now())
     )
     ON CONFLICT (id) DO UPDATE SET
-      name       = EXCLUDED.name,
-      is_active  = EXCLUDED.is_active,
-      starts_on  = EXCLUDED.starts_on,
-      ends_on    = EXCLUDED.ends_on,
-      updated_at = EXCLUDED.updated_at;
+      name        = EXCLUDED.name,
+      is_active   = EXCLUDED.is_active,
+      poster_date = EXCLUDED.poster_date,
+      updated_at  = EXCLUDED.updated_at;
   END LOOP;
 
   -- 2. Jurors (no FK deps)
@@ -1170,7 +1206,7 @@ BEGIN
   FOR r IN SELECT * FROM jsonb_array_elements(COALESCE(p_data->'scores', '[]'::jsonb)) LOOP
     INSERT INTO scores (
       id, semester_id, project_id, juror_id,
-      technical, written, oral, teamwork, total, comment,
+      poster_date, technical, written, oral, teamwork, total, comment,
       final_submitted_at, created_at, updated_at
     )
     VALUES (
@@ -1178,6 +1214,7 @@ BEGIN
       (r->>'semester_id')::uuid,
       (r->>'project_id')::uuid,
       (r->>'juror_id')::uuid,
+      (r->>'poster_date')::date,
       (r->>'technical')::integer,
       (r->>'written')::integer,
       (r->>'oral')::integer,
@@ -1189,6 +1226,7 @@ BEGIN
       COALESCE((r->>'updated_at')::timestamptz, now())
     )
     ON CONFLICT (id) DO UPDATE SET
+      poster_date        = EXCLUDED.poster_date,
       technical          = EXCLUDED.technical,
       written            = EXCLUDED.written,
       oral               = EXCLUDED.oral,
@@ -1255,14 +1293,17 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_change_backup_password(text, text, te
 GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_full_import(text, text, jsonb) TO anon, authenticated;
 
-DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text, text, integer);
+DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer);
+DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer, timestamptz, uuid);
 CREATE OR REPLACE FUNCTION public.rpc_admin_list_audit_logs(
   p_admin_password text,
   p_start_at       timestamptz DEFAULT NULL,
   p_end_at         timestamptz DEFAULT NULL,
   p_actor_types    text[] DEFAULT NULL,
   p_actions        text[] DEFAULT NULL,
-  p_limit          integer DEFAULT 100
+  p_limit          integer DEFAULT 100,
+  p_before_at      timestamptz DEFAULT NULL,
+  p_before_id      uuid DEFAULT NULL
 )
 RETURNS TABLE (
   id          uuid,
@@ -1314,7 +1355,12 @@ BEGIN
       AND (p_end_at IS NULL OR a.created_at <= p_end_at)
       AND (v_actor_types IS NULL OR a.actor_type = ANY(v_actor_types))
       AND (v_actions IS NULL OR a.action = ANY(v_actions))
-    ORDER BY a.created_at DESC
+      AND (
+        p_before_at IS NULL
+        OR a.created_at < p_before_at
+        OR (a.created_at = p_before_at AND (p_before_id IS NULL OR a.id < p_before_id))
+      )
+    ORDER BY a.created_at DESC, a.id DESC
     LIMIT v_limit;
 END;
 $$;
@@ -1331,6 +1377,7 @@ RETURNS TABLE (
   project_id    uuid,
   group_no      integer,
   project_title text,
+  poster_date   date,
   technical     integer,
   written       integer,
   oral          integer,
@@ -1358,6 +1405,7 @@ BEGIN
       p.id              AS project_id,
       p.group_no,
       p.project_title,
+      s.poster_date,
       s.technical,
       s.written,
       s.oral,
@@ -1367,6 +1415,19 @@ BEGIN
       s.updated_at,
       s.final_submitted_at,
       CASE
+        WHEN s.technical IS NOT NULL
+         AND s.written   IS NOT NULL
+         AND s.oral      IS NOT NULL
+         AND s.teamwork  IS NOT NULL
+         AND s.final_submitted_at IS NOT NULL
+        THEN 'completed'::text
+        WHEN s.technical IS NOT NULL
+         AND s.written   IS NOT NULL
+         AND s.oral      IS NOT NULL
+         AND s.teamwork  IS NOT NULL
+         AND COALESCE(a.edit_enabled, false) = true
+         AND s.final_submitted_at IS NULL
+        THEN 'editing'::text
         WHEN s.technical IS NOT NULL
          AND s.written   IS NOT NULL
          AND s.oral      IS NOT NULL
@@ -1383,6 +1444,9 @@ BEGIN
     FROM scores s
     JOIN jurors   j ON j.id = s.juror_id
     JOIN projects p ON p.id = s.project_id
+    LEFT JOIN juror_semester_auth a
+      ON a.juror_id = s.juror_id
+     AND a.semester_id = s.semester_id
     WHERE s.semester_id = p_semester_id
     ORDER BY j.juror_name, p.group_no;
 END;
@@ -1500,18 +1564,17 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_create_semester(text, date, date, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_create_semester(text, date, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_create_semester(
-  p_name text,
-  p_starts_on date,
-  p_ends_on date,
+  p_name        text,
+  p_poster_date date,
   p_admin_password text
 )
 RETURNS TABLE (
-  id uuid,
-  name text,
-  is_active boolean,
-  starts_on date,
-  ends_on date
+  id          uuid,
+  name        text,
+  is_active   boolean,
+  poster_date date
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1519,11 +1582,10 @@ SET search_path = public, extensions
 AS $$
 #variable_conflict use_column
 DECLARE
-  v_id uuid;
-  v_name text;
-  v_active boolean;
-  v_starts_on date;
-  v_ends_on date;
+  v_id          uuid;
+  v_name        text;
+  v_active      boolean;
+  v_poster_date date;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1540,10 +1602,10 @@ BEGIN
     RAISE EXCEPTION 'semester_name_exists';
   END IF;
 
-  INSERT INTO semesters (name, is_active, starts_on, ends_on)
-  VALUES (v_name, false, p_starts_on, p_ends_on)
-  RETURNING semesters.id, semesters.name, semesters.is_active, semesters.starts_on, semesters.ends_on
-    INTO v_id, v_name, v_active, v_starts_on, v_ends_on;
+  INSERT INTO semesters (name, is_active, poster_date)
+  VALUES (v_name, false, p_poster_date)
+  RETURNING semesters.id, semesters.name, semesters.is_active, semesters.poster_date
+    INTO v_id, v_name, v_active, v_poster_date;
 
   PERFORM public._audit_log(
     'admin',
@@ -1552,18 +1614,18 @@ BEGIN
     'semester',
     v_id,
     format('Admin created semester %s', v_name),
-    jsonb_build_object('starts_on', v_starts_on, 'ends_on', v_ends_on)
+    jsonb_build_object('poster_date', v_poster_date)
   );
 
-  RETURN QUERY SELECT v_id, v_name, v_active, v_starts_on, v_ends_on;
+  RETURN QUERY SELECT v_id, v_name, v_active, v_poster_date;
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.rpc_admin_update_semester(uuid, text, date, date, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_update_semester(
-  p_semester_id uuid,
-  p_name text,
-  p_starts_on date,
-  p_ends_on date,
+  p_semester_id    uuid,
+  p_name           text,
+  p_poster_date    date,
   p_admin_password text
 )
 RETURNS boolean
@@ -1576,10 +1638,6 @@ DECLARE
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
-  END IF;
-
-  IF p_starts_on > p_ends_on THEN
-    RAISE EXCEPTION 'invalid_dates';
   END IF;
 
   v_name := trim(p_name);
@@ -1595,9 +1653,8 @@ BEGIN
   END IF;
 
   UPDATE semesters
-  SET name = v_name,
-      starts_on = p_starts_on,
-      ends_on = p_ends_on
+  SET name        = v_name,
+      poster_date = p_poster_date
   WHERE id = p_semester_id;
 
   PERFORM public._audit_log(
@@ -1696,7 +1753,8 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
-  v_id uuid;
+  v_id       uuid;
+  v_sem_name text;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1715,14 +1773,15 @@ BEGIN
   VALUES (p_semester_id, p_group_no, p_project_title, p_group_students)
   RETURNING id INTO v_id;
 
+  SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
   PERFORM public._audit_log(
     'admin',
     null::uuid,
     'project_create',
     'project',
     v_id,
-    format('Admin created project Group %s — %s', p_group_no, p_project_title),
-    jsonb_build_object('semester_id', p_semester_id, 'group_no', p_group_no)
+    format('Admin created project Group %s — %s (%s)', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text)),
+    jsonb_build_object('semester_id', p_semester_id, 'group_no', p_group_no, 'semester_name', v_sem_name)
   );
 
   RETURN QUERY SELECT v_id;
@@ -1742,10 +1801,11 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
-  v_id uuid;
-  v_created boolean := false;
-  v_action text;
-  v_message text;
+  v_id       uuid;
+  v_created  boolean := false;
+  v_action   text;
+  v_message  text;
+  v_sem_name text;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1769,10 +1829,11 @@ BEGIN
     WHERE id = v_id;
   END IF;
 
+  SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
   v_action := CASE WHEN v_created THEN 'project_create' ELSE 'project_update' END;
   v_message := CASE
-    WHEN v_created THEN format('Admin created project Group %s — %s', p_group_no, p_project_title)
-    ELSE format('Admin updated project Group %s — %s', p_group_no, p_project_title)
+    WHEN v_created THEN format('Admin created project Group %s — %s (%s)', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text))
+    ELSE format('Admin updated project Group %s — %s (%s)', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text))
   END;
 
   PERFORM public._audit_log(
@@ -1782,7 +1843,7 @@ BEGIN
     'project',
     v_id,
     v_message,
-    jsonb_build_object('semester_id', p_semester_id, 'group_no', p_group_no)
+    jsonb_build_object('semester_id', p_semester_id, 'group_no', p_group_no, 'semester_name', v_sem_name)
   );
 
   RETURN QUERY SELECT v_id;
@@ -1998,17 +2059,35 @@ BEGIN
   END IF;
 
   IF p_type = 'semester' THEN
-    SELECT COUNT(*) INTO v_projects    FROM projects           WHERE semester_id = p_id;
-    SELECT COUNT(*) INTO v_scores      FROM scores             WHERE semester_id = p_id;
+    SELECT COUNT(*) INTO v_projects FROM projects WHERE semester_id = p_id;
+    SELECT COUNT(*) INTO v_scores
+    FROM scores
+    WHERE semester_id = p_id
+      AND (
+        final_submitted_at IS NOT NULL
+        OR (technical IS NOT NULL AND written IS NOT NULL AND oral IS NOT NULL AND teamwork IS NOT NULL)
+      );
     SELECT COUNT(*) INTO v_juror_auths FROM juror_semester_auth WHERE semester_id = p_id;
     RETURN jsonb_build_object('projects', v_projects, 'scores', v_scores, 'juror_auths', v_juror_auths);
 
   ELSIF p_type = 'project' THEN
-    SELECT COUNT(*) INTO v_scores FROM scores WHERE project_id = p_id;
+    SELECT COUNT(*) INTO v_scores
+    FROM scores
+    WHERE project_id = p_id
+      AND (
+        final_submitted_at IS NOT NULL
+        OR (technical IS NOT NULL AND written IS NOT NULL AND oral IS NOT NULL AND teamwork IS NOT NULL)
+      );
     RETURN jsonb_build_object('scores', v_scores);
 
   ELSIF p_type = 'juror' THEN
-    SELECT COUNT(*) INTO v_scores      FROM scores             WHERE juror_id = p_id;
+    SELECT COUNT(*) INTO v_scores
+    FROM scores
+    WHERE juror_id = p_id
+      AND (
+        final_submitted_at IS NOT NULL
+        OR (technical IS NOT NULL AND written IS NOT NULL AND oral IS NOT NULL AND teamwork IS NOT NULL)
+      );
     SELECT COUNT(*) INTO v_juror_auths FROM juror_semester_auth WHERE juror_id = p_id;
     RETURN jsonb_build_object('scores', v_scores, 'juror_auths', v_juror_auths);
 
@@ -2247,9 +2326,9 @@ BEGIN
         AND sc.semester_id = p_semester_id
     ) AS la ON true
     LEFT JOIN LATERAL (
-      SELECT array_agg(x.name ORDER BY x.starts_on DESC) AS scored_semesters
+      SELECT array_agg(x.name ORDER BY x.poster_date DESC NULLS LAST) AS scored_semesters
       FROM (
-        SELECT DISTINCT s.id, s.name, s.starts_on
+        SELECT DISTINCT s.id, s.name, s.poster_date
         FROM scores sc
         JOIN semesters s ON s.id = sc.semester_id
         WHERE sc.juror_id = j.id
@@ -2408,6 +2487,7 @@ DECLARE
   v_completed int := 0;
   v_now timestamptz := now();
   v_juror_name text;
+  v_sem_name   text;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM semesters s
@@ -2446,13 +2526,14 @@ BEGIN
     AND semester_id = p_semester_id;
 
   SELECT juror_name INTO v_juror_name FROM jurors WHERE id = p_juror_id;
+  SELECT name       INTO v_sem_name   FROM semesters WHERE id = p_semester_id;
   PERFORM public._audit_log(
     'juror',
     p_juror_id,
     'juror_finalize_submission',
     'semester',
     p_semester_id,
-    format('Juror %s finalized submission', COALESCE(v_juror_name, p_juror_id::text)),
+    format('Juror %s finalized submission (%s)', COALESCE(v_juror_name, p_juror_id::text), COALESCE(v_sem_name, p_semester_id::text)),
     null
   );
 
@@ -2842,8 +2923,8 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_login(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_scores(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_project_summary(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_active_semester(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_create_semester(text, date, date, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_update_semester(uuid, text, date, date, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_create_semester(text, date, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_update_semester(uuid, text, date, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_projects(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_create_project(uuid, integer, text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_upsert_project(uuid, integer, text, text, text) TO anon, authenticated;
@@ -2855,7 +2936,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text) TO anon, aut
 GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_juror_pin(uuid, uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_settings(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_setting(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer, timestamptz, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_jurors(text, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text) TO anon, authenticated;

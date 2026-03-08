@@ -42,7 +42,7 @@ export default function InfoStep({
   };
   const semesterLabel = activeSemester?.name || "";
   const hasSemesterMeta = Boolean(semesterLabel);
-  const infoDate = activeSemester?.starts_on || activeSemester?.ends_on;
+  const infoDate = activeSemester?.poster_date;
   const infoDateLabel = formatLongDate(infoDate);
   const projectCountLabel =
     typeof activeProjectCount === "number"
@@ -91,7 +91,7 @@ export default function InfoStep({
         <div className="premium-header">
           <div className="premium-icon-square" aria-hidden="true"><UserRoundCheckIcon /></div>
           <div className="premium-title">Jury Information</div>
-          <div className="premium-subtitle">EE 492 — Senior Project Evaluation</div>
+          <div className="premium-subtitle">EE 492 — Senior Project II</div>
           {showInfoBlock && (
             <div className="premium-info-block" aria-label="Jury schedule summary">
               <div className="premium-info-line">

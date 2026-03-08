@@ -20,8 +20,8 @@ export default function ManageSemesterPanel({
   const [showAll, setShowAll] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [createForm, setCreateForm] = useState({ name: "", starts_on: "", ends_on: "" });
-  const [editForm, setEditForm] = useState({ id: "", name: "", starts_on: "", ends_on: "" });
+  const [createForm, setCreateForm] = useState({ name: "", poster_date: "" });
+  const [editForm, setEditForm] = useState({ id: "", name: "", poster_date: "" });
 
   const maxYear = 9999;
   const yearOf = (value) => {
@@ -31,19 +31,11 @@ export default function ManageSemesterPanel({
     return Number.isFinite(n) ? n : null;
   };
   const getFormMeta = (value) => {
-    const startYear = yearOf(value.starts_on);
-    const endYear = yearOf(value.ends_on);
+    const posterYear = yearOf(value.poster_date);
     const yearError =
-      (startYear && startYear > maxYear) || (endYear && endYear > maxYear)
-        ? "Year cannot exceed 9999."
-        : "";
-    const dateError =
-      value.starts_on && value.ends_on && value.starts_on > value.ends_on
-        ? "Start date must be on or before end date."
-        : "";
-    const canSubmit =
-      value.name.trim() && value.starts_on && value.ends_on && !dateError && !yearError;
-    return { yearError, dateError, canSubmit };
+      posterYear && posterYear > maxYear ? "Year cannot exceed 9999." : "";
+    const canSubmit = value.name.trim() && value.poster_date && !yearError;
+    return { yearError, canSubmit };
   };
   const createMeta = getFormMeta(createForm);
   const editMeta = getFormMeta(editForm);
@@ -54,8 +46,7 @@ export default function ManageSemesterPanel({
       const label = String(sem?.name || "");
       const match = label.match(/\d{4}/);
       if (match) return Number(match[0]) || 0;
-      if (sem?.starts_on) return Number(String(sem.starts_on).slice(0, 4)) || 0;
-      if (sem?.ends_on) return Number(String(sem.ends_on).slice(0, 4)) || 0;
+      if (sem?.poster_date) return Number(String(sem.poster_date).slice(0, 4)) || 0;
       return 0;
     };
     const getTermRank = (sem) => {
@@ -78,7 +69,7 @@ export default function ManageSemesterPanel({
   const uniqueSemesters = useMemo(() => {
     const byId = new Map();
     (semesters || []).forEach((s) => {
-      const key = s?.id || `${s?.name || ""}|${s?.starts_on || ""}|${s?.ends_on || ""}`;
+      const key = s?.id || `${s?.name || ""}|${s?.poster_date || ""}`;
       if (!key) return;
       const prev = byId.get(key);
       if (!prev) {
@@ -96,7 +87,7 @@ export default function ManageSemesterPanel({
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredSemesters = normalizedSearch
     ? orderedSemesters.filter((s) => {
-        const haystack = `${s?.name || ""} ${s?.starts_on || ""} ${s?.ends_on || ""}`.toLowerCase();
+        const haystack = `${s?.name || ""} ${s?.poster_date || ""}`.toLowerCase();
         return haystack.includes(normalizedSearch);
       })
     : orderedSemesters;
@@ -215,7 +206,7 @@ export default function ManageSemesterPanel({
                         <path d="M16 18h.01" />
                       </svg>
                     </span>
-                    <span>{formatDate(s.starts_on)} → {formatDate(s.ends_on)}</span>
+                    <span>{formatDate(s.poster_date)}</span>
                   </div>
                   <div className="manage-item-sub manage-meta-line">
                     <LastActivity value={getLastActivity(s)} />
@@ -231,8 +222,7 @@ export default function ManageSemesterPanel({
                       setEditForm({
                         id: s.id,
                         name: s.name || "",
-                        starts_on: normalizeDateInput(s.starts_on),
-                        ends_on: normalizeDateInput(s.ends_on),
+                        poster_date: normalizeDateInput(s.poster_date),
                       });
                       setShowEdit(true);
                     }}
@@ -275,30 +265,17 @@ export default function ManageSemesterPanel({
                     onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="2026 Spring"
                   />
-                  <div className="manage-inline">
-                    <div className="manage-field">
-                      <label className="manage-label">Start date</label>
-                      <input
-                        type="date"
-                        className={`manage-input manage-date${createForm.starts_on ? "" : " is-empty"}`}
-                        value={createForm.starts_on}
-                        onChange={(e) => setCreateForm((f) => ({ ...f, starts_on: e.target.value }))}
-                        max="9999-12-31"
-                      />
-                    </div>
-                    <div className="manage-field">
-                      <label className="manage-label">End date</label>
-                      <input
-                        type="date"
-                        className={`manage-input manage-date${createForm.ends_on ? "" : " is-empty"}`}
-                        value={createForm.ends_on}
-                        onChange={(e) => setCreateForm((f) => ({ ...f, ends_on: e.target.value }))}
-                        max="9999-12-31"
-                      />
-                    </div>
+                  <div className="manage-field">
+                    <label className="manage-label">Poster date</label>
+                    <input
+                      type="date"
+                      className={`manage-input manage-date${createForm.poster_date ? "" : " is-empty"}`}
+                      value={createForm.poster_date}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, poster_date: e.target.value }))}
+                      max="9999-12-31"
+                    />
                   </div>
                   {createMeta.yearError && <div className="manage-field-error">{createMeta.yearError}</div>}
-                  {createMeta.dateError && <div className="manage-field-error">{createMeta.dateError}</div>}
                 </div>
                 <div className="manage-modal-actions">
                   <button className="manage-btn" type="button" onClick={() => setShowCreate(false)}>
@@ -311,11 +288,10 @@ export default function ManageSemesterPanel({
                     onClick={() => {
                       onCreateSemester({
                         name: createForm.name.trim(),
-                        starts_on: createForm.starts_on,
-                        ends_on: createForm.ends_on,
+                        poster_date: createForm.poster_date,
                       });
                       setShowCreate(false);
-                      setCreateForm({ name: "", starts_on: "", ends_on: "" });
+                      setCreateForm({ name: "", poster_date: "" });
                     }}
                   >
                     Create
@@ -337,30 +313,17 @@ export default function ManageSemesterPanel({
                     onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="2026 Spring"
                   />
-                  <div className="manage-inline">
-                    <div className="manage-field">
-                      <label className="manage-label">Start date</label>
-                      <input
-                        type="date"
-                        className={`manage-input manage-date${editForm.starts_on ? "" : " is-empty"}`}
-                        value={editForm.starts_on}
-                        onChange={(e) => setEditForm((f) => ({ ...f, starts_on: e.target.value }))}
-                        max="9999-12-31"
-                      />
-                    </div>
-                    <div className="manage-field">
-                      <label className="manage-label">End date</label>
-                      <input
-                        type="date"
-                        className={`manage-input manage-date${editForm.ends_on ? "" : " is-empty"}`}
-                        value={editForm.ends_on}
-                        onChange={(e) => setEditForm((f) => ({ ...f, ends_on: e.target.value }))}
-                        max="9999-12-31"
-                      />
-                    </div>
+                  <div className="manage-field">
+                    <label className="manage-label">Poster date</label>
+                    <input
+                      type="date"
+                      className={`manage-input manage-date${editForm.poster_date ? "" : " is-empty"}`}
+                      value={editForm.poster_date}
+                      onChange={(e) => setEditForm((f) => ({ ...f, poster_date: e.target.value }))}
+                      max="9999-12-31"
+                    />
                   </div>
                   {editMeta.yearError && <div className="manage-field-error">{editMeta.yearError}</div>}
-                  {editMeta.dateError && <div className="manage-field-error">{editMeta.dateError}</div>}
                 </div>
                 <div className="manage-modal-actions">
                   <button className="manage-btn" type="button" onClick={() => setShowEdit(false)}>
@@ -374,11 +337,10 @@ export default function ManageSemesterPanel({
                       onUpdateSemester({
                         id: editForm.id,
                         name: editForm.name.trim(),
-                        starts_on: editForm.starts_on,
-                        ends_on: editForm.ends_on,
+                        poster_date: editForm.poster_date,
                       });
                       setShowEdit(false);
-                      setEditForm({ id: "", name: "", starts_on: "", ends_on: "" });
+                      setEditForm({ id: "", name: "", poster_date: "" });
                     }}
                   >
                     Save

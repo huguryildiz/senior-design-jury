@@ -186,7 +186,7 @@ export default function App() {
 
         <div className="home-info">
           <span className="home-info-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>Use the Evaluation Form to score each project group.</span>
+          <span>Please score each project group using the evaluation form.</span>
         </div>
 
         <div className="home-footer">

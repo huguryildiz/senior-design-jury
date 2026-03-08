@@ -75,6 +75,7 @@ export default function ManageJurorsPanel({
   const [showAdd, setShowAdd] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ juror_name: "", juror_inst: "" });
+  const [addError, setAddError] = useState("");
   const [showEdit, setShowEdit] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState({ juror_name: "", juror_inst: "" });
@@ -109,13 +110,25 @@ export default function ManageJurorsPanel({
     ? orderedJurors.filter((j) => {
         const name = j.juryName || j.juror_name || "";
         const inst = j.juryDept || j.juror_inst || "";
-        const haystack = `${name} ${inst}`.toLowerCase();
+        const scoredSemesters = Array.isArray(j.scoredSemesters)
+          ? j.scoredSemesters.filter(Boolean)
+          : Array.isArray(j.scored_semesters)
+            ? j.scored_semesters.filter(Boolean)
+            : [];
+        const semestersText = scoredSemesters.join(" ");
+        const semestersLabel = scoredSemesters.join(" · ");
+        const haystack = `${name} ${inst} ${semestersText} ${semestersLabel}`.toLowerCase();
         return haystack.includes(normalizedSearch);
       })
     : orderedJurors;
   const visibleJurors = normalizedSearch
     ? filteredJurors
     : (showAll ? orderedJurors : orderedJurors.slice(0, 4));
+  const existingJurorKeys = new Set(
+    (jurors || []).map((j) =>
+      normalizeKey(j.juryName || j.juror_name, j.juryDept || j.juror_inst)
+    )
+  );
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -248,12 +261,20 @@ export default function ManageJurorsPanel({
               onClick={() => {
                 setImportError("");
                 setImportWarning("");
+                setAddError("");
                 setShowImport(true);
               }}
             >
               Import CSV
             </button>
-            <button className="manage-btn primary" type="button" onClick={() => setShowAdd(true)}>
+            <button
+              className="manage-btn primary"
+              type="button"
+              onClick={() => {
+                setAddError("");
+                setShowAdd(true);
+              }}
+            >
               <span aria-hidden="true"><CirclePlusIcon className="manage-btn-icon" /></span>
               Juror
             </button>
@@ -378,18 +399,25 @@ export default function ManageJurorsPanel({
                 <div className="manage-modal-body">
                   <label className="manage-label">Full name</label>
                   <input
-                    className="manage-input"
+                    className={`manage-input${addError ? " is-danger" : ""}`}
                     value={form.juror_name}
-                    onChange={(e) => setForm((f) => ({ ...f, juror_name: e.target.value }))}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, juror_name: e.target.value }));
+                      if (addError) setAddError("");
+                    }}
                     placeholder="Dr. Andrew Collins"
                   />
                   <label className="manage-label">Department / Institution</label>
                   <input
-                    className="manage-input"
+                    className={`manage-input${addError ? " is-danger" : ""}`}
                     value={form.juror_inst}
-                    onChange={(e) => setForm((f) => ({ ...f, juror_inst: e.target.value }))}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, juror_inst: e.target.value }));
+                      if (addError) setAddError("");
+                    }}
                     placeholder="Electrical Engineering"
                   />
+                  {addError && <div className="manage-field-error">{addError}</div>}
                 </div>
                 <div className="manage-modal-actions">
                   <button className="manage-btn" type="button" onClick={() => setShowAdd(false)}>
@@ -400,12 +428,20 @@ export default function ManageJurorsPanel({
                     type="button"
                     disabled={!canSubmit}
                     onClick={() => {
+                      const name = form.juror_name.trim();
+                      const inst = form.juror_inst.trim();
+                      const key = normalizeKey(name, inst);
+                      if (existingJurorKeys.has(key)) {
+                        setAddError("A juror with the same name and department already exists.");
+                        return;
+                      }
                       onAddJuror({
-                        juror_name: form.juror_name.trim(),
-                        juror_inst: form.juror_inst.trim(),
+                        juror_name: name,
+                        juror_inst: inst,
                       });
                       setShowAdd(false);
                       setForm({ juror_name: "", juror_inst: "" });
+                      setAddError("");
                     }}
                   >
                     Add

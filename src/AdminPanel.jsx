@@ -11,6 +11,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useToast } from "./components/toast/useToast";
 import { CRITERIA } from "./config";
 import {
   adminLogin,
@@ -28,10 +29,12 @@ import {
   HourglassIcon,
   PencilIcon,
   CheckCircle2Icon,
+  ArrowRightFromLineIcon,
   ListChecksIcon,
   TrophyIcon,
   ChartIcon,
   LayoutDashboardIcon,
+  FolderKanbanIcon,
   ClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -125,6 +128,7 @@ function ResultsStatusBar({ metrics, id, semesterSlot }) {
     completedJurors, totalJurors,
     completedEvaluations, totalEvaluations,
     inProgressJurors, editingJurors, notStartedJurors,
+    totalProjects,
   } = metrics;
   const safeTJ  = Math.max(0, totalJurors || 0);
   const safeCJ  = Math.min(Math.max(0, completedJurors || 0), safeTJ);
@@ -133,6 +137,7 @@ function ResultsStatusBar({ metrics, id, semesterSlot }) {
   const safeNS  = Math.max(0, notStartedJurors || 0);
   const safeTE  = Math.max(0, totalEvaluations || 0);
   const safeCE  = Math.min(Math.max(0, completedEvaluations || 0), safeTE);
+  const safeTP  = Math.max(0, totalProjects || 0);
   const isEmpty = safeTJ === 0 && safeCJ === 0 && safeIP === 0 && safeED === 0 && safeNS === 0;
   const jurorTheme = isEmpty
     ? "empty"
@@ -151,7 +156,7 @@ function ResultsStatusBar({ metrics, id, semesterSlot }) {
       <div className="results-status-row results-status-row--chips">
         <span className={`status-chip status-chip--${jurorTheme}`}>
           <span className="status-block"><UserRoundCheckIcon /><span className="status-value">{jv(safeTJ)}</span></span>
-          <span className="status-sep" aria-hidden="true">·</span>
+          <span className="status-sep status-sep-icon" aria-hidden="true"><ArrowRightFromLineIcon /></span>
           <span className="status-block"><CheckCircle2Icon /><span className="status-value">{jv(safeCJ)}</span></span>
           <span className="status-sep" aria-hidden="true">·</span>
           <span className="status-block"><HourglassIcon /><span className="status-value">{jv(safeIP)}</span></span>
@@ -163,6 +168,9 @@ function ResultsStatusBar({ metrics, id, semesterSlot }) {
               <span className="status-block"><CircleIcon /><span className="status-value">{jv(safeNS)}</span></span>
             </>
           )}
+        </span>
+        <span className={`status-chip status-chip--${evalTheme} status-chip--projects`}>
+          <span className="status-block"><FolderKanbanIcon /><span className="status-value">{safeTP || "—"}</span></span>
         </span>
         <span className={`status-chip status-chip--${evalTheme}`}>
           <span className="status-block"><ListChecksIcon /><span className="status-value">{ev}</span></span>
@@ -186,8 +194,9 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const semesterRef = useRef(null);
 
   const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState("");
-  const [authError,   setAuthError]   = useState("");
+  const _toast = useToast();
+  const setError     = (msg) => { if (msg) _toast.error(msg); };
+  const setAuthError = (msg) => { if (msg) _toast.error(msg); };
   const [showStatus,  setShowStatus]  = useState(true);
   const VALID_TABS = new Set(["overview", "results", "analysis", "manage"]);
   const [activeTab,   setActiveTab]   = useState(() => {
@@ -265,10 +274,11 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       setSemesterList(sems);
 
       // Determine target semester
+      const activeId = sems.find((s) => s.is_active)?.id || "";
       const targetId =
         forceSemesterId ||
+        activeId ||
         selectedSemesterRef.current ||
-        sems.find((s) => s.is_active)?.id ||
         sems[0]?.id;
 
       if (!targetId) {
@@ -320,9 +330,15 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   bgRefresh.current = async () => {
     const pass = getAdminPass();
     if (!pass) return;
-    const semId = selectedSemesterRef.current;
-    if (!semId) return;
     try {
+      const sems = await listSemesters();
+      setSemesterList(sems);
+      const activeId = sems.find((s) => s.is_active)?.id || sems[0]?.id || "";
+      const semId = activeId || selectedSemesterRef.current;
+      if (!semId) return;
+      if (semId !== selectedSemesterRef.current) {
+        setSelectedSemesterId(semId);
+      }
       const [scores, summary, jurors] = await Promise.all([
         adminGetScores(semId, pass),
         adminProjectSummary(semId, pass),
@@ -464,17 +480,20 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     return m;
   }, [uniqueJurors]);
 
-  // Rows with all criteria filled = "submitted" in Supabase model
+  const isSubmittedStatus = (status) => status === "submitted" || status === "completed";
+  const isInProgressStatus = (status) => status === "in_progress" || status === "editing";
+
+  // Rows with all criteria filled = "submitted" or "completed"
   const submittedData = useMemo(
-    () => rawScores.filter((r) => r.status === "submitted"),
+    () => rawScores.filter((r) => isSubmittedStatus(r.status)),
     [rawScores]
   );
   const dashboardData = useMemo(
-    () => rawScores.filter((r) => r.status === "submitted" || r.status === "in_progress"),
+    () => rawScores.filter((r) => isSubmittedStatus(r.status) || isInProgressStatus(r.status)),
     [rawScores]
   );
   const completedData = useMemo(
-    () => rawScores.filter((r) => r.status === "submitted" || r.status === "in_progress"),
+    () => rawScores.filter((r) => r.status === "completed"),
     [rawScores]
   );
 
@@ -505,8 +524,8 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const jurorStats = useMemo(() => {
     return assignedJurors.map(({ key, name, dept, jurorId, editEnabled }) => {
       const rows       = rawScores.filter((d) => rowKey(d) === key);
-      const completed  = rows.filter((r) => r.status === "submitted");
-      const inProgress = rows.filter((r) => r.status === "in_progress");
+      const completed  = rows.filter((r) => isSubmittedStatus(r.status));
+      const inProgress = rows.filter((r) => isInProgressStatus(r.status));
       const latestTs   = rows.reduce((mx, r) => (r.tsMs > mx ? r.tsMs : mx), 0);
       const latestRow  = rows.find((r) => r.tsMs === latestTs) || rows[0];
 
@@ -535,7 +554,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     const totalEvaluations = totalJurors * totalProjects;
     const submittedByJuror = new Map();
     rawScores.forEach((r) => {
-      if (r.status !== "submitted") return;
+      if (!isSubmittedStatus(r.status)) return;
       if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
       const key = rowKey(r);
       if (!submittedByJuror.has(key)) submittedByJuror.set(key, new Set());
@@ -548,13 +567,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     }).length;
     const inProgressKeys = new Set(
       rawScores
-        .filter((r) => r.status === "in_progress")
+        .filter((r) => isInProgressStatus(r.status))
         .filter((r) => assignedIds.size === 0 ? true : assignedIds.has(r.jurorId))
         .map((r) => rowKey(r))
     );
     const progressedKeys = new Set(
       rawScores
-        .filter((r) => r.status === "submitted" || r.status === "in_progress")
+        .filter((r) => isSubmittedStatus(r.status) || isInProgressStatus(r.status))
         .filter((r) => assignedIds.size === 0 ? true : assignedIds.has(r.jurorId))
         .map((r) => rowKey(r))
     );
@@ -574,6 +593,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       totalJurors,
       completedEvaluations,
       totalEvaluations,
+      totalProjects,
       inProgressJurors: inProgressKeys.size,
       editingJurors,
       notStartedJurors,
@@ -607,8 +627,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       const label = String(sem?.name || "");
       const match = label.match(/\d{4}/);
       if (match) return Number(match[0]) || 0;
-      if (sem?.starts_on) return Number(String(sem.starts_on).slice(0, 4)) || 0;
-      if (sem?.ends_on) return Number(String(sem.ends_on).slice(0, 4)) || 0;
+      if (sem?.poster_date) return Number(String(sem.poster_date).slice(0, 4)) || 0;
       return 0;
     };
     const getTermRank = (sem) => {
@@ -721,12 +740,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       </div>
 
       {/* Status messages */}
-      {loading   && <div className="loading">Loading data…</div>}
-      {error     && <div className="error-msg">{error}</div>}
-      {authError && <div className="error-msg">{authError}</div>}
+      {loading && <div className="loading">Loading data…</div>}
 
       {/* Tab content */}
-      {!loading && !error && !authError && (
+      {!loading && (
         <div className="admin-body">
           {activeTab === "overview" && (
             <OverviewTab
@@ -754,7 +771,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               submittedData={dashboardData}
               lastRefresh={lastRefresh}
               loading={loading}
-              error={error}
               semesterName={selectedSemesterName}
             />
           )}

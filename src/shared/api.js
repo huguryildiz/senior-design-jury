@@ -83,6 +83,7 @@ export async function listProjects(semesterId, jurorId = null) {
     group_no:       row.group_no,
     project_title:  row.project_title,
     group_students: row.group_students || "",
+    poster_date:    row.poster_date || "",
     updated_at:     row.updated_at,
     final_submitted_at: row.final_submitted_at,
     // Normalize DB column names → config.js criterion ids
@@ -158,9 +159,11 @@ export async function adminGetScores(semesterId, adminPassword) {
     const finalSubmittedAtRaw = row.final_submitted_at || "";
     const isFinalSubmitted = !!finalSubmittedAtRaw;
     const status = row.status || (
-      isFinalSubmitted || hasAllScores
-        ? "submitted"
-        : (!hasAnyScore && !hasComment ? "not_started" : "in_progress")
+      isFinalSubmitted
+        ? "completed"
+        : (hasAllScores
+          ? "submitted"
+          : (!hasAnyScore && !hasComment ? "not_started" : "in_progress"))
     );
 
     const updatedAt = row.updated_at ? new Date(row.updated_at).toISOString() : "";
@@ -175,6 +178,7 @@ export async function adminGetScores(semesterId, adminPassword) {
       projectId:   row.project_id,
       groupNo:     row.group_no,
       projectName: row.project_title,
+      posterDate:  row.poster_date || "",
       // Normalize DB column names → config.js criterion ids
       technical:   row.technical   ?? null,
       design:      row.written     ?? null,   // written → design
@@ -190,7 +194,7 @@ export async function adminGetScores(semesterId, adminPassword) {
       timestamp:   updatedAt,
       tsMs:        updatedMs,
       status,
-      editingFlag: "",  // no longer applicable in Supabase model
+      editingFlag: status === "editing" ? "editing" : "",
     });
   });
 }
@@ -277,8 +281,7 @@ export async function adminSetActiveSemester(semesterId, adminPassword) {
 export async function adminCreateSemester(payload, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_create_semester", {
     p_name: payload.name,
-    p_starts_on: payload.starts_on,
-    p_ends_on: payload.ends_on,
+    p_poster_date: payload.poster_date,
     p_admin_password: adminPassword,
   });
   if (error) throw error;
@@ -289,8 +292,7 @@ export async function adminUpdateSemester(payload, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_update_semester", {
     p_semester_id: payload.id,
     p_name: payload.name,
-    p_starts_on: payload.starts_on,
-    p_ends_on: payload.ends_on,
+    p_poster_date: payload.poster_date,
     p_admin_password: adminPassword,
   });
   if (error) throw error;
@@ -388,6 +390,8 @@ export async function adminListAuditLogs(filters, adminPassword) {
     p_actor_types: filters?.actorTypes || null,
     p_actions: filters?.actions || null,
     p_limit: filters?.limit || 120,
+    p_before_at: filters?.beforeAt || null,
+    p_before_id: filters?.beforeId || null,
   });
   if (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {

@@ -869,6 +869,26 @@
     0 0 0 0 rgba(59, 130, 246, 0.45),
     0 0 28px 0 rgba(59, 130, 246, 0.22);
 }
+.eval-submit-amber {
+  animation: editPulse 1.9s ease-in-out infinite;
+  background: #fff4e6;
+  border: 1.5px solid #f5b971;
+  color: #9a4b12;
+  box-shadow:
+    0 0 0 0 rgba(245, 158, 11, 0.45),
+    0 0 28px 0 rgba(245, 158, 11, 0.25);
+}
+.eval-submit-amber svg { color: #f59e0b; }
+.premium-btn-primary.eval-submit-amber {
+  background: #fff4e6 !important;
+  border: 1.5px solid #f5b971 !important;
+  color: #9a4b12 !important;
+}
+.premium-btn-primary.eval-submit-amber:hover {
+  background: #ffedd5 !important;
+  border-color: #f3b56a !important;
+  color: #8a4310 !important;
+}
 
 /* Edit mode amber banner */
 .edit-mode-banner {

@@ -89,7 +89,6 @@ export default function EvalStep({
   groupSynced, editMode,
   progressPct, allComplete,
   saveStatus,
-  submitError,
   handleScore, handleScoreBlur,
   handleCommentChange, handleCommentBlur,
   handleFinalSubmit,
@@ -136,6 +135,10 @@ export default function EvalStep({
 
   const currentFilled = CRITERIA.filter((c) => isScoreFilled(scores[pid]?.[c.id])).length;
   const currentTotal  = CRITERIA.length;
+  const completedGroups = (projects || []).filter((p) =>
+    CRITERIA.every((c) => isScoreFilled(scores[p.project_id]?.[c.id]))
+  ).length;
+  const totalGroups = projects?.length || 0;
   const groupPillStatus =
     currentFilled >= currentTotal ? "complete" : currentFilled > 0 ? "progress" : "empty";
 
@@ -405,7 +408,13 @@ export default function EvalStep({
             style={{ width: "100%", marginTop: 8 }}
             onClick={handleFinalSubmit}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clipboard-pen-line-icon lucide-clipboard-pen-line" aria-hidden="true">
+              <rect width="8" height="4" x="8" y="2" rx="1" />
+              <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5" />
+              <path d="M16 4h2a2 2 0 0 1 1.73 1" />
+              <path d="M8 18h1" />
+              <path d="M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
+            </svg>
             Submit All Evaluations
           </button>
         )}
@@ -413,25 +422,28 @@ export default function EvalStep({
         {/* Submit Final — edit mode only */}
         {editMode && (
           <button
-            className="premium-btn-primary eval-submit-btn eval-submit-glow"
-            style={{ width: "100%", marginTop: 8, opacity: allComplete ? 1 : 0.65 }}
+            className={`premium-btn-primary eval-submit-btn ${allComplete ? "eval-submit-green" : "eval-submit-amber"}`}
+            style={{ width: "100%", marginTop: 8 }}
             onClick={handleFinalSubmit}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-icon lucide-send" aria-hidden="true">
-              <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
-              <path d="m21.854 2.147-10.94 10.939" />
-            </svg>
+            {allComplete ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-icon lucide-send" aria-hidden="true">
+                <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+                <path d="m21.854 2.147-10.94 10.939" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clipboard-pen-line-icon lucide-clipboard-pen-line" aria-hidden="true">
+                <rect width="8" height="4" x="8" y="2" rx="1" />
+                <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-.5" />
+                <path d="M16 4h2a2 2 0 0 1 1.73 1" />
+                <path d="M8 18h1" />
+                <path d="M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
+              </svg>
+            )}
             {allComplete
               ? "Submit Final Scores"
-              : `Submit Final Scores (${countFilled(scores, projects)} / ${projects.length * CRITERIA.length} filled)`}
+              : `Complete Required Scores (${completedGroups}/${totalGroups})`}
           </button>
-        )}
-
-        {submitError && (
-          <div className="premium-error-banner" role="alert" style={{ marginTop: 12 }}>
-            <div className="premium-error-title">Submission failed</div>
-            <div className="premium-error-detail">{submitError}</div>
-          </div>
         )}
 
       </div>

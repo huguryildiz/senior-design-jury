@@ -178,7 +178,7 @@ export default function ManagePermissionsPanel({
               );
             })}
             {!normalizedSearch && permissionJurors.length === 0 && (
-              <div className="manage-empty">No jurors assigned to the active semester.</div>
+              <div className="manage-empty manage-empty-search">No jurors assigned to the active semester.</div>
             )}
             {normalizedSearch && filteredJurors.length === 0 && (
               <div className="manage-empty manage-empty-search">No results.</div>

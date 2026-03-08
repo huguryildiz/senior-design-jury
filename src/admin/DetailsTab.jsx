@@ -410,9 +410,12 @@ export default function DetailsTab({
         ? studentsRaw.map((s) => String(s).trim()).filter(Boolean).join(", ")
         : String(studentsRaw).trim();
       const isEditing = !!(jurorEditMap.get(row.jurorId) || jurorEditMap.get(rowKey(row)));
-      const effectiveStatus = isEditing
-        ? "editing"
-        : (row.status === "submitted" ? "submitted" : (row.status === "in_progress" ? "in_progress" : "not_started"));
+      const effectiveStatus =
+        (row.status === "editing" || isEditing)
+          ? "editing"
+          : ((row.status === "completed" || row.status === "submitted")
+            ? "submitted"
+            : (row.status === "in_progress" ? "in_progress" : "not_started"));
       return {
         ...row,
         semester: semesterName ?? "",
@@ -1057,7 +1060,7 @@ export default function DetailsTab({
             )}
             {rows.map((row, i) => {
               const isEditing = row.isEditing;
-              const isIP = row.status === "in_progress" || isEditing;
+              const isIP = row.status === "in_progress" || row.status === "editing" || isEditing;
               const projectTitle = row.projectTitle || "";
               const students = row.students || "";
               const statusForBadge =

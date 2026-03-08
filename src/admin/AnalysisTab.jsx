@@ -103,18 +103,6 @@ function DashboardSkeleton() {
 }
 
 // ── Error state ───────────────────────────────────────────────
-function DashboardError() {
-  return (
-    <div className="dashboard-state-card">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FCA5A5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <p className="dashboard-state-title">Could not load data</p>
-      <span className="dashboard-state-sub">Check your connection and refresh the page.</span>
-    </div>
-  );
-}
-
 // ── Empty state ───────────────────────────────────────────────
 function DashboardEmpty() {
   return (
@@ -129,7 +117,7 @@ function DashboardEmpty() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export default function AnalysisTab({ dashboardStats, submittedData, lastRefresh, loading, error, semesterName = "" }) {
+export default function AnalysisTab({ dashboardStats, submittedData, lastRefresh, loading, semesterName = "" }) {
   const restoreRef   = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -436,14 +424,6 @@ export default function AnalysisTab({ dashboardStats, submittedData, lastRefresh
     return (
       <div className="dashboard-print-wrap">
         <DashboardSkeleton />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="dashboard-print-wrap">
-        <DashboardError />
       </div>
     );
   }

@@ -25,6 +25,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useToast } from "../components/toast/useToast";
 import { CRITERIA } from "../config";
 import {
   listSemesters,
@@ -183,7 +184,8 @@ export default function useJuryState() {
 
   // ── Submission confirmation ───────────────────────────────
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const _toast = useToast();
+  const setSubmitError = (msg) => { if (msg) _toast.error(msg); };
 
   // ── Refs ──────────────────────────────────────────────────
   const doneFiredRef     = useRef(false);
@@ -268,6 +270,39 @@ export default function useJuryState() {
     [writeGroup]
   );
 
+  // ── Submit handlers ───────────────────────────────────────
+
+  const handleRequestSubmit = useCallback(async () => {
+    setSubmitError("");
+    const { scores: s, projects: projs } = stateRef.current;
+    if (!isAllComplete(s, projs)) {
+      setTouched(makeAllTouched(projs));
+      const firstIncomplete = projs.findIndex(
+        (p) => !isAllFilled(s, p.project_id)
+      );
+      if (firstIncomplete >= 0) setCurrent(firstIncomplete);
+      return;
+    }
+    if (submitPendingRef.current) return;
+    submitPendingRef.current = true;
+    setLoadingState({ stage: "loading", message: "Saving latest scores…" });
+
+    let allSaved = true;
+    for (const p of projs) {
+      const ok = await writeGroup(p.project_id);
+      if (!ok) allSaved = false;
+    }
+
+    setLoadingState(null);
+    if (!allSaved) {
+      setSubmitError("Could not save all scores. Please check your connection and try again.");
+      submitPendingRef.current = false;
+      return;
+    }
+
+    setConfirmingSubmit(true);
+  }, [writeGroup]);
+
   // ── Auto-upgrade groupSynced ──────────────────────────────
   useEffect(() => {
     if (step !== "eval" || editMode) return;
@@ -289,9 +324,8 @@ export default function useJuryState() {
     if (projects.length === 0) return;
     if (!projects.every((p) => groupSynced[p.project_id])) return;
 
-    submitPendingRef.current = true;
-    setConfirmingSubmit(true);
-  }, [groupSynced, step, editMode, projects]);
+    handleRequestSubmit();
+  }, [groupSynced, step, editMode, projects, handleRequestSubmit]);
 
   // ── Score handlers ────────────────────────────────────────
 
@@ -349,23 +383,6 @@ export default function useJuryState() {
     },
     [writeGroup]
   );
-
-  // ── Submit handlers ───────────────────────────────────────
-
-  const handleRequestSubmit = useCallback(() => {
-    setSubmitError("");
-    const { scores: s, projects: projs } = stateRef.current;
-    if (!isAllComplete(s, projs)) {
-      setTouched(makeAllTouched(projs));
-      const firstIncomplete = projs.findIndex(
-        (p) => !isAllFilled(s, p.project_id)
-      );
-      if (firstIncomplete >= 0) setCurrent(firstIncomplete);
-      return;
-    }
-    submitPendingRef.current = true;
-    setConfirmingSubmit(true);
-  }, []);
 
   const handleConfirmSubmit = useCallback(async () => {
     setConfirmingSubmit(false);
@@ -916,7 +933,6 @@ export default function useJuryState() {
 
     // Submit
     confirmingSubmit,
-    submitError,
     handleRequestSubmit,
     handleConfirmSubmit,
     handleCancelSubmit,

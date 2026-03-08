@@ -47,7 +47,6 @@ export default function JuryForm({ onBack }) {
     handleProgressContinue,
     handleSemesterSelect,
     confirmingSubmit,
-    submitError,
     handleRequestSubmit, handleConfirmSubmit, handleCancelSubmit,
     handleEditScores,
     handleFinalSubmit,
@@ -181,7 +180,6 @@ export default function JuryForm({ onBack }) {
         progressPct={progressPct}
         allComplete={allComplete}
         saveStatus={saveStatus}
-        submitError={submitError}
         handleScore={handleScore}
         handleScoreBlur={handleScoreBlur}
         handleCommentChange={handleCommentChange}

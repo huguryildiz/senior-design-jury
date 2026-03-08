@@ -355,6 +355,12 @@
 .status-chip svg { width: 16px; height: 16px; }
 .status-value { font-weight: 600; color: inherit; }
 .status-sep { opacity: 0.55; margin: 0 10px; }
+.status-sep-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.status-sep-icon svg { width: 14px; height: 14px; }
 .status-block {
   display: inline-flex;
   align-items: center;
@@ -381,6 +387,12 @@
   background: var(--gray-100);
   color: var(--gray-500);
   border-color: var(--gray-200);
+}
+.status-chip--projects {
+  justify-content: center;
+}
+.status-chip--projects .status-block {
+  margin: 0 auto;
 }
 
 .tab {
