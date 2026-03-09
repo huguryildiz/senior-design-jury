@@ -6,11 +6,14 @@
 --   - 6 semesters with poster_date (2025 Fall active)
 --   - 18 jurors (globally diverse) with "University / Department"
 --   - group_students as "Name Surname; Name Surname; ..."
---   - juror_semester_auth (12–16 jurors per semester, overlap ensured)
---   - Scores with status distribution:
---       completed 85%, submitted 10%, editing 2%, in_progress 2%, not_started 1%
---   - updated_at: between 13:00–17:00 on poster_date
---   - final_submitted_at: only for completed, = updated_at + 20–40 min
+--   - juror_semester_auth (12–16 per Spring/Fall semester, 3–4 per Summer)
+--   - Full matrix: every juror evaluates every project in their semester
+--   - Scores with status distribution (juror-semester level):
+--       completed 92% (all projects scored + final_submitted_at)
+--       submitted  5% (all projects scored, no finalization)
+--       in_progress 3% (all but one project complete, one partial)
+--   - updated_at: poster_date 13:00–17:30, sequential per juror
+--   - final_submitted_at: max(updated_at) + 20–40 min, completed jurors only
 -- ============================================================
 
 BEGIN;
@@ -143,6 +146,7 @@ DECLARE
   v_picked text[];
   v_candidate text;
   v_i int;
+  v_used_sem_names text[];  -- names already used in this semester (reset per semester)
 
   -- creative title pools
   v_domain text[];
@@ -179,7 +183,29 @@ BEGIN
     -- Arabic
     'Omar Hassan','Fatima Al-Rashid','Youssef Khalil','Layla Mansour','Karim Nasser',
     -- Indian
-    'Aryan Sharma','Priya Patel','Rohan Mehta','Ananya Singh','Vikram Nair'
+    'Aryan Sharma','Priya Patel','Rohan Mehta','Ananya Singh','Vikram Nair',
+    -- Turkish (extended)
+    'Büşra Yıldız','Mert Çelik','Seda Kara','Tarık Güneş','Yasemin Aktaş',
+    -- English (extended)
+    'Sophia Clark','Mason Lewis','Ella Walker','Avery Hall','Logan Young',
+    -- French (extended)
+    'Antoine Lefebvre','Inès Garnier','Louis Rousseau','Chloé Fontaine','Maxime Girard',
+    -- German (extended)
+    'Lena Hoffmann','Maximilian Koch','Clara Richter','Philipp Schäfer','Nina Braun',
+    -- Italian (extended)
+    'Chiara Marino','Lorenzo Conti','Alessia Costa',
+    -- Spanish (extended)
+    'Lucía Torres','Pablo Ramírez','Camila Flores',
+    -- Chinese (extended)
+    'Xiao Lin','Jun Wu','Mei Yang',
+    -- Korean (extended)
+    'Jae-won Oh','Ha-eun Shin','Sung-min Bae',
+    -- Japanese (extended)
+    'Kaito Kobayashi','Sakura Ito','Ryota Hayashi',
+    -- Arabic (extended)
+    'Amina Al-Amin','Tariq Haddad','Nour Saleh',
+    -- Indian (extended)
+    'Aditya Kumar','Sneha Iyer','Kiran Reddy','Riya Kapoor','Siddharth Mehta'
   ];
   v_pool_len := array_length(v_student_pool, 1);
 
@@ -226,6 +252,7 @@ BEGIN
     END IF;
 
     v_group_no := 1;
+    v_used_sem_names := ARRAY[]::text[];  -- reset per semester
 
     WHILE v_group_no <= v_project_count LOOP
       -- students: 2..4, sampled without repetition from pool
@@ -236,9 +263,11 @@ BEGIN
       WHILE v_i < v_student_count LOOP
         LOOP
           v_candidate := v_student_pool[1 + floor(random() * v_pool_len)::int];
-          EXIT WHEN NOT (v_candidate = ANY(v_picked));
+          EXIT WHEN NOT (v_candidate = ANY(v_picked))
+                AND NOT (v_candidate = ANY(v_used_sem_names));
         END LOOP;
         v_picked := array_append(v_picked, v_candidate);
+        v_used_sem_names := array_append(v_used_sem_names, v_candidate);
         IF v_i > 0 THEN v_students := v_students || '; '; END IF;
         v_students := v_students || v_candidate;
         v_i := v_i + 1;
@@ -388,152 +417,50 @@ FROM public.semesters s, base
 WHERE s.id = a.semester_id;
 
 -- ------------------------------------------------------------
--- 5) Rare admin edit-mode flags
--- ------------------------------------------------------------
-DO $$
-DECLARE
-  v_sem record;
-  v_pick int;
-BEGIN
-  FOR v_sem IN SELECT id, name FROM public.semesters ORDER BY poster_date LOOP
-    IF lower(v_sem.name) LIKE '%summer%' THEN
-      v_pick := CASE WHEN random() < 0.6 THEN 0 ELSE 1 END; -- rare in summer
-    ELSE
-      v_pick := 1 + floor(random() * 2)::int; -- 1..2
-    END IF;
-
-    IF v_pick > 0 THEN
-      UPDATE public.juror_semester_auth
-      SET edit_enabled = true
-      WHERE id IN (
-        SELECT id
-        FROM public.juror_semester_auth
-        WHERE semester_id = v_sem.id
-        ORDER BY random()
-        LIMIT v_pick
-      );
-    END IF;
-  END LOOP;
-END $$;
-
--- ------------------------------------------------------------
--- 6) Assignments — juror ↔ project (2–5 projects per juror)
--- ------------------------------------------------------------
-CREATE TEMP TABLE tmp_assignments (
-  semester_id uuid NOT NULL,
-  project_id  uuid NOT NULL,
-  juror_id    uuid NOT NULL,
-  PRIMARY KEY (semester_id, project_id, juror_id)
-) ON COMMIT DROP;
-
-DO $$
-DECLARE
-  v_sem record;
-  v_proj_ids uuid[];
-  v_juror_ids uuid[];
-  v_proj_count int;
-  v_juror_id uuid;
-  v_project_id uuid;
-  v_eval_count int;
-  v_assigned int;
-  v_candidate uuid;
-BEGIN
-  FOR v_sem IN SELECT id, name FROM public.semesters ORDER BY poster_date LOOP
-    SELECT array_agg(id ORDER BY group_no) INTO v_proj_ids
-    FROM public.projects
-    WHERE semester_id = v_sem.id;
-
-    SELECT array_agg(juror_id ORDER BY juror_id) INTO v_juror_ids
-    FROM public.juror_semester_auth
-    WHERE semester_id = v_sem.id;
-
-    v_proj_count := COALESCE(array_length(v_proj_ids, 1), 0);
-    IF v_proj_count = 0 OR v_juror_ids IS NULL THEN
-      CONTINUE;
-    END IF;
-
-    FOREACH v_juror_id IN ARRAY v_juror_ids LOOP
-      v_eval_count := LEAST(v_proj_count, 2 + floor(random() * 4)::int); -- 2..5
-      INSERT INTO tmp_assignments (semester_id, project_id, juror_id)
-      SELECT v_sem.id, pid, v_juror_id
-      FROM (
-        SELECT unnest(v_proj_ids) AS pid
-        ORDER BY random()
-        LIMIT v_eval_count
-      ) pick;
-    END LOOP;
-
-    -- ensure each project has at least two juror evaluations
-    FOREACH v_project_id IN ARRAY v_proj_ids LOOP
-      SELECT COUNT(*) INTO v_assigned
-      FROM tmp_assignments
-      WHERE semester_id = v_sem.id AND project_id = v_project_id;
-
-      WHILE v_assigned < 2 LOOP
-        SELECT j.juror_id INTO v_candidate
-        FROM (
-          SELECT unnest(v_juror_ids) AS juror_id
-        ) j
-        LEFT JOIN (
-          SELECT juror_id, COUNT(*) AS cnt
-          FROM tmp_assignments
-          WHERE semester_id = v_sem.id
-          GROUP BY juror_id
-        ) c ON c.juror_id = j.juror_id
-        WHERE COALESCE(c.cnt, 0) < LEAST(5, v_proj_count)
-          AND NOT EXISTS (
-            SELECT 1 FROM tmp_assignments a
-            WHERE a.semester_id = v_sem.id
-              AND a.project_id = v_project_id
-              AND a.juror_id = j.juror_id
-          )
-        ORDER BY random()
-        LIMIT 1;
-
-        EXIT WHEN v_candidate IS NULL;
-
-        INSERT INTO tmp_assignments (semester_id, project_id, juror_id)
-        VALUES (v_sem.id, v_project_id, v_candidate)
-        ON CONFLICT DO NOTHING;
-
-        v_assigned := v_assigned + 1;
-      END LOOP;
-    END LOOP;
-  END LOOP;
-END $$;
-
--- ------------------------------------------------------------
--- 7) Scores — status distribution per assignment
---    not_started  1%  → all NULL, no final_submitted_at
---    in_progress  2%  → partial scores, final_submitted_at NULL
---    editing      2%  → all filled, edit_enabled true, final_submitted_at NULL
---    submitted   10%  → all 4 filled, no final_submitted_at
---    completed   85%  → all 4 filled + final_submitted_at = updated_at + 20..40 min
+-- 5) Scores — full matrix (every juror × every project)
 --
---    updated_at   : poster_date 13:00–17:00 (random 0–240 min offset)
+--    Status is decided at juror-semester level:
+--      in_progress  3%  → all projects scored except exactly one (partial)
+--      submitted    5%  → all projects fully scored, final_submitted_at NULL
+--      completed   92%  → all projects fully scored + final_submitted_at set
+--
+--    updated_at   : poster_date 13:00–17:30, spread sequentially per juror
 --    score range  : technical 20–30, written 18–30, oral 18–30, teamwork 7–10
---                   (total lands in 70–100 for filled rows)
+--                   (total 70–100 via retry loop)
+--    final_submitted_at : computed once per completed juror as
+--                         max(updated_at) + 20..40 minutes
 -- ------------------------------------------------------------
 DO $$
 DECLARE
-  v_row    record;
-  v_status   text;
-  v_rand     float;
+  v_sem              record;
+  v_juror            record;
+  v_proj             record;
+
+  v_juror_status     text;
+  v_rand             float;
+  v_incomplete_proj  uuid;   -- project_id left partial for in_progress jurors
+  v_is_incomplete    boolean;
 
   v_tech int; v_writ int; v_oral int; v_team int;
-  v_comment  text;
-  v_comments text[];
-  v_attempts int;
-  v_null_field text;
-  v_null_field2 text;
+  v_comment          text;
+  v_comments         text[];
+  v_attempts         int;
+  v_null_field       text;
+  v_null_field2      text;
 
-  v_poster_ts  timestamptz;
-  v_updated_at timestamptz;
-  v_created_at timestamptz;
-  v_final_at   timestamptz;
-  v_offset_min int;
-  v_offset_sec int;
-  v_final_min  int;
+  v_poster_ts        timestamptz;
+  v_updated_at       timestamptz;
+  v_created_at       timestamptz;
+  v_final_at         timestamptz;
+  v_max_updated_at   timestamptz;   -- tracks latest updated_at for this juror
+
+  -- per-juror timestamp distribution
+  v_start_min        int;    -- juror starts X minutes after 13:00
+  v_per_proj_min     int;    -- base minutes spent per project
+  v_cumulative_min   int;    -- running total of minutes used
+  v_offset_sec       int;
+
+  v_final_min        int;
 BEGIN
   v_comments := ARRAY[
     'Strong implementation; consider expanding the evaluation section.',
@@ -546,111 +473,148 @@ BEGIN
     'Good progress; improve failure-case analysis.'
   ];
 
-  FOR v_row IN
-    SELECT a.semester_id, a.project_id, a.juror_id,
-           s.poster_date,
-           COALESCE(jsa.edit_enabled, false) AS edit_enabled
-    FROM tmp_assignments a
-    JOIN public.semesters s ON s.id = a.semester_id
-    LEFT JOIN public.juror_semester_auth jsa
-      ON jsa.juror_id = a.juror_id
-     AND jsa.semester_id = a.semester_id
-    ORDER BY s.poster_date, a.juror_id, a.project_id
+  FOR v_sem IN
+    SELECT id, name, poster_date FROM public.semesters ORDER BY poster_date
   LOOP
-    v_poster_ts := v_row.poster_date::timestamptz; -- midnight UTC on that date
+    v_poster_ts := v_sem.poster_date::timestamptz;
 
-    -- status distribution
-    v_rand := random();
-    v_status :=
-      CASE
-        WHEN v_rand < 0.01 THEN 'not_started'
-        WHEN v_rand < 0.03 THEN 'in_progress'
-        WHEN v_rand < 0.05 THEN 'editing'
-        WHEN v_rand < 0.15 THEN 'submitted'
-        ELSE                     'completed'
-      END;
+    -- ── iterate each juror assigned to this semester ─────────
+    FOR v_juror IN
+      SELECT juror_id
+      FROM public.juror_semester_auth
+      WHERE semester_id = v_sem.id
+      ORDER BY juror_id
+    LOOP
 
-    IF v_status = 'editing' AND NOT v_row.edit_enabled THEN
-      v_status := 'submitted';
-    END IF;
+      -- juror-level status (decided once per juror-semester)
+      v_rand := random();
+      v_juror_status :=
+        CASE
+          WHEN v_rand < 0.03 THEN 'in_progress'  --  3%
+          WHEN v_rand < 0.08 THEN 'submitted'     --  5%
+          ELSE                    'completed'     -- 92%
+        END;
 
-    IF v_status = 'not_started' THEN
-      v_tech := NULL; v_writ := NULL; v_oral := NULL; v_team := NULL;
-    ELSE
-      v_attempts := 0;
+      -- for in_progress: choose one project to leave partial
+      v_incomplete_proj := NULL;
+      IF v_juror_status = 'in_progress' THEN
+        SELECT id INTO v_incomplete_proj
+        FROM public.projects
+        WHERE semester_id = v_sem.id
+        ORDER BY random()
+        LIMIT 1;
+      END IF;
+
+      -- timestamp distribution: juror starts at a random offset
+      v_start_min      := floor(random() * 90)::int;        -- 0..89 → 13:00–14:29
+      v_per_proj_min   := 8  + floor(random() * 7)::int;   -- 8..14 min per project
+      v_cumulative_min := 0;
+      v_max_updated_at := NULL;
+
+      -- ── iterate every project in the semester ────────────
+      FOR v_proj IN
+        SELECT id AS project_id, group_no
+        FROM public.projects
+        WHERE semester_id = v_sem.id
+        ORDER BY group_no
       LOOP
-        v_attempts := v_attempts + 1;
-        v_tech := 20 + floor(random() * 11)::int; -- 20..30
-        v_writ := 18 + floor(random() * 13)::int; -- 18..30
-        v_oral := 18 + floor(random() * 13)::int; -- 18..30
-        v_team :=  7 + floor(random() * 4)::int;  --  7..10
-        EXIT WHEN (v_tech + v_writ + v_oral + v_team) BETWEEN 70 AND 100 OR v_attempts > 10;
-      END LOOP;
+        v_is_incomplete := (v_juror_status = 'in_progress'
+                            AND v_proj.project_id = v_incomplete_proj);
 
-      IF v_status = 'in_progress' THEN
-        v_null_field := (ARRAY['technical','written','oral','teamwork'])[1 + floor(random()*4)::int];
+        -- score generation with retry to keep total 70–100
+        v_attempts := 0;
         LOOP
-          v_null_field2 := (ARRAY['technical','written','oral','teamwork'])[1 + floor(random()*4)::int];
-          EXIT WHEN v_null_field2 <> v_null_field;
+          v_attempts := v_attempts + 1;
+          v_tech := 20 + floor(random() * 11)::int; -- 20..30
+          v_writ := 18 + floor(random() * 13)::int; -- 18..30
+          v_oral := 18 + floor(random() * 13)::int; -- 18..30
+          v_team :=  7 + floor(random() * 4)::int;  --  7..10
+          EXIT WHEN (v_tech + v_writ + v_oral + v_team) BETWEEN 70 AND 100
+                 OR v_attempts > 10;
         END LOOP;
 
-        IF v_null_field = 'technical' OR v_null_field2 = 'technical' THEN v_tech := NULL; END IF;
-        IF v_null_field = 'written'   OR v_null_field2 = 'written'   THEN v_writ := NULL; END IF;
-        IF v_null_field = 'oral'      OR v_null_field2 = 'oral'      THEN v_oral := NULL; END IF;
-        IF v_null_field = 'teamwork'  OR v_null_field2 = 'teamwork'  THEN v_team := NULL; END IF;
+        -- null out 2 distinct fields for the single incomplete project
+        IF v_is_incomplete THEN
+          v_null_field := (ARRAY['technical','written','oral','teamwork'])
+                          [1 + floor(random()*4)::int];
+          LOOP
+            v_null_field2 := (ARRAY['technical','written','oral','teamwork'])
+                              [1 + floor(random()*4)::int];
+            EXIT WHEN v_null_field2 <> v_null_field;
+          END LOOP;
+          IF v_null_field = 'technical' OR v_null_field2 = 'technical' THEN v_tech := NULL; END IF;
+          IF v_null_field = 'written'   OR v_null_field2 = 'written'   THEN v_writ := NULL; END IF;
+          IF v_null_field = 'oral'      OR v_null_field2 = 'oral'      THEN v_oral := NULL; END IF;
+          IF v_null_field = 'teamwork'  OR v_null_field2 = 'teamwork'  THEN v_team := NULL; END IF;
+        END IF;
+
+        -- sequential timestamp: each project adds a slot
+        v_cumulative_min := v_cumulative_min
+                            + v_per_proj_min
+                            + floor(random() * 5)::int;  -- small jitter
+        v_offset_sec     := floor(random() * 60)::int;
+        v_updated_at     := v_poster_ts
+          + interval '13 hours'
+          + make_interval(mins => v_start_min + v_cumulative_min,
+                          secs => v_offset_sec);
+
+        -- clamp: never beyond 17:30
+        IF v_updated_at > v_poster_ts + interval '17 hours 30 minutes' THEN
+          v_updated_at := v_poster_ts + interval '17 hours'
+            + make_interval(secs => floor(random() * 1800)::int);
+        END IF;
+
+        v_created_at := v_updated_at
+          - make_interval(mins => 1 + floor(random() * 10)::int);
+        IF v_created_at < v_poster_ts + interval '13 hours' THEN
+          v_created_at := v_poster_ts + interval '13 hours';
+        END IF;
+
+        -- track latest updated_at for final_submitted_at calculation
+        IF v_max_updated_at IS NULL OR v_updated_at > v_max_updated_at THEN
+          v_max_updated_at := v_updated_at;
+        END IF;
+
+        -- optional comment (~30%)
+        IF random() < 0.30 THEN
+          v_comment := v_comments[1 + floor(random()*array_length(v_comments,1))::int];
+        ELSE
+          v_comment := NULL;
+        END IF;
+
+        INSERT INTO public.scores
+          (semester_id, project_id, juror_id, poster_date,
+           technical, written, oral, teamwork,
+           comment, final_submitted_at, created_at, updated_at)
+        VALUES
+          (v_sem.id, v_proj.project_id, v_juror.juror_id, v_sem.poster_date,
+           v_tech, v_writ, v_oral, v_team,
+           v_comment, NULL, v_created_at, v_updated_at)
+        ON CONFLICT (semester_id, project_id, juror_id) DO UPDATE
+          SET poster_date        = EXCLUDED.poster_date,
+              technical          = EXCLUDED.technical,
+              written            = EXCLUDED.written,
+              oral               = EXCLUDED.oral,
+              teamwork           = EXCLUDED.teamwork,
+              comment            = EXCLUDED.comment,
+              final_submitted_at = NULL,
+              updated_at         = EXCLUDED.updated_at;
+
+      END LOOP; -- projects
+
+      -- set final_submitted_at for completed jurors after all rows are inserted
+      IF v_juror_status = 'completed' THEN
+        v_final_min := 20 + floor(random() * 21)::int; -- 20..40
+        v_final_at  := v_max_updated_at + make_interval(mins => v_final_min);
+
+        UPDATE public.scores
+        SET final_submitted_at = v_final_at
+        WHERE semester_id = v_sem.id
+          AND juror_id    = v_juror.juror_id;
       END IF;
-    END IF;
 
-    -- optional comment (~30% when started)
-    IF v_status <> 'not_started' AND random() < 0.30 THEN
-      v_comment := v_comments[1 + floor(random()*array_length(v_comments,1))::int];
-    ELSE
-      v_comment := NULL;
-    END IF;
-
-    -- timestamps: updated_at on poster_date between 13:00–17:00
-    IF v_status = 'completed' THEN
-      v_offset_min := 230 + floor(random() * 11)::int; -- 16:50–17:00
-    ELSIF v_status IN ('submitted', 'editing') THEN
-      v_offset_min := 120 + floor(random() * 101)::int; -- 15:00–16:40
-    ELSE
-      v_offset_min := floor(random() * 200)::int; -- 13:00–16:20
-    END IF;
-    v_offset_sec := floor(random() * 60)::int;
-    v_updated_at := v_poster_ts
-      + interval '13 hours'
-      + make_interval(mins => v_offset_min, secs => v_offset_sec);
-
-    v_created_at := v_updated_at - make_interval(mins => 1 + floor(random() * 10)::int);
-    IF v_created_at < (v_poster_ts + interval '13 hours') THEN
-      v_created_at := v_poster_ts + interval '13 hours';
-    END IF;
-
-    IF v_status = 'completed' THEN
-      v_final_min := 20 + floor(random() * 21)::int; -- 20..40
-      v_final_at  := v_updated_at + make_interval(mins => v_final_min);
-    ELSE
-      v_final_at := NULL;
-    END IF;
-
-    INSERT INTO public.scores
-      (semester_id, project_id, juror_id, poster_date,
-       technical, written, oral, teamwork,
-       comment, final_submitted_at, created_at, updated_at)
-    VALUES
-      (v_row.semester_id, v_row.project_id, v_row.juror_id, v_row.poster_date,
-       v_tech, v_writ, v_oral, v_team,
-       v_comment, v_final_at, v_created_at, v_updated_at)
-    ON CONFLICT (semester_id, project_id, juror_id) DO UPDATE
-      SET poster_date       = EXCLUDED.poster_date,
-          technical         = EXCLUDED.technical,
-          written           = EXCLUDED.written,
-          oral              = EXCLUDED.oral,
-          teamwork          = EXCLUDED.teamwork,
-          comment           = EXCLUDED.comment,
-          final_submitted_at = EXCLUDED.final_submitted_at,
-          updated_at        = EXCLUDED.updated_at;
-  END LOOP;
+    END LOOP; -- jurors
+  END LOOP; -- semesters
 END $$;
 
 -- last_seen_at from latest score updated_at per juror-semester
@@ -685,7 +649,7 @@ WHERE a.semester_id = pj.semester_id
   AND pj.submitted_projects = t.total_projects;
 
 -- ------------------------------------------------------------
--- 8) Audit logs
+-- 7) Audit logs
 -- ------------------------------------------------------------
 CREATE TEMP TABLE tmp_semester_phase AS
 SELECT
@@ -770,19 +734,6 @@ FROM (
 ) x
 WHERE x.rn <= CASE WHEN lower(x.semester_name) LIKE '%summer%' THEN 1 ELSE 2 END;
 
-INSERT INTO public.audit_logs
-  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
-SELECT
-  (p.poster_date::timestamptz - interval '1 day') + (random() * interval '2 hours')
-    + (row_number() over (PARTITION BY a.semester_id ORDER BY a.juror_id) * interval '1 second'),
-  'admin', null, 'admin_juror_edit_toggle', 'juror', a.juror_id,
-  format('Admin enabled edit mode for Juror %s (%s)', j.juror_name, p.semester_name),
-  jsonb_build_object('semester_id', a.semester_id, 'semester_name', p.semester_name, 'enabled', true)
-FROM public.juror_semester_auth a
-JOIN public.jurors j ON j.id = a.juror_id
-JOIN tmp_semester_phase p ON p.semester_id = a.semester_id
-WHERE a.edit_enabled = true;
-
 -- Phase 2 — Evaluation session (poster_date 13:00–16:30)
 INSERT INTO public.audit_logs
   (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
@@ -845,7 +796,7 @@ WHERE sc.final_submitted_at IS NOT NULL
 GROUP BY sc.semester_id, sc.juror_id, j.juror_name, s.name;
 
 -- ------------------------------------------------------------
--- 9) Sanity check
+-- 8) Sanity check
 -- ------------------------------------------------------------
 DO $$
 DECLARE

@@ -207,14 +207,14 @@ export default function AdminSecurityPanel({
       >
         <div className="manage-card-title">
           <span className="manage-card-icon" aria-hidden="true"><ShieldUserIcon /></span>
-          Admin Security
+          <span className="section-label">Admin Security</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Manage admin and delete passwords to keep access secure.</div>
+          <div className="manage-card-desc">Update admin and delete passwords to keep access secure.</div>
           <div className="manage-security-tabs" role="tablist" aria-label="Admin security tabs">
             <button
               type="button"

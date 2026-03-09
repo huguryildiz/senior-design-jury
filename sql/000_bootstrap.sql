@@ -1294,6 +1294,9 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text) TO anon, auth
 GRANT EXECUTE ON FUNCTION public.rpc_admin_full_import(text, text, jsonb) TO anon, authenticated;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer);
+DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer);
+DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer, timestamptz, uuid);
+DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer, integer, integer, integer, timestamptz, uuid);
 DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer, timestamptz, uuid);
 CREATE OR REPLACE FUNCTION public.rpc_admin_list_audit_logs(
   p_admin_password text,
@@ -1301,6 +1304,10 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_list_audit_logs(
   p_end_at         timestamptz DEFAULT NULL,
   p_actor_types    text[] DEFAULT NULL,
   p_actions        text[] DEFAULT NULL,
+  p_search         text DEFAULT NULL,
+  p_search_day     integer DEFAULT NULL,
+  p_search_month   integer DEFAULT NULL,
+  p_search_year    integer DEFAULT NULL,
   p_limit          integer DEFAULT 100,
   p_before_at      timestamptz DEFAULT NULL,
   p_before_id      uuid DEFAULT NULL
@@ -1324,6 +1331,7 @@ DECLARE
   v_limit integer;
   v_actor_types text[];
   v_actions text[];
+  v_search text;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1338,6 +1346,7 @@ BEGIN
   IF v_actions IS NOT NULL AND array_length(v_actions, 1) IS NULL THEN
     v_actions := NULL;
   END IF;
+  v_search := NULLIF(btrim(p_search), '');
 
   RETURN QUERY
     SELECT
@@ -1355,6 +1364,26 @@ BEGIN
       AND (p_end_at IS NULL OR a.created_at <= p_end_at)
       AND (v_actor_types IS NULL OR a.actor_type = ANY(v_actor_types))
       AND (v_actions IS NULL OR a.action = ANY(v_actions))
+      AND (
+        v_search IS NULL
+        OR a.message ILIKE ('%' || v_search || '%')
+        OR a.entity_type ILIKE ('%' || v_search || '%')
+        OR a.action ILIKE ('%' || v_search || '%')
+        OR a.metadata::text ILIKE ('%' || v_search || '%')
+        OR (
+          p_search_day IS NOT NULL
+          AND p_search_month IS NOT NULL
+          AND EXTRACT(DAY FROM a.created_at) = p_search_day
+          AND EXTRACT(MONTH FROM a.created_at) = p_search_month
+          AND (p_search_year IS NULL OR EXTRACT(YEAR FROM a.created_at) = p_search_year)
+        )
+        OR (
+          p_search_day IS NULL
+          AND p_search_month IS NOT NULL
+          AND EXTRACT(MONTH FROM a.created_at) = p_search_month
+          AND (p_search_year IS NULL OR EXTRACT(YEAR FROM a.created_at) = p_search_year)
+        )
+      )
       AND (
         p_before_at IS NULL
         OR a.created_at < p_before_at
@@ -2936,7 +2965,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text) TO anon, aut
 GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_juror_pin(uuid, uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_settings(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_setting(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer, timestamptz, uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer, integer, integer, integer, timestamptz, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_jurors(text, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text) TO anon, authenticated;

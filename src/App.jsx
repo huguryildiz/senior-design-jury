@@ -88,7 +88,7 @@ export default function App() {
             <div className="premium-header">
               <div className="premium-icon-square" aria-hidden="true"><ShieldUserIcon /></div>
               <div className="premium-title">Admin Panel</div>
-              <div className="premium-subtitle">Enter the admin password to access the results and management panel.</div>
+              <div className="premium-subtitle">Enter the admin password to access evaluations and settings.</div>
             </div>
             <div className="premium-input-wrap">
               <input
