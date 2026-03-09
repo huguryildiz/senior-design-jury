@@ -112,8 +112,10 @@
 .juror-dept-inline  { vertical-align: baseline; }
 .juror-name-icon svg { width: 16px; height: 16px; }
 .juror-dept         { font-size: 13px; color: var(--gray-500); margin-bottom: 12px; }
-.juror-meta-line    { font-size: 13px; color: var(--gray-500); line-height: 1.3; }
+.juror-meta-line    { font-size: 13px; color: var(--gray-500); line-height: 1.3; display: inline-flex; align-items: center; gap: 6px; }
+.juror-meta-line svg { width: 14px; height: 14px; color: #94a3b8; flex-shrink: 0; }
 .juror-meta-line.swipe-x {
+  display: inline-flex;
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;

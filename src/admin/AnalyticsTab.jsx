@@ -117,7 +117,14 @@ function DashboardEmpty() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export default function AnalyticsTab({ dashboardStats, submittedData, lastRefresh, loading, semesterName = "" }) {
+export default function AnalyticsTab({
+  dashboardStats,
+  submittedData,
+  overviewMetrics,
+  lastRefresh,
+  loading,
+  semesterName = "",
+}) {
   const restoreRef   = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -419,6 +426,18 @@ export default function AnalyticsTab({ dashboardStats, submittedData, lastRefres
     return `${datePart} · ${timePart}`;
   })();
   const semesterLabel = semesterName ? `${semesterName} Semester` : "Semester";
+  const totalJurors = overviewMetrics?.totalJurors ?? 0;
+  const completedJurors = overviewMetrics?.completedJurors ?? 0;
+  const totalGroups = dashboardStats?.length ?? 0;
+  const scoredEvaluations = overviewMetrics?.scoredEvaluations ?? (submittedData?.length ?? 0);
+  const totalEvaluations =
+    overviewMetrics?.totalEvaluations ?? totalJurors * totalGroups;
+  const completedPct = totalJurors > 0 ? Math.round((completedJurors / totalJurors) * 100) : 0;
+  const scoredPct = totalEvaluations > 0 ? Math.round((scoredEvaluations / totalEvaluations) * 100) : 0;
+  const jurorLabel = `${totalJurors} Juror${totalJurors === 1 ? "" : "s"}`;
+  const groupLabel = `${totalGroups} Group${totalGroups === 1 ? "" : "s"}`;
+  const completedLabel = `${completedJurors}/${totalJurors} (${completedPct}%) Completed Juror${totalJurors === 1 ? "" : "s"}`;
+  const scoredLabel = `${scoredEvaluations}/${totalEvaluations} (${scoredPct}%) Scored Evaluation${totalEvaluations === 1 ? "" : "s"}`;
 
   if (loading) {
     return (
@@ -529,7 +548,7 @@ export default function AnalyticsTab({ dashboardStats, submittedData, lastRefres
           <div className="print-header-sub">EE 492 — Senior Project II · Poster Jury Evaluation Report · {semesterLabel} </div>
           <div className="print-header-meta">
             <div>Report Generated: {printDate}</div>
-            <div>{submittedData.length} Jury Evaluation{submittedData.length !== 1 ? "s" : ""} · {dashboardStats.length} Project Group{dashboardStats.length !== 1 ? "s" : ""}</div>
+            <div>{jurorLabel} · {groupLabel} · {completedLabel} · {scoredLabel}</div>
           </div>
         </div>
 

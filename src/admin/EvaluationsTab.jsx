@@ -18,6 +18,7 @@ export default function EvaluationsTab({
   semesterName,
   summaryData,
   dashboardStats,
+  overviewMetrics,
   lastRefresh,
   loading,
 }) {
@@ -30,6 +31,7 @@ export default function EvaluationsTab({
         <AnalyticsTab
           dashboardStats={dashboardStats}
           submittedData={submittedData}
+          overviewMetrics={overviewMetrics}
           lastRefresh={lastRefresh}
           loading={loading}
           semesterName={semesterName}

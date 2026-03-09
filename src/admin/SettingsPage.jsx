@@ -28,7 +28,7 @@ import {
   adminFullImport,
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
-import { ChevronDownIcon, DatabaseIcon, DownloadIcon, HistoryIcon, UploadIcon, KeyRoundIcon } from "../shared/Icons";
+import { ChevronDownIcon, DatabaseIcon, DownloadIcon, HistoryIcon, UploadIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon } from "../shared/Icons";
 import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
@@ -804,20 +804,28 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   };
 
   const handleAddProject = async (row) => {
-    if (!activeSemesterId) return;
+    if (!activeSemesterId) {
+      setError("Select an active semester before adding a group.");
+      return;
+    }
     setMessage("");
     setError("");
     setLoading(true);
     try {
       const res = await adminCreateProject({ ...row, semesterId: activeSemesterId }, adminPass);
+      const projectId = res?.project_id || res?.projectId;
+      if (!projectId) {
+        throw new Error("Could not create group. Please refresh and try again.");
+      }
       applyProjectPatch({
-        id: res?.project_id || res?.projectId || undefined,
+        id: projectId,
         semester_id: activeSemesterId,
         group_no: row.group_no,
         project_title: row.project_title,
         group_students: row.group_students,
       });
-      setMessage("Group saved.");
+      await loadProjects(activeSemesterId);
+      setMessage("Group added.");
     } catch (e) {
       const msg = String(e?.message || "");
       const msgLower = msg.toLowerCase();
@@ -1268,23 +1276,26 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       {resetPinInfo?.pin_plain_once && (
         <div className="manage-modal">
           <div className="manage-modal-card manage-modal-card--pin">
-            <div className="manage-pin-head">
-              <span className="manage-pin-icon-round" aria-hidden="true"><KeyRoundIcon /></span>
-              <div className="manage-pin-title">New PIN Created</div>
+            <div className="edit-dialog__header">
+              <span className="edit-dialog__icon" aria-hidden="true">
+                <KeyRoundIcon />
+              </span>
+              <div className="edit-dialog__title">New PIN</div>
             </div>
-            <div className="manage-pin-sub">
-              A new PIN for{" "}
-              <strong>{resetPinInfo.juror_name || resetPinInfo.juror_id}</strong>
-              {resetPinInfo.juror_inst ? ` (${resetPinInfo.juror_inst})` : ""} has been created.
+            <div className="manage-pin-juror-line">
+              <span className="manage-pin-juror-name">
+                <UserCheckIcon />
+                {resetPinInfo.juror_name || resetPinInfo.juror_id}
+              </span>
+              {resetPinInfo.juror_inst && (
+                <span className="manage-pin-juror-inst">
+                  <LandmarkIcon />
+                  {resetPinInfo.juror_inst}
+                </span>
+              )}
             </div>
-            <div className="manage-pin-boxes">
-              {String(resetPinInfo.pin_plain_once || "")
-                .padStart(4, "0")
-                .slice(0, 4)
-                .split("")
-                .map((digit, idx) => (
-                  <span key={`pin-digit-${idx}`} className="manage-pin-box">{digit}</span>
-                ))}
+            <div className="pin-code">
+              {String(resetPinInfo.pin_plain_once || "").padStart(4, "0").slice(0, 4)}
             </div>
             <div className="manage-pin-note">Share this PIN with the juror.</div>
             <div className="manage-pin-actions">
@@ -1306,7 +1317,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   }
                 }}
               >
-                {pinCopied ? "Copied" : "Copy PIN"}
+                {pinCopied ? "Copied!" : "Copy PIN"}
               </button>
               <button
                 className="manage-btn"
@@ -1372,7 +1383,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                 handleRequestDelete({
                   type: "project",
                   id: p?.id,
-                  label: `Group ${groupLabel}${p?.project_title ? ` — ${p.project_title}` : ""}`,
+                  label: `Group ${groupLabel}${p?.project_title ? `: ${p.project_title}` : ""}`,
                 })
               }
             />

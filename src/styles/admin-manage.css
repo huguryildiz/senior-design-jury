@@ -703,6 +703,10 @@
   font-weight: 600;
   color: #475569;
 }
+.manage-label-note {
+  font-weight: 500;
+  color: #94a3b8;
+}
 
 .manage-input,
 .manage-select {
@@ -721,6 +725,16 @@
   outline: none;
   border-color: #ef4444;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+.manage-input.is-locked {
+  border-color: #fca5a5;
+  background: #fff5f5;
+  color: #1f2937;
+}
+.manage-input.is-locked:focus {
+  outline: none;
+  border-color: #f87171;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 .manage-select.is-danger {
   border-color: #ef4444;
@@ -959,69 +973,75 @@
   gap: 12px;
 }
 .manage-modal-card--pin {
-  align-items: center;
-  text-align: center;
+  align-items: stretch;
+  text-align: left;
   gap: 12px;
   padding: 20px 20px 18px;
   border-radius: 20px;
-  width: min(360px, 88vw);
+  width: min(520px, 92vw);
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
 }
-.manage-pin-head {
+.manage-pin-juror-line {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-}
-.manage-pin-icon-round {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: #e8edff;
-  color: var(--brand-600);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 0 0 2px rgba(47, 86, 214, 0.2);
-}
-.manage-pin-icon-round svg {
-  width: 20px;
-  height: 20px;
-}
-.manage-pin-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-900);
-  letter-spacing: -0.2px;
-}
-.manage-pin-sub {
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
   font-size: 13px;
   color: var(--text-600);
-  max-width: 360px;
 }
-.manage-pin-sub strong {
-  color: var(--text-900);
-}
-.manage-pin-boxes {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-.manage-pin-box {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  border: 1px solid #dbeafe;
-  background: #f8fbff;
+.manage-pin-juror-name,
+.manage-pin-juror-inst {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 700;
-  font-family: var(--font-mono);
+  gap: 6px;
+  color: var(--text-700);
+  font-weight: 500;
+}
+.manage-pin-juror-inst {
+  font-weight: 500;
+  color: var(--gray-500);
+}
+.manage-pin-juror-line svg {
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
+}
+
+.manage-item-juror-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
   color: #0f172a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.manage-item-juror-name svg {
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+}
+.manage-item-juror-inst {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+}
+.manage-item-juror-inst svg {
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
+}
+.pin-code {
+  background: #111;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 26px;
+  letter-spacing: 0.25em;
+  padding: 16px 28px;
+  border-radius: 12px;
+  text-align: center;
+  display: block;
+  width: 100%;
+  margin: 12px 0 6px;
 }
 .manage-pin-note {
   font-size: 12px;
@@ -1065,6 +1085,34 @@
   height: 18px;
 }
 .delete-dialog__title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.edit-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-900);
+  margin-bottom: 2px;
+}
+.edit-dialog__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+}
+.edit-dialog__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.edit-dialog__title {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.2px;
@@ -1348,6 +1396,10 @@
 .manage-dropzone-icon {
   font-size: 22px;
   color: #64748b;
+}
+.manage-dropzone-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .manage-dropzone-title {

@@ -4,6 +4,10 @@ import { useRef, useState } from "react";
 import {
   ChevronDownIcon,
   ClipboardCheckIcon,
+  UploadIcon,
+  CloudUploadIcon,
+  LandmarkIcon,
+  UserCheckIcon,
   KeyRoundIcon,
   LockIcon,
   PencilIcon,
@@ -253,7 +257,7 @@ export default function ManageJurorsPanel({
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Import jurors, edit details, and reset PINs when needed.</div>
+          <div className="manage-card-desc">Manage jurors, details, and PIN resets.</div>
           <div className="manage-card-actions">
             <button
               className="manage-btn"
@@ -265,6 +269,7 @@ export default function ManageJurorsPanel({
                 setShowImport(true);
               }}
             >
+              <span aria-hidden="true"><UploadIcon className="manage-btn-icon" /></span>
               Import CSV
             </button>
             <button
@@ -313,8 +318,16 @@ export default function ManageJurorsPanel({
                   className={`manage-item${isLocked ? " is-locked" : ""}`}
                 >
                   <div>
-                    <div className="manage-item-title">{j.juryName || j.juror_name}</div>
-                    <div className="manage-item-sub">{j.juryDept || j.juror_inst}</div>
+                    <div className="manage-item-title">
+                      <span className="manage-item-juror-name">
+                        <UserCheckIcon />
+                        {j.juryName || j.juror_name}
+                      </span>
+                    </div>
+                    <div className="manage-item-sub manage-item-juror-inst">
+                      <LandmarkIcon />
+                      {j.juryDept || j.juror_inst}
+                    </div>
                     {scoredSemesters.length > 0 && (
                       <div className="manage-item-semesters" title={scoredLabel}>
                         <span className="manage-item-semesters-icon" aria-hidden="true">
@@ -349,7 +362,7 @@ export default function ManageJurorsPanel({
                       <KeyRoundIcon />
                     </button>
                     <button
-                      className={`manage-icon-btn${isLocked ? " danger" : ""}`}
+                      className="manage-icon-btn"
                       type="button"
                       title="Edit juror"
                       aria-label={`Edit ${j.juryName || j.juror_name}`}
@@ -454,7 +467,12 @@ export default function ManageJurorsPanel({
           {showEdit && (
             <div className="manage-modal">
               <div className="manage-modal-card">
-                <div className="manage-modal-title">Edit Juror</div>
+                <div className="edit-dialog__header">
+                  <span className="edit-dialog__icon" aria-hidden="true">
+                    <PencilIcon />
+                  </span>
+                  <div className="edit-dialog__title">Edit Juror</div>
+                </div>
                 <div className="manage-modal-body">
                   <label className="manage-label">Full name</label>
                   <input
@@ -538,7 +556,7 @@ export default function ManageJurorsPanel({
                       }
                     }}
                   >
-                    <div className="manage-dropzone-icon" aria-hidden="true">☁️</div>
+                    <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
                     <div className="manage-dropzone-sub">
                       Only `.csv` files. Header is required.

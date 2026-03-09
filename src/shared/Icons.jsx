@@ -151,6 +151,37 @@ export function LoaderIcon() {
   );
 }
 
+export function CircleDotDashedIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0" />
+      <path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7" />
+      <path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8" />
+      <path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69" />
+      <path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0" />
+      <path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7" />
+      <path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8" />
+      <path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69" />
+      <circle cx="12" cy="12" r="1" />
+    </svg>
+  );
+}
+
+export function LandmarkIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 18v-7" />
+      <path d="M11.12 2.198a2 2 0 0 1 1.76.006l7.866 3.847c.476.233.31.949-.22.949H3.474c-.53 0-.695-.716-.22-.949z" />
+      <path d="M14 18v-7" />
+      <path d="M18 18v-7" />
+      <path d="M3 22h18" />
+      <path d="M6 18v-7" />
+    </svg>
+  );
+}
+
 export function FolderKanbanIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -683,6 +714,17 @@ export function UploadIcon() {
       <path d="M12 3v12"/>
       <path d="m17 8-5-5-5 5"/>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    </svg>
+  );
+}
+
+export function CloudUploadIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 13v8" />
+      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+      <path d="m8 17 4-4 4 4" />
     </svg>
   );
 }

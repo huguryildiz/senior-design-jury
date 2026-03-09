@@ -920,6 +920,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               semesterName={selectedSemesterName}
               summaryData={summaryData}
               dashboardStats={dashboardStats}
+              overviewMetrics={overviewMetrics}
               lastRefresh={lastRefresh}
               loading={loading}
             />

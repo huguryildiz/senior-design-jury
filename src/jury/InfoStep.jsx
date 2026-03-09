@@ -11,7 +11,7 @@
 // and delegates everything else downstream.
 // ============================================================
 
-import { InfoIcon, UserRoundCheckIcon, AlertCircleIcon } from "../shared/Icons";
+import { InfoIcon, LandmarkIcon, UserRoundCheckIcon, AlertCircleIcon } from "../shared/Icons";
 
 export default function InfoStep({
   juryName, setJuryName,
@@ -141,7 +141,10 @@ export default function InfoStep({
           </div>
 
           <div className="field">
-            <label htmlFor="jury-dept">Department or Institution <span className="req">*</span></label>
+            <label htmlFor="jury-dept">
+              <span className="label-icon" aria-hidden="true"><LandmarkIcon /></span>
+              Department or Institution <span className="req">*</span>
+            </label>
             <input
               id="jury-dept"
               value={juryDept}

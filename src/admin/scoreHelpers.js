@@ -12,6 +12,7 @@ import {
   SendIcon,
   Clock3Icon,
   CircleIcon,
+  CircleDotDashedIcon,
   PencilIcon,
 } from "../shared/Icons";
 
@@ -111,7 +112,7 @@ export const jurorStatusMeta = {
   },
   partial: {
     label:      "Partial",
-    icon:       Clock3Icon,
+    icon:       CircleDotDashedIcon,
     colorClass: "status-amber",
   },
   empty: {

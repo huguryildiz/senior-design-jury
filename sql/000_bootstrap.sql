@@ -1802,6 +1802,14 @@ BEGIN
   VALUES (p_semester_id, p_group_no, p_project_title, p_group_students)
   RETURNING id INTO v_id;
 
+  -- Seed empty score rows for all jurors assigned to this semester.
+  INSERT INTO scores (semester_id, project_id, juror_id, poster_date)
+  SELECT jsa.semester_id, v_id, jsa.juror_id, sem.poster_date
+  FROM juror_semester_auth jsa
+  JOIN semesters sem ON sem.id = jsa.semester_id
+  WHERE jsa.semester_id = p_semester_id
+  ON CONFLICT ON CONSTRAINT scores_unique_eval DO NOTHING;
+
   SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
   PERFORM public._audit_log(
     'admin',

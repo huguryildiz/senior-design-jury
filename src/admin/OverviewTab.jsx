@@ -80,7 +80,10 @@ export default function OverviewTab({ jurorStats, groups, metrics }) {
     if (emptyEvaluations > 0) parts.push(`${emptyEvaluations} empty`);
     return parts;
   }, [emptyEvaluations, partialEvaluations]);
-  const scoredMeta = totalEvaluations > 0 ? `${totalEvaluations} total` : "";
+  const scoredMeta =
+    totalEvaluations > 0 && scoredEvaluations < totalEvaluations
+      ? `${totalEvaluations} total`
+      : "";
   const scoredValue = totalEvaluations > 0 ? scoredEvaluations : "—";
 
   return (

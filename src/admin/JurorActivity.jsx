@@ -5,7 +5,7 @@ import { formatTs, adminCompletionPct, cmp } from "./utils";
 import { readSection, writeSection } from "./persist";
 import { StatusBadge } from "./components";
 import { getCellState, getPartialTotal, jurorStatusMeta } from "./scoreHelpers";
-import { ChevronDownIcon, HistoryIcon, LoaderIcon, SearchIcon, UserCheckIcon, XIcon } from "../shared/Icons";
+import { ChevronDownIcon, HistoryIcon, LandmarkIcon, LoaderIcon, SearchIcon, UserCheckIcon, XIcon } from "../shared/Icons";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 
 // jurorStats prop: { key, name, dept, jurorId, rows, latestRow, editEnabled }[]
@@ -178,7 +178,12 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
                     <span className="juror-name-icon" aria-hidden="true"><UserCheckIcon /></span>
                     <span className="juror-name-text swipe-x">{jury}</span>
                   </div>
-                  {deptLine && <div className="juror-meta-line swipe-x">{deptLine}</div>}
+                  {deptLine && (
+                    <div className="juror-meta-line swipe-x">
+                      <LandmarkIcon />
+                      {deptLine}
+                    </div>
+                  )}
                 </div>
                 <div className="juror-card-status">
                   <StatusBadge

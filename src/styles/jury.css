@@ -53,7 +53,9 @@
 
 /* Labelled input field */
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 13px; font-weight: 600; color: #334155; }
+.field label { font-size: 13px; font-weight: 600; color: #334155; display: inline-flex; align-items: center; gap: 6px; }
+.field label .label-icon { display: inline-flex; align-items: center; }
+.field label .label-icon svg { width: 14px; height: 14px; color: #94a3b8; }
 .req { color: #ef4444; }
 .field input {
   padding: 0 16px;
@@ -366,6 +368,15 @@
   font-size: 13px;
   font-weight: 500;
   color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
+.eval-identity-dept svg {
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
 }
 .eval-identity-icon {
   flex-shrink: 0;

@@ -83,18 +83,6 @@ export default function ManageSemesterPanel({
     return Array.from(byId.values());
   }, [semesters]);
 
-  const orderedSemesters = sortSemesters(uniqueSemesters);
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredSemesters = normalizedSearch
-    ? orderedSemesters.filter((s) => {
-        const haystack = `${s?.name || ""} ${s?.poster_date || ""}`.toLowerCase();
-        return haystack.includes(normalizedSearch);
-      })
-    : orderedSemesters;
-  const visibleSemesters = normalizedSearch
-    ? filteredSemesters
-    : (showAll ? orderedSemesters : orderedSemesters.slice(0, 4));
-  const getLastActivity = (s) => s.updated_at || s.updatedAt || null;
   const normalizeDateInput = (value) => {
     if (!value) return "";
     return String(value).slice(0, 10);
@@ -106,6 +94,30 @@ export default function ManageSemesterPanel({
     const pad = (v) => String(v).padStart(2, "0");
     return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
   };
+  const orderedSemesters = sortSemesters(uniqueSemesters);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredSemesters = normalizedSearch
+    ? orderedSemesters.filter((s) => {
+        const rawDate = s?.poster_date || "";
+        const prettyDate = formatDate(rawDate);
+        const updatedRaw = s?.updated_at || s?.updatedAt || "";
+        const updatedPretty = formatDate(updatedRaw);
+        const haystack = [
+          s?.name || "",
+          rawDate,
+          prettyDate,
+          updatedRaw,
+          updatedPretty,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(normalizedSearch);
+      })
+    : orderedSemesters;
+  const visibleSemesters = normalizedSearch
+    ? filteredSemesters
+    : (showAll ? orderedSemesters : orderedSemesters.slice(0, 4));
+  const getLastActivity = (s) => s.updated_at || s.updatedAt || null;
 
   return (
     <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
@@ -142,7 +154,7 @@ export default function ManageSemesterPanel({
 
       {isOpen && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Select the active semester, create new terms, and edit semester dates.</div>
+          <div className="manage-card-desc">Manage semesters, dates, and the active term.</div>
           <div className="manage-field">
             <label className="manage-list-header">Active Semester</label>
             <div className="manage-row">
@@ -304,7 +316,12 @@ export default function ManageSemesterPanel({
           {showEdit && (
             <div className="manage-modal">
               <div className="manage-modal-card">
-                <div className="manage-modal-title">Edit Semester</div>
+                <div className="edit-dialog__header">
+                  <span className="edit-dialog__icon" aria-hidden="true">
+                    <PencilIcon />
+                  </span>
+                  <div className="edit-dialog__title">Edit Semester</div>
+                </div>
                 <div className="manage-modal-body">
                   <label className="manage-label">Semester name</label>
                   <input

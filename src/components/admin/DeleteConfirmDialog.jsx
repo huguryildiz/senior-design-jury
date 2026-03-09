@@ -6,11 +6,23 @@ import { TriangleAlertLucideIcon } from "../../shared/Icons";
 function buildCountSummary(counts) {
   if (!counts) return null;
   const parts = [];
-  if (counts.projects > 0) parts.push(`${counts.projects} project${counts.projects !== 1 ? "s" : ""}`);
-  if (counts.scores > 0) parts.push(`${counts.scores} score${counts.scores !== 1 ? "s" : ""}`);
-  if (counts.juror_auths > 0) parts.push(`${counts.juror_auths} juror assignment${counts.juror_auths !== 1 ? "s" : ""}`);
+  if (counts.juror_auths > 0) {
+    parts.push(`${counts.juror_auths} juror assignment${counts.juror_auths !== 1 ? "s" : ""}`);
+  }
+  if (counts.projects > 0) {
+    parts.push(`${counts.projects} group project${counts.projects !== 1 ? "s" : ""}`);
+  }
+  if (counts.scores > 0) {
+    parts.push(`${counts.scores} scored evaluation${counts.scores !== 1 ? "s" : ""}`);
+  }
   if (parts.length === 0) return null;
-  return `This will also permanently delete: ${parts.join(", ")}.`;
+  const line =
+    parts.length === 1
+      ? parts[0]
+      : parts.length === 2
+        ? parts.join(" and ")
+        : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+  return `This will also permanently delete: ${line}.`;
 }
 
 export default function DeleteConfirmDialog({

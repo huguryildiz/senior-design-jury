@@ -1,9 +1,10 @@
 // src/admin/ManageProjectsPanel.jsx
 
 import { useRef, useState } from "react";
-import { CalendarRangeIcon, ChevronDownIcon, FileTextIcon, FolderKanbanIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon } from "../shared/Icons";
+import { CalendarRangeIcon, ChevronDownIcon, FileTextIcon, FolderKanbanIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, CloudUploadIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
+import { formatTs } from "./utils";
 
 function parseCsv(text) {
   const rows = [];
@@ -94,7 +95,20 @@ export default function ManageProjectsPanel({
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredProjects = normalizedSearch
     ? orderedProjects.filter((p) => {
-        const haystack = `${p?.group_no ?? ""} ${p?.project_title || ""} ${p?.group_students || ""}`
+        const lastActivity = p.updated_at || p.updatedAt || "";
+        const lastActivityLabel = lastActivity ? formatTs(lastActivity) : "";
+        const groupNo = p?.group_no ?? "";
+        const haystack = [
+          "group",
+          groupNo,
+          `group ${groupNo}`,
+          p?.project_title || "",
+          p?.group_students || "",
+          semesterName || "",
+          lastActivity,
+          lastActivityLabel,
+        ]
+          .join(" ")
           .toLowerCase();
         return haystack.includes(normalizedSearch);
       })
@@ -291,14 +305,14 @@ export default function ManageProjectsPanel({
       >
         <div className="manage-card-title">
           <span className="manage-card-icon" aria-hidden="true"><FolderKanbanIcon /></span>
-          <span className="section-label">Project / Group Settings</span>
+          <span className="section-label">Project/Group Settings</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Edit groups, project titles, and student lists for the active semester.</div>
+          <div className="manage-card-desc">Manage groups, project titles, and student lists for the active semester.</div>
           <div className="manage-card-actions">
             <button
               className="manage-btn"
@@ -309,6 +323,7 @@ export default function ManageProjectsPanel({
                 setShowImport(true);
               }}
             >
+              <span aria-hidden="true"><UploadIcon className="manage-btn-icon" /></span>
               Import CSV
             </button>
             <button
@@ -387,7 +402,7 @@ export default function ManageProjectsPanel({
                 <div className="manage-modal-body">
                   <label className="manage-label">Group number</label>
                   <input
-                    className="manage-input"
+                    className={`manage-input${addError ? " is-danger" : ""}`}
                     value={form.group_no}
                     onChange={(e) => {
                       setForm((f) => ({ ...f, group_no: e.target.value }));
@@ -403,7 +418,7 @@ export default function ManageProjectsPanel({
                     onChange={(e) => setForm((f) => ({ ...f, project_title: e.target.value }))}
                     placeholder="Smart Traffic AI"
                   />
-                  <label className="manage-label">Students</label>
+                  <label className="manage-label">Students <span className="manage-label-note">(separate with ;)</span></label>
                   <textarea
                     className="manage-input manage-textarea"
                     value={form.group_students}
@@ -421,7 +436,13 @@ export default function ManageProjectsPanel({
                     type="button"
                     disabled={!canSubmit}
                     onClick={() => {
-                      const groupNo = Number(form.group_no);
+                      const groupNoRaw = String(form.group_no).trim();
+                      const groupNo = Number(groupNoRaw);
+                      const isInteger = Number.isInteger(groupNo) && groupNoRaw !== "" && groupNo > 0;
+                      if (!isInteger) {
+                        setAddError("Group number must be a positive integer.");
+                        return;
+                      }
                       const existingGroupNos = new Set(
                         (projects || [])
                           .map((p) => Number(p.group_no))
@@ -450,11 +471,16 @@ export default function ManageProjectsPanel({
           {showEdit && (
             <div className="manage-modal">
               <div className="manage-modal-card">
-                <div className="manage-modal-title">Edit Group</div>
+                <div className="edit-dialog__header">
+                  <span className="edit-dialog__icon" aria-hidden="true">
+                    <PencilIcon />
+                  </span>
+                  <div className="edit-dialog__title">Edit Group</div>
+                </div>
                 <div className="manage-modal-body">
-                  <label className="manage-label">Group number</label>
+                  <label className="manage-label">Group number <span className="manage-label-note">(locked)</span></label>
                   <input
-                    className="manage-input"
+                    className="manage-input is-locked"
                     value={editForm.group_no}
                     disabled
                   />
@@ -464,7 +490,7 @@ export default function ManageProjectsPanel({
                     value={editForm.project_title}
                     onChange={(e) => setEditForm((f) => ({ ...f, project_title: e.target.value }))}
                   />
-                  <label className="manage-label">Students</label>
+                  <label className="manage-label">Students <span className="manage-label-note">(separate students with ;)</span></label>
                   <textarea
                     className="manage-input manage-textarea"
                     value={editForm.group_students}
@@ -533,7 +559,7 @@ export default function ManageProjectsPanel({
                       }
                     }}
                   >
-                    <div className="manage-dropzone-icon" aria-hidden="true">☁️</div>
+                    <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
                     <div className="manage-dropzone-sub">
                       Only ".csv" files. Use semicolon to separate students.
@@ -557,7 +583,6 @@ export default function ManageProjectsPanel({
                     <div className="manage-code">group_no,project_title,group_students</div>
                     <div className="manage-code">1,Smart Traffic AI,Ali Yılmaz;Ayşe Demir;Mehmet Kaya</div>
                     <div className="manage-code">2,Edge AI Drone,Zeynep Arslan;Deniz Aydın</div>
-                    <div className="manage-code">3,Autonomous Harbor Surveillance,Kerem Öztürk;Elif Yıldız;Burak Polat</div>
                   </div>
                 </div>
                 <div className="manage-modal-actions">

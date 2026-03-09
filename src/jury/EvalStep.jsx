@@ -27,6 +27,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   HomeIcon,
+  LandmarkIcon,
   UserCheckIcon,
   CheckCircle2Icon,
   CheckIcon,
@@ -186,7 +187,12 @@ export default function EvalStep({
             <span className="eval-identity-icon" aria-hidden="true"><UserCheckIcon /></span>
             <span className="eval-identity-text eval-scroll-line">
               {juryName}
-              {juryDept && <span className="eval-identity-dept"> ({juryDept})</span>}
+              {juryDept && (
+                <span className="eval-identity-dept">
+                  <LandmarkIcon />
+                  {juryDept}
+                </span>
+              )}
             </span>
           </div>
           <div className="eval-identity-actions">
