@@ -10,6 +10,7 @@
     order: 2;
     width: 100%;
     justify-content: flex-end;
+    margin-left: 0;
   }
   .admin-screen .refresh-btn { order: 2; margin-left: 8px; }
   .last-updated {
@@ -27,6 +28,47 @@
   .status-chip { width: auto; }
   .semester-dropdown { flex: 0 0 auto; }
   .tab-bar { gap: 8px; }
+}
+
+@media (max-width: 540px) {
+  .admin-screen .form-header-main {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .header-left { flex: 1 1 auto; min-width: 0; }
+  .header-right {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+  }
+  .header-actions { gap: 8px; }
+  .last-updated { font-size: 10px; }
+  .tab-context {
+    max-width: 40%;
+    min-width: 0;
+    margin-right: 8px;
+  }
+  .tab-bar-row { gap: 8px; }
+  .semester-control--tab {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .semester-control--tab .semester-dropdown-trigger {
+    padding: 8px 8px;
+    font-size: 12px;
+    max-width: 100%;
+    min-width: 0;
+    width: auto;
+  }
+  .semester-control--tab .semester-dropdown-label {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* Tablet and below (< 1024px): single column, chart-span-2 drops to 1 col */
@@ -225,13 +267,9 @@
   .matrix-scroll {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: none;
   }
-  .matrix-scroll::-webkit-scrollbar { height: 10px; }
-  .matrix-scroll::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 999px;
-  }
+  .matrix-scroll::-webkit-scrollbar { display: none; }
   .matrix-table th:first-child,
   .matrix-table td:first-child {
     position: static;

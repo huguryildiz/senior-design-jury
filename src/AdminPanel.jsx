@@ -1,16 +1,17 @@
 // src/AdminPanel.jsx
 // ============================================================
-// Admin results dashboard with five tabs.
+// Admin panel with overview, evaluations, and settings.
 //
 // Data source: Supabase RPCs via src/shared/api.js
-//   - adminGetScores       → raw score rows (for Jurors/Matrix/Details tabs)
-//   - adminProjectSummary  → per-project aggregates + notes (for Summary/Dashboard tabs)
+//   - adminGetScores       → raw score rows (for Juror Activity / Grid / Details views)
+//   - adminProjectSummary  → per-project aggregates + notes (for Rankings / Analytics)
 //
 // Field names in rawScores are normalized in api.js to match
 // the old GAS row shape so existing tab components work as-is.
 // ============================================================
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useToast } from "./components/toast/useToast";
 import { CRITERIA } from "./config";
 import {
@@ -21,32 +22,26 @@ import {
   listSemesters,
 } from "./shared/api";
 import { supabase } from "./lib/supabaseClient";
-import { toNum, tsToMillis, cmp, jurorBg, jurorDot, rowKey } from "./admin/utils";
+import { cmp, rowKey } from "./admin/utils";
 import { readSection, writeSection } from "./admin/persist";
 import { HomeIcon, RefreshIcon } from "./admin/components";
 import {
-  UserRoundCheckIcon,
-  HourglassIcon,
-  PencilIcon,
-  CheckCircle2Icon,
-  ArrowRightFromLineIcon,
   ListChecksIcon,
-  TrophyIcon,
   ChartIcon,
   LayoutDashboardIcon,
-  FolderKanbanIcon,
   ClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,
   SettingsIcon,
-  CircleIcon,
-  EyeIcon,
+  MedalIcon,
+  TableIcon,
+  Grid3x3Icon,
+  PinIcon,
 } from "./shared/Icons";
-import OverviewTab    from "./admin/OverviewTab";
-import ResultsTab     from "./admin/ResultsTab";
-import AnalysisTab    from "./admin/AnalysisTab";
-import ManagePage     from "./admin/ManagePage";
+import OverviewTab from "./admin/OverviewTab";
+import EvaluationsTab from "./admin/EvaluationsTab";
+import SettingsPage from "./admin/SettingsPage";
 import "./styles/admin-layout.css";
 import "./styles/admin-summary.css";
 import "./styles/admin-details.css";
@@ -61,11 +56,75 @@ const CRITERIA_LIST = CRITERIA.map((c) => ({
 }));
 
 const TABS = [
-  { id: "overview",  label: "Overview",  icon: LayoutDashboardIcon },
-  { id: "results",   label: "Results",   icon: TrophyIcon    },
-  { id: "analysis",  label: "Analysis",  icon: ChartIcon     },
-  { id: "manage",    label: "Manage",    icon: SettingsIcon  },
+  { id: "overview",    label: "Overview",    icon: LayoutDashboardIcon },
+  { id: "evaluations", label: "Evaluations", icon: ListChecksIcon },
+  { id: "settings",    label: "Settings",    icon: SettingsIcon },
 ];
+
+const EVALUATION_VIEWS = [
+  { id: "rankings",  label: "Rankings",  icon: MedalIcon },
+  { id: "analytics", label: "Analytics", icon: ChartIcon },
+  { id: "grid",      label: "Grid",      icon: Grid3x3Icon },
+  { id: "details",   label: "Details",   icon: TableIcon },
+];
+
+function useAnchoredPopover(isOpen, deps = []) {
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+  const [panelStyle, setPanelStyle] = useState(null);
+  const [panelPlacement, setPanelPlacement] = useState("bottom");
+
+  const computePanelPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const minWidth = Math.max(rect.width, 180);
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+
+    let left = Math.min(rect.left, viewportW - minWidth - 12);
+    left = Math.max(12, left);
+    let top = rect.bottom + 6;
+    let placement = "bottom";
+
+    if (panelRef.current) {
+      const panelHeight = panelRef.current.offsetHeight;
+      if (top + panelHeight > viewportH - 12) {
+        const aboveTop = rect.top - panelHeight - 6;
+        if (aboveTop >= 12) {
+          top = aboveTop;
+          placement = "top";
+        } else {
+          top = Math.max(12, viewportH - panelHeight - 12);
+        }
+      }
+    }
+
+    setPanelPlacement(placement);
+    setPanelStyle({
+      position: "fixed",
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
+      minWidth: `${Math.round(minWidth)}px`,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const update = () => computePanelPosition();
+    update();
+    const raf = requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isOpen, computePanelPosition, ...deps]);
+
+  return { triggerRef, panelRef, panelStyle, panelPlacement };
+}
 
 function SemesterDropdown({
   semesterList,
@@ -76,26 +135,61 @@ function SemesterDropdown({
   setSemesterOpen,
   setSelectedSemesterId,
   fetchData,
-  semesterRef,
+  variant = "tab",
+  labelPrefix = "",
+  leadingIcon: LeadingIcon = null,
 }) {
   if (semesterList.length === 0) return null;
 
+  const { triggerRef, panelRef, panelStyle, panelPlacement } = useAnchoredPopover(
+    semesterOpen,
+    [selectedSemesterId, sortedSemesters.length]
+  );
+
+  const triggerClass = [
+    variant === "tab"
+      ? "tab tab--dropdown semester-dropdown-trigger"
+      : "status-chip status-chip--semester semester-dropdown-trigger",
+    semesterOpen ? "open" : "",
+  ].filter(Boolean).join(" ");
+  const displayLabel = labelPrefix
+    ? `${labelPrefix} ${selectedSemesterName}`
+    : selectedSemesterName;
+
+  useEffect(() => {
+    if (!semesterOpen) return;
+    function handleOutside(e) {
+      const trigger = triggerRef.current;
+      const panel = panelRef.current;
+      if (trigger && trigger.contains(e.target)) return;
+      if (panel && panel.contains(e.target)) return;
+      setSemesterOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [semesterOpen, setSemesterOpen, triggerRef, panelRef]);
+
   return (
-    <div className="semester-dropdown" ref={semesterRef}>
+    <div className="semester-dropdown">
       <button
         type="button"
-        className={`status-chip status-chip--semester semester-dropdown-trigger${semesterOpen ? " open" : ""}`}
+        className={triggerClass}
+        ref={triggerRef}
         aria-haspopup="listbox"
         aria-expanded={semesterOpen}
         onClick={() => setSemesterOpen((v) => !v)}
       >
-        <span className="semester-dropdown-icon" aria-hidden="true"><EyeIcon /></span>
-        <span className="semester-dropdown-label">{selectedSemesterName}</span>
+        {LeadingIcon && (
+          <span className="semester-dropdown-icon" aria-hidden="true"><LeadingIcon /></span>
+        )}
+        <span className="semester-dropdown-label">{displayLabel}</span>
         <span className="semester-dropdown-chevron" aria-hidden="true"><ChevronDownIcon /></span>
       </button>
-      {semesterOpen && (
+      {semesterOpen && createPortal(
         <ul
-          className="semester-dropdown-panel"
+          ref={panelRef}
+          className={`semester-dropdown-panel semester-dropdown-panel--${panelPlacement}`}
+          style={panelStyle || undefined}
           role="listbox"
           aria-label="Select semester"
         >
@@ -117,65 +211,89 @@ function SemesterDropdown({
               )}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   );
 }
 
-function ResultsStatusBar({ metrics, id, semesterSlot }) {
-  const {
-    completedJurors, totalJurors,
-    completedEvaluations, totalEvaluations,
-    inProgressJurors, editingJurors, notStartedJurors,
-    totalProjects,
-  } = metrics;
-  const safeTJ  = Math.max(0, totalJurors || 0);
-  const safeCJ  = Math.min(Math.max(0, completedJurors || 0), safeTJ);
-  const safeIP  = Math.max(0, inProgressJurors || 0);
-  const safeED  = Math.max(0, editingJurors || 0);
-  const safeNS  = Math.max(0, notStartedJurors || 0);
-  const safeTE  = Math.max(0, totalEvaluations || 0);
-  const safeCE  = Math.min(Math.max(0, completedEvaluations || 0), safeTE);
-  const safeTP  = Math.max(0, totalProjects || 0);
-  const isEmpty = safeTJ === 0 && safeCJ === 0 && safeIP === 0 && safeED === 0 && safeNS === 0;
-  const jurorTheme = isEmpty
-    ? "empty"
-    : (safeIP === 0 && safeED === 0 && safeNS === 0 ? "completed" : "inprogress");
-  const evalTheme  = safeTE === 0 ? "empty" : (safeCE === safeTE ? "completed" : "inprogress");
-  const jv = (v) => isEmpty ? "—" : v;
-  const ev = safeTE === 0 ? "—" : `${safeCE}/${safeTE}`;
+function EvaluationsDropdown({
+  open,
+  setOpen,
+  activeView,
+  onSelect,
+  isActive,
+}) {
+  const { triggerRef, panelRef, panelStyle, panelPlacement } = useAnchoredPopover(
+    open,
+    [activeView]
+  );
+
+  const triggerClass = [
+    "tab tab--dropdown semester-dropdown-trigger evaluations-dropdown-trigger",
+    isActive ? "active" : "",
+    open ? "open" : "",
+  ].filter(Boolean).join(" ");
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(e) {
+      const trigger = triggerRef.current;
+      const panel = panelRef.current;
+      if (trigger && trigger.contains(e.target)) return;
+      if (panel && panel.contains(e.target)) return;
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open, setOpen, triggerRef, panelRef]);
 
   return (
-    <div id={id} className="results-status-bar" role="group" aria-label="Results status metrics">
-      {semesterSlot && (
-        <div className="results-status-row results-status-row--semester">
-          {semesterSlot}
-        </div>
+    <div className="evaluations-dropdown">
+      <button
+        type="button"
+        className={triggerClass}
+        ref={triggerRef}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <ListChecksIcon />
+        <span>Evaluations</span>
+        <span className="semester-dropdown-chevron" aria-hidden="true"><ChevronDownIcon /></span>
+      </button>
+      {open && createPortal(
+        <ul
+          ref={panelRef}
+          className={`semester-dropdown-panel semester-dropdown-panel--${panelPlacement}`}
+          style={panelStyle || undefined}
+          role="listbox"
+          aria-label="Select evaluations view"
+        >
+          {EVALUATION_VIEWS.map((v) => (
+            <li
+              key={v.id}
+              role="option"
+              aria-selected={activeView === v.id}
+              className={`semester-dropdown-item${activeView === v.id ? " active" : ""}`}
+              onClick={() => {
+                onSelect(v.id);
+                setOpen(false);
+              }}
+            >
+              <span className="dropdown-item-main">
+                <span className="dropdown-item-icon" aria-hidden="true"><v.icon /></span>
+                <span className="dropdown-item-label">{v.label}</span>
+              </span>
+              {activeView === v.id && (
+                <span className="semester-dropdown-check" aria-hidden="true">✓</span>
+              )}
+            </li>
+          ))}
+        </ul>,
+        document.body
       )}
-      <div className="results-status-row results-status-row--chips">
-        <span className={`status-chip status-chip--${jurorTheme}`}>
-          <span className="status-block"><UserRoundCheckIcon /><span className="status-value">{jv(safeTJ)}</span></span>
-          <span className="status-sep status-sep-icon" aria-hidden="true"><ArrowRightFromLineIcon /></span>
-          <span className="status-block"><CheckCircle2Icon /><span className="status-value">{jv(safeCJ)}</span></span>
-          <span className="status-sep" aria-hidden="true">·</span>
-          <span className="status-block"><HourglassIcon /><span className="status-value">{jv(safeIP)}</span></span>
-          <span className="status-sep" aria-hidden="true">·</span>
-          <span className="status-block"><PencilIcon /><span className="status-value">{jv(safeED)}</span></span>
-          {safeNS > 0 && (
-            <>
-              <span className="status-sep" aria-hidden="true">·</span>
-              <span className="status-block"><CircleIcon /><span className="status-value">{jv(safeNS)}</span></span>
-            </>
-          )}
-        </span>
-        <span className={`status-chip status-chip--${evalTheme} status-chip--projects`}>
-          <span className="status-block"><FolderKanbanIcon /><span className="status-value">{safeTP || "—"}</span></span>
-        </span>
-        <span className={`status-chip status-chip--${evalTheme}`}>
-          <span className="status-block"><ListChecksIcon /><span className="status-value">{ev}</span></span>
-        </span>
-      </div>
     </div>
   );
 }
@@ -191,18 +309,50 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const [semesterList,       setSemesterList]       = useState([]);
   const [selectedSemesterId, setSelectedSemesterId] = useState("");
   const [semesterOpen,       setSemesterOpen]       = useState(false);
-  const semesterRef = useRef(null);
+  const [evalMenuOpen,       setEvalMenuOpen]       = useState(false);
 
   const [loading,     setLoading]     = useState(true);
   const _toast = useToast();
   const setError     = (msg) => { if (msg) _toast.error(msg); };
   const setAuthError = (msg) => { if (msg) _toast.error(msg); };
-  const [showStatus,  setShowStatus]  = useState(true);
-  const VALID_TABS = new Set(["overview", "results", "analysis", "manage"]);
-  const [activeTab,   setActiveTab]   = useState(() => {
-    const saved = readSection("tab").activeTab;
-    return VALID_TABS.has(saved) ? saved : "overview";
+  const normalizeTab = (value) => {
+    if (value === "results" || value === "analysis") return "evaluations";
+    if (value === "manage") return "settings";
+    if (value === "overview" || value === "evaluations" || value === "settings") return value;
+    return "overview";
+  };
+  const VALID_TABS = new Set(["overview", "evaluations", "settings"]);
+  const [adminTab, setAdminTab] = useState(() => {
+    const saved = readSection("tab");
+    const savedTab = saved.adminTab || saved.activeTab;
+    const normalized = normalizeTab(savedTab);
+    return VALID_TABS.has(normalized) ? normalized : "overview";
   });
+  const normalizeEvaluationsView = (value) => {
+    if (value === "table") return "details";
+    if (value === "matrix") return "grid";
+    if (value === "analysis") return "analytics";
+    if (value === "rankings" || value === "analytics" || value === "grid" || value === "details") return value;
+    return "";
+  };
+  const VALID_EVALUATION_VIEWS = new Set(["rankings", "analytics", "grid", "details"]);
+  const [evaluationsView, setEvaluationsView] = useState(() => {
+    const saved = readSection("evaluations");
+    const legacy = readSection("results");
+    const savedView = saved.view || legacy.view;
+    const normalized = normalizeEvaluationsView(savedView);
+    return VALID_EVALUATION_VIEWS.has(normalized) ? normalized : "rankings";
+  });
+  function switchEvaluationsView(id) {
+    setEvaluationsView(id);
+    writeSection("evaluations", { view: id });
+  }
+  useEffect(() => {
+    if (semesterOpen) setEvalMenuOpen(false);
+  }, [semesterOpen]);
+  useEffect(() => {
+    if (evalMenuOpen) setSemesterOpen(false);
+  }, [evalMenuOpen]);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [tabOverflow, setTabOverflow] = useState(false);
   const [tabHintLeft, setTabHintLeft] = useState(false);
@@ -231,17 +381,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const selectedSemesterRef = useRef("");
   useEffect(() => { selectedSemesterRef.current = selectedSemesterId; }, [selectedSemesterId]);
 
-  // Close semester dropdown on outside click
-  useEffect(() => {
-    if (!semesterOpen) return;
-    function handleOutside(e) {
-      if (semesterRef.current && !semesterRef.current.contains(e.target)) {
-        setSemesterOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [semesterOpen]);
 
   // ── Data fetch ────────────────────────────────────────────
   const fetchData = async (forceSemesterId) => {
@@ -252,7 +391,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       if (!pass) {
         setRawScores([]);
         setSummaryData([]);
-        setAuthError("Enter the admin password to load results.");
+        setAuthError("Enter the admin password to load evaluations.");
         return;
       }
 
@@ -394,13 +533,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     updateTabHints();
     window.addEventListener("resize", updateTabHints);
     return () => window.removeEventListener("resize", updateTabHints);
-  }, [activeTab, showStatus]);
+  }, [adminTab]);
 
   // ── Derived data ───────────────────────────────────────────
   // Total projects in this semester (dynamic)
   const totalProjects = summaryData.length;
 
-  // Groups for MatrixTab/JurorsTab (built from summaryData so UUIDs are correct)
+  // Groups for EvaluationGrid/JurorActivity (built from summaryData so UUIDs are correct)
   const groups = useMemo(
     () =>
       summaryData
@@ -454,7 +593,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     return [...seen.values()].sort((a, b) => cmp(a.name, b.name));
   }, [allJurors, rawScores]);
 
-  // Matrix should show only jurors assigned to the selected semester.
+  // Grid should show only jurors assigned to the selected semester.
   const matrixJurors = useMemo(() => {
     const assignedMap = new Map(allJurors.map((j) => [j.jurorId, j.isAssigned]));
     const hasAssignedFlag = allJurors.some((j) => typeof j.isAssigned === "boolean");
@@ -468,33 +607,17 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
   const assignedJurors = matrixJurors;
 
-  const jurorDeptMap = useMemo(() => {
-    const m = new Map();
-    uniqueJurors.forEach(({ key, dept }) => m.set(key, dept));
-    return m;
-  }, [uniqueJurors]);
+  // Keys of jurors who have finalized (final_submitted_at set) — used for averages & charts
+  const completedJurorKeys = useMemo(
+    () => new Set(assignedJurors.filter((j) => !!(j.finalSubmitted ?? j.finalSubmittedAt)).map((j) => j.key)),
+    [assignedJurors]
+  );
 
-  const jurorColorMap = useMemo(() => {
-    const m = new Map();
-    uniqueJurors.forEach(({ key, name }) => m.set(key, { bg: jurorBg(name), dot: jurorDot(name) }));
-    return m;
-  }, [uniqueJurors]);
-
-  const isSubmittedStatus = (status) => status === "submitted" || status === "completed";
-  const isInProgressStatus = (status) => status === "in_progress" || status === "editing";
-
-  // Rows with all criteria filled = "submitted" or "completed"
+  // Rows from completed jurors only, fully scored (total !== null)
+  // Used for all averages, charts, and evaluation counts
   const submittedData = useMemo(
-    () => rawScores.filter((r) => isSubmittedStatus(r.status)),
-    [rawScores]
-  );
-  const dashboardData = useMemo(
-    () => rawScores.filter((r) => isSubmittedStatus(r.status) || isInProgressStatus(r.status)),
-    [rawScores]
-  );
-  const completedData = useMemo(
-    () => rawScores.filter((r) => r.status === "completed"),
-    [rawScores]
+    () => rawScores.filter((r) => completedJurorKeys.has(rowKey(r)) && r.total !== null),
+    [rawScores, completedJurorKeys]
   );
 
   // For DashboardTab: summaryData as dashboardStats
@@ -514,91 +637,91 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     [summaryData]
   );
 
-  // For SummaryTab: ranked by totalAvg descending
+  // For RankingsTab: ranked by totalAvg descending
   const ranked = useMemo(
     () => [...summaryData].sort((a, b) => b.totalAvg - a.totalAvg),
     [summaryData]
   );
 
-  // jurorStats for JurorsTab
+  // jurorStats for juror activity
   const jurorStats = useMemo(() => {
-    return assignedJurors.map(({ key, name, dept, jurorId, editEnabled }) => {
-      const rows       = rawScores.filter((d) => rowKey(d) === key);
-      const completed  = rows.filter((r) => isSubmittedStatus(r.status));
-      const inProgress = rows.filter((r) => isInProgressStatus(r.status));
-      const latestTs   = rows.reduce((mx, r) => (r.tsMs > mx ? r.tsMs : mx), 0);
-      const latestRow  = rows.find((r) => r.tsMs === latestTs) || rows[0];
-
-      const overall =
-        completed.length >= totalProjects && totalProjects > 0 ? "all_submitted" :
-        (completed.length > 0 || inProgress.length > 0)         ? "in_progress"   :
-        "not_started";
+    return assignedJurors.map((j) => {
+      const { key, name, dept, jurorId, editEnabled, finalSubmitted, finalSubmittedAt } = j;
+      const rows     = rawScores.filter((d) => rowKey(d) === key);
+      const latestTs = rows.reduce((mx, r) => (r.tsMs > mx ? r.tsMs : mx), 0);
+      const latestRow = rows.find((r) => r.tsMs === latestTs) || rows[0] || null;
 
       return {
         key, jury: name, dept, jurorId, rows,
-        submitted: completed,
-        completed, finalSubmitted: completed, inProgress,
-        latestTs, latestRow, overall,
+        latestTs,
+        latestRow: latestRow
+          ? { ...latestRow, finalSubmittedAt: latestRow?.finalSubmittedAt || finalSubmittedAt || "" }
+          : { finalSubmittedAt: finalSubmittedAt || "" },
         editEnabled,
       };
     });
-  }, [assignedJurors, rawScores, totalProjects]);
+  }, [assignedJurors, rawScores]);
 
-  // statusMetrics for header status bar
-  const statusMetrics = useMemo(() => {
+  // overviewMetrics for dashboard cards
+  const overviewMetrics = useMemo(() => {
     const assignedIds = new Set(assignedJurors.map((j) => j.jurorId));
     const totalJurors = assignedJurors.length;
-    const completedEvaluations = submittedData.filter((r) =>
-      assignedIds.size === 0 ? true : assignedIds.has(r.jurorId)
-    ).length;
-    const totalEvaluations = totalJurors * totalProjects;
-    const submittedByJuror = new Map();
+
+    // Count fully-scored rows per juror (total !== null = all 4 criteria filled)
+    const scoredByJuror = new Map();
     rawScores.forEach((r) => {
-      if (!isSubmittedStatus(r.status)) return;
       if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
+      if (r.total === null || r.total === undefined) return;
       const key = rowKey(r);
-      if (!submittedByJuror.has(key)) submittedByJuror.set(key, new Set());
-      submittedByJuror.get(key).add(r.projectId);
+      scoredByJuror.set(key, (scoredByJuror.get(key) || 0) + 1);
     });
+
+    const editingJurors = assignedJurors.filter((j) =>
+      !!(j.editEnabled ?? j.edit_enabled)
+    ).length;
+
     const completedJurors = assignedJurors.filter((j) => {
       const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      const submittedCount = submittedByJuror.get(j.key)?.size || 0;
-      return !isEditing && submittedCount >= totalProjects && totalProjects > 0;
+      return !isEditing && !!(j.finalSubmitted ?? j.finalSubmittedAt);
     }).length;
-    const inProgressKeys = new Set(
-      rawScores
-        .filter((r) => isInProgressStatus(r.status))
-        .filter((r) => assignedIds.size === 0 ? true : assignedIds.has(r.jurorId))
-        .map((r) => rowKey(r))
-    );
-    const progressedKeys = new Set(
-      rawScores
-        .filter((r) => isSubmittedStatus(r.status) || isInProgressStatus(r.status))
-        .filter((r) => assignedIds.size === 0 ? true : assignedIds.has(r.jurorId))
-        .map((r) => rowKey(r))
-    );
-    const editingJurors = allJurors.filter((j) => {
-      const assigned = j.isAssigned ?? j.is_assigned;
-      const enabled = j.editEnabled ?? j.edit_enabled;
-      return (assignedIds.size === 0 ? true : assigned) && !!enabled;
+    const totalEvaluations = totalJurors * totalProjects;
+    const scoredEvaluations = completedJurors * totalProjects;
+
+    const readyToSubmitJurors = assignedJurors.filter((j) => {
+      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
+      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
+      if (isEditing || isFinal) return false;
+      return totalProjects > 0 && (scoredByJuror.get(j.key) || 0) >= totalProjects;
     }).length;
+
+    const inProgressJurors = assignedJurors.filter((j) => {
+      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
+      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
+      if (isEditing || isFinal) return false;
+      const scored = scoredByJuror.get(j.key) || 0;
+      return scored > 0 && scored < totalProjects;
+    }).length;
+
     const notStartedJurors = assignedJurors.filter((j) => {
       const isEditing = !!(j.editEnabled ?? j.edit_enabled);
       if (isEditing) return false;
-      if (totalProjects <= 0) return false;
-      return !progressedKeys.has(j.key);
+      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
+      if (isFinal) return false;
+      return (scoredByJuror.get(j.key) || 0) === 0;
     }).length;
+
     return {
       completedJurors,
+      readyToSubmitJurors,
       totalJurors,
-      completedEvaluations,
       totalEvaluations,
       totalProjects,
-      inProgressJurors: inProgressKeys.size,
+      scoredEvaluations,
+      inProgressJurors,
       editingJurors,
       notStartedJurors,
     };
-  }, [rawScores, submittedData, assignedJurors, allJurors, totalProjects]);
+  }, [rawScores, assignedJurors, totalProjects]);
 
   useEffect(() => {
     if (!lastRefresh) return;
@@ -606,13 +729,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       sessionStorage.setItem(
         "ee492_home_meta",
         JSON.stringify({
-          totalJurors: statusMetrics.totalJurors,
-          completedJurors: statusMetrics.completedJurors,
+          totalJurors: overviewMetrics.totalJurors,
+          completedJurors: overviewMetrics.completedJurors,
           lastUpdated: lastRefresh.toISOString(),
         })
       );
     } catch {}
-  }, [statusMetrics.totalJurors, statusMetrics.completedJurors, lastRefresh]);
+  }, [overviewMetrics.totalJurors, overviewMetrics.completedJurors, lastRefresh]);
 
   const lastRefreshTime = lastRefresh
     ? new Intl.DateTimeFormat("en-GB", {
@@ -646,7 +769,28 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       return String(a?.name || "").localeCompare(String(b?.name || ""));
     });
   }, [semesterList]);
-  const selectedSemesterName = sortedSemesters.find((s) => s.id === selectedSemesterId)?.name ?? "Semester";
+  const selectedSemesterName = sortedSemesters.find((s) => s.id === selectedSemesterId)?.name ?? "—";
+  const renderSemesterControl = (className = "", options = {}) => {
+    if (!semesterList.length) return null;
+    const { variant = "chip", labelPrefix = "", leadingIcon = null } = options;
+    return (
+      <div className={`semester-control ${className}`.trim()}>
+        <SemesterDropdown
+          semesterList={semesterList}
+          sortedSemesters={sortedSemesters}
+          selectedSemesterId={selectedSemesterId}
+          selectedSemesterName={selectedSemesterName}
+          semesterOpen={semesterOpen}
+          setSemesterOpen={setSemesterOpen}
+          setSelectedSemesterId={setSelectedSemesterId}
+          fetchData={fetchData}
+          variant={variant}
+          labelPrefix={labelPrefix}
+          leadingIcon={leadingIcon}
+        />
+      </div>
+    );
+  };
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -660,82 +804,75 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               <HomeIcon />
             </button>
             <div className="header-title">
-              <div className="results-title-row">
+              <div className="admin-title-row">
                 <h2>Admin Panel</h2>
-                <button
-                  className="results-toggle"
-                  type="button"
-                  aria-label={showStatus ? "Hide status metrics" : "Show status metrics"}
-                  aria-expanded={showStatus}
-                  aria-controls="results-status-bar"
-                  onClick={() => setShowStatus((v) => !v)}
-                >
-                  <span className={`results-toggle-icon${showStatus ? " open" : ""}`} aria-hidden="true">
-                    <ChevronDownIcon />
-                  </span>
-                </button>
               </div>
             </div>
           </div>
           <div className="header-right">
-            {lastRefresh && (
-              <span className="last-updated">
-                <ClockIcon />
-                <span className="last-updated-time">{lastRefreshTime}</span>
-              </span>
-            )}
-            <button
-              className={`refresh-btn${loading ? " is-loading" : ""}`}
-              onClick={() => fetchData()}
-              aria-label="Refresh"
-              title="Refresh"
-            >
-              <RefreshIcon />
-            </button>
+            <div className="header-actions">
+              {lastRefresh && (
+                <span className="last-updated">
+                  <ClockIcon />
+                  <span className="last-updated-time">{lastRefreshTime}</span>
+                </span>
+              )}
+              <button
+                className={`refresh-btn${loading ? " is-loading" : ""}`}
+                onClick={() => fetchData()}
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RefreshIcon />
+              </button>
+            </div>
           </div>
         </div>
-        {showStatus && (
-          <div className="status-expandable">
-            <SemesterDropdown
-              semesterList={semesterList}
-              sortedSemesters={sortedSemesters}
-              selectedSemesterId={selectedSemesterId}
-              selectedSemesterName={selectedSemesterName}
-              semesterOpen={semesterOpen}
-              setSemesterOpen={setSemesterOpen}
-              setSelectedSemesterId={setSelectedSemesterId}
-              fetchData={fetchData}
-              semesterRef={semesterRef}
-            />
-            <ResultsStatusBar
-              id="results-status-bar"
-              metrics={statusMetrics}
-            />
-          </div>
-        )}
 
         {/* Tab bar */}
         <div className="tab-bar-wrap">
-          <div className="tab-bar" ref={tabBarRef} onScroll={updateTabHints}>
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                className={`tab ${activeTab === t.id ? "active" : ""}`}
-                onClick={() => { setActiveTab(t.id); writeSection("tab", { activeTab: t.id }); }}
-              >
-                <t.icon />
-                {t.label}
-              </button>
-            ))}
-          </div>
-          {tabOverflow && (
-            <div className="tab-hints" aria-hidden="true">
-              <span className={`tab-fade left${tabHintLeft ? "" : " is-hidden"}`} />
-              <span className={`tab-fade right${tabHintRight ? "" : " is-hidden"}`} />
-              <span className={`tab-hint left${tabHintLeft ? "" : " is-hidden"}`}><ChevronLeftIcon /></span>
-              <span className={`tab-hint right${tabHintRight ? "" : " is-hidden"}`}><ChevronRightIcon /></span>
+          <div className="tab-bar-row">
+            <div className="tab-context">
+              {renderSemesterControl("semester-control--tab", { variant: "chip", leadingIcon: PinIcon })}
             </div>
-          )}
+            <div className="tab-bar-shell" ref={tabBarRef} onScroll={updateTabHints}>
+              <div className="tab-bar">
+                {TABS.map((t) => {
+                  if (t.id === "evaluations") {
+                    return (
+                      <EvaluationsDropdown
+                        key={t.id}
+                        open={evalMenuOpen}
+                        setOpen={setEvalMenuOpen}
+                        activeView={evaluationsView}
+                        onSelect={(id) => {
+                          setAdminTab("evaluations");
+                          switchEvaluationsView(id);
+                        }}
+                        isActive={adminTab === "evaluations" || evalMenuOpen}
+                      />
+                    );
+                  }
+                  return (
+                    <button
+                      key={t.id}
+                      className={`tab ${adminTab === t.id ? "active" : ""}`}
+                      onClick={() => { setAdminTab(t.id); writeSection("tab", { adminTab: t.id }); }}
+                    >
+                      <t.icon />
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {tabOverflow && (
+                <div className="tab-hints" aria-hidden="true">
+                  <span className={`tab-fade left${tabHintLeft ? "" : " is-hidden"}`} />
+                  <span className={`tab-fade right${tabHintRight ? "" : " is-hidden"}`} />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -745,37 +882,31 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       {/* Tab content */}
       {!loading && (
         <div className="admin-body">
-          {activeTab === "overview" && (
+          {adminTab === "overview" && (
             <OverviewTab
               jurorStats={jurorStats}
               groups={groups}
+              metrics={overviewMetrics}
             />
           )}
-          {activeTab === "results" && (
-            <ResultsTab
+          {adminTab === "evaluations" && (
+            <EvaluationsTab
+              view={evaluationsView}
               ranked={ranked}
               submittedData={submittedData}
               rawScores={rawScores}
               jurors={uniqueJurors}
               matrixJurors={matrixJurors}
-              jurorColorMap={jurorColorMap}
               groups={groups}
               semesterName={selectedSemesterName}
               summaryData={summaryData}
-              jurorDeptMap={jurorDeptMap}
-            />
-          )}
-          {activeTab === "analysis" && (
-            <AnalysisTab
               dashboardStats={dashboardStats}
-              submittedData={dashboardData}
               lastRefresh={lastRefresh}
               loading={loading}
-              semesterName={selectedSemesterName}
             />
           )}
-          {activeTab === "manage" && (
-            <ManagePage
+          {adminTab === "settings" && (
+            <SettingsPage
               adminPass={adminPassState || getAdminPass()}
               onAdminPasswordChange={handleAdminPasswordChange}
             />

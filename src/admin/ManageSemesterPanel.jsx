@@ -135,14 +135,14 @@ export default function ManageSemesterPanel({
               <circle cx="18" cy="18" r="3" />
             </svg>
           </span>
-          Semester Management
+          <span className="section-label">Semester Settings</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {isOpen && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Select the active semester, create new terms, and manage semester dates.</div>
+          <div className="manage-card-desc">Select the active semester, create new terms, and edit semester dates.</div>
           <div className="manage-field">
             <label className="manage-list-header">Active Semester</label>
             <div className="manage-row">

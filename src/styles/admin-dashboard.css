@@ -411,6 +411,7 @@
   background: #fef2f2;
   color: #ef4444;
   cursor: pointer;
+  gap: 6px;
   box-shadow: 0 8px 14px rgba(239,68,68,0.12);
   transition: all 150ms ease;
 }
@@ -429,6 +430,7 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  background-clip: padding-box;
   box-shadow: 0 8px 16px rgba(21,128,61,0.15);
   transition: all 150ms ease;
 }
@@ -459,35 +461,12 @@
 .dashboard-header-ts    { font-size: 12px; font-weight: 600; }
 .dashboard-header-counts { font-size: 11px; }
 
-/* ── Results title + toggle ───────────────────────────────── */
-.results-title-row {
+/* ── Admin title row ─────────────────────────────────────── */
+.admin-title-row {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
-.results-toggle {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #94a3b8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-}
-.results-toggle:hover { background: #f8fafc; border-color: #e2e8f0; }
-.results-toggle-icon {
-  font-size: 10px;
-  line-height: 1;
-  display: inline-block;
-  opacity: 0.6;
-  transform: rotate(0deg);
-  transition: transform 0.15s ease, opacity 0.15s ease;
-}
-.results-toggle-icon.open { transform: rotate(180deg); opacity: 0.9; }
 
 /* ── Dashboard loading skeleton ─────────────────────────────── */
 .dashboard-loading { display: flex; flex-direction: column; gap: 14px; }

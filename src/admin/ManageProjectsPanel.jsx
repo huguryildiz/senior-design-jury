@@ -291,14 +291,14 @@ export default function ManageProjectsPanel({
       >
         <div className="manage-card-title">
           <span className="manage-card-icon" aria-hidden="true"><FolderKanbanIcon /></span>
-          Project / Group Management
+          <span className="section-label">Project / Group Settings</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Manage groups, project titles, and student lists for the active semester.</div>
+          <div className="manage-card-desc">Edit groups, project titles, and student lists for the active semester.</div>
           <div className="manage-card-actions">
             <button
               className="manage-btn"
@@ -536,8 +536,7 @@ export default function ManageProjectsPanel({
                     <div className="manage-dropzone-icon" aria-hidden="true">☁️</div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
                     <div className="manage-dropzone-sub">
-                      Only `.csv` files. Use semicolon or comma to separate students.
-                      If you use semicolons, wrap the students field in quotes.
+                      Only ".csv" files. Use semicolon to separate students.
                     </div>
                     <button className="manage-btn ghost" type="button">
                       Select File

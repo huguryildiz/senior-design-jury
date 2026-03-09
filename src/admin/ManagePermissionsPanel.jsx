@@ -65,7 +65,7 @@ export default function ManagePermissionsPanel({
       >
         <div className="manage-card-title">
           <span className="manage-card-icon" aria-hidden="true"><FolderLockIcon /></span>
-          Evaluation Permissions
+          <span className="section-label">Evaluation Permissions</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
       </button>

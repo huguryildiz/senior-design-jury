@@ -246,7 +246,7 @@ export default function ManageJurorsPanel({
       >
         <div className="manage-card-title">
           <span className="manage-card-icon" aria-hidden="true"><UserRoundCheckIcon /></span>
-          Juror Management
+          <span className="section-label">Juror Settings</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
       </button>

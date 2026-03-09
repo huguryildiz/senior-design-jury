@@ -383,8 +383,26 @@ body {
 }
 .premium-card.compact .premium-title { font-size: 22px; }
 .premium-card.compact .premium-subtitle { font-size: 14px; }
-.status-badge.editing {
+.status-badge.status-purple {
   animation: editingPulse 1.6s ease-in-out infinite;
+  box-shadow:
+    0 0 0 0 rgba(109, 40, 217, 0.28),
+    0 0 14px 0 rgba(109, 40, 217, 0.18);
+}
+.status-badge.status-blue {
+  animation: readyPulse 1.6s ease-in-out infinite;
+  box-shadow:
+    0 0 0 0 rgba(37, 99, 235, 0.28),
+    0 0 14px 0 rgba(37, 99, 235, 0.18);
+}
+.status-badge.status-green {
+  animation: completedPulse 1.6s ease-in-out infinite;
+  box-shadow:
+    0 0 0 0 rgba(22, 163, 74, 0.26),
+    0 0 14px 0 rgba(22, 163, 74, 0.18);
+}
+.status-badge.status-amber {
+  animation: progressPulse 1.6s ease-in-out infinite;
   box-shadow:
     0 0 0 0 rgba(180, 83, 9, 0.28),
     0 0 14px 0 rgba(180, 83, 9, 0.18);
@@ -395,6 +413,42 @@ body {
 @keyframes loaderPop { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 @keyframes loaderDots { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
 @keyframes editingPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(180, 83, 9, 0.28),
+      0 0 14px 0 rgba(180, 83, 9, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(180, 83, 9, 0),
+      0 0 24px 0 rgba(180, 83, 9, 0.28);
+  }
+}
+@keyframes readyPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(37, 99, 235, 0.28),
+      0 0 14px 0 rgba(37, 99, 235, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(37, 99, 235, 0),
+      0 0 24px 0 rgba(37, 99, 235, 0.28);
+  }
+}
+@keyframes completedPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(22, 163, 74, 0.26),
+      0 0 14px 0 rgba(22, 163, 74, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(22, 163, 74, 0),
+      0 0 24px 0 rgba(22, 163, 74, 0.28);
+  }
+}
+@keyframes progressPulse {
   0%, 100% {
     box-shadow:
       0 0 0 0 rgba(180, 83, 9, 0.28),
@@ -562,6 +616,19 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.entity-group-text {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.group-label-short {
+  display: none;
+  font-weight: 600;
+  font-size: 12px;
+}
+.group-label-full {
+  min-width: 0;
+}
 .entity-group-label > span.swipe-x {
   overflow-x: auto;
   overflow-y: hidden;
@@ -593,7 +660,12 @@ body {
   max-width: 100%;
 }
 
-/* ── Group accordion — used by JurorsTab (admin) and DoneStep (jury) ── */
+@media (max-width: 480px) and (orientation: portrait) {
+  .group-label-full { display: none; }
+  .group-label-short { display: inline; }
+}
+
+/* ── Group accordion — used by JurorActivity (admin) and DoneStep (jury) ── */
 .group-accordion-header {
   cursor: pointer;
   user-select: none;

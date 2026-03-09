@@ -1,5 +1,5 @@
-// src/admin/AnalysisTab.jsx
-// ── Charts dashboard (renamed from DashboardTab) ──────────────
+// src/admin/AnalyticsTab.jsx
+// ── Charts dashboard ─────────────────────────────────────────
 
 import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
@@ -117,7 +117,7 @@ function DashboardEmpty() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export default function AnalysisTab({ dashboardStats, submittedData, lastRefresh, loading, semesterName = "" }) {
+export default function AnalyticsTab({ dashboardStats, submittedData, lastRefresh, loading, semesterName = "" }) {
   const restoreRef   = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -395,7 +395,7 @@ export default function AnalysisTab({ dashboardStats, submittedData, lastRefresh
       datasets.forEach((ds) => {
         addTableSheet(wb, ds.sheet, ds.title, ds.headers, ds.rows, ds.extra);
       });
-      XLSX.writeFile(wb, buildExportFilename("analysis", semesterName));
+      XLSX.writeFile(wb, buildExportFilename("analytics", semesterName));
     } finally {
       setExportingExcel(false);
     }
@@ -498,7 +498,7 @@ export default function AnalysisTab({ dashboardStats, submittedData, lastRefresh
         </div>
 
         {/* Row 4: Boxplot (left) + Rubric Achievement (right) */}
-        <div className="dashboard-section-label" lang="en">Criterion Analysis</div>
+        <div className="dashboard-section-label" lang="en">Criterion Analytics</div>
         <div className="dashboard-grid dashboard-row" data-row="4">
           <div className="chart-card dashboard-card" id="chart-5">
             <CriterionBoxPlotChart data={submittedData} />

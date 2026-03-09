@@ -1,4 +1,4 @@
-// src/admin/DetailsTab.jsx
+// src/admin/EvaluationDetails.jsx
 // ============================================================
 // Sortable details table with Excel-style column header filters.
 // ============================================================
@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cmp, exportXLSX, formatTs, tsToMillis, rowKey } from "./utils";
 import { readSection, writeSection } from "./persist";
 import { FilterPopoverPortal, StatusBadge } from "./components";
+import { getCellState } from "./scoreHelpers";
 import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDown01Icon, ArrowDown10Icon, ArrowDownIcon, ArrowUpIcon, XIcon } from "../shared/Icons";
 
 // Show "" for null/undefined/empty/NaN.  0 is a valid score.
@@ -26,14 +27,13 @@ const SCORE_COLS = [
   { key: "total",     label: "Total"         },
 ];
 const STATUS_OPTIONS = [
-  { value: "editing",     label: "Editing" },
-  { value: "submitted",   label: "Submitted" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "not_started", label: "Not started" },
+  { value: "scored",      label: "Scored"       },
+  { value: "partial",     label: "Partial"      },
+  { value: "not_started", label: "Not Started"  },
 ];
 
 // jurors prop: { key, name, dept }[]
-export default function DetailsTab({
+export default function EvaluationDetails({
   data,
   jurors,
   assignedJurors = null,
@@ -410,12 +410,10 @@ export default function DetailsTab({
         ? studentsRaw.map((s) => String(s).trim()).filter(Boolean).join(", ")
         : String(studentsRaw).trim();
       const isEditing = !!(jurorEditMap.get(row.jurorId) || jurorEditMap.get(rowKey(row)));
+      const cellSt = getCellState(row); // "scored" | "partial" | "empty"
       const effectiveStatus =
-        (row.status === "editing" || isEditing)
-          ? "editing"
-          : ((row.status === "completed" || row.status === "submitted")
-            ? "submitted"
-            : (row.status === "in_progress" ? "in_progress" : "not_started"));
+        isEditing ? "editing" :
+        cellSt === "empty" ? "not_started" : cellSt; // normalize empty → not_started
       return {
         ...row,
         semester: semesterName ?? "",
@@ -786,7 +784,11 @@ export default function DetailsTab({
   })();
 
   return (
-    <>
+    <div className="evaluation-details">
+      <div className="admin-section-header">
+        <div className="section-label">Details</div>
+      </div>
+
       {/* Compact toolbar: row count + clear + export */}
       <div className="detail-table-toolbar">
         <span className="filter-count">
@@ -825,7 +827,7 @@ export default function DetailsTab({
         {popoverConfig?.content}
       </FilterPopoverPortal>
 
-      {/* Table */}
+      {/* Details table */}
       <div className="detail-table-scroll-top" ref={topScrollRef} aria-hidden="true">
         <div className="detail-table-scroll-top-inner" />
       </div>
@@ -1060,13 +1062,9 @@ export default function DetailsTab({
             )}
             {rows.map((row, i) => {
               const isEditing = row.isEditing;
-              const isIP = row.status === "in_progress" || row.status === "editing" || isEditing;
+              const isIP = row.effectiveStatus === "not_started";
               const projectTitle = row.projectTitle || "";
               const students = row.students || "";
-              const statusForBadge =
-                row.effectiveStatus === "submitted"
-                  ? "submitted"
-                  : (row.effectiveStatus === "not_started" ? "not_started" : "in_progress");
               return (
                 <tr
                   key={`${rowKey(row)}-${row.projectId}-${i}`}
@@ -1088,7 +1086,7 @@ export default function DetailsTab({
                   <td className="cell-dept" style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
                   <td className="cell-status">
                     <StatusBadge
-                      status={statusForBadge}
+                      status={row.effectiveStatus}
                       editingFlag={isEditing ? "editing" : null}
                     />
                   </td>
@@ -1112,6 +1110,6 @@ export default function DetailsTab({
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }

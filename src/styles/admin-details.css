@@ -1,6 +1,11 @@
 /* admin-details.css — Details tab: filter bar, table, column filter popovers, status pills */
 
 /* ── Details tab — filter bar + table ───────────────────────── */
+.evaluation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .filter-bar {
   display: flex;
   gap: 10px;
@@ -29,8 +34,8 @@
 .filter-count      { margin-left: auto; font-size: 13px; color: var(--gray-500); }
 .csv-export-btn    { padding: 7px 14px; border-radius: 10px; border: 1px solid var(--gray-200); background: var(--gray-50); color: var(--brand-600); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
 .csv-export-btn:hover { background: var(--gray-100); }
-.xlsx-export-btn   { padding: 7px 14px; border-radius: 10px; border: 1px solid var(--green); background: var(--green-light); color: var(--green); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
-.xlsx-export-btn:hover { background: var(--green-light); }
+.xlsx-export-btn   { padding: 7px 14px; border-radius: 10px; border: 1px solid var(--green); background: var(--green-light); color: var(--green); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; background-clip: padding-box; box-shadow: 0 8px 16px rgba(21,128,61,0.15); }
+.xlsx-export-btn:hover { background: var(--green-light); box-shadow: 0 12px 20px rgba(21,128,61,0.2); }
 .export-label-short { display: none; }
 .filters-active-pill {
   display: inline-flex;
@@ -79,23 +84,19 @@
 .detail-table-toolbar .filter-count { font-weight: 600; color: var(--gray-700); }
 
 .detail-table-scroll-top {
-  overflow-x: auto;
-  overflow-y: hidden;
-  height: 12px;
+  overflow: hidden;
+  height: 0;
   max-width: 100%;
-  margin-bottom: 6px;
-  border-radius: 8px;
+  margin: 0;
+  border-radius: 0;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 .detail-table-scroll-top-inner {
-  height: 1px;
+  height: 0;
 }
-.detail-table-scroll-top::-webkit-scrollbar { height: 10px; }
-.detail-table-scroll-top::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-.detail-table-scroll-top::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 999px;
-}
+.detail-table-scroll-top::-webkit-scrollbar { display: none; }
+.detail-table-scroll-top::-webkit-scrollbar-track { background: transparent; }
+.detail-table-scroll-top::-webkit-scrollbar-thumb { background: transparent; }
 
 .detail-table-wrap {
   overflow-x: auto;
@@ -109,23 +110,10 @@
   backdrop-filter: var(--surface-blur);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
-.detail-table-wrap::-webkit-scrollbar { height: 10px; }
-.detail-table-wrap::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-.detail-table-wrap::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 999px;
-}
-.detail-table-wrap::after {
-  content: "";
-  position: sticky;
-  right: 0;
-  top: 0;
-  height: 100%;
-  width: 22px;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--card-bg));
-  display: block;
-}
+.detail-table-wrap::-webkit-scrollbar { display: none; }
+.detail-table-wrap::-webkit-scrollbar-track { background: transparent; }
+.detail-table-wrap::-webkit-scrollbar-thumb { background: transparent; }
+.detail-table-wrap::after { display: none; }
 .detail-table {
   width: 100%;
   min-width: 980px;

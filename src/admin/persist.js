@@ -4,7 +4,7 @@
 // All I/O is wrapped in try/catch — never throws.
 //
 // Storage key : jury_admin_ui_state_v1
-// Shape       : { tab: {…}, details: {…}, jurors: {…}, matrix: {…} }
+// Shape       : { tab: {…}, evaluations: {…}, details: {…}, jurors: {…}, grid: {…} }
 // ============================================================
 
 const STORAGE_KEY = "jury_admin_ui_state_v1";

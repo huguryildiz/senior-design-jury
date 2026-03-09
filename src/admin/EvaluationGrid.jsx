@@ -1,43 +1,51 @@
-// src/admin/MatrixTab.jsx
-// ── Enterprise-style juror × group matrix ─────────────────────
+// src/admin/EvaluationGrid.jsx
+// ── Juror × group evaluation grid ────────────────────────────
 // - Column-based sorting (click group header: desc → asc → reset)
 // - Sticky header + frozen first column
 // - Juror column text filter
-// - Final-only averages (all_submitted only)
+// - Scored-only averages (fully scored cells only)
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { cmp, rowKey } from "./utils";
+import { cmp, rowKey, exportGridXLSX } from "./utils";
 import { readSection, writeSection } from "./persist";
 import { FilterPopoverPortal } from "./components";
+import {
+  getCellState,
+  getPartialTotal,
+  getJurorWorkflowState,
+  jurorStatusMeta,
+} from "./scoreHelpers";
 import {
   FilterIcon,
   ArrowUpDownIcon,
   ArrowDown01Icon,
   ArrowDown10Icon,
   InfoIcon,
-  HourglassIcon,
-  PencilIcon,
-  CircleCheckBigIcon,
-  CheckIcon,
-  CircleIcon,
+  DownloadIcon,
 } from "../shared/Icons";
+
+const readGridState = () => {
+  const current = readSection("grid");
+  return Object.keys(current).length ? current : readSection("matrix");
+};
 
 // ── Cell helpers ──────────────────────────────────────────────
 
-const cellStyle = (status) => {
-  if (!status || status === "not_started") return { background: "#f8fafc", color: "#94a3b8" };
-  if (status === "completed") return { background: "#dcfce7", color: "#166534", fontWeight: 700 };
-  if (status === "submitted") return { background: "#ecfdf3", color: "#166534", fontWeight: 700 };
-  if (status === "editing") return { background: "#ffedd5", color: "#9a3412", fontWeight: 700 };
-  if (status === "in_progress") return { background: "#fef9c3", color: "#92400e" };
-  return { background: "#f8fafc", color: "#94a3b8" };
+const cellStyle = (state, isFinal = false) => {
+  if (state === "scored") {
+    // Final submitted → darker green (completed); scored only → light green
+    return isFinal
+      ? { background: "#dcfce7", color: "#166534", fontWeight: 700 }
+      : { background: "#f0fdf4", color: "#16a34a", fontWeight: 600 };
+  }
+  if (state === "partial") return { background: "#fef9c3", color: "#92400e", fontWeight: 700 };
+  return { background: "#f8fafc", color: "#94a3b8" }; // empty
 };
 
-const cellText = (status, entry) => {
-  if (!entry) return "";
-  if (status === "submitted" || status === "completed") return entry.total;
-  if (status === "in_progress") return "";  // background color only
-  return "";
+const cellText = (state, entry) => {
+  if (state === "scored")  return entry.total;
+  if (state === "partial") return getPartialTotal(entry);
+  return "—";
 };
 
 // ── Component ──────────────────────────────────────────────────
@@ -46,18 +54,18 @@ const cellText = (status, entry) => {
 //   data    – raw rows
 //   jurors  – { key, name, dept }[]  (from AdminPanel uniqueJurors)
 //   groups  – { id, label }[]
-export default function MatrixTab({ data, jurors, groups }) {
+export default function EvaluationGrid({ data, jurors, groups, semesterName = "" }) {
   // Group column sort state
-  const [sortGroupId,  setSortGroupId]  = useState(() => { const s = readSection("matrix"); return (s.sortGroupId === null || typeof s.sortGroupId === "number") ? s.sortGroupId ?? null : null; });
-  const [sortGroupDir, setSortGroupDir] = useState(() => { const s = readSection("matrix"); return s.sortGroupDir === "asc" || s.sortGroupDir === "desc" ? s.sortGroupDir : "desc"; });
-  const [sortJurorDir, setSortJurorDir] = useState(() => { const s = readSection("matrix"); return s.sortJurorDir === "asc" || s.sortJurorDir === "desc" ? s.sortJurorDir : "asc"; });
-  const [sortMode,     setSortMode]     = useState(() => { const s = readSection("matrix"); return s.sortMode === "group" ? "group" : "juror"; });
+  const [sortGroupId,  setSortGroupId]  = useState(() => { const s = readGridState(); return (s.sortGroupId === null || typeof s.sortGroupId === "number") ? s.sortGroupId ?? null : null; });
+  const [sortGroupDir, setSortGroupDir] = useState(() => { const s = readGridState(); return s.sortGroupDir === "asc" || s.sortGroupDir === "desc" ? s.sortGroupDir : "desc"; });
+  const [sortJurorDir, setSortJurorDir] = useState(() => { const s = readGridState(); return s.sortJurorDir === "asc" || s.sortJurorDir === "desc" ? s.sortJurorDir : "asc"; });
+  const [sortMode,     setSortMode]     = useState(() => { const s = readGridState(); return s.sortMode === "group" ? "group" : "juror"; });
 
   // Juror text filter
-  const [jurorFilter, setJurorFilter] = useState(() => { const s = readSection("matrix"); return typeof s.jurorFilter === "string" ? s.jurorFilter : ""; });
+  const [jurorFilter, setJurorFilter] = useState(() => { const s = readGridState(); return typeof s.jurorFilter === "string" ? s.jurorFilter : ""; });
 
   useEffect(() => {
-    writeSection("matrix", { sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter });
+    writeSection("grid", { sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter });
   }, [sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter]);
 
   useEffect(() => {
@@ -112,17 +120,16 @@ export default function MatrixTab({ data, jurors, groups }) {
     [jurors]
   );
 
-  const isSubmittedStatus = (status) =>
-    status === "submitted" || status === "completed" || status === "group_submitted" || status === "all_submitted";
-
-  const cellStatus = (entry, isFinal) => {
-    if (!entry) return "not_started";
-    if (entry.editingFlag === "editing" || entry.status === "editing") return "editing";
-    if (entry.status === "completed") return "completed";
-    if (entry.status === "in_progress") return "in_progress";
-    if (isSubmittedStatus(entry.status)) return isFinal ? "completed" : "submitted";
-    return "not_started";
-  };
+  // Completion set should mirror project summary logic:
+  // juror final submitted AND not in edit mode.
+  const completedJurorKeys = useMemo(
+    () => new Set(jurors.filter((j) => (j.finalSubmitted || j.finalSubmittedAt) && !j.editEnabled).map((j) => j.key)),
+    [jurors]
+  );
+  const completedJurors = useMemo(
+    () => jurors.filter((j) => completedJurorKeys.has(j.key)),
+    [jurors, completedJurorKeys]
+  );
 
   function closePopover() {
     setActiveFilterCol(null);
@@ -141,13 +148,22 @@ export default function MatrixTab({ data, jurors, groups }) {
     });
   }
 
-  // Build lookup: jurorKey → { [projectId]: { total, status } }
+  // Build lookup: jurorKey → { [projectId]: { total, status, editingFlag, technical, design, delivery, teamwork, finalSubmittedAt } }
   const lookup = useMemo(() => {
     const map = {};
     data.forEach((r) => {
       const key = rowKey(r);
       if (!map[key]) map[key] = {};
-      map[key][r.projectId] = { total: r.total, status: r.status, editingFlag: r.editingFlag };
+      map[key][r.projectId] = {
+        total:       r.total,
+        status:      r.status,
+        editingFlag: r.editingFlag,
+        technical:   r.technical,
+        design:      r.design,
+        delivery:    r.delivery,
+        teamwork:    r.teamwork,
+        finalSubmittedAt: r.finalSubmittedAt || "",
+      };
     });
     return map;
   }, [data]);
@@ -195,17 +211,13 @@ export default function MatrixTab({ data, jurors, groups }) {
         sortJurorDir === "asc" ? cmp(a.name, b.name) : cmp(b.name, a.name)
       );
     }
-    // Sort by active group column (only all_submitted; missing/non-final → bottom).
+    // Sort by active group column (scored cells only; partial/empty → bottom).
     if (sortMode === "group" && sortGroupId !== null) {
       list = [...list].sort((a, b) => {
         const ea = lookup[a.key]?.[sortGroupId];
         const eb = lookup[b.key]?.[sortGroupId];
-        const va = cellStatus(ea, jurorFinalMap.get(a.key) && !a.editEnabled) === "completed"
-          ? Number(ea.total)
-          : null;
-        const vb = cellStatus(eb, jurorFinalMap.get(b.key) && !b.editEnabled) === "completed"
-          ? Number(eb.total)
-          : null;
+        const va = getCellState(ea) === "scored" ? Number(ea.total) : null;
+        const vb = getCellState(eb) === "scored" ? Number(eb.total) : null;
 
         // Nulls always sink to bottom regardless of direction.
         if (va === null && vb === null) return cmp(a.name, b.name);
@@ -216,106 +228,99 @@ export default function MatrixTab({ data, jurors, groups }) {
         return diff !== 0 ? diff : cmp(a.name, b.name); // stable tie-breaker
       });
     }
-    // Default order: alpha-sorted by juror name (same comparator as DetailsTab).
 
     return list;
   }, [jurors, jurorFilter, sortGroupId, sortGroupDir, sortMode, sortJurorDir, lookup, jurorFinalMap]);
 
-  const jurorStatus = (juror) => {
-    if (juror.editEnabled) return "editing";
-    const isFinal = jurorFinalMap.get(juror.key) && !juror.editEnabled;
-    const allSubmitted = groups.length > 0 && groups.every((g) => {
-      const status = lookup[juror.key]?.[g.id]?.status;
-      return status === "submitted" || status === "completed";
-    });
-    const hasAnyProgress = groups.some((g) => {
-      const status = lookup[juror.key]?.[g.id]?.status;
-      return status === "submitted" || status === "completed" || status === "in_progress" || status === "editing";
-    });
-    if (isFinal) return "completed";
-    if (allSubmitted) return "submitted";
-    return hasAnyProgress ? "in_progress" : "not_started";
-  };
-
-  const statusLabel = {
-    completed: "Completed",
-    submitted: "Submitted",
-    in_progress: "In Progress",
-    editing: "Editing",
-    not_started: "Not Started",
-  };
-
-  const statusIcon = {
-    completed: <CircleCheckBigIcon />,
-    submitted: <CheckIcon />,
-    in_progress: <HourglassIcon />,
-    editing: <PencilIcon />,
-    not_started: <CircleIcon />,
-  };
-
-
-  // Average row: submitted entries from visibleJurors, 2 decimal places.
+  // Average row: completed jurors only (finalSubmittedAt set), fully scored cells.
   const groupAverages = useMemo(() =>
     groups.map((g) => {
-      const vals = visibleJurors
+      const vals = completedJurors
         .map((j) => {
           const entry = lookup[j.key]?.[g.id];
-          const status = cellStatus(entry, jurorFinalMap.get(j.key) && !j.editEnabled);
-          return status === "completed" ? Number(entry?.total) : null;
+          if (!entry?.finalSubmittedAt) return null;
+          return getCellState(entry) === "scored" ? Number(entry.total) : null;
         })
         .filter((v) => Number.isFinite(v));
       return vals.length
         ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)
         : null;
     }),
-  [visibleJurors, groups, lookup, jurorFinalMap]);
+  [completedJurors, groups, lookup]);
 
-  if (!jurors.length) return <div className="empty-msg">No data yet.</div>;
+  function handleExport() {
+    const exportRows = visibleJurors.map((juror) => {
+      const wfState = getJurorWorkflowState(juror, groups, lookup, jurorFinalMap);
+      const statusLabel = jurorStatusMeta[wfState]?.label ?? wfState;
+      const scores = {};
+      groups.forEach((g) => {
+        const entry = lookup[juror.key]?.[g.id] ?? null;
+        const state = getCellState(entry);
+        scores[g.id] =
+          state === "scored"  ? Number(entry.total) :
+          state === "partial" ? getPartialTotal(entry) :
+          null;
+      });
+      return { name: juror.name, dept: juror.dept ?? "", statusLabel, scores };
+    });
+    void exportGridXLSX(exportRows, groups, { semesterName });
+  }
+
+  if (!jurors.length) {
+    return (
+      <div className="matrix-wrap">
+        <div className="admin-section-header">
+          <div className="section-label">Evaluation Grid</div>
+        </div>
+        <div className="empty-msg">No data yet.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="matrix-wrap">
+      <div className="admin-section-header">
+        <div className="section-label">Evaluation Grid</div>
+      </div>
 
       {/* Legend */}
       <div className="matrix-subtitle">
+        {/* Cell state legend */}
         <div className="matrix-legend-row legend-scroll-row">
-          <div className="matrix-legend-scroll" aria-label="Cells legend">
+          <div className="matrix-legend-scroll" aria-label="Cell state legend">
             <span className="matrix-legend-label">Cells</span>
-            <span className="matrix-legend-item"><span className="matrix-legend-dot completed-dot"/>Completed</span>
-            <span className="matrix-legend-item"><span className="matrix-legend-dot submitted-dot"/>Submitted</span>
-            <span className="matrix-legend-item"><span className="matrix-legend-dot progress-dot"/>In Progress</span>
-            <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Not Started</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot scored-dot"/>Scored</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot partial-dot"/>Partial</span>
+            <span className="matrix-legend-item"><span className="matrix-legend-dot empty-dot"/>Empty</span>
           </div>
         </div>
+        {/* Juror workflow state legend */}
         <div className="matrix-legend-row matrix-icon-legend legend-scroll-row">
-          <div className="matrix-legend-scroll" aria-label="Juror legend">
+          <div className="matrix-legend-scroll" aria-label="Juror status legend">
             <span className="matrix-legend-label">Juror</span>
-            <span className="matrix-icon-legend-item">
-              <span className="matrix-status-icon completed"><CircleCheckBigIcon /></span>
-              Completed
-            </span>
-            <span className="matrix-icon-legend-item">
-              <span className="matrix-status-icon submitted"><CheckIcon /></span>
-              Submitted
-            </span>
-            <span className="matrix-icon-legend-item">
-              <span className="matrix-status-icon editing"><PencilIcon /></span>
-              Editing
-            </span>
-            <span className="matrix-icon-legend-item">
-              <span className="matrix-status-icon in_progress"><HourglassIcon /></span>
-              In Progress
-            </span>
-            <span className="matrix-icon-legend-item">
-              <span className="matrix-status-icon not_started"><CircleIcon /></span>
-              Not Started
-            </span>
+            {["completed", "ready_to_submit", "in_progress", "editing", "not_started"].map((key) => {
+              const meta = jurorStatusMeta[key];
+              const Icon = meta.icon;
+              return (
+                <span key={key} className="matrix-icon-legend-item">
+                  <span className={`matrix-status-icon ${meta.colorClass}`}><Icon /></span>
+                  {meta.label}
+                </span>
+              );
+            })}
           </div>
         </div>
-        {visibleJurors.length < jurors.length && (
-          <span className="matrix-legend-count">
-            Showing {visibleJurors.length}/{jurors.length} jurors
-          </span>
-        )}
+        <div className="matrix-legend-row matrix-toolbar-row">
+          {visibleJurors.length < jurors.length && (
+            <span className="matrix-legend-count">
+              Showing {visibleJurors.length}/{jurors.length} jurors
+            </span>
+          )}
+          <button className="xlsx-export-btn matrix-export-btn" onClick={handleExport}>
+            <DownloadIcon />
+            <span>Excel</span>
+          </button>
+        </div>
       </div>
 
       <div className="matrix-scroll-top" ref={topScrollRef} aria-hidden="true">
@@ -368,16 +373,18 @@ export default function MatrixTab({ data, jurors, groups }) {
               <tr key={juror.key}>
                 <td className="matrix-juror">
                   {(() => {
-                    const status = jurorStatus(juror);
+                    const wfState = getJurorWorkflowState(juror, groups, lookup, jurorFinalMap);
+                    const meta = jurorStatusMeta[wfState] ?? jurorStatusMeta.not_started;
+                    const Icon = meta.icon;
                     const fullName = juror.dept ? `${juror.name} (${juror.dept})` : juror.name;
                     return (
                       <>
                         <span
-                          className={`matrix-status-icon ${status}`}
-                          title={statusLabel[status]}
+                          className={`matrix-status-icon ${meta.colorClass}`}
+                          title={meta.label}
                           aria-hidden="true"
                         >
-                          {statusIcon[status]}
+                          <Icon />
                         </span>
                         <span className="matrix-juror-name" title={fullName}>
                           <span className="matrix-juror-name-scroll">
@@ -391,9 +398,10 @@ export default function MatrixTab({ data, jurors, groups }) {
                 </td>
                 {groups.map((g) => {
                   const entry = lookup[juror.key]?.[g.id] ?? null;
-                  const status = cellStatus(entry, jurorFinalMap.get(juror.key) && !juror.editEnabled);
+                  const state = getCellState(entry);
+                  const isFinal = jurorFinalMap.get(juror.key) && !juror.editEnabled;
                   return (
-                    <td key={g.id} style={cellStyle(status)}>{cellText(status, entry)}</td>
+                    <td key={g.id} style={cellStyle(state, isFinal)}>{cellText(state, entry)}</td>
                   );
                 })}
               </tr>
@@ -415,7 +423,7 @@ export default function MatrixTab({ data, jurors, groups }) {
       </div>
 
       {/* Info note */}
-      <p className="matrix-info-note"><InfoIcon /> Averages include only completed submissions.</p>
+      <p className="matrix-info-note"><InfoIcon /> Averages include only completed jurors.</p>
 
       <FilterPopoverPortal
         open={activeFilterCol === "juror"}

@@ -1,6 +1,6 @@
-/* admin-matrix.css — Matrix tab: table, legend, controls, average row */
+/* admin-matrix.css — Grid view: table, legend, controls, average row */
 
-/* ── Matrix tab ─────────────────────────────────────────────── */
+/* ── Grid view ─────────────────────────────────────────────── */
 .matrix-wrap     { padding: 4px 0; }
 .matrix-subtitle {
   display: flex;
@@ -23,14 +23,7 @@
   position: relative;
 }
 .matrix-legend-row.legend-scroll-row::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 28px;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgba(248,250,252,0), rgba(248,250,252,1));
+  display: none;
 }
 .matrix-legend-scroll {
   display: flex;
@@ -93,22 +86,16 @@
   gap: 4px;
 }
 .matrix-scroll-top {
-  overflow-x: auto;
-  overflow-y: hidden;
-  height: 12px;
+  overflow: hidden;
+  height: 0;
   max-width: 100%;
-  margin: 8px 0 6px;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  margin: 0;
+  scrollbar-width: none;
 }
 .matrix-scroll-top-inner {
-  height: 1px;
+  height: 0;
 }
-.matrix-scroll-top::-webkit-scrollbar { height: 10px; }
-.matrix-scroll-top::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-.matrix-scroll-top::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 999px;
-}
+.matrix-scroll-top::-webkit-scrollbar { display: none; }
 .matrix-scroll-wrap {
   border-radius: var(--surface-radius);
   border: 1px solid var(--surface-border);
@@ -121,14 +108,9 @@
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
   overscroll-behavior-x: contain;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: none;
 }
-.matrix-scroll::-webkit-scrollbar { height: 10px; }
-.matrix-scroll::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-.matrix-scroll::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 999px;
-}
+.matrix-scroll::-webkit-scrollbar { display: none; }
 .matrix-table    { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; background: #fff; table-layout: fixed; }
 .matrix-table th {
   background: #f1f5f9;
@@ -257,16 +239,18 @@
   flex-shrink: 0;
 }
 .matrix-status-icon svg { width: 14px; height: 14px; }
-.matrix-status-icon.submitted { color: #16a34a; }
-.matrix-status-icon.in_progress { color: #ca8a04; }
-.matrix-status-icon.completed { color: #15803d; }
-.matrix-status-icon.editing { color: #d97706; }
-.matrix-status-icon.not_started { color: #cbd5e1; }
-.completed-dot  { background: #dcfce7; }
-.submitted-dot  { background: #ecfdf3; }
-.progress-dot   { background: #fef9c3; }
-.empty-dot      { background: #f8fafc; }
-.group-dot      { background: #93c5fd; }
+/* Shared colorClass system from jurorStatusMeta */
+.matrix-status-icon.status-green  { color: #15803d; }   /* Completed */
+.matrix-status-icon.status-blue   { color: #2563eb; }   /* Ready to Submit */
+.matrix-status-icon.status-amber  { color: #ca8a04; }   /* In Progress */
+.matrix-status-icon.status-gray   { color: #cbd5e1; }   /* Not Started */
+.matrix-status-icon.status-purple { color: #7c3aed; }   /* Editing */
+/* Cell state legend dots */
+.scored-final-dot { background: #dcfce7; border-color: #86efac !important; }  /* Dark green — Completed (final submitted) */
+.scored-dot       { background: #f0fdf4; }                                     /* Light green — Scored (not yet finalized) */
+.partial-dot      { background: #fef9c3; }                                     /* Amber  — Partial */
+.empty-dot        { background: #f8fafc; }                                     /* Gray   — Empty */
+.group-dot        { background: #93c5fd; }
 
 @media (hover: none) and (pointer: coarse) {
   .matrix-juror-name-scroll {
@@ -360,6 +344,20 @@
 .matrix-avg-cell  { color: #a16207; font-weight: 600; font-size: 13px; }
 
 
+
+/* ── Matrix toolbar row (count + export button) ─────────────── */
+.matrix-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.matrix-export-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
 
 /* ── Matrix info note ────────────────────────────────────────── */
 .matrix-info-note {

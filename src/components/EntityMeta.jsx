@@ -16,11 +16,14 @@
 
 import { FolderKanbanIcon, FileTextIcon, UsersRoundIcon } from "../shared/Icons";
 
-export function GroupLabel({ text }) {
+export function GroupLabel({ text, shortText }) {
   return (
     <span className="entity-group-label">
       <FolderKanbanIcon aria-hidden="true" />
-      <span className="swipe-x">{text}</span>
+      <span className="entity-group-text">
+        <span className="group-label-full swipe-x">{text}</span>
+        {shortText ? <span className="group-label-short">{shortText}</span> : null}
+      </span>
     </span>
   );
 }

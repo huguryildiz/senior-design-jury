@@ -258,8 +258,9 @@
 }
 
 .manage-item.is-active {
-  border-color: rgba(59, 130, 246, 0.35);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1), 0 8px 18px rgba(59, 130, 246, 0.15);
+  border-color: var(--brand-600);
+  border-width: 2px;
+  box-shadow: none;
 }
 
 .manage-item.is-locked {
@@ -1285,7 +1286,7 @@
 
 .manage-hint {
   font-size: 12px;
-  color: #64748b;
+  color: #94a3b8;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1378,7 +1379,10 @@
 }
 
 .manage-audit-actions {
+  display: flex;
+  justify-content: flex-end;
   align-items: center;
+  gap: 8px;
 }
 
 .manage-audit-body {
@@ -1419,6 +1423,11 @@
 .manage-audit-footer {
   display: flex;
   justify-content: center;
+}
+
+.manage-audit-sentinel {
+  width: 100%;
+  height: 1px;
 }
 
 .manage-audit-list {

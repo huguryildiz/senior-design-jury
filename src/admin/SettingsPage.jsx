@@ -1,6 +1,6 @@
-// src/admin/ManagePage.jsx
+// src/admin/SettingsPage.jsx
 // ============================================================
-// Admin Manage page: semesters, projects, jurors, permissions.
+// Admin settings page: semesters, projects, jurors, permissions.
 // ============================================================
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -29,11 +29,11 @@ import {
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
 import { ChevronDownIcon, DatabaseIcon, DownloadIcon, HistoryIcon, UploadIcon, KeyRoundIcon } from "../shared/Icons";
-import { exportXLSX, buildExportFilename } from "./utils";
-import ManageSemesterPanel from "./ManageSemesterPanel";
-import ManageProjectsPanel from "./ManageProjectsPanel";
-import ManageJurorsPanel from "./ManageJurorsPanel";
-import ManagePermissionsPanel from "./ManagePermissionsPanel";
+import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
+import SemesterSettingsPanel from "./ManageSemesterPanel";
+import ProjectSettingsPanel from "./ManageProjectsPanel";
+import JurorSettingsPanel from "./ManageJurorsPanel";
+import AccessSettingsPanel from "./ManagePermissionsPanel";
 import AdminSecurityPanel from "../components/admin/AdminSecurityPanel";
 import DeleteConfirmDialog from "../components/admin/DeleteConfirmDialog";
 
@@ -79,6 +79,69 @@ const isValidTimeParts = (hh, mi, ss) => {
   return true;
 };
 
+const monthLookup = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  sept: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+};
+
+const normalizeSearchYear = (yearToken) => {
+  if (!yearToken) return null;
+  const raw = String(yearToken);
+  if (!/^\d{2,4}$/.test(raw)) return null;
+  if (raw.length === 2) return 2000 + Number(raw);
+  return Number(raw);
+};
+
+const parseSearchDateParts = (value) => {
+  const query = String(value || "").trim().toLowerCase();
+  if (!query) return null;
+  let match = query.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(\d{2,4})?$/i);
+  if (match) {
+    const month = monthLookup[match[1].toLowerCase()];
+    const year = normalizeSearchYear(match[2]);
+    if (!month) return null;
+    return { day: null, month, year };
+  }
+  match = query.match(/^(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(\d{2,4})?$/i);
+  if (match) {
+    const day = Number(match[1]);
+    const month = monthLookup[match[2].toLowerCase()];
+    const year = normalizeSearchYear(match[3]);
+    if (!month || day < 1 || day > 31) return null;
+    if (year && !isValidDateParts(year, month, day)) return null;
+    return { day, month, year };
+  }
+  match = query.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?$/);
+  if (match) {
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = normalizeSearchYear(match[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    if (year && !isValidDateParts(year, month, day)) return null;
+    return { day, month, year };
+  }
+  match = query.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (!isValidDateParts(year, month, day)) return null;
+    return { day, month, year };
+  }
+  return null;
+};
+
 const parseAuditDateString = (value) => {
   if (!value) return null;
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) {
@@ -111,7 +174,7 @@ const getAuditDateRangeError = (filters) => {
   return "";
 };
 
-const buildAuditParams = (filters, limit, cursor) => {
+const buildAuditParams = (filters, limit, cursor, searchText) => {
   let startAt = null;
   let endAt = null;
   if (filters.startDate) {
@@ -127,6 +190,8 @@ const buildAuditParams = (filters, limit, cursor) => {
       endAt = new Date(endMs);
     }
   }
+  const search = String(searchText || "").trim();
+  const searchDate = parseSearchDateParts(search);
   return {
     startAt: startAt ? startAt.toISOString() : null,
     endAt: endAt ? endAt.toISOString() : null,
@@ -135,6 +200,10 @@ const buildAuditParams = (filters, limit, cursor) => {
     limit: limit || AUDIT_PAGE_SIZE,
     beforeAt: cursor?.beforeAt || null,
     beforeId: cursor?.beforeId || null,
+    search: search ? search : null,
+    searchDay: searchDate?.day || null,
+    searchMonth: searchDate?.month || null,
+    searchYear: searchDate?.year || null,
   };
 };
 
@@ -156,8 +225,9 @@ function useMediaQuery(query) {
   return matches;
 }
 
-export default function ManagePage({ adminPass, onAdminPasswordChange }) {
+export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const isMobile = useMediaQuery("(max-width: 900px)");
+  const supportsInfiniteScroll = typeof window !== "undefined" && "IntersectionObserver" in window;
   const [openPanels, setOpenPanels] = useState({
     semester: true,
     projects: true,
@@ -189,11 +259,14 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditHasMore, setAuditHasMore] = useState(true);
   const [auditCursor, setAuditCursor] = useState(null);
+  const [auditExporting, setAuditExporting] = useState(false);
   const jurorTimerRef = useRef(null);  // debounce for loadJurors-only refetch
   const auditTimerRef = useRef(null);  // debounce for loadAuditLogs refetch
   const pinCopyTimerRef = useRef(null);
   const adminSecurityRef = useRef(null);
   const auditCardRef = useRef(null);
+  const auditScrollRef = useRef(null);
+  const auditSentinelRef = useRef(null);
   const importFileRef = useRef(null);
 
   const [dbBackupMode, setDbBackupMode] = useState(null); // null | 'export' | 'import'
@@ -299,7 +372,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
       return;
     }
     try {
-      const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor);
+      const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, auditSearch);
       const rows = await adminListAuditLogs(params, adminPass);
       if (mode === "append") {
         setAuditLogs((prev) => [...prev, ...(rows || [])]);
@@ -316,7 +389,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     } finally {
       setAuditLoading(false);
     }
-  }, [adminPass]);
+  }, [adminPass, auditSearch]);
 
   const applySemesterPatch = useCallback((patch) => {
     if (!patch?.id) return;
@@ -400,7 +473,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
       loadJurors(),
       loadSettings(),
     ])
-      .catch((e) => setError(e?.message || "Could not load manage data."))
+      .catch((e) => setError(e?.message || "Could not load settings data."))
       .finally(() => setLoading(false));
   }, [activeSemesterId, adminPass, loadProjects, loadJurors, loadSettings]);
 
@@ -424,22 +497,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     return () => clearInterval(interval);
   }, [adminPass, activeSemesterId, loadProjects, loadJurors, loadSettings, refreshSemesters]);
 
-  const visibleAuditLogs = useMemo(() => {
-    const query = auditSearch.trim().toLowerCase();
-    if (!query) return auditLogs;
-    return auditLogs.filter((log) => {
-      const message = String(log?.message || "").toLowerCase();
-      const action = String(log?.action || "").toLowerCase();
-      const actor = String(log?.actor_type || "").toLowerCase();
-      const entity = String(log?.entity_type || "").toLowerCase();
-      return (
-        message.includes(query)
-        || action.includes(query)
-        || actor.includes(query)
-        || entity.includes(query)
-      );
-    });
-  }, [auditLogs, auditSearch]);
+  const visibleAuditLogs = auditLogs;
 
   useLayoutEffect(() => {
     const adminEl = adminSecurityRef.current;
@@ -496,6 +554,45 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
       loadAuditLogs(auditFilters, { mode: "replace", cursor: null }).catch(() => {});
     }, 600);
   }, [adminPass, auditFilters, loadAuditLogs]);
+
+  // Debounced search refetch (server-side search, reset pagination)
+  useEffect(() => {
+    if (!adminPass) return;
+    if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
+    setAuditCursor(null);
+    setAuditHasMore(true);
+    auditTimerRef.current = setTimeout(() => {
+      auditTimerRef.current = null;
+      loadAuditLogs(auditFilters, { mode: "replace", cursor: null }).catch(() => {});
+    }, 350);
+    return () => {
+      if (auditTimerRef.current) {
+        clearTimeout(auditTimerRef.current);
+        auditTimerRef.current = null;
+      }
+    };
+  }, [auditSearch, adminPass, auditFilters, loadAuditLogs]);
+
+  // Infinite scroll: load older audit logs when the sentinel comes into view
+  useEffect(() => {
+    if (!supportsInfiniteScroll) return;
+    const root = auditScrollRef.current;
+    const sentinel = auditSentinelRef.current;
+    if (!root || !sentinel) return;
+    if (!auditHasMore || auditLoading) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        if (!auditHasMore || auditLoading) return;
+        if (!auditCursor) return;
+        loadAuditLogs(auditFilters, { mode: "append", cursor: auditCursor });
+      },
+      { root, rootMargin: "200px 0px", threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [supportsInfiniteScroll, auditHasMore, auditLoading, auditCursor, auditFilters, loadAuditLogs]);
 
   useEffect(() => {
     if (!adminPass) return;
@@ -972,6 +1069,39 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
     loadAuditLogs(auditFilters, { mode: "append", cursor: auditCursor });
   };
 
+  const handleAuditExport = async () => {
+    if (!adminPass) return;
+    setAuditExporting(true);
+    setAuditError("");
+    try {
+      const pageSize = 500;
+      let cursor = null;
+      let all = [];
+      let loops = 0;
+      while (true) {
+        const params = buildAuditParams(auditFilters, pageSize, cursor, auditSearch);
+        const rows = await adminListAuditLogs(params, adminPass);
+        if (!rows || rows.length === 0) break;
+        all = [...all, ...rows];
+        if (rows.length < pageSize) break;
+        const last = rows[rows.length - 1];
+        cursor = { beforeAt: last.created_at, beforeId: last.id };
+        loops += 1;
+        if (loops > 200) break; // safety cap (~100k rows)
+      }
+      if (!all.length) {
+        setMessage("No audit entries found for export.");
+        return;
+      }
+      await exportAuditLogsXLSX(all, { filters: auditFilters, search: auditSearch });
+      setMessage("Audit log exported.");
+    } catch (e) {
+      setAuditError(e?.message || "Could not export audit logs.");
+    } finally {
+      setAuditExporting(false);
+    }
+  };
+
   const handleRequestDelete = async (target) => {
     if (!target || !target.id) return;
     setDeleteTarget(target);
@@ -1211,7 +1341,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
         <section className="manage-section" style={{ gridColumn: "1 / -1" }}>
           <h3 className="manage-section-title">Data</h3>
           <div className="manage-section-grid">
-            <ManageSemesterPanel
+            <SemesterSettingsPanel
               semesters={semesterList}
               activeSemesterId={activeSemesterId}
               isMobile={isMobile}
@@ -1229,7 +1359,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               }
             />
 
-            <ManageProjectsPanel
+            <ProjectSettingsPanel
               projects={projects}
               semesterName={activeSemester?.name || ""}
               isMobile={isMobile}
@@ -1247,7 +1377,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               }
             />
 
-            <ManageJurorsPanel
+            <JurorSettingsPanel
               jurors={jurors}
               isMobile={isMobile}
               isOpen={openPanels.jurors}
@@ -1265,7 +1395,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               }
             />
 
-            <ManagePermissionsPanel
+            <AccessSettingsPanel
               settings={settings}
               jurors={jurors}
               isMobile={isMobile}
@@ -1301,7 +1431,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               >
                 <div className="manage-card-title">
                   <span className="manage-card-icon" aria-hidden="true"><HistoryIcon /></span>
-                  Audit Log
+                  <span className="section-label">Audit Log</span>
                 </div>
                 {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.audit ? " open" : ""}`} />}
               </button>
@@ -1347,12 +1477,23 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
                         />
                       </div>
                     </div>
+                    <div className="manage-audit-actions">
+                      <button
+                        type="button"
+                        className="manage-btn ghost"
+                        onClick={handleAuditExport}
+                        disabled={auditExporting}
+                      >
+                        <DownloadIcon /> Export XLSX
+                      </button>
+                    </div>
 
                     {auditError && <div className="manage-hint manage-hint-error">{auditError}</div>}
                     {auditLoading && <div className="manage-hint">Loading audit logs…</div>}
+                    {auditExporting && <div className="manage-hint">Preparing export…</div>}
                   </div>
 
-                  <div className="manage-audit-scroll" role="region" aria-label="Audit log list">
+                  <div className="manage-audit-scroll" ref={auditScrollRef} role="region" aria-label="Audit log list">
                     {!auditLoading && visibleAuditLogs.length === 0 && (
                       <div className="manage-empty manage-empty-subtle">No audit entries found.</div>
                     )}
@@ -1368,8 +1509,18 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
                         ))}
                       </div>
                     )}
+
+                    {auditHasMore && (
+                      <div ref={auditSentinelRef} className="manage-audit-sentinel" aria-hidden="true" />
+                    )}
+
+                    {auditLoading && auditHasMore && (
+                      <div className="manage-audit-footer">
+                        <span className="manage-hint">Loading older events…</span>
+                      </div>
+                    )}
                   </div>
-                  {!auditLoading && auditHasMore && (
+                  {!supportsInfiniteScroll && !auditLoading && auditHasMore && (
                     <div className="manage-audit-footer">
                       <button
                         className="manage-btn ghost"
@@ -1394,7 +1545,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               >
                 <div className="manage-card-title">
                   <span className="manage-card-icon" aria-hidden="true"><DownloadIcon /></span>
-                  Export Tools
+                  <span className="section-label">Export Tools</span>
                 </div>
                 {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.export ? " open" : ""}`} />}
               </button>
@@ -1426,7 +1577,7 @@ export default function ManagePage({ adminPass, onAdminPasswordChange }) {
               >
                 <div className="manage-card-title">
                   <span className="manage-card-icon" aria-hidden="true"><DatabaseIcon /></span>
-                  Database Backup
+                  <span className="section-label">Database Backup</span>
                 </div>
                 {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.dbbackup ? " open" : ""}`} />}
               </button>

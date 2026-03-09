@@ -147,6 +147,45 @@ function formatExportTimestamp(value) {
   return `${dd}.${mm}.${yyyy} ${hh}:${min}:${ss}`;
 }
 
+function buildAuditExportFilename(filters = {}, search = "") {
+  const parts = [];
+  if (filters.startDate) parts.push(String(filters.startDate).split("T")[0]);
+  if (filters.endDate) parts.push(String(filters.endDate).split("T")[0]);
+  const searchTag = String(search || "").trim();
+  if (searchTag) parts.push(searchTag.slice(0, 24));
+  const tag = parts.length ? parts.join("_") : "all";
+  return buildExportFilename("audit-log", tag);
+}
+
+export async function exportAuditLogsXLSX(rows, { filters = {}, search = "" } = {}) {
+  const XLSX = await import("xlsx");
+  const headers = [
+    "created_at",
+    "actor_type",
+    "action",
+    "entity_type",
+    "message",
+    "actor_id",
+    "entity_id",
+    "metadata",
+  ];
+  const data = (rows || []).map((r) => [
+    formatExportTimestamp(r.created_at),
+    r.actor_type ?? "",
+    r.action ?? "",
+    r.entity_type ?? "",
+    r.message ?? "",
+    r.actor_id ?? "",
+    r.entity_id ?? "",
+    r.metadata ? JSON.stringify(r.metadata) : "",
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  ws["!cols"] = [22, 12, 18, 16, 48, 36, 36, 60].map((w) => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Audit Log");
+  XLSX.writeFile(wb, buildAuditExportFilename(filters, search));
+}
+
 export function buildExportFilename(type, semesterName, ext = "xlsx") {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -213,6 +252,33 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [] } =
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Jury Evaluations");
   XLSX.writeFile(wb, buildExportFilename("details", semesterName));
+}
+
+// ── Grid (.xlsx) export ───────────────────────────────────────
+// exportRows: { name, dept, statusLabel, scores: { [groupId]: number|null } }[]
+// groups:     { id, label, groupNo }[]
+export async function exportGridXLSX(exportRows, groups, { semesterName = "" } = {}) {
+  const XLSX = await import("xlsx");
+
+  const groupHeaders = groups.map((g) => g.groupNo != null ? `Group ${g.groupNo}` : g.label);
+  const headers = ["Juror", "Institution", "Status", ...groupHeaders];
+
+  const data = exportRows.map((r) => [
+    r.name,
+    r.dept ?? "",
+    r.statusLabel,
+    ...groups.map((g) => {
+      const v = r.scores[g.id];
+      return v !== null && v !== undefined ? v : "";
+    }),
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  const colWidths = [28, 28, 18, ...groups.map(() => 10)];
+  ws["!cols"] = colWidths.map((w) => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Evaluation Grid");
+  XLSX.writeFile(wb, buildExportFilename("grid", semesterName));
 }
 
 // ── Completion % — mirrors countFilled / totalFields in useJuryState ─────────

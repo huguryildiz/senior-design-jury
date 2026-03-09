@@ -3,7 +3,7 @@
 // Shared JSX components for admin tab modules.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckIcon, HourglassIcon, PencilIcon, CircleIcon } from "../shared/Icons";
+import { jurorStatusMeta } from "./scoreHelpers";
 export { HomeIcon, RefreshIcon } from "../shared/Icons";
 // ============================================================
 
@@ -90,8 +90,8 @@ export function FilterPopoverPortal({ open, anchorRect, anchorEl, onClose, class
 }
 
 // ── Status badge ──────────────────────────────────────────────
-// editingFlag = "editing" takes highest visual priority —
-// it means the juror is actively re-editing a submitted form.
+// Renders a badge for any juror workflow state or cell state.
+// Uses jurorStatusMeta for all label/icon/color lookups.
 export function StatusBadge({ status, editingFlag, variant, icon, children }) {
   if (variant || icon || children) {
     return (
@@ -101,9 +101,12 @@ export function StatusBadge({ status, editingFlag, variant, icon, children }) {
       </span>
     );
   }
-  if (editingFlag === "editing")    return <span className="status-badge editing"><PencilIcon />Editing</span>;
-  if (status === "submitted" || status === "completed" || status === "all_submitted" || status === "group_submitted")
-    return <span className="status-badge submitted"><CheckIcon />Submitted</span>;
-  if (status === "in_progress")     return <span className="status-badge in-progress"><HourglassIcon />In Progress</span>;
-  return <span className="status-badge not-started"><CircleIcon />Not started</span>;
+  const key = editingFlag === "editing" ? "editing" : (status ?? "not_started");
+  const meta = jurorStatusMeta[key] ?? jurorStatusMeta.not_started;
+  const Icon = meta.icon;
+  return (
+    <span className={`status-badge ${meta.colorClass}`}>
+      <Icon />{meta.label}
+    </span>
+  );
 }

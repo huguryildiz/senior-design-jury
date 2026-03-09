@@ -1,7 +1,7 @@
 /* admin-summary.css — Summary tab: rank cards, group cards, completion, eval badges */
 
-/* ── Summary tab — rank cards ───────────────────────────────── */
-.summary-page { padding: 0; background: transparent; }
+/* ── Rankings tab — rank cards ─────────────────────────────── */
+.rankings-page { padding: 0; background: transparent; }
 .rank-list { display: flex; flex-direction: column; gap: 14px; }
 .rank-card {
   position: relative;
