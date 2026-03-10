@@ -25,6 +25,7 @@ import {
   EyeIcon,
   EyeOffIcon,
 } from "./shared/Icons";
+import { adminBootstrapPassword, adminLogin, adminSecurityState } from "./shared/api";
 import MinimalLoaderOverlay from "./shared/MinimalLoaderOverlay";
 import "./styles/home.css";
 
@@ -44,21 +45,109 @@ export default function App() {
   const [adminInput,     setAdminInput]     = useState("");
   const [adminAuthError, setAdminAuthError] = useState("");
   const [adminShowPass,  setAdminShowPass]  = useState(false);
+  const [adminSetupPass, setAdminSetupPass] = useState("");
+  const [adminSetupConfirm, setAdminSetupConfirm] = useState("");
+  const [adminSetupError, setAdminSetupError] = useState("");
+  const [adminSetupLoading, setAdminSetupLoading] = useState(false);
+  const [adminSetupShowPass, setAdminSetupShowPass] = useState(false);
+  const [adminSecurityLoading, setAdminSecurityLoading] = useState(false);
+  const [adminPasswordSet, setAdminPasswordSet] = useState(null);
+
+  const isStrongPassword = (value) => {
+    const v = String(value || "");
+    return (
+      v.length >= 10
+      && /[a-z]/.test(v)
+      && /[A-Z]/.test(v)
+      && /\d/.test(v)
+      && /[^A-Za-z0-9]/.test(v)
+    );
+  };
 
   useEffect(() => {
     try {
       localStorage.setItem("tedu_portal_page", page);
     } catch {}
   }, [page]);
+
+  useEffect(() => {
+    if (page !== "admin" || adminUnlocked) return;
+    let active = true;
+    setAdminSecurityLoading(true);
+    adminSecurityState()
+      .then((state) => {
+        if (!active) return;
+        setAdminPasswordSet(!!state?.admin_password_set);
+      })
+      .catch(() => {
+        if (!active) return;
+        setAdminPasswordSet(true);
+        setAdminAuthError("Could not check admin setup. Please try again.");
+      })
+      .finally(() => {
+        if (!active) return;
+        setAdminSecurityLoading(false);
+      });
+    return () => { active = false; };
+  }, [page, adminUnlocked]);
   
-  function handleAdminLogin() {
+  async function handleAdminLogin() {
     const pass = adminInput.trim();
     if (!pass) { setAdminAuthError("Please enter the admin password."); return; }
-    adminPassRef.current = pass;
-    setAdminInput("");
     setAdminAuthError("");
     setAdminChecking(true);
-    setAdminUnlocked(true);
+    try {
+      const valid = await adminLogin(pass);
+      if (!valid) {
+        setAdminAuthError("Invalid password.");
+        setAdminChecking(false);
+        return;
+      }
+      adminPassRef.current = pass;
+      setAdminInput("");
+      setAdminUnlocked(true);
+    } catch {
+      setAdminAuthError("Connection error — try again.");
+      setAdminChecking(false);
+    }
+  }
+
+  async function handleAdminSetup() {
+    const pass = adminSetupPass.trim();
+    const confirm = adminSetupConfirm.trim();
+    if (!pass) {
+      setAdminSetupError("Admin password is required.");
+      return;
+    }
+    if (!isStrongPassword(pass)) {
+      setAdminSetupError("Use at least 10 characters, including an uppercase letter (A-Z), a lowercase letter (a-z), a number (0-9), and a symbol (e.g. !@#$%^&*).");
+      return;
+    }
+    if (pass !== confirm) {
+      setAdminSetupError("Passwords do not match.");
+      return;
+    }
+    setAdminSetupError("");
+    setAdminSetupLoading(true);
+    try {
+      await adminBootstrapPassword(pass);
+      adminPassRef.current = pass;
+      setAdminSetupPass("");
+      setAdminSetupConfirm("");
+      setAdminPasswordSet(true);
+      setAdminChecking(true);
+      setAdminUnlocked(true);
+    } catch (e) {
+      const msg = String(e?.message || "");
+      if (msg.includes("already_initialized")) {
+        setAdminPasswordSet(true);
+        setAdminSetupError("Admin password is already set. Please log in.");
+      } else {
+        setAdminSetupError("Could not set admin password. Please try again.");
+      }
+    } finally {
+      setAdminSetupLoading(false);
+    }
   }
 
   function handleAuthFail(msg) {
@@ -82,6 +171,78 @@ export default function App() {
   // ── Admin panel ───────────────────────────────────────────
   if (page === "admin") {
     if (!adminUnlocked) {
+      if (adminPasswordSet === false) {
+        return (
+          <div className="premium-screen">
+            <div className="premium-card">
+              <div className="premium-header">
+                <div className="premium-icon-square" aria-hidden="true"><ShieldUserIcon /></div>
+                <div className="premium-title">Admin Setup</div>
+                <div className="premium-subtitle">
+                  Create the admin password to enable secure access.
+                </div>
+              </div>
+              <div className="premium-input-wrap">
+                <input
+                  type={adminSetupShowPass ? "text" : "password"}
+                  placeholder="New admin password"
+                  value={adminSetupPass}
+                  onChange={(e) => {
+                    setAdminSetupPass(e.target.value);
+                    if (adminSetupError) setAdminSetupError("");
+                  }}
+                  autoComplete="new-password"
+                  autoFocus
+                  className="premium-input"
+                  disabled={adminSetupLoading || adminSecurityLoading}
+                />
+              </div>
+              <div className="premium-input-wrap">
+                <input
+                  type={adminSetupShowPass ? "text" : "password"}
+                  placeholder="Confirm admin password"
+                  value={adminSetupConfirm}
+                  onChange={(e) => {
+                    setAdminSetupConfirm(e.target.value);
+                    if (adminSetupError) setAdminSetupError("");
+                  }}
+                  autoComplete="new-password"
+                  className="premium-input"
+                  disabled={adminSetupLoading || adminSecurityLoading}
+                />
+                <button
+                  type="button"
+                  className="premium-input-toggle"
+                  onClick={() => setAdminSetupShowPass((v) => !v)}
+                  aria-label={adminSetupShowPass ? "Hide password" : "Show password"}
+                  title={adminSetupShowPass ? "Hide password" : "Show password"}
+                >
+                  {adminSetupShowPass ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              {adminSetupError && (
+                <div className="premium-error-banner is-critical" role="alert">
+                  <AlertCircleIcon />
+                  <span>{adminSetupError}</span>
+                </div>
+              )}
+              <button
+                className="premium-btn-primary"
+                onClick={handleAdminSetup}
+                disabled={adminSetupLoading || adminSecurityLoading}
+              >
+                {adminSetupLoading ? "Setting..." : "Set Admin Password"}
+              </button>
+              <button
+                className="premium-btn-link"
+                onClick={() => { setPage("home"); setAdminAuthError(""); }}
+              >
+                ← Return Home
+              </button>
+            </div>
+          </div>
+        );
+      }
       return (
         <div className="premium-screen">
           <div className="premium-card">
@@ -103,6 +264,7 @@ export default function App() {
                 autoComplete="current-password"
                 autoFocus
                 className="premium-input"
+                disabled={adminSecurityLoading || adminPasswordSet === null}
               />
               <button
                 type="button"
@@ -115,12 +277,16 @@ export default function App() {
               </button>
             </div>
             {adminAuthError && (
-              <div className="premium-error-banner" role="alert">
+              <div className="premium-error-banner is-critical" role="alert">
                 <AlertCircleIcon />
                 <span>{adminAuthError}</span>
               </div>
             )}
-            <button className="premium-btn-primary" onClick={handleAdminLogin} disabled={adminChecking}>
+            <button
+              className="premium-btn-primary"
+              onClick={handleAdminLogin}
+              disabled={adminChecking || adminSecurityLoading || adminPasswordSet === null}
+            >
               Log In
             </button>
             <button className="premium-btn-link" onClick={() => { setPage("home"); setAdminAuthError(""); }}>

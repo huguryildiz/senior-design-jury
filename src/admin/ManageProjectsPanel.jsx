@@ -1,6 +1,6 @@
 // src/admin/ManageProjectsPanel.jsx
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarRangeIcon, ChevronDownIcon, FileTextIcon, FolderKanbanIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, CloudUploadIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
@@ -66,6 +66,7 @@ export default function ManageProjectsPanel({
   onEditGroup,
   onDeleteProject,
 }) {
+  const panelRef = useRef(null);
   const fileRef = useRef(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -78,6 +79,14 @@ export default function ManageProjectsPanel({
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const updateScrollState = (el) => {
+    if (!el) return;
+    const isOverflowing = el.scrollWidth > el.clientWidth + 1;
+    el.classList.toggle("is-overflowing", isOverflowing);
+    el.classList.toggle("is-scrolled", el.scrollLeft > 0);
+  };
+  const handleMetaScroll = (e) => updateScrollState(e.currentTarget);
 
   const canSubmit =
     String(form.group_no).trim() &&
@@ -116,6 +125,20 @@ export default function ManageProjectsPanel({
   const visibleProjects = normalizedSearch ? filteredProjects : orderedProjects.slice(0, 3);
   const hiddenProjects = normalizedSearch ? [] : orderedProjects.slice(3);
 
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+    const updateAll = () => {
+      root.querySelectorAll(".manage-meta-scroll").forEach((el) => updateScrollState(el));
+    };
+    const raf = requestAnimationFrame(updateAll);
+    window.addEventListener("resize", updateAll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updateAll);
+    };
+  }, [visibleProjects, hiddenProjects, showMore, searchTerm, isOpen, isMobile]);
+
   const renderProject = (p, idx) => {
     const students = splitStudents(p.group_students);
     const groupLabel = Number.isFinite(Number(p.group_no)) && Number(p.group_no) > 0
@@ -128,11 +151,11 @@ export default function ManageProjectsPanel({
           <div className="manage-item-title">Group {groupLabel}</div>
           <div className="manage-item-sub manage-meta-line">
             <span className="manage-meta-icon" aria-hidden="true"><FileTextIcon /></span>
-            <span>{p.project_title || "—"}</span>
+            <span className="manage-meta-scroll" onScroll={handleMetaScroll}>{p.project_title || "—"}</span>
           </div>
           <div className="manage-item-sub manage-meta-line">
             <span className="manage-meta-icon" aria-hidden="true"><UsersLucideIcon /></span>
-            <span className="manage-students">
+            <span className="manage-students manage-meta-scroll" onScroll={handleMetaScroll}>
               {students.length
                 ? students.map((name, sidx) => (
                     <span key={`${p.id}-student-${sidx}`} className="manage-student">
@@ -296,7 +319,7 @@ export default function ManageProjectsPanel({
   };
 
   return (
-    <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
+    <div ref={panelRef} className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
       <button
         type="button"
         className="manage-card-header"

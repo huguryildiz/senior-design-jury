@@ -120,7 +120,9 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
             pct > 0     ? "#f97316" : "#e2e8f0";
 
           const deptLine = String(latestRow?.juryDept || dept || "").trim();
-          const lastActivity = latestRow?.updatedAt ? formatTs(latestRow.updatedAt) : "—";
+          const lastActivity = (latestRow?.finalSubmittedAt || latestRow?.updatedAt)
+            ? formatTs(latestRow?.finalSubmittedAt || latestRow?.updatedAt)
+            : "—";
           const progressSummary = totalGroups > 0
             ? `${scoredCount} / ${totalGroups} groups scored`
             : "No groups assigned";

@@ -134,14 +134,10 @@ export default function EvalStep({
 
   const pid = project.project_id;
 
-  const currentFilled = CRITERIA.filter((c) => isScoreFilled(scores[pid]?.[c.id])).length;
-  const currentTotal  = CRITERIA.length;
   const completedGroups = (projects || []).filter((p) =>
     CRITERIA.every((c) => isScoreFilled(scores[p.project_id]?.[c.id]))
   ).length;
   const totalGroups = projects?.length || 0;
-  const groupPillStatus =
-    currentFilled >= currentTotal ? "complete" : currentFilled > 0 ? "progress" : "empty";
 
   const totalScore = CRITERIA.reduce(
     (s, c) => s + (parseInt(scores[pid]?.[c.id], 10) || 0),
@@ -184,16 +180,16 @@ export default function EvalStep({
         {/* Row 1: Juror name (Dept) · autosave · HOME icon */}
         <div className="eval-identity-bar">
           <div className="eval-identity-left">
-            <span className="eval-identity-icon" aria-hidden="true"><UserCheckIcon /></span>
-            <span className="eval-identity-text eval-scroll-line">
-              {juryName}
-              {juryDept && (
-                <span className="eval-identity-dept">
-                  <LandmarkIcon />
-                  {juryDept}
-                </span>
-              )}
-            </span>
+            <div className="eval-identity-name-row">
+              <span className="eval-identity-icon" aria-hidden="true"><UserCheckIcon /></span>
+              <span className="eval-identity-name eval-scroll-line">{juryName}</span>
+            </div>
+            {juryDept && (
+              <span className="eval-identity-dept eval-scroll-line">
+                <LandmarkIcon />
+                <span className="eval-identity-dept-text">{juryDept}</span>
+              </span>
+            )}
           </div>
           <div className="eval-identity-actions">
             <span className="eval-identity-save">
@@ -228,12 +224,6 @@ export default function EvalStep({
                   <ChevronDownIcon />
                 </button>
               </div>
-              <span className={`eval-status-pill ${groupPillStatus} eval-group-pill`}>
-                {groupPillStatus === "complete" && <CheckIcon />}
-                {groupPillStatus === "progress" && <HourglassIcon />}
-                {groupPillStatus === "empty"    && <CircleIcon />}
-                {currentFilled}/{currentTotal}
-              </span>
             </div>
             <div className="eval-project-details">
               {project.project_title && (

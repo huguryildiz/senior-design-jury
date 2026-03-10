@@ -351,18 +351,25 @@
 }
 .eval-identity-left {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   min-width: 0;
   flex: 1;
 }
-.eval-identity-text {
+.eval-identity-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+.eval-identity-name {
   font-size: 16px;
   font-weight: 700;
   color: #0f172a;
-  flex: 1 1 0;
-  min-width: 0;
   line-height: 1.3;
+  min-width: 0;
 }
 .eval-identity-dept {
   font-size: 13px;
@@ -371,13 +378,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 6px;
 }
 .eval-identity-dept svg {
   width: 14px;
   height: 14px;
   color: #94a3b8;
 }
+.eval-identity-dept-text { margin-left: 6px; }
 .eval-identity-icon {
   flex-shrink: 0;
   display: flex;
@@ -441,6 +448,10 @@
   border-radius: 14px;
   padding: 10px 12px;
   min-width: 0;
+}
+.eval-project-card:not(.is-open) {
+  padding: 8px 12px;
+  gap: 2px;
 }
 .eval-project-summary {
   display: flex;
@@ -527,6 +538,13 @@
   mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent 100%);
 }
 .eval-scroll-line::-webkit-scrollbar { display: none; }
+
+/* Prevent mask fade on header identity lines (can look blurry on the left edge). */
+.eval-identity-name.eval-scroll-line,
+.eval-identity-dept.eval-scroll-line {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
 
 /* Passive auto-save indicator (in header) */
 .autosave-dot {
@@ -1186,7 +1204,7 @@
   .rubric-range { font-size: 11px; }
   .group-nav-btn    { height: 34px; font-size: 12px; }
   .group-nav-select { height: 34px; font-size: 12px; padding: 0 8px; }
-  .eval-identity-text { font-size: 15px; }
+  .eval-identity-name { font-size: 14px; }
   .eval-identity-actions { gap: 6px; }
   .eval-group-label { white-space: nowrap; }
   .eval-submit-btn { height: 48px; }
@@ -1204,7 +1222,7 @@
   .eval-screen { --screen-pad: clamp(14px, 2.5vw, 20px); --screen-pad-2: calc(var(--screen-pad) * 2); }
   .eval-card   { width: min(510px, 66vw); }
   .eval-sticky-header { padding: 8px 16px 6px; gap: 6px; }
-  .eval-identity-text { font-size: 14px; }
+  .eval-identity-name { font-size: 13px; }
   .eval-group-label   { font-size: 14px; }
   .eval-body { padding: 14px 18px 24px; gap: 10px; }
   .crit-card { padding: 14px 16px; }

@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS public.juror_semester_auth (
   semester_id     uuid NOT NULL REFERENCES public.semesters(id) ON DELETE CASCADE,
   pin_hash        text NOT NULL,
   pin_reveal_pending boolean NOT NULL DEFAULT false,
-  pin_plain_once  text,
+  pin_plain_once  text, -- encrypted base64 with "enc:" prefix (legacy rows may be plaintext)
   created_at      timestamptz NOT NULL DEFAULT now(),
   failed_attempts integer NOT NULL DEFAULT 0,
   locked_until    timestamptz,
@@ -110,6 +110,32 @@ ON CONFLICT (key) DO NOTHING;
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS poster_date date;
 ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+-- Encrypt legacy pin_plain_once values if a secret is configured.
+-- Requires a Vault secret named 'pin_secret'
+DO $$
+DECLARE
+  v_secret text;
+BEGIN
+  SELECT decrypted_secret INTO v_secret
+  FROM vault.decrypted_secrets
+  WHERE name = 'pin_secret'
+  LIMIT 1;
+  IF v_secret IS NOT NULL AND v_secret <> '' THEN
+    UPDATE juror_semester_auth
+    SET pin_plain_once = 'enc:' || encode(pgp_sym_encrypt(pin_plain_once, v_secret), 'base64')
+    WHERE pin_plain_once IS NOT NULL
+      AND pin_plain_once <> ''
+      AND pin_plain_once NOT LIKE 'enc:%';
+  END IF;
+END;
+$$;
+
+-- Normalize empty password hashes to NULL (legacy/manual rows)
+UPDATE public.settings
+SET value = NULL
+WHERE key IN ('admin_password_hash', 'delete_password_hash', 'backup_password_hash')
+  AND (value IS NULL OR value = '');
 
 -- Enforce unique group numbers per semester (safety for concurrent inserts).
 DO $$
@@ -907,7 +933,7 @@ BEGIN
   FROM settings
   WHERE key = 'admin_password_hash';
 
-  IF v_hash IS NULL THEN
+  IF v_hash IS NULL OR v_hash = '' THEN
     RETURN false;
   END IF;
 
@@ -929,6 +955,40 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.rpc_admin_security_state()
+RETURNS TABLE (
+  admin_password_set boolean,
+  delete_password_set boolean,
+  backup_password_set boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    EXISTS (
+      SELECT 1 FROM settings
+      WHERE key = 'admin_password_hash'
+        AND value IS NOT NULL
+        AND value <> ''
+    ),
+    EXISTS (
+      SELECT 1 FROM settings
+      WHERE key = 'delete_password_hash'
+        AND value IS NOT NULL
+        AND value <> ''
+    ),
+    EXISTS (
+      SELECT 1 FROM settings
+      WHERE key = 'backup_password_hash'
+        AND value IS NOT NULL
+        AND value <> ''
+    );
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public._verify_delete_password(p_password text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -942,7 +1002,7 @@ BEGIN
   FROM settings
   WHERE key = 'delete_password_hash';
 
-  IF v_hash IS NULL THEN
+  IF v_hash IS NULL OR v_hash = '' THEN
     RETURN false;
   END IF;
 
@@ -963,7 +1023,7 @@ BEGIN
   FROM settings
   WHERE key = 'delete_password_hash';
 
-  IF v_hash IS NULL THEN
+  IF v_hash IS NULL OR v_hash = '' THEN
     RAISE EXCEPTION 'delete_password_missing' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1025,7 +1085,7 @@ BEGIN
   FROM settings
   WHERE key = 'backup_password_hash';
 
-  IF v_hash IS NULL THEN
+  IF v_hash IS NULL OR v_hash = '' THEN
     RAISE EXCEPTION 'backup_password_missing' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1268,7 +1328,7 @@ BEGIN
   END IF;
 
   SELECT value INTO v_hash FROM settings WHERE key = 'backup_password_hash';
-  IF v_hash IS NOT NULL THEN
+  IF v_hash IS NOT NULL AND v_hash <> '' THEN
     RAISE EXCEPTION 'already_initialized';
   END IF;
 
@@ -1954,6 +2014,9 @@ DECLARE
   v_name text;
   v_inst text;
   v_created boolean := false;
+  v_active_semester uuid;
+  v_pin text;
+  v_hash text;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1977,6 +2040,28 @@ BEGIN
   VALUES (trim(p_juror_name), trim(p_juror_inst))
   RETURNING jurors.id, jurors.juror_name, jurors.juror_inst
   INTO v_id, v_name, v_inst;
+
+  SELECT id INTO v_active_semester
+  FROM semesters
+  WHERE is_active = true
+  ORDER BY updated_at DESC
+  LIMIT 1;
+
+  IF v_active_semester IS NOT NULL THEN
+    v_pin := lpad((floor(random() * 10000))::text, 4, '0');
+    v_hash := crypt(v_pin, gen_salt('bf'));
+
+    INSERT INTO juror_semester_auth (juror_id, semester_id, pin_hash)
+    VALUES (v_id, v_active_semester, v_hash)
+    ON CONFLICT (juror_id, semester_id) DO NOTHING;
+
+    INSERT INTO scores (semester_id, project_id, juror_id, poster_date)
+    SELECT p.semester_id, p.id, v_id, s.poster_date
+    FROM projects p
+    JOIN semesters s ON s.id = p.semester_id
+    WHERE p.semester_id = v_active_semester
+    ON CONFLICT ON CONSTRAINT scores_unique_eval DO NOTHING;
+  END IF;
 
   PERFORM public._audit_log(
     'admin',
@@ -2090,6 +2175,7 @@ DECLARE
   v_projects    bigint := 0;
   v_scores      bigint := 0;
   v_juror_auths bigint := 0;
+  v_semesters   bigint := 0;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -2118,15 +2204,16 @@ BEGIN
     RETURN jsonb_build_object('scores', v_scores);
 
   ELSIF p_type = 'juror' THEN
+    SELECT COUNT(DISTINCT semester_id) INTO v_semesters
+    FROM scores
+    WHERE juror_id = p_id
+      AND final_submitted_at IS NOT NULL;
     SELECT COUNT(*) INTO v_scores
     FROM scores
     WHERE juror_id = p_id
-      AND (
-        final_submitted_at IS NOT NULL
-        OR (technical IS NOT NULL AND written IS NOT NULL AND oral IS NOT NULL AND teamwork IS NOT NULL)
-      );
+      AND final_submitted_at IS NOT NULL;
     SELECT COUNT(*) INTO v_juror_auths FROM juror_semester_auth WHERE juror_id = p_id;
-    RETURN jsonb_build_object('scores', v_scores, 'juror_auths', v_juror_auths);
+    RETURN jsonb_build_object('scores', v_scores, 'juror_auths', v_juror_auths, 'active_semesters', v_semesters);
 
   ELSE
     RAISE EXCEPTION 'unsupported_type';
@@ -2151,6 +2238,8 @@ DECLARE
   v_juror_name text;
   v_juror_inst text;
   v_label text;
+  v_secret text;
+  v_pin_enc text;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -2158,6 +2247,14 @@ BEGIN
 
   v_pin := lpad((floor(random() * 10000))::text, 4, '0');
   v_hash := crypt(v_pin, gen_salt('bf'));
+  SELECT decrypted_secret INTO v_secret
+  FROM vault.decrypted_secrets
+  WHERE name = 'pin_secret'
+  LIMIT 1;
+  IF v_secret IS NULL OR v_secret = '' THEN
+    RAISE EXCEPTION 'pin_secret_missing';
+  END IF;
+  v_pin_enc := 'enc:' || encode(pgp_sym_encrypt(v_pin, v_secret), 'base64');
 
   SELECT juror_name, juror_inst
     INTO v_juror_name, v_juror_inst
@@ -2170,7 +2267,7 @@ BEGIN
   END IF;
 
   INSERT INTO juror_semester_auth (juror_id, semester_id, pin_hash, pin_reveal_pending, pin_plain_once, failed_attempts, locked_until)
-  VALUES (p_juror_id, p_semester_id, v_hash, true, v_pin, 0, null)
+  VALUES (p_juror_id, p_semester_id, v_hash, true, v_pin_enc, 0, null)
   ON CONFLICT (juror_id, semester_id) DO UPDATE
     SET pin_hash = EXCLUDED.pin_hash,
         failed_attempts = 0,
@@ -2178,6 +2275,13 @@ BEGIN
         pin_reveal_pending = true,
         pin_plain_once = EXCLUDED.pin_plain_once,
         last_seen_at = null;
+
+  INSERT INTO scores (semester_id, project_id, juror_id, poster_date)
+  SELECT p_semester_id, p.id, p_juror_id, s.poster_date
+  FROM projects p
+  JOIN semesters s ON s.id = p_semester_id
+  WHERE p.semester_id = p_semester_id
+  ON CONFLICT ON CONSTRAINT scores_unique_eval DO NOTHING;
 
   PERFORM public._audit_log(
     'admin',
@@ -2210,6 +2314,12 @@ BEGIN
   RETURN QUERY
     SELECT s.key, s.value
     FROM settings s
+    WHERE s.key NOT IN (
+      'pin_secret',
+      'admin_password_hash',
+      'delete_password_hash',
+      'backup_password_hash'
+    )
     ORDER BY s.key ASC;
 END;
 $$;
@@ -2596,7 +2706,7 @@ BEGIN
   FROM settings
   WHERE key = 'admin_password_hash';
 
-  IF v_hash IS NULL THEN
+  IF v_hash IS NULL OR v_hash = '' THEN
     RAISE EXCEPTION 'admin_password_hash_missing';
   END IF;
 
@@ -2624,6 +2734,50 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.rpc_admin_bootstrap_delete_password(
+  p_new_password text,
+  p_admin_password text
+)
+RETURNS TABLE (ok boolean)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_hash text;
+BEGIN
+  IF NOT public._verify_admin_password(p_admin_password) THEN
+    RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
+  END IF;
+
+  SELECT value INTO v_hash
+  FROM settings
+  WHERE key = 'delete_password_hash';
+
+  IF v_hash IS NOT NULL AND v_hash <> '' THEN
+    RAISE EXCEPTION 'already_initialized';
+  END IF;
+
+  INSERT INTO settings (key, value)
+  VALUES ('delete_password_hash', crypt(p_new_password, gen_salt('bf')))
+  ON CONFLICT (key) DO UPDATE
+    SET value = EXCLUDED.value,
+        updated_at = now();
+
+  PERFORM public._audit_log(
+    'admin',
+    null::uuid,
+    'delete_password_change',
+    'settings',
+    null::uuid,
+    'Admin changed delete password',
+    null
+  );
+
+  RETURN QUERY SELECT true;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.rpc_admin_bootstrap_password(
   p_new_password text
 )
@@ -2639,7 +2793,7 @@ BEGIN
   FROM settings
   WHERE key = 'admin_password_hash';
 
-  IF v_hash IS NOT NULL THEN
+  IF v_hash IS NOT NULL AND v_hash <> '' THEN
     RAISE EXCEPTION 'already_initialized';
   END IF;
 
@@ -2697,6 +2851,7 @@ DECLARE
   v_locked_until timestamptz;
   v_failed_attempts integer;
   v_pin_plain_once text;
+  v_secret text;
   v_reveal_pending boolean := false;
 BEGIN
   v_norm_name := lower(regexp_replace(trim(coalesce(p_juror_name, '')), '\\s+', ' ', 'g'));
@@ -2761,6 +2916,19 @@ BEGIN
     LIMIT 1;
 
     IF v_reveal_pending THEN
+      IF v_pin_plain_once IS NOT NULL AND v_pin_plain_once LIKE 'enc:%' THEN
+        SELECT decrypted_secret INTO v_secret
+        FROM vault.decrypted_secrets
+        WHERE name = 'pin_secret'
+        LIMIT 1;
+        IF v_secret IS NULL OR v_secret = '' THEN
+          RAISE EXCEPTION 'pin_secret_missing';
+        END IF;
+        v_pin_plain_once := pgp_sym_decrypt(
+          decode(substring(v_pin_plain_once from 5), 'base64'),
+          v_secret
+        );
+      END IF;
       IF v_pin_plain_once IS NULL THEN
         v_pin := lpad((floor(random() * 10000))::text, 4, '0');
         v_pin_hash := crypt(v_pin, gen_salt('bf'::text));
@@ -2846,6 +3014,7 @@ DECLARE
   v_locked timestamptz;
   v_sem_name text;
   v_pin_plain_once text;
+  v_secret text;
 BEGIN
   v_norm_name := lower(regexp_replace(trim(coalesce(p_juror_name, '')), '\\s+', ' ', 'g'));
   v_norm_inst := lower(regexp_replace(trim(coalesce(p_juror_inst, '')), '\\s+', ' ', 'g'));
@@ -2890,7 +3059,24 @@ BEGIN
   END IF;
 
   IF crypt(v_pin, v_auth.pin_hash) = v_auth.pin_hash THEN
-    v_pin_plain_once := CASE WHEN v_auth.pin_reveal_pending THEN v_auth.pin_plain_once ELSE null::text END;
+    v_pin_plain_once := null::text;
+    IF v_auth.pin_reveal_pending AND v_auth.pin_plain_once IS NOT NULL THEN
+      IF v_auth.pin_plain_once LIKE 'enc:%' THEN
+        SELECT decrypted_secret INTO v_secret
+        FROM vault.decrypted_secrets
+        WHERE name = 'pin_secret'
+        LIMIT 1;
+        IF v_secret IS NULL OR v_secret = '' THEN
+          RAISE EXCEPTION 'pin_secret_missing';
+        END IF;
+        v_pin_plain_once := pgp_sym_decrypt(
+          decode(substring(v_auth.pin_plain_once from 5), 'base64'),
+          v_secret
+        );
+      ELSE
+        v_pin_plain_once := v_auth.pin_plain_once;
+      END IF;
+    END IF;
     UPDATE juror_semester_auth
     SET last_seen_at = v_now,
         failed_attempts = 0,
@@ -2957,6 +3143,7 @@ GRANT EXECUTE ON FUNCTION public.rpc_get_juror_edit_state(uuid, uuid) TO anon, a
 GRANT EXECUTE ON FUNCTION public.rpc_finalize_juror_submission(uuid, uuid) TO anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.rpc_admin_login(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_security_state() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_scores(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_project_summary(uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_active_semester(uuid, text) TO anon, authenticated;
@@ -2979,4 +3166,5 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boole
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_delete_password(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text) TO anon, authenticated;

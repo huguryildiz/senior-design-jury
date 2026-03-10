@@ -1,6 +1,6 @@
 // src/admin/ManageJurorsPanel.jsx
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDownIcon,
   ClipboardCheckIcon,
@@ -17,6 +17,7 @@ import {
 } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
+import { formatTs } from "./utils";
 
 function parseCsv(text) {
   const rows = [];
@@ -75,6 +76,7 @@ export default function ManageJurorsPanel({
   onResetPin,
   onDeleteJuror,
 }) {
+  const panelRef = useRef(null);
   const fileRef = useRef(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -88,6 +90,15 @@ export default function ManageJurorsPanel({
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedSemesters, setExpandedSemesters] = useState(() => new Set());
+
+  const updateScrollState = (el) => {
+    if (!el) return;
+    const isOverflowing = el.scrollWidth > el.clientWidth + 1;
+    el.classList.toggle("is-overflowing", isOverflowing);
+    el.classList.toggle("is-scrolled", el.scrollLeft > 0);
+  };
+  const handleMetaScroll = (e) => updateScrollState(e.currentTarget);
 
   const canSubmit = form.juror_name.trim() && form.juror_inst.trim();
   const canEdit = editForm.juror_name.trim() && editForm.juror_inst.trim();
@@ -121,7 +132,23 @@ export default function ManageJurorsPanel({
             : [];
         const semestersText = scoredSemesters.join(" ");
         const semestersLabel = scoredSemesters.join(" · ");
-        const haystack = `${name} ${inst} ${semestersText} ${semestersLabel}`.toLowerCase();
+        const lastActivity =
+          j.lastActivityAt
+          || j.last_activity_at
+          || j.lastSeenAt
+          || j.last_seen_at
+          || "";
+        const lastActivityLabel = lastActivity ? formatTs(lastActivity) : "";
+        const haystack = [
+          name,
+          inst,
+          semestersText,
+          semestersLabel,
+          lastActivity,
+          lastActivityLabel,
+        ]
+          .join(" ")
+          .toLowerCase();
         return haystack.includes(normalizedSearch);
       })
     : orderedJurors;
@@ -133,6 +160,20 @@ export default function ManageJurorsPanel({
       normalizeKey(j.juryName || j.juror_name, j.juryDept || j.juror_inst)
     )
   );
+
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+    const updateAll = () => {
+      root.querySelectorAll(".manage-meta-scroll").forEach((el) => updateScrollState(el));
+    };
+    const raf = requestAnimationFrame(updateAll);
+    window.addEventListener("resize", updateAll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updateAll);
+    };
+  }, [visibleJurors, showAll, searchTerm, expandedSemesters, isOpen, isMobile]);
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -241,7 +282,7 @@ export default function ManageJurorsPanel({
   };
 
   return (
-    <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
+    <div ref={panelRef} className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
       <button
         type="button"
         className="manage-card-header"
@@ -305,7 +346,15 @@ export default function ManageJurorsPanel({
                   ? j.scored_semesters.filter(Boolean)
                   : [];
               const scoredLabel = scoredSemesters.join(" · ");
+              const maxSemesters = 3;
+              const scoredPreview = scoredSemesters.slice(0, maxSemesters).join(" · ");
+              const scoredSuffix =
+                scoredSemesters.length > maxSemesters
+                  ? ` +${scoredSemesters.length - maxSemesters} more`
+                  : "";
+              const scoredDisplay = scoredPreview ? `${scoredPreview}${scoredSuffix}` : "";
               const jurorId = j.jurorId || j.juror_id;
+              const isExpanded = expandedSemesters.has(jurorId);
               const lastActivityAt =
                 j.lastActivityAt
                 || j.last_activity_at
@@ -320,25 +369,68 @@ export default function ManageJurorsPanel({
                   <div>
                     <div className="manage-item-title">
                       <span className="manage-item-juror-name">
-                        <UserCheckIcon />
-                        {j.juryName || j.juror_name}
+                        <span className="manage-item-icon" aria-hidden="true">
+                          <UserCheckIcon />
+                        </span>
+                        <span className="manage-item-text manage-meta-scroll" onScroll={handleMetaScroll}>
+                          {j.juryName || j.juror_name}
+                        </span>
                       </span>
                     </div>
                     <div className="manage-item-sub manage-item-juror-inst">
-                      <LandmarkIcon />
-                      {j.juryDept || j.juror_inst}
+                      <span className="manage-item-icon" aria-hidden="true">
+                        <LandmarkIcon />
+                      </span>
+                      <span className="manage-item-text manage-meta-scroll" onScroll={handleMetaScroll}>
+                        {j.juryDept || j.juror_inst}
+                      </span>
                     </div>
                     {scoredSemesters.length > 0 && (
-                      <div className="manage-item-semesters" title={scoredLabel}>
+                      <div className={`manage-item-semesters${isExpanded ? " is-expanded" : ""}`} title={scoredLabel}>
                         <span className="manage-item-semesters-icon" aria-hidden="true">
                           <ClipboardCheckIcon />
                         </span>
-                        <span className="manage-item-semesters-text">{scoredLabel}</span>
+                        {isExpanded ? (
+                          <span className="manage-item-semesters-list">
+                            {scoredSemesters.map((s, idx) => (
+                              <span key={`${jurorId}-sem-${idx}`} className="manage-item-semester">
+                                {s}
+                                {idx < scoredSemesters.length - 1 && (
+                                  <span className="manage-item-semester-sep" aria-hidden="true">·</span>
+                                )}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <span
+                            className="manage-item-semesters-text manage-meta-scroll"
+                            onScroll={handleMetaScroll}
+                          >
+                            {scoredDisplay}
+                          </span>
+                        )}
+                        {scoredSemesters.length > maxSemesters && (
+                          <button
+                            type="button"
+                            className="manage-semesters-toggle"
+                            onClick={() => {
+                              setExpandedSemesters((prev) => {
+                                const next = new Set(prev);
+                                next.has(jurorId) ? next.delete(jurorId) : next.add(jurorId);
+                                return next;
+                              });
+                            }}
+                          >
+                            {isExpanded ? "Show less" : `+${scoredSemesters.length - maxSemesters} more`}
+                          </button>
+                        )}
                       </div>
                     )}
-                    <div className="manage-item-sub manage-meta-line">
-                      <LastActivity value={lastActivityAt} />
-                    </div>
+                    {lastActivityAt && (
+                      <div className="manage-item-sub manage-meta-line">
+                        <LastActivity value={lastActivityAt} />
+                      </div>
+                    )}
                   </div>
                   <div className="manage-item-actions">
                     {isLocked && (

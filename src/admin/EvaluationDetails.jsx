@@ -218,8 +218,13 @@ export default function EvaluationDetails({
     });
   }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, dateFrom, dateTo, dateFilterCol, filterComment, sortKey, sortDir]);
 
+  const DATE_MIN_YEAR = 2000;
+  const DATE_MAX_YEAR = 2100;
+  const DATE_MIN_DATETIME = "2000-01-01T00:00";
+  const DATE_MAX_DATETIME = "2100-12-31T23:59";
+
   function isValidDateParts(yyyy, mm, dd) {
-    if (yyyy < 2000 || yyyy > 2100) return false;
+    if (yyyy < DATE_MIN_YEAR || yyyy > DATE_MAX_YEAR) return false;
     if (mm < 1 || mm > 12) return false;
     if (dd < 1) return false;
     const maxDays = new Date(yyyy, mm, 0).getDate();
@@ -793,6 +798,8 @@ export default function EvaluationDetails({
                   step="60"
                   placeholder="YYYY-MM-DDThh:mm"
                   value={dateFrom}
+                  min={DATE_MIN_DATETIME}
+                  max={DATE_MAX_DATETIME}
                   onChange={(e) => handleFromChange(e.target.value)}
                   onBlur={handleDateBlur}
                   className={`timestamp-date-input ${dateError ? "is-invalid " : ""}${isDateFilterActive ? "filter-input-active" : ""}`}
@@ -806,6 +813,8 @@ export default function EvaluationDetails({
                   step="60"
                   placeholder="YYYY-MM-DDThh:mm"
                   value={dateTo}
+                  min={DATE_MIN_DATETIME}
+                  max={DATE_MAX_DATETIME}
                   onChange={(e) => handleToChange(e.target.value)}
                   onBlur={handleDateBlur}
                   className={`timestamp-date-input ${dateError ? "is-invalid " : ""}${isDateFilterActive ? "filter-input-active" : ""}`}

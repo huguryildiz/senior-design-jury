@@ -3,7 +3,7 @@
 // Admin settings page: semesters, projects, jurors, permissions.
 // ============================================================
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "../components/toast/useToast";
 import {
   listSemesters,
@@ -64,8 +64,13 @@ const formatAuditTimestamp = (value) => {
   return `${day} ${month} ${year} ${hours}:${minutes}`;
 };
 
+const AUDIT_MIN_YEAR = 2000;
+const AUDIT_MAX_YEAR = 2100;
+const AUDIT_MIN_DATETIME = "2000-01-01T00:00";
+const AUDIT_MAX_DATETIME = "2100-12-31T23:59";
+
 const isValidDateParts = (yyyy, mm, dd) => {
-  if (yyyy < 2000 || yyyy > 2100) return false;
+  if (yyyy < AUDIT_MIN_YEAR || yyyy > AUDIT_MAX_YEAR) return false;
   if (mm < 1 || mm > 12) return false;
   if (dd < 1) return false;
   const maxDays = new Date(yyyy, mm, 0).getDate();
@@ -142,18 +147,22 @@ const parseSearchDateParts = (value) => {
   return null;
 };
 
+const isValidAuditYear = (year) => year >= AUDIT_MIN_YEAR && year <= AUDIT_MAX_YEAR;
+
 const parseAuditDateString = (value) => {
   if (!value) return null;
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) {
     const [datePart, timePart] = value.split("T");
     const [yyyy, mm, dd] = datePart.split("-").map(Number);
     const [hh, mi, ss = "0"] = timePart.split(":").map(Number);
+    if (!isValidAuditYear(yyyy)) return null;
     if (!isValidDateParts(yyyy, mm, dd)) return null;
     if (!isValidTimeParts(hh, mi, ss)) return null;
     return { ms: new Date(yyyy, mm - 1, dd, hh, mi, ss).getTime(), isDateOnly: false };
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const [yyyy, mm, dd] = value.split("-").map(Number);
+    if (!isValidAuditYear(yyyy)) return null;
     if (!isValidDateParts(yyyy, mm, dd)) return null;
     return { ms: new Date(yyyy, mm - 1, dd).getTime(), isDateOnly: true };
   }
@@ -260,6 +269,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const [auditHasMore, setAuditHasMore] = useState(true);
   const [auditCursor, setAuditCursor] = useState(null);
   const [auditExporting, setAuditExporting] = useState(false);
+  const [showAllAuditLogs, setShowAllAuditLogs] = useState(false);
   const jurorTimerRef = useRef(null);  // debounce for loadJurors-only refetch
   const auditTimerRef = useRef(null);  // debounce for loadAuditLogs refetch
   const pinCopyTimerRef = useRef(null);
@@ -267,6 +277,13 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const auditCardRef = useRef(null);
   const auditScrollRef = useRef(null);
   const auditSentinelRef = useRef(null);
+  const localTimeZone = (() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time";
+    } catch {
+      return "Local time";
+    }
+  })();
   const importFileRef = useRef(null);
 
   const [dbBackupMode, setDbBackupMode] = useState(null); // null | 'export' | 'import'
@@ -497,43 +514,24 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
     return () => clearInterval(interval);
   }, [adminPass, activeSemesterId, loadProjects, loadJurors, loadSettings, refreshSemesters]);
 
+  const AUDIT_COMPACT_COUNT = 5;
+  const hasAuditToggle = auditHasMore || auditLogs.length > AUDIT_COMPACT_COUNT;
+  const auditTotalLabel = auditHasMore ? `${auditLogs.length}+` : `${auditLogs.length}`;
   const visibleAuditLogs = auditLogs;
+  const auditRangeError = getAuditDateRangeError(auditFilters);
+  const hasAuditFilters = Boolean(
+    auditSearch.trim()
+    || auditFilters.startDate
+    || auditFilters.endDate
+  );
 
-  useLayoutEffect(() => {
-    const adminEl = adminSecurityRef.current;
-    const auditEl = auditCardRef.current;
-    if (!adminEl || !auditEl) return undefined;
-
-    if (isMobile) {
-      auditEl.style.height = "";
-      return undefined;
+  useEffect(() => {
+    if (!hasAuditToggle && showAllAuditLogs) {
+      setShowAllAuditLogs(false);
     }
+  }, [hasAuditToggle, showAllAuditLogs]);
 
-    const syncHeight = () => {
-      const height = adminEl.getBoundingClientRect().height;
-      if (height) {
-        auditEl.style.height = `${height}px`;
-      }
-    };
-
-    syncHeight();
-
-    let observer;
-    if (typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(() => syncHeight());
-      observer.observe(adminEl);
-    } else {
-      window.addEventListener("resize", syncHeight);
-    }
-
-    return () => {
-      if (observer) {
-        observer.disconnect();
-      } else {
-        window.removeEventListener("resize", syncHeight);
-      }
-    };
-  }, [isMobile, openPanels.security]);
+  // Note: Audit log height is driven by its own "show all / show fewer" state.
 
   // Debounced juror-only refetch (enriched data: auth status, completion counts, etc.)
   const scheduleJurorRefresh = useCallback(() => {
@@ -754,7 +752,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   };
 
   const handleImportProjects = async (rows) => {
-    if (!activeSemesterId) return;
+    if (!activeSemesterId) {
+      setError("Select an active semester before importing groups.");
+      return;
+    }
     setMessage("");
     setError("");
     setLoading(true);
@@ -986,7 +987,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
     const jurorId = juror?.jurorId || juror?.juror_id;
     const jurorName = juror?.juror_name || juror?.juryName;
     const jurorInst = juror?.juror_inst || juror?.juryDept;
-    if (!activeSemesterId || !jurorId) return;
+    if (!activeSemesterId || !jurorId) {
+      setError("Select an active semester before resetting a PIN.");
+      return;
+    }
     setMessage("");
     setError("");
     setLoading(true);
@@ -1006,7 +1010,14 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       });
       setMessage("PIN reset.");
     } catch (e) {
-      setError(e?.message || "Could not reset PIN.");
+      const msg = String(e?.message || "");
+      if (msg.includes("semester_inactive")) {
+        setError("Only the active semester can be edited.");
+      } else if (msg.includes("unauthorized")) {
+        setError("Admin password is invalid. Please re-login.");
+      } else {
+        setError(e?.message || "Could not reset PIN.");
+      }
     } finally {
       setLoading(false);
     }
@@ -1053,7 +1064,11 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
     try {
       await adminSetSetting(SETTINGS_KEYS.evalLock, String(!!next.evalLockActive), adminPass);
       setSettings(next);
-      setMessage("Settings saved.");
+      setMessage(
+        next.evalLockActive
+          ? "Evaluations locked for the active semester. Jurors can view but can’t edit."
+          : "Evaluations unlocked. Jurors can edit and re-submit."
+      );
     } catch (e) {
       setError(e?.message || "Could not save settings.");
     } finally {
@@ -1185,8 +1200,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
 
   const mapDbBackupError = (e) => {
     const msg = String(e?.message || "");
-    if (msg.includes("backup_password_missing")) return "Backup password is not configured. Set it in Admin Security.";
-    if (msg.includes("incorrect_backup_password")) return "Incorrect backup password.";
+    if (msg.includes("backup_password_missing")) {
+      return "Backup & restore password is not configured. Set it in Admin Security.";
+    }
+    if (msg.includes("incorrect_backup_password")) return "Incorrect backup & restore password.";
     if (msg.includes("unauthorized")) return "Incorrect admin password.";
     return null;
   };
@@ -1362,11 +1379,14 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
               onCreateSemester={handleCreateSemester}
               onUpdateSemester={handleUpdateSemester}
               onDeleteSemester={(s) =>
-                handleRequestDelete({
-                  type: "semester",
-                  id: s?.id,
-                  label: `Semester ${s?.name || ""}`.trim(),
-                })
+                (s?.id === activeSemesterId
+                  ? setError("Active semester cannot be deleted. Select another semester first.")
+                  : handleRequestDelete({
+                      type: "semester",
+                      id: s?.id,
+                      label: `Semester ${s?.name || ""}`.trim(),
+                    })
+                )
               }
             />
 
@@ -1409,6 +1429,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
             <AccessSettingsPanel
               settings={settings}
               jurors={jurors}
+              activeSemesterId={activeSemesterId}
               isMobile={isMobile}
               isOpen={openPanels.permissions}
               onToggle={() => togglePanel("permissions")}
@@ -1434,23 +1455,33 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
               className={`manage-card manage-card-audit${isMobile ? " is-collapsible" : ""}`}
               ref={auditCardRef}
             >
-              <button
-                type="button"
-                className="manage-card-header"
-                onClick={() => togglePanel("audit")}
-                aria-expanded={openPanels.audit}
-              >
-                <div className="manage-card-title">
-                  <span className="manage-card-icon" aria-hidden="true"><HistoryIcon /></span>
-                  <span className="section-label">Audit Log</span>
-                </div>
-                {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.audit ? " open" : ""}`} />}
-              </button>
+              <div className="manage-card-header-row">
+                <button
+                  type="button"
+                  className="manage-card-header"
+                  onClick={() => togglePanel("audit")}
+                  aria-expanded={openPanels.audit}
+                >
+                  <div className="manage-card-title">
+                    <span className="manage-card-icon" aria-hidden="true"><HistoryIcon /></span>
+                    <span className="section-label">Audit Log</span>
+                  </div>
+                  {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.audit ? " open" : ""}`} />}
+                </button>
+                <button
+                  type="button"
+                  className="manage-btn manage-btn-ghost-pill"
+                  onClick={handleAuditExport}
+                  disabled={auditExporting}
+                >
+                  <DownloadIcon /> Export XLSX
+                </button>
+              </div>
 
               {(!isMobile || openPanels.audit) && (
                 <div className="manage-card-body manage-audit-body">
                   <div className="manage-audit-header">
-                    <div className="manage-card-desc">Latest audit events (most recent first).</div>
+                    <div className="manage-card-desc">Audit trail of administrative actions and security events.</div>
                     <div className="manage-audit-filters">
                       <div className="manage-field">
                         <label className="manage-label" htmlFor="auditStartDate">From</label>
@@ -1459,8 +1490,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                           type="datetime-local"
                           step="60"
                           placeholder="YYYY-MM-DDThh:mm"
-                          className={`manage-input manage-date${auditFilters.startDate ? "" : " is-empty"}${auditError ? " is-error" : ""}`}
+                          className={`manage-input manage-date${auditFilters.startDate ? "" : " is-empty"}${auditRangeError ? " is-error" : ""}`}
                           value={auditFilters.startDate}
+                          min={AUDIT_MIN_DATETIME}
+                          max={AUDIT_MAX_DATETIME}
                           onChange={(e) => setAuditFilters((prev) => ({ ...prev, startDate: e.target.value }))}
                         />
                       </div>
@@ -1471,8 +1504,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                           type="datetime-local"
                           step="60"
                           placeholder="YYYY-MM-DDThh:mm"
-                          className={`manage-input manage-date${auditFilters.endDate ? "" : " is-empty"}${auditError ? " is-error" : ""}`}
+                          className={`manage-input manage-date${auditFilters.endDate ? "" : " is-empty"}${auditRangeError ? " is-error" : ""}`}
                           value={auditFilters.endDate}
+                          min={AUDIT_MIN_DATETIME}
+                          max={AUDIT_MAX_DATETIME}
                           onChange={(e) => setAuditFilters((prev) => ({ ...prev, endDate: e.target.value }))}
                         />
                       </div>
@@ -1482,31 +1517,35 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                           id="auditSearch"
                           type="text"
                           className="manage-input"
-                          placeholder="Search message or entity"
+                          placeholder="Search message, action, entity, or metadata"
                           value={auditSearch}
                           onChange={(e) => setAuditSearch(e.target.value)}
                         />
                       </div>
                     </div>
-                    <div className="manage-audit-actions">
-                      <button
-                        type="button"
-                        className="manage-btn ghost"
-                        onClick={handleAuditExport}
-                        disabled={auditExporting}
-                      >
-                        <DownloadIcon /> Export XLSX
-                      </button>
+                    <div className="manage-audit-meta">
+                      <span className="manage-hint manage-hint-inline">
+                        Times shown in your local timezone ({localTimeZone}).
+                      </span>
                     </div>
-
-                    {auditError && <div className="manage-hint manage-hint-error">{auditError}</div>}
+                    {auditRangeError && <div className="manage-hint manage-hint-error">{auditRangeError}</div>}
+                    {auditError && !auditRangeError && (
+                      <div className="manage-hint manage-hint-error">{auditError}</div>
+                    )}
                     {auditLoading && <div className="manage-hint">Loading audit logs…</div>}
                     {auditExporting && <div className="manage-hint">Preparing export…</div>}
                   </div>
 
-                  <div className="manage-audit-scroll" ref={auditScrollRef} role="region" aria-label="Audit log list">
+                  <div
+                    className={`manage-audit-scroll${showAllAuditLogs ? " is-expanded" : " is-compact"}`}
+                    ref={auditScrollRef}
+                    role="region"
+                    aria-label="Audit log list"
+                  >
                     {!auditLoading && visibleAuditLogs.length === 0 && (
-                      <div className="manage-empty manage-empty-subtle">No audit entries found.</div>
+                      <div className="manage-empty manage-empty-subtle">
+                        {hasAuditFilters ? "No results for the current filters." : "No audit entries yet."}
+                      </div>
                     )}
 
                     {visibleAuditLogs.length > 0 && (
@@ -1531,6 +1570,25 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                       </div>
                     )}
                   </div>
+                  {hasAuditToggle && (
+                    <button
+                      className="manage-btn ghost"
+                      type="button"
+                      onClick={() => {
+                        setShowAllAuditLogs((prev) => {
+                          const next = !prev;
+                          if (!next && auditScrollRef.current) {
+                            auditScrollRef.current.scrollTop = 0;
+                          }
+                          return next;
+                        });
+                      }}
+                    >
+                      {showAllAuditLogs
+                        ? "Show fewer audit logs"
+                        : `Show all audit logs (${auditTotalLabel})`}
+                    </button>
+                  )}
                   {!supportsInfiniteScroll && !auditLoading && auditHasMore && (
                     <div className="manage-audit-footer">
                       <button
@@ -1596,7 +1654,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
               {(!isMobile || openPanels.dbbackup) && (
                 <div className="manage-card-body">
                   <div className="manage-card-desc">
-                    Export or restore the full database. Requires backup password set in Admin Security.
+                    Export or restore the database. Requires the backup & restore password.
                   </div>
 
                   <input
@@ -1631,7 +1689,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                             </div>
                           )}
                           <div className="manage-field">
-                            <label className="manage-label">Backup Password</label>
+                            <label className="manage-label">Backup & Restore Password</label>
                             <input
                               type="password"
                               className="manage-input"
@@ -1639,6 +1697,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                               onChange={(e) => { setDbBackupPassword(e.target.value); setDbBackupError(""); }}
                               disabled={dbBackupLoading}
                               autoFocus
+                              autoComplete="off"
                             />
                           </div>
                           {dbBackupError && (

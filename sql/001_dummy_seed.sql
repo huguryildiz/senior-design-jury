@@ -2,7 +2,7 @@
 -- 001_dummy_seed.sql
 -- Seed realistic dummy data for Jury Portal (run AFTER 000_bootstrap.sql)
 -- Includes:
---   - Admin password bootstrap (12345678)
+--   - No default admin password (first-time setup required in-app)
 --   - 6 semesters with poster_date (2025 Fall active)
 --   - 18 jurors (globally diverse) with "University / Department"
 --   - group_students as "Name Surname; Name Surname; ..."
@@ -34,20 +34,8 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 
 -- ------------------------------------------------------------
--- 0) Password bootstrap
+-- 0) Settings
 -- ------------------------------------------------------------
-INSERT INTO public.settings (key, value)
-VALUES ('admin_password_hash', crypt('12345678', gen_salt('bf')))
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-
-INSERT INTO public.settings (key, value)
-VALUES ('delete_password_hash', crypt('12345678', gen_salt('bf')))
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-
-INSERT INTO public.settings (key, value)
-VALUES ('backup_password_hash', crypt('12345678', gen_salt('bf')))
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-
 INSERT INTO public.settings (key, value)
 VALUES ('eval_lock_active_semester', 'false')
 ON CONFLICT (key) DO NOTHING;

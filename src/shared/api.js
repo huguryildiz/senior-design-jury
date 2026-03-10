@@ -127,6 +127,16 @@ export async function adminLogin(password) {
   return data === true;
 }
 
+export async function adminSecurityState() {
+  const { data, error } = await supabase.rpc("rpc_admin_security_state");
+  if (error) throw error;
+  return data?.[0] || {
+    admin_password_set: false,
+    delete_password_set: false,
+    backup_password_set: false,
+  };
+}
+
 // Returns all score rows for a semester, normalized to the field
 // names that existing admin tab components expect.
 export async function adminGetScores(semesterId, adminPassword) {
@@ -455,6 +465,15 @@ export async function adminBootstrapPassword(newPassword) {
 
 export async function adminBootstrapBackupPassword(newPassword, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_bootstrap_backup_password", {
+    p_new_password: newPassword,
+    p_admin_password: adminPassword,
+  });
+  if (error) throw error;
+  return data === true;
+}
+
+export async function adminBootstrapDeletePassword(newPassword, adminPassword) {
+  const { data, error } = await supabase.rpc("rpc_admin_bootstrap_delete_password", {
     p_new_password: newPassword,
     p_admin_password: adminPassword,
   });

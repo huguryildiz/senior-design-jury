@@ -5,7 +5,7 @@
 //
 // Hierarchy (visual dominance):
 //   1. GroupLabel   — FolderKanban icon + bold text
-//   2. ProjectTitle — FileText icon   + normal weight text
+//   2. ProjectTitle — Presentation icon + normal weight text
 //   3. StudentNames — Users icon      + italic text
 //
 // Usage:

@@ -6,14 +6,24 @@ import { TriangleAlertLucideIcon } from "../../shared/Icons";
 function buildCountSummary(counts) {
   if (!counts) return null;
   const parts = [];
-  if (counts.juror_auths > 0) {
-    parts.push(`${counts.juror_auths} juror assignment${counts.juror_auths !== 1 ? "s" : ""}`);
+  if (counts.active_semesters > 0) {
+    if ((counts.scores || 0) === 0) {
+      parts.push(`${counts.active_semesters} semester${counts.active_semesters !== 1 ? "s" : ""} with no completed evaluations`);
+    } else {
+      parts.push(`${counts.active_semesters} semester${counts.active_semesters !== 1 ? "s" : ""} with ${counts.scores || 0} completed evaluation${counts.scores !== 1 ? "s" : ""}`);
+    }
+  } else if (counts.juror_auths > 0) {
+    if ((counts.scores || 0) === 0) {
+      parts.push(`${counts.juror_auths} semester${counts.juror_auths !== 1 ? "s" : ""} with no completed evaluations`);
+    } else {
+      parts.push(`${counts.juror_auths} juror assignment${counts.juror_auths !== 1 ? "s" : ""}`);
+    }
   }
   if (counts.projects > 0) {
     parts.push(`${counts.projects} group project${counts.projects !== 1 ? "s" : ""}`);
   }
-  if (counts.scores > 0) {
-    parts.push(`${counts.scores} scored evaluation${counts.scores !== 1 ? "s" : ""}`);
+  if (counts.scores > 0 && counts.active_semesters <= 0 && counts.juror_auths <= 0) {
+    parts.push(`${counts.scores} completed evaluation${counts.scores !== 1 ? "s" : ""}`);
   }
   if (parts.length === 0) return null;
   const line =
@@ -124,6 +134,7 @@ export default function DeleteConfirmDialog({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              autoComplete="off"
             />
             {error && <div className="manage-field-error">{error}</div>}
           </div>

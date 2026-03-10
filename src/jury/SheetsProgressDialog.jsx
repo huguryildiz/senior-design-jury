@@ -134,7 +134,7 @@ export default function SheetsProgressDialog({ progress, projects, onConfirm, on
               const total = row?.total ?? "—";
               const timestamp = formatShortTs(row?.timestamp || "—");
               const isOpen = openGroup === p.project_id;
-              const name = `Group ${p.group_no}`;
+                  const name = `Group ${p.group_no}`;
               const students = p.group_students
                 ? p.group_students.split(",").map((s) => s.trim()).filter(Boolean)
                 : [];
@@ -152,7 +152,7 @@ export default function SheetsProgressDialog({ progress, projects, onConfirm, on
                     >
                       <span className="spd-row-header-line">
                         <span className="spd-row-name">
-                          <GroupLabel text={name} />
+                          <GroupLabel text={name} shortText={`Grp. ${p.group_no}`} />
                           {hasDetails && (
                             <span className={`group-accordion-chevron${isOpen ? " open" : ""}`} aria-hidden="true">
                               <ChevronDownIcon />

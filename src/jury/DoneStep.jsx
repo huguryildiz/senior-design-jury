@@ -36,7 +36,7 @@ export default function DoneStep({
     ? "Edit mode is enabled"
     : `Thank You${juryName ? `, ${juryName}` : ""}!`;
   const subtitleText = isEditMode
-    ? "Your submission is saved. You can update scores and re-submit when you’re done."
+    ? "You can update scores and re-submit when you’re done."
     : "Your evaluations have been submitted. Contact the administrator if you need changes.";
   const headerIcon = isEditMode ? (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-icon lucide-pencil">
@@ -106,7 +106,7 @@ export default function DoneStep({
                     <div className="spd-row-header-line">
                       <span className="spd-row-name">
                         <span className="spd-row-name-text swipe-x">
-                          <GroupLabel text={`Group ${p.group_no}`} />
+                          <GroupLabel text={`Group ${p.group_no}`} shortText={`Grp. ${p.group_no}`} />
                         </span>
                         {hasDetails && (
                           <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
