@@ -26,6 +26,7 @@ import {
   EyeOffIcon,
 } from "./shared/Icons";
 import { adminBootstrapPassword, adminLogin, adminSecurityState } from "./shared/api";
+import { initScrollIndicators } from "./shared/scrollIndicators";
 import MinimalLoaderOverlay from "./shared/MinimalLoaderOverlay";
 import "./styles/home.css";
 
@@ -69,6 +70,8 @@ export default function App() {
       localStorage.setItem("tedu_portal_page", page);
     } catch {}
   }, [page]);
+
+  useEffect(() => initScrollIndicators(), []);
 
   useEffect(() => {
     if (page !== "admin" || adminUnlocked) return;

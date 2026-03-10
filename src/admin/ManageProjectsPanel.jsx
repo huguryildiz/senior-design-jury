@@ -1,7 +1,7 @@
 // src/admin/ManageProjectsPanel.jsx
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarRangeIcon, ChevronDownIcon, FileTextIcon, FolderKanbanIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, CloudUploadIcon } from "../shared/Icons";
+import { CalendarRangeIcon, ChevronDownIcon, FileTextIcon, MonitorCogIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, CloudUploadIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
 import { formatTs } from "./utils";
@@ -327,7 +327,7 @@ export default function ManageProjectsPanel({
         aria-expanded={isOpen}
       >
         <div className="manage-card-title">
-          <span className="manage-card-icon" aria-hidden="true"><FolderKanbanIcon /></span>
+          <span className="manage-card-icon" aria-hidden="true"><MonitorCogIcon /></span>
           <span className="section-label">Project/Group Settings</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}

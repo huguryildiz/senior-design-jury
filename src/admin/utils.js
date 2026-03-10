@@ -5,6 +5,7 @@
 // ============================================================
 
 import { CRITERIA } from "../config";
+import { getCellState } from "./scoreHelpers";
 
 // ── Numeric coercion ──────────────────────────────────────────
 // Strips surrounding quotes (Sheets sometimes wraps numbers in
@@ -200,13 +201,63 @@ export function buildExportFilename(type, semesterName, ext = "xlsx") {
   return `tedu-jury_${safeType}_${safeSem}_${yyyy}-${mm}-${dd}_${hh}${min}.${ext}`;
 }
 
-export async function exportXLSX(rows, { semesterName = "", summaryData = [] } = {}) {
+export async function exportXLSX(rows, { semesterName = "", summaryData = [], jurors = [], includeEmptyRows = false } = {}) {
   const XLSX = await import("xlsx");
 
   // Build projectId → group_students lookup from summaryData
   const studentsMap = new Map(
-    (summaryData || []).map((p) => [p.id, p.students ?? ""])
+    (summaryData || []).map((p) => [p.id, p.students ?? p.group_students ?? ""])
   );
+
+  const projectList = Array.isArray(summaryData) ? summaryData : [];
+  const baseRows = Array.isArray(rows) ? rows : [];
+  const existingKeys = new Set();
+  baseRows.forEach((row) => {
+    if (!row?.projectId) return;
+    const key = rowKey(row);
+    if (!key) return;
+    existingKeys.add(`${key}__${row.projectId}`);
+  });
+
+  const generated = [];
+  if (includeEmptyRows && jurors.length && projectList.length) {
+    jurors.forEach((j) => {
+      const jurorId = j.jurorId ?? j.juror_id;
+      const juryName = String(j.juryName ?? j.juror_name ?? "").trim();
+      const juryDept = String(j.juryDept ?? j.juror_inst ?? "").trim();
+      if (!jurorId && !juryName) return;
+      const jurorKey = rowKey({ jurorId, juryName, juryDept });
+      projectList.forEach((p) => {
+        const projectId = p.id ?? p.projectId;
+        if (!projectId) return;
+        const key = `${jurorKey}__${projectId}`;
+        if (existingKeys.has(key)) return;
+        generated.push({
+          jurorId,
+          juryName,
+          juryDept,
+          projectId,
+          groupNo: p.groupNo ?? p.group_no ?? null,
+          projectName: String(p.name ?? p.project_title ?? "").trim(),
+          students: p.students ?? p.group_students ?? "",
+          technical: null,
+          design: null,
+          delivery: null,
+          teamwork: null,
+          total: null,
+          comments: "",
+          updatedAt: "",
+          updatedMs: null,
+          finalSubmittedAt: "",
+          finalSubmittedMs: null,
+          status: "empty",
+          editingFlag: "",
+        });
+      });
+    });
+  }
+
+  const allRows = includeEmptyRows ? [...baseRows, ...generated] : baseRows;
 
   const headers = [
     "semester",
@@ -227,15 +278,81 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [] } =
     "comment",
   ];
 
-  const data = rows.map((r) => [
+  const totalGroups =
+    projectList.length
+      ? projectList.length
+      : new Set(allRows.map((r) => r?.projectId).filter(Boolean)).size;
+  const jurorAgg = new Map();
+  const jurorEditMap = new Map();
+
+  (jurors || []).forEach((j) => {
+    const jurorId = j.jurorId ?? j.juror_id;
+    const juryName = j.juryName ?? j.juror_name ?? "";
+    const juryDept = j.juryDept ?? j.juror_inst ?? "";
+    const key = rowKey({ jurorId, juryName, juryDept });
+    const enabled = j.editEnabled ?? j.edit_enabled;
+    const isEditing = enabled === true || String(enabled).toLowerCase() === "true";
+    if (jurorId) jurorEditMap.set(jurorId, isEditing);
+    if (key) jurorEditMap.set(key, isEditing);
+  });
+
+  allRows.forEach((row) => {
+    if (!row) return;
+    const key = rowKey(row);
+    if (!key) return;
+    const editingFromMap =
+      jurorEditMap.get(row.jurorId)
+      ?? jurorEditMap.get(key)
+      ?? false;
+    const rowEditing =
+      row.isEditing === true ||
+      row.jurorStatus === "editing" ||
+      row.editingFlag === "editing" ||
+      row.status === "editing" ||
+      row.edit_enabled === true ||
+      editingFromMap === true;
+    const cellState = row.effectiveStatus
+      ?? (["scored", "partial", "empty"].includes(row.status) ? row.status : getCellState(row));
+    const prev = jurorAgg.get(key) || { scored: 0, started: 0, isFinal: false, isEditing: false };
+    if (cellState === "scored") prev.scored += 1;
+    if (cellState !== "empty") prev.started += 1;
+    if (row.finalSubmittedAt || row.finalSubmittedMs || row.final_submitted_at) prev.isFinal = true;
+    if (rowEditing) prev.isEditing = true;
+    jurorAgg.set(key, prev);
+  });
+
+  const jurorStatusMap = new Map();
+  jurorAgg.forEach((agg, key) => {
+    if (agg.isEditing) { jurorStatusMap.set(key, "editing"); return; }
+    if (agg.isFinal) { jurorStatusMap.set(key, "completed"); return; }
+    if (totalGroups > 0 && agg.scored >= totalGroups) { jurorStatusMap.set(key, "ready_to_submit"); return; }
+    if (agg.started > 0) { jurorStatusMap.set(key, "in_progress"); return; }
+    jurorStatusMap.set(key, "not_started");
+  });
+
+  const normalizeJurorStatus = (status) => {
+    if (!status) return "";
+    if (status === "submitted") return "ready_to_submit";
+    if (["completed", "ready_to_submit", "in_progress", "not_started", "editing"].includes(status)) return status;
+    return "";
+  };
+
+  const data = allRows.map((r) => {
+    const cellStatus = r.effectiveStatus
+      ?? (["scored", "partial", "empty"].includes(r.status) ? r.status : getCellState(r));
+    const jurorKey = rowKey(r);
+    const jurorStatus = r.jurorStatus
+      ?? jurorStatusMap.get(jurorKey)
+      ?? normalizeJurorStatus(r.status);
+    return [
     semesterName,
     r.groupNo     ?? "",
     r.projectName ?? "",
     studentsMap.get(r.projectId) ?? "",
     r.juryName    ?? "",
     r.juryDept    ?? "",
-    r.effectiveStatus ?? r.status ?? "",
-    r.jurorStatus ?? "",
+    cellStatus ?? "",
+    jurorStatus ?? "",
     exportScoreValue(r.technical),
     exportScoreValue(r.design),    // written in DB
     exportScoreValue(r.delivery),  // oral in DB
@@ -244,7 +361,8 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [] } =
     formatExportTimestamp(r.updatedAt), // updated_at
     formatExportTimestamp(r.finalSubmittedAt), // final_submitted_at
     r.comments    ?? "",
-  ]);
+    ];
+  });
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
   // semester(A), group_no(B), project_title(C), group_students(D),

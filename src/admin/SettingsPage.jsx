@@ -22,13 +22,14 @@ import {
   adminDeleteEntity,
   adminDeleteCounts,
   adminGetSettings,
+  adminSecurityState,
   adminListAuditLogs,
   adminSetSetting,
   adminFullExport,
   adminFullImport,
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
-import { ChevronDownIcon, DatabaseIcon, DownloadIcon, HistoryIcon, UploadIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon } from "../shared/Icons";
+import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon } from "../shared/Icons";
 import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
@@ -46,6 +47,8 @@ const defaultSettings = {
 };
 
 const AUDIT_PAGE_SIZE = 120;
+const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
+const MIN_BACKUP_DELAY = 1200;
 
 const defaultAuditFilters = {
   startDate: "",
@@ -289,8 +292,13 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const [dbBackupMode, setDbBackupMode] = useState(null); // null | 'export' | 'import'
   const [dbBackupPassword, setDbBackupPassword] = useState("");
   const [dbImportData, setDbImportData] = useState(null);
+  const [dbImportFileName, setDbImportFileName] = useState("");
+  const [dbImportFileSize, setDbImportFileSize] = useState(0);
+  const [dbImportDragging, setDbImportDragging] = useState(false);
+  const [dbBackupConfirmText, setDbBackupConfirmText] = useState("");
   const [dbBackupLoading, setDbBackupLoading] = useState(false);
   const [dbBackupError, setDbBackupError] = useState("");
+  const [backupPasswordSet, setBackupPasswordSet] = useState(true);
 
   const copyPinToClipboard = async (pinValue) => {
     if (!pinValue) return false;
@@ -330,6 +338,20 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
     () => semesterList.find((s) => s.id === activeSemesterId) || null,
     [semesterList, activeSemesterId]
   );
+
+  useEffect(() => {
+    let active = true;
+    adminSecurityState()
+      .then((state) => {
+        if (!active) return;
+        setBackupPasswordSet(Boolean(state?.backup_password_set));
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackupPasswordSet(true);
+      });
+    return () => { active = false; };
+  }, []);
 
   const togglePanel = (id) => {
     setOpenPanels((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -514,10 +536,12 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
     return () => clearInterval(interval);
   }, [adminPass, activeSemesterId, loadProjects, loadJurors, loadSettings, refreshSemesters]);
 
-  const AUDIT_COMPACT_COUNT = 5;
+  const AUDIT_COMPACT_COUNT = 3;
   const hasAuditToggle = auditHasMore || auditLogs.length > AUDIT_COMPACT_COUNT;
   const auditTotalLabel = auditHasMore ? `${auditLogs.length}+` : `${auditLogs.length}`;
-  const visibleAuditLogs = auditLogs;
+  const visibleAuditLogs = showAllAuditLogs
+    ? auditLogs
+    : auditLogs.slice(0, AUDIT_COMPACT_COUNT);
   const auditRangeError = getAuditDateRangeError(auditFilters);
   const hasAuditFilters = Boolean(
     auditSearch.trim()
@@ -1173,28 +1197,80 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   };
 
   const handleDbExportStart = () => {
+    if (!backupPasswordSet || dbBackupLoading) return;
     setDbBackupMode("export");
     setDbBackupPassword("");
+    setDbBackupConfirmText("");
     setDbBackupError("");
     setDbImportData(null);
+    setDbImportFileName("");
+    setDbImportFileSize(0);
+    setDbImportDragging(false);
   };
 
-  const handleDbImportFileSelect = (e) => {
-    const file = e.target.files?.[0];
+  const handleDbImportStart = () => {
+    if (!backupPasswordSet || dbBackupLoading) return;
+    setDbBackupMode("import");
+    setDbBackupPassword("");
+    setDbBackupConfirmText("");
+    setDbBackupError("");
+    setDbImportData(null);
+    setDbImportFileName("");
+    setDbImportFileSize(0);
+    setDbImportDragging(false);
+  };
+
+  const validateBackupPayload = (payload) => {
+    if (!payload || typeof payload !== "object") return "Invalid backup file format.";
+    if (!Number.isFinite(Number(payload.schema_version))) return "Missing schema_version in backup file.";
+    const required = ["semesters", "jurors", "projects", "scores", "juror_semester_auth"];
+    for (const key of required) {
+      if (!Array.isArray(payload[key])) return `Backup file is missing '${key}' data.`;
+    }
+    return "";
+  };
+
+  const handleDbImportFile = (file) => {
     if (!file) return;
+    setDbBackupError("");
+    setDbImportData(null);
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      setDbImportFileName("");
+      setDbImportFileSize(0);
+      setDbBackupError("Only .json backup files are supported.");
+      return;
+    }
+    if (file.size > MAX_BACKUP_BYTES) {
+      setDbImportFileName("");
+      setDbImportFileSize(0);
+      setDbBackupError("Backup file is too large (max 10 MB).");
+      return;
+    }
+    setDbImportFileName(file.name);
+    setDbImportFileSize(file.size);
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target.result);
+        const schemaError = validateBackupPayload(parsed);
+        if (schemaError) {
+          setDbBackupError(schemaError);
+          setDbImportData(null);
+          return;
+        }
         setDbImportData(parsed);
-        setDbBackupMode("import");
-        setDbBackupPassword("");
         setDbBackupError("");
       } catch {
         setDbBackupError("Invalid backup file. Could not parse JSON.");
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleDbImportFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleDbImportFile(file);
     e.target.value = "";
   };
 
@@ -1210,6 +1286,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
 
   const handleDbExportConfirm = async () => {
     if (!dbBackupPassword || !adminPass) return;
+    const start = Date.now();
     setDbBackupLoading(true);
     setDbBackupError("");
     try {
@@ -1223,27 +1300,42 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       URL.revokeObjectURL(url);
       setDbBackupMode(null);
       setDbBackupPassword("");
+      setDbBackupConfirmText("");
+      setDbImportDragging(false);
       setMessage("Backup downloaded successfully.");
     } catch (e) {
       setDbBackupError(mapDbBackupError(e) || "Export failed. Please try again.");
     } finally {
+      const remaining = Math.max(0, MIN_BACKUP_DELAY - (Date.now() - start));
+      if (remaining) await new Promise((r) => setTimeout(r, remaining));
       setDbBackupLoading(false);
     }
   };
 
   const handleDbImportConfirm = async () => {
     if (!dbImportData || !dbBackupPassword || !adminPass) return;
+    if (dbBackupConfirmText.trim() !== "RESTORE") {
+      setDbBackupError("Type RESTORE to confirm.");
+      return;
+    }
+    const start = Date.now();
     setDbBackupLoading(true);
     setDbBackupError("");
     try {
       await adminFullImport(dbImportData, dbBackupPassword, adminPass);
       setDbBackupMode(null);
       setDbBackupPassword("");
+      setDbBackupConfirmText("");
+      setDbImportDragging(false);
       setDbImportData(null);
+      setDbImportFileName("");
+      setDbImportFileSize(0);
       setMessage("Database restored successfully.");
     } catch (e) {
       setDbBackupError(mapDbBackupError(e) || "Import failed. Please try again.");
     } finally {
+      const remaining = Math.max(0, MIN_BACKUP_DELAY - (Date.now() - start));
+      if (remaining) await new Promise((r) => setTimeout(r, remaining));
       setDbBackupLoading(false);
     }
   };
@@ -1251,10 +1343,11 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const handleExportProjects = async () => {
     if (!projects.length) return;
     const XLSX = await import("xlsx");
-    const headers = ["group_no", "project_title", "group_students"];
-    const data = projects.map((p) => [p.group_no, p.project_title, p.group_students || ""]);
+    const headers = ["semester", "group_no", "project_title", "group_students"];
+    const semesterLabel = activeSemester?.name || "";
+    const data = projects.map((p) => [semesterLabel, p.group_no, p.project_title, p.group_students || ""]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    ws["!cols"] = [8, 36, 42].map((w) => ({ wch: w }));
+    ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Projects");
     XLSX.writeFile(wb, buildExportFilename("projects", activeSemester?.name));
@@ -1263,10 +1356,22 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const handleExportJurors = async () => {
     if (!jurors.length) return;
     const XLSX = await import("xlsx");
-    const headers = ["juror_name", "juror_inst"];
-    const data = jurors.map((j) => [j.juryName || j.juror_name || j.jurorName, j.juryDept || j.juror_inst || j.jurorInst]);
+    const headers = ["semester", "juror_name", "juror_inst"];
+    const semesterLabel = activeSemester?.name || "";
+    const assignedJurors = jurors.filter((j) => {
+      if (j?.isAssigned === true) return true;
+      if (j?.is_assigned === true) return true;
+      if (typeof j?.isAssigned === "string") return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
+      if (typeof j?.is_assigned === "string") return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
+      return false;
+    });
+    const data = assignedJurors.map((j) => [
+      semesterLabel,
+      j.juryName || j.juror_name || j.jurorName,
+      j.juryDept || j.juror_inst || j.jurorInst,
+    ]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    ws["!cols"] = [28, 32].map((w) => ({ wch: w }));
+    ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Jurors");
     XLSX.writeFile(wb, buildExportFilename("jurors", activeSemester?.name));
@@ -1274,10 +1379,32 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
 
   const handleExportScores = async () => {
     if (!activeSemesterId || !adminPass) return;
-    const rows = await adminGetScores(activeSemesterId, adminPass);
+    const [rows, activeJurors] = await Promise.all([
+      adminGetScores(activeSemesterId, adminPass),
+      adminListJurors(activeSemesterId, adminPass),
+    ]);
+    const hasAssignedFlag = (activeJurors || []).some((j) =>
+      typeof j?.isAssigned === "boolean" || typeof j?.is_assigned === "boolean"
+    );
+    const assignedJurors = hasAssignedFlag
+      ? (activeJurors || []).filter((j) => {
+          if (j?.isAssigned === true) return true;
+          if (j?.is_assigned === true) return true;
+          if (typeof j?.isAssigned === "string") return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
+          if (typeof j?.is_assigned === "string") return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
+          return false;
+        })
+      : (activeJurors || []);
     await exportXLSX(rows || [], {
       semesterName: activeSemester?.name || "",
-      summaryData: (projects || []).map((p) => ({ id: p.id, students: p.group_students || "" })),
+      summaryData: (projects || []).map((p) => ({
+        id: p.id,
+        groupNo: p.group_no ?? p.groupNo ?? null,
+        name: p.project_title ?? p.name ?? "",
+        students: p.group_students ?? p.students ?? "",
+      })),
+      jurors: assignedJurors,
+      includeEmptyRows: true,
     });
   };
 
@@ -1474,7 +1601,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   onClick={handleAuditExport}
                   disabled={auditExporting}
                 >
-                  <DownloadIcon /> Export XLSX
+                  <DownloadIcon /> Export
                 </button>
               </div>
 
@@ -1613,7 +1740,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                 aria-expanded={openPanels.export}
               >
                 <div className="manage-card-title">
-                  <span className="manage-card-icon" aria-hidden="true"><DownloadIcon /></span>
+                  <span className="manage-card-icon" aria-hidden="true"><FileDownIcon /></span>
                   <span className="section-label">Export Tools</span>
                 </div>
                 {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.export ? " open" : ""}`} />}
@@ -1624,13 +1751,13 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   <div className="manage-card-desc">Download Excel exports for scores, jurors, and projects.</div>
                   <div className="manage-export-actions">
                     <button className="manage-btn" type="button" onClick={handleExportScores}>
-                      <DownloadIcon /> Export Scores
+                      <DownloadIcon /> Scores
                     </button>
                     <button className="manage-btn" type="button" onClick={handleExportJurors}>
-                      <DownloadIcon /> Export Jurors
+                      <DownloadIcon /> Jurors
                     </button>
                     <button className="manage-btn" type="button" onClick={handleExportProjects}>
-                      <DownloadIcon /> Export Projects
+                      <DownloadIcon /> Projects
                     </button>
                   </div>
                 </div>
@@ -1645,7 +1772,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                 aria-expanded={openPanels.dbbackup}
               >
                 <div className="manage-card-title">
-                  <span className="manage-card-icon" aria-hidden="true"><DatabaseIcon /></span>
+                  <span className="manage-card-icon" aria-hidden="true"><DatabaseBackupIcon /></span>
                   <span className="section-label">Database Backup</span>
                 </div>
                 {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.dbbackup ? " open" : ""}`} />}
@@ -1656,6 +1783,11 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   <div className="manage-card-desc">
                     Export or restore the database. Requires the backup & restore password.
                   </div>
+                  {!backupPasswordSet && (
+                    <div className="manage-hint manage-hint-warn">
+                      Backup &amp; restore password is not set. Create one in Admin Security to enable export/import.
+                    </div>
+                  )}
 
                   <input
                     ref={importFileRef}
@@ -1665,73 +1797,163 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                     onChange={handleDbImportFileSelect}
                   />
 
-                  {!dbBackupMode && (
-                    <div className="manage-export-actions">
-                      <button className="manage-btn" type="button" onClick={handleDbExportStart}>
-                        <DownloadIcon /> Export Database
-                      </button>
-                      <button className="manage-btn" type="button" onClick={() => importFileRef.current?.click()}>
-                        <UploadIcon /> Import / Restore
-                      </button>
-                    </div>
-                  )}
-
-                  {dbBackupMode && (
-                    <div className="manage-security-stack" style={{ marginTop: "0.75rem" }}>
-                      <div className="manage-mini-card">
-                        <div className="manage-mini-card-title">
-                          {dbBackupMode === "export" ? "Confirm Export" : "Confirm Restore"}
-                        </div>
-                        <div className="manage-mini-card-body">
-                          {dbBackupMode === "import" && (
-                            <div className="manage-hint" style={{ marginBottom: "0.5rem" }}>
-                              This will overwrite existing data with the backup. This action cannot be undone.
-                            </div>
-                          )}
-                          <div className="manage-field">
-                            <label className="manage-label">Backup & Restore Password</label>
-                            <input
-                              type="password"
-                              className="manage-input"
-                              value={dbBackupPassword}
-                              onChange={(e) => { setDbBackupPassword(e.target.value); setDbBackupError(""); }}
-                              disabled={dbBackupLoading}
-                              autoFocus
-                              autoComplete="off"
-                            />
-                          </div>
-                          {dbBackupError && (
-                            <div className="manage-alerts">
-                              <span className="manage-alert error">{dbBackupError}</span>
-                            </div>
-                          )}
-                          <div className="manage-card-actions">
-                            <button
-                              className="manage-btn"
-                              type="button"
-                              disabled={dbBackupLoading}
-                              onClick={() => { setDbBackupMode(null); setDbBackupPassword(""); setDbImportData(null); }}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="manage-btn primary"
-                              type="button"
-                              disabled={dbBackupLoading || !dbBackupPassword}
-                              onClick={dbBackupMode === "export" ? handleDbExportConfirm : handleDbImportConfirm}
-                            >
-                              {dbBackupLoading
-                                ? (dbBackupMode === "export" ? "Exporting…" : "Restoring…")
-                                : (dbBackupMode === "export" ? "Download Backup" : "Restore Database")}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <div className="manage-export-actions">
+                    <button
+                      className="manage-btn"
+                      type="button"
+                      onClick={handleDbExportStart}
+                      disabled={!backupPasswordSet || dbBackupLoading}
+                    >
+                      <DownloadIcon /> Export JSON
+                    </button>
+                    <button
+                      className="manage-btn"
+                      type="button"
+                      onClick={handleDbImportStart}
+                      disabled={!backupPasswordSet || dbBackupLoading}
+                    >
+                      <UploadIcon /> Import / Restore
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
+
+            {dbBackupMode && (
+              <div className="manage-modal" role="dialog" aria-modal="true">
+                <div className="manage-modal-card">
+                  <div className="manage-modal-title">
+                    {dbBackupMode === "export" ? (
+                      "Export Database Backup"
+                    ) : (
+                      "Import / Restore Database"
+                    )}
+                  </div>
+                  <div className="manage-modal-body">
+                    <div className="manage-hint">
+                      {dbBackupMode === "export"
+                        ? "Export a full backup of semesters, jurors, projects, and scores."
+                        : "Upload a backup JSON exported from this portal to restore all data."}
+                    </div>
+                    {dbBackupMode === "import" && (
+                      <ul className="manage-hint" style={{ margin: "0.5rem 0 0.75rem", paddingLeft: "1rem" }}>
+                        <li>Only .json files exported from this portal are supported.</li>
+                        <li>Backup contains semesters, jurors, projects, scores, and assignments.</li>
+                        <li>Maximum file size: 10 MB.</li>
+                        <li>This will overwrite existing data.</li>
+                      </ul>
+                    )}
+                    {dbBackupMode === "import" && (
+                      <div className="manage-field">
+                        <label className="manage-label">Backup File</label>
+                        <div
+                          className={`manage-dropzone${dbImportDragging ? " is-dragging" : ""}`}
+                          onDragEnter={(e) => { e.preventDefault(); setDbImportDragging(true); }}
+                          onDragOver={(e) => { e.preventDefault(); setDbImportDragging(true); }}
+                          onDragLeave={(e) => { e.preventDefault(); setDbImportDragging(false); }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDbImportDragging(false);
+                            const file = e.dataTransfer.files?.[0];
+                            handleDbImportFile(file);
+                          }}
+                          onClick={() => {
+                            if (dbBackupLoading) return;
+                            importFileRef.current?.click();
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-disabled={dbBackupLoading}
+                          onKeyDown={(e) => {
+                            if (dbBackupLoading) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              importFileRef.current?.click();
+                            }
+                          }}
+                        >
+                          <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
+                          <div className="manage-dropzone-title">Drag &amp; Drop your JSON here</div>
+                          <div className="manage-dropzone-sub">
+                            Only `.json` files exported from this portal.
+                          </div>
+                          <button className="manage-btn ghost" type="button" tabIndex={-1}>
+                            Select File
+                          </button>
+                        </div>
+                        {dbImportFileName && (
+                          <div className="manage-hint" style={{ marginTop: "0.5rem" }}>
+                            Selected: {dbImportFileName} ({Math.ceil(dbImportFileSize / 1024)} KB)
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="manage-field">
+                      <label className="manage-label">Backup &amp; Restore Password</label>
+                      <input
+                        type="password"
+                        className="manage-input"
+                        value={dbBackupPassword}
+                        onChange={(e) => { setDbBackupPassword(e.target.value); setDbBackupError(""); }}
+                        disabled={dbBackupLoading}
+                        autoComplete="off"
+                      />
+                    </div>
+                    {dbBackupMode === "import" && (
+                      <div className="manage-field">
+                        <label className="manage-label">Type RESTORE to confirm</label>
+                        <input
+                          type="text"
+                          className="manage-input"
+                          value={dbBackupConfirmText}
+                          onChange={(e) => { setDbBackupConfirmText(e.target.value.toUpperCase()); setDbBackupError(""); }}
+                          disabled={dbBackupLoading}
+                          autoComplete="off"
+                        />
+                      </div>
+                    )}
+                    {dbBackupError && (
+                      <div className="manage-alerts">
+                        <span className="manage-alert error">{dbBackupError}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="manage-modal-actions">
+                    <button
+                      className="manage-btn"
+                      type="button"
+                      disabled={dbBackupLoading}
+                      onClick={() => {
+                        setDbBackupMode(null);
+                        setDbBackupPassword("");
+                        setDbBackupConfirmText("");
+                        setDbImportData(null);
+                        setDbImportFileName("");
+                        setDbImportFileSize(0);
+                        setDbImportDragging(false);
+                        setDbBackupError("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className={`manage-btn ${dbBackupMode === "import" ? "danger" : "primary"}`}
+                      type="button"
+                      disabled={
+                        dbBackupLoading
+                        || !dbBackupPassword
+                        || (dbBackupMode === "import" && (!dbImportData || dbBackupConfirmText.trim() !== "RESTORE"))
+                      }
+                      onClick={dbBackupMode === "export" ? handleDbExportConfirm : handleDbImportConfirm}
+                    >
+                      {dbBackupLoading
+                        ? (dbBackupMode === "export" ? "Exporting…" : "Restoring…")
+                        : (dbBackupMode === "export" ? "Download Backup" : "Restore Database")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>

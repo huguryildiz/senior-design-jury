@@ -1180,19 +1180,35 @@ export default function EvaluationDetails({
                   className={i % 2 === 1 ? "row-even" : ""}
                 >
                   <td className="cell-semester" style={{ whiteSpace: "nowrap" }}>
-                    {row.semester ? row.semester : "—"}
+                    <span className="detail-cell-scroll swipe-x">
+                      {row.semester ? row.semester : "—"}
+                    </span>
                   </td>
                   <td className="cell-group-no" style={{ whiteSpace: "nowrap" }}>
-                    {row.groupNo ?? "—"}
+                    <span className="detail-cell-scroll swipe-x">
+                      {row.groupNo ?? "—"}
+                    </span>
                   </td>
                   <td className="cell-project-title" style={{ whiteSpace: "nowrap" }}>
-                    {projectTitle ? projectTitle : "—"}
+                    <span className="detail-cell-scroll swipe-x">
+                      {projectTitle ? projectTitle : "—"}
+                    </span>
                   </td>
                   <td className="cell-students" style={{ whiteSpace: "nowrap" }}>
-                    {students ? students : "—"}
+                    <span className="detail-cell-scroll swipe-x">
+                      {students ? students : "—"}
+                    </span>
                   </td>
-                  <td className="cell-juror">{row.juryName}</td>
-                  <td className="cell-dept" style={{ fontSize: 12, color: "#475569" }}>{row.juryDept}</td>
+                  <td className="cell-juror">
+                    <span className="detail-cell-scroll swipe-x">
+                      {row.juryName}
+                    </span>
+                  </td>
+                  <td className="cell-dept" style={{ fontSize: 12, color: "#475569" }}>
+                    <span className="detail-cell-scroll swipe-x">
+                      {row.juryDept}
+                    </span>
+                  </td>
                   <td className="cell-status">
                     <StatusBadge
                       status={row.effectiveStatus}

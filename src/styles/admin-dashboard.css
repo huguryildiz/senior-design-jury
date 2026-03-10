@@ -230,6 +230,24 @@
   scrollbar-width: none;
 }
 .strictness-label::-webkit-scrollbar { display: none; }
+
+@media (max-width: 768px) {
+  .hbar-label,
+  .strictness-label {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    text-overflow: unset;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: relative;
+    padding-right: 18px;
+  }
+  .hbar-label::-webkit-scrollbar,
+  .strictness-label::-webkit-scrollbar {
+    display: none;
+  }
+}
 .hbar-track { flex: 1; height: 14px; background: #f1f5f9; border-radius: 999px; position: relative; overflow: visible; }
 .hbar-fill  { height: 100%; background: linear-gradient(90deg,#3b82f6,#60a5fa); border-radius: 999px; position: absolute; top: 0; left: 0; }
 .strictness-fill { background: linear-gradient(90deg,#8b5cf6,#a78bfa); }

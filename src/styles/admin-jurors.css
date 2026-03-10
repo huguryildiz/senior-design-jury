@@ -90,6 +90,11 @@
 .juror-card-in-progress     { border: 1.5px solid #e6d28a !important; background: #fff9ea !important; }       /* Amber */
 .juror-card-not-started     { border: 1.5px solid #cbd5e1 !important; background: #f8fafc !important; }       /* Gray */
 .juror-card-editing         { border: 1.5px solid #c4b5fd !important; background: #f5f3ff !important; }       /* Purple */
+.juror-card-completed       { --surface-bg: #effdf5; }
+.juror-card-ready-to-submit { --surface-bg: #eff6ff; }
+.juror-card-in-progress     { --surface-bg: #fff9ea; }
+.juror-card-not-started     { --surface-bg: #f8fafc; }
+.juror-card-editing         { --surface-bg: #f5f3ff; }
 .juror-card-top {
   display: flex;
   justify-content: space-between;

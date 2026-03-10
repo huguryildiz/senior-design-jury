@@ -194,6 +194,46 @@ export function FolderKanbanIcon() {
   );
 }
 
+export function FolderCogIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-folder-cog-icon lucide-folder-cog">
+      <path d="M10.3 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.98a2 2 0 0 1 1.69.9l.66 1.2A2 2 0 0 0 12 6h8a2 2 0 0 1 2 2v3.3" />
+      <path d="m14.305 19.53.923-.382" />
+      <path d="m15.228 16.852-.923-.383" />
+      <path d="m16.852 15.228-.383-.923" />
+      <path d="m16.852 20.772-.383.924" />
+      <path d="m19.148 15.228.383-.923" />
+      <path d="m19.53 21.696-.382-.924" />
+      <path d="m20.772 16.852.924-.383" />
+      <path d="m20.772 19.148.924.383" />
+      <circle cx="18" cy="18" r="3" />
+    </svg>
+  );
+}
+
+export function MonitorCogIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-monitor-cog-icon lucide-monitor-cog">
+      <path d="M12 17v4" />
+      <path d="m14.305 7.53.923-.382" />
+      <path d="m15.228 4.852-.923-.383" />
+      <path d="m16.852 3.228-.383-.924" />
+      <path d="m16.852 8.772-.383.923" />
+      <path d="m19.148 3.228.383-.924" />
+      <path d="m19.53 9.696-.382-.924" />
+      <path d="m20.772 4.852.924-.383" />
+      <path d="m20.772 7.148.924.383" />
+      <path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
+      <path d="M8 21h8" />
+      <circle cx="18" cy="6" r="3" />
+    </svg>
+  );
+}
+
 export function CalendarRangeIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -233,6 +273,20 @@ export function FolderLockIcon() {
   );
 }
 
+export function UserKeyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-user-key-icon lucide-user-key">
+      <path d="M20 11v6" />
+      <path d="M20 13h2" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 2.072.578" />
+      <circle cx="10" cy="7" r="4" />
+      <circle cx="20" cy="19" r="2" />
+    </svg>
+  );
+}
+
 export function ShieldUserIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -247,6 +301,26 @@ export function ShieldUserIcon() {
 
 export function UserRoundCheckIcon() {
   return <UserCheckIcon />;
+}
+
+export function UserCogIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-user-cog-icon lucide-user-cog">
+      <path d="M10 15H6a4 4 0 0 0-4 4v2" />
+      <path d="m14.305 16.53.923-.382" />
+      <path d="m15.228 13.852-.923-.383" />
+      <path d="m16.852 12.228-.383-.923" />
+      <path d="m16.852 17.772-.383.924" />
+      <path d="m19.148 12.228.383-.923" />
+      <path d="m19.53 18.696-.382-.924" />
+      <path d="m20.772 13.852.924-.383" />
+      <path d="m20.772 16.148.924.383" />
+      <circle cx="18" cy="15" r="3" />
+      <circle cx="9" cy="7" r="4" />
+    </svg>
+  );
 }
 
 export function KeyRoundIcon() {
@@ -412,6 +486,19 @@ export function DownloadIcon() {
       <path d="M12 15V3" />
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <path d="m7 10 5 5 5-5" />
+    </svg>
+  );
+}
+
+export function FileDownIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-file-down-icon lucide-file-down">
+      <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+      <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+      <path d="M12 18v-6" />
+      <path d="m9 15 3 3 3-3" />
     </svg>
   );
 }
@@ -734,6 +821,21 @@ export function DatabaseIcon() {
       <ellipse cx="12" cy="5" rx="9" ry="3" />
       <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
       <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
+    </svg>
+  );
+}
+
+export function DatabaseBackupIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-database-backup-icon lucide-database-backup">
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 12a9 3 0 0 0 5 2.69" />
+      <path d="M21 9.3V5" />
+      <path d="M3 5v14a9 3 0 0 0 6.47 2.88" />
+      <path d="M12 12v4h4" />
+      <path d="M13 20a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L12 16" />
     </svg>
   );
 }

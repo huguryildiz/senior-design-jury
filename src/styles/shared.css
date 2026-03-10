@@ -592,6 +592,77 @@ body {
 }
 .swipe-x::-webkit-scrollbar { display: none; }
 
+@media (max-width: 768px) {
+  .swipe-x,
+  .eval-scroll-line,
+  .manage-meta-scroll,
+  .manage-item-title,
+  .manage-item-text,
+  .details-juror-name,
+  .detail-cell-scroll,
+  .matrix-juror-name-scroll,
+  .hbar-label,
+  .strictness-label {
+    position: relative;
+    padding-right: 18px;
+  }
+
+  .swipe-x,
+  .eval-scroll-line,
+  .manage-meta-scroll,
+  .manage-item-title,
+  .manage-item-text,
+  .details-juror-name,
+  .detail-cell-scroll,
+  .matrix-juror-name-scroll,
+  .hbar-label,
+  .strictness-label {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x pan-y;
+  }
+
+  .swipe-x.is-overflowing::after,
+  .eval-scroll-line.is-overflowing::after,
+  .manage-meta-scroll.is-overflowing::after,
+  .manage-item-title.is-overflowing::after,
+  .manage-item-text.is-overflowing::after,
+  .details-juror-name.is-overflowing::after,
+  .detail-cell-scroll.is-overflowing::after,
+  .matrix-juror-name-scroll.is-overflowing::after,
+  .hbar-label.is-overflowing::after,
+  .strictness-label.is-overflowing::after {
+    content: "…";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+    background: var(--surface-bg, var(--card-bg));
+    pointer-events: none;
+  }
+
+  .swipe-x.is-scrolled::after,
+  .eval-scroll-line.is-scrolled::after,
+  .manage-meta-scroll.is-scrolled::after,
+  .manage-item-title.is-scrolled::after,
+  .manage-item-text.is-scrolled::after,
+  .details-juror-name.is-scrolled::after,
+  .detail-cell-scroll.is-scrolled::after,
+  .matrix-juror-name-scroll.is-scrolled::after,
+  .hbar-label.is-scrolled::after,
+  .strictness-label.is-scrolled::after {
+    display: none;
+  }
+}
+
 /* ── EntityMeta — canonical Group / ProjectTitle / StudentNames ── */
 .entity-group-label,
 .entity-project-title,

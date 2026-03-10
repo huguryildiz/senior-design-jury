@@ -1,7 +1,7 @@
 // src/admin/ManagePermissionsPanel.jsx
 
 import { useEffect, useState } from "react";
-import { ChevronDownIcon, FolderLockIcon, SearchIcon, UserCheckIcon, LandmarkIcon, LoaderIcon } from "../shared/Icons";
+import { ChevronDownIcon, UserKeyIcon, SearchIcon, UserCheckIcon, LandmarkIcon, LoaderIcon } from "../shared/Icons";
 import LastActivity from "./LastActivity";
 import { formatTs } from "./utils";
 
@@ -19,16 +19,27 @@ export default function ManagePermissionsPanel({
   const [showAll, setShowAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [pendingEdits, setPendingEdits] = useState(() => new Set());
+  const [evalLockPending, setEvalLockPending] = useState(false);
 
   useEffect(() => {
     setLocal(settings);
   }, [settings]);
 
-  const handleEvalLockChange = (checked) => {
-    if (!activeSemesterId) return;
+  const handleEvalLockChange = async (checked) => {
+    if (!activeSemesterId || evalLockPending) return;
+    const start = Date.now();
+    setEvalLockPending(true);
     const next = { ...local, evalLockActive: checked };
     setLocal(next);
-    onSave?.(next);
+    try {
+      await Promise.resolve(onSave?.(next));
+    } finally {
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, 1200 - elapsed);
+      setTimeout(() => {
+        setEvalLockPending(false);
+      }, remaining);
+    }
   };
   const handleToggleEdit = async ({ jurorId, enabled }) => {
     if (!jurorId) return;
@@ -113,7 +124,7 @@ export default function ManagePermissionsPanel({
         aria-expanded={isOpen}
       >
         <div className="manage-card-title">
-          <span className="manage-card-icon" aria-hidden="true"><FolderLockIcon /></span>
+          <span className="manage-card-icon" aria-hidden="true"><UserKeyIcon /></span>
           <span className="section-label">Evaluation Permissions</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
@@ -129,10 +140,15 @@ export default function ManagePermissionsPanel({
                 <input
                   type="checkbox"
                   checked={local.evalLockActive}
-                  disabled={!hasActiveSemester}
+                  disabled={!hasActiveSemester || evalLockPending}
                   onChange={(e) => handleEvalLockChange(e.target.checked)}
                 />
                 <span className="manage-toggle-track" />
+                {evalLockPending && (
+                  <span className="manage-toggle-spinner" aria-hidden="true">
+                    <LoaderIcon />
+                  </span>
+                )}
               </span>
             </label>
           </div>

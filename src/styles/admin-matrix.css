@@ -174,13 +174,15 @@
 .matrix-table td:first-child {
   z-index: 20;
   background: #fff;
+  --surface-bg: #fff;
   border-right-color: transparent;
   box-shadow: 8px 0 16px rgba(0,0,0,0.06);
 }
 .matrix-table tbody tr:nth-child(even) td:first-child {
   background: #f8fafc;
+  --surface-bg: #f8fafc;
 }
-.matrix-table tfoot td:first-child { background: #fff5f5; }
+.matrix-table tfoot td:first-child { background: #fff5f5; --surface-bg: #fff5f5; }
 .matrix-table th:last-child,
 .matrix-table td:last-child { border-right: none; }
 .matrix-table tfoot tr:last-child td { border-bottom: none; }
@@ -273,6 +275,20 @@
   }
   .matrix-juror-name-scroll::-webkit-scrollbar { display: none; }
   .matrix-juror-name-scroll:hover { cursor: ew-resize; }
+}
+
+@media (max-width: 768px) {
+  .matrix-juror-name-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: unset;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: relative;
+    padding-right: 18px;
+  }
+  .matrix-juror-name-scroll::-webkit-scrollbar { display: none; }
 }
 
 /* Column sort button inside group <th> */

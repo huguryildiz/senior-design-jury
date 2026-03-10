@@ -138,12 +138,12 @@
 }
 .detail-table th:hover .col-sort-label { color: var(--brand-600); }
 .detail-table th:first-child { text-align: left; }
-.detail-table td                        { padding: 10px 12px; border-bottom: 1px solid var(--gray-200); border-right: 1px solid var(--gray-200); }
+.detail-table td                        { padding: 10px 12px; border-bottom: 1px solid var(--gray-200); border-right: 1px solid var(--gray-200); --surface-bg: var(--card-bg); }
 .detail-table tr:last-child td          { border-bottom: 1px solid var(--gray-200); }
 .detail-table th:first-child,
 .detail-table td:first-child { border-left: 1px solid var(--gray-200); }
-.detail-table tbody tr.row-even td      { background: var(--gray-50); }
-.detail-table tr:hover td               { background: var(--gray-100) !important; }
+.detail-table tbody tr.row-even td      { background: var(--gray-50); --surface-bg: var(--gray-50); }
+.detail-table tr:hover td               { background: var(--gray-100) !important; --surface-bg: var(--gray-100); }
 .comment-cell              { font-size: 12px; color: var(--gray-500); max-width: 200px; }
 .details-juror-cell {
   display: inline-flex;
@@ -156,6 +156,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .details-juror-name {
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: unset;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: relative;
+    padding-right: 18px;
+  }
+  .details-juror-name::-webkit-scrollbar { display: none; }
 }
 
 /* Wider columns to reduce cramped layout (horizontal scroll already enabled) */

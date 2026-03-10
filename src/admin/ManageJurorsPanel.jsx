@@ -12,7 +12,7 @@ import {
   LockIcon,
   PencilIcon,
   SearchIcon,
-  UserRoundCheckIcon,
+  UserCogIcon,
   CirclePlusIcon,
 } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
@@ -290,7 +290,7 @@ export default function ManageJurorsPanel({
         aria-expanded={isOpen}
       >
         <div className="manage-card-title">
-          <span className="manage-card-icon" aria-hidden="true"><UserRoundCheckIcon /></span>
+          <span className="manage-card-icon" aria-hidden="true"><UserCogIcon /></span>
           <span className="section-label">Juror Settings</span>
         </div>
         {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
@@ -348,11 +348,7 @@ export default function ManageJurorsPanel({
               const scoredLabel = scoredSemesters.join(" · ");
               const maxSemesters = 3;
               const scoredPreview = scoredSemesters.slice(0, maxSemesters).join(" · ");
-              const scoredSuffix =
-                scoredSemesters.length > maxSemesters
-                  ? ` +${scoredSemesters.length - maxSemesters} more`
-                  : "";
-              const scoredDisplay = scoredPreview ? `${scoredPreview}${scoredSuffix}` : "";
+              const scoredDisplay = scoredPreview || "";
               const jurorId = j.jurorId || j.juror_id;
               const isExpanded = expandedSemesters.has(jurorId);
               const lastActivityAt =

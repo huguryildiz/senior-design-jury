@@ -194,12 +194,6 @@ export default function ManageSemesterPanel({
                 <div>
                   <div className="manage-item-title-row">
                     <div className="manage-item-title">{s.name}</div>
-                    {s.is_active && (
-                      <span className="manage-pill manage-pill-icon" aria-label="Active semester" title="Active semester">
-                        <CheckCircle2Icon />
-                        ACTIVE
-                      </span>
-                    )}
                   </div>
                   <div className="manage-item-sub manage-meta-line">
                     <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
