@@ -240,6 +240,7 @@
   min-width: 0;
   overflow: hidden;
   padding: 0 !important;
+  -webkit-tap-highlight-color: transparent;
 }
 .matrix-juror-inner {
   display: flex;
@@ -249,6 +250,7 @@
   overflow: hidden;
   padding: 6px 8px;
   height: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 .matrix-juror-name {
   display: flex;
@@ -258,7 +260,19 @@
   flex: 1 1 auto;
   gap: 3px;
   overflow: hidden;
-  touch-action: pan-x;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Inner wrapper — translateX target for JS-driven mobile swipe.
+   flex: 1 1 auto + min-width: 0 keeps it constrained at rest so children
+   can show ellipsis; when is-scrollable children overflow this wrapper and
+   the parent's overflow: hidden acts as the clipping window. */
+.matrix-juror-name-inner {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 /* Each segment is its own overflow container so the ellipsis inherits that
    segment's own color/weight rather than the parent container's color. */
@@ -281,23 +295,77 @@
   color: #94a3b8;
   font-weight: 500;
 }
-/* On hover/scroll: release each child's clipping so the parent can scroll. */
-.matrix-juror-name:hover,
-.matrix-juror-name.is-scrollable {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+/* Defensive: lock down truncation in all touch/active states unless scroll mode is active.
+   Prevents iOS Safari from disrupting overflow/ellipsis during tap/active repaints. */
+.matrix-juror-name:not(.is-scrollable) .matrix-juror-name-text,
+.matrix-juror-name:not(.is-scrollable) .matrix-juror-dept {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.matrix-juror-name:hover .matrix-juror-name-text,
-.matrix-juror-name:hover .matrix-juror-dept,
+/* On intentional swipe: release child clipping so translateX reveals full text.
+   Parent stays overflow: hidden — it acts as the clipping window for the
+   JS-driven translateX on .matrix-juror-name-inner. */
 .matrix-juror-name.is-scrollable .matrix-juror-name-text,
 .matrix-juror-name.is-scrollable .matrix-juror-dept {
   flex: 0 0 auto;
+  max-width: none;
   overflow: visible;
   text-overflow: clip;
 }
-.matrix-juror-name:hover::-webkit-scrollbar,
-.matrix-juror-name.is-scrollable::-webkit-scrollbar { display: none; }
+/* Keep desktop hover-scroll behavior, but avoid triggering it on touch devices (iPhone). */
+@media (hover: hover) and (pointer: fine) {
+  .matrix-juror-name:hover {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .matrix-juror-name:hover .matrix-juror-name-text,
+  .matrix-juror-name:hover .matrix-juror-dept {
+    flex: 0 0 auto;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .matrix-juror-name:hover::-webkit-scrollbar { display: none; }
+}
+@media (hover: none), (pointer: coarse) {
+  .matrix-juror-name.is-native-scroll {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+  }
+  .matrix-juror-name.is-native-scroll.is-overflowing:not(.is-scrolled)::after {
+    content: "...";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    padding-left: 10px;
+    color: #94a3b8;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), var(--surface-bg, #fff) 60%);
+    pointer-events: none;
+  }
+  .matrix-juror-name.is-native-scroll::-webkit-scrollbar { display: none; }
+  .matrix-juror-name.is-native-scroll .matrix-juror-name-inner {
+    display: inline-flex;
+    min-width: max-content;
+    max-width: none;
+  }
+  .matrix-juror-name.is-native-scroll .matrix-juror-name-text,
+  .matrix-juror-name.is-native-scroll .matrix-juror-dept {
+    flex: 0 0 auto;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
 .matrix-progress-cell { white-space: nowrap; }
 .matrix-progress-bar-wrap { display: inline-block; width: 60px; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
 .matrix-progress-bar      { height: 100%; background: #22c55e; border-radius: 999px; }
@@ -432,7 +500,8 @@
   justify-content: flex-start;
   width: 100%;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
+  margin-top: 14px;
 }
 .matrix-export-btn {
   margin-left: auto;
@@ -493,13 +562,12 @@
 
 /* ── Active sort indicator chip ──────────────────────────────── */
 .matrix-sort-indicator {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--brand-600);
-  background: var(--blue-light);
-  border: 1px solid #bfdbfe;
+  font-size: 12px;
+  color: var(--gray-700);
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
   border-radius: 999px;
-  padding: 2px 10px;
+  padding: 4px 8px;
   white-space: nowrap;
   flex-shrink: 0;
   display: inline-flex;
@@ -507,17 +575,21 @@
   gap: 6px;
   cursor: pointer;
 }
-.matrix-sort-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .matrix-sort-close {
   font-size: 12px;
   line-height: 1;
 }
+.matrix-sort-indicator .chip-label {
+  color: var(--text-900);
+  font-weight: 700;
+}
+.matrix-sort-indicator .chip-value {
+  color: var(--gray-500);
+  font-weight: 400;
+}
 .matrix-sort-indicator:hover {
-  background: #e0e7ff;
+  background: var(--gray-100);
+  border-color: var(--gray-300);
 }
 .matrix-filter-indicator {
   border: 1px solid #c7d2fe;

@@ -26,11 +26,130 @@ import { useScrollSync } from "./useScrollSync";
 import { useGridExport } from "./useGridExport";
 
 // ── Module-level constants ─────────────────────────────────────
-// Inline scroll props: focus/touch activates horizontal scroll on long juror names
+// Enable horizontal text scrolling only after an intentional horizontal drag.
+// Uses translateX on the inner wrapper so iOS recognises the gesture correctly —
+// overflow-based scroll doesn't work because iOS evaluates scrollability at
+// touchstart, before the JS has a chance to add overflow-x: auto.
+const SWIPE_ACTIVATION_PX = 6;
+function handleInlineTouchStart(e) {
+  const el = e.currentTarget;
+  const t = e.touches?.[0];
+  if (!el || !el.classList || !t) return;
+  // Cancel any running momentum animation before starting a new gesture.
+  const inner = el.firstElementChild;
+  if (inner) inner.style.transition = "";
+  el.dataset.touchStartX   = String(t.clientX);
+  el.dataset.touchStartY   = String(t.clientY);
+  el.dataset.baseTranslate = el.dataset.currentTranslate ?? "0";
+  delete el.dataset.maxScroll;
+  delete el.dataset.lastMoveX;
+  delete el.dataset.lastMoveTime;
+  delete el.dataset.pastMoveX;
+  delete el.dataset.pastMoveTime;
+}
+function handleInlineTouchMove(e) {
+  const el = e.currentTarget;
+  const t = e.touches?.[0];
+  if (!el || !el.classList || !t) return;
+  const startX = Number(el.dataset.touchStartX);
+  const startY = Number(el.dataset.touchStartY);
+  if (!Number.isFinite(startX) || !Number.isFinite(startY)) return;
+  const rawDx = t.clientX - startX;
+  const dy    = Math.abs(t.clientY - startY);
+  if (Math.abs(rawDx) < SWIPE_ACTIVATION_PX || Math.abs(rawDx) <= dy) return;
+
+  const inner = el.firstElementChild;
+  if (!inner) return;
+
+  if (!el.classList.contains("is-scrollable")) {
+    el.classList.add("is-scrollable");
+    void el.offsetWidth;
+  }
+  if (!el.dataset.maxScroll) {
+    const overflow = inner.scrollWidth - el.clientWidth;
+    el.dataset.maxScroll = String(overflow > 0 ? overflow : 0);
+  }
+
+  // Velocity tracking: keep a reference point ~80 ms in the past.
+  const now = Date.now();
+  if (now - Number(el.dataset.pastMoveTime ?? 0) > 80) {
+    el.dataset.pastMoveX    = el.dataset.lastMoveX    ?? String(t.clientX);
+    el.dataset.pastMoveTime = el.dataset.lastMoveTime ?? String(now);
+  }
+  el.dataset.lastMoveX    = String(t.clientX);
+  el.dataset.lastMoveTime = String(now);
+
+  const maxScroll    = Number(el.dataset.maxScroll ?? "0");
+  const baseTranslate = Number(el.dataset.baseTranslate ?? "0");
+  const newTranslate  = Math.min(0, Math.max(-maxScroll, baseTranslate + rawDx));
+  inner.style.transform = `translateX(${newTranslate}px)`;
+  el.dataset.currentTranslate = String(newTranslate);
+}
+function handleInlineTouchEnd(e) {
+  const el = e.currentTarget;
+  if (!el || !el.classList) return;
+  const pos       = Number(el.dataset.currentTranslate ?? "0");
+  const maxScroll = Number(el.dataset.maxScroll ?? "0");
+  const inner     = el.firstElementChild;
+
+  // Compute flick velocity (px/ms) from the rolling 80 ms window.
+  const lastX    = Number(el.dataset.lastMoveX    ?? "0");
+  const lastTime = Number(el.dataset.lastMoveTime ?? "0");
+  const pastX    = Number(el.dataset.pastMoveX    ?? lastX);
+  const pastTime = Number(el.dataset.pastMoveTime ?? lastTime);
+  const dt       = lastTime - pastTime;
+  const velocity = dt > 10 ? (lastX - pastX) / dt : 0; // px/ms
+
+  delete el.dataset.touchStartX;
+  delete el.dataset.touchStartY;
+  delete el.dataset.baseTranslate;
+  delete el.dataset.maxScroll;
+  delete el.dataset.lastMoveX;
+  delete el.dataset.lastMoveTime;
+  delete el.dataset.pastMoveX;
+  delete el.dataset.pastMoveTime;
+
+  // Apply momentum if the flick was fast enough.
+  if (inner && maxScroll > 0 && Math.abs(velocity) > 0.15) {
+    const target = Math.min(0, Math.max(-maxScroll, pos + velocity * 280));
+    if (Math.abs(target - pos) > 3) {
+      inner.style.transition = "transform 450ms cubic-bezier(0.22, 1, 0.36, 1)";
+      inner.style.transform  = `translateX(${target}px)`;
+      el.dataset.currentTranslate = String(target);
+      inner.addEventListener("transitionend", function onEnd() {
+        inner.style.transition = "";
+        inner.removeEventListener("transitionend", onEnd);
+        if (Number(el.dataset.currentTranslate ?? "0") >= 0) {
+          el.classList.remove("is-scrollable");
+          inner.style.transform = "";
+          delete el.dataset.currentTranslate;
+        }
+      });
+      return;
+    }
+  }
+
+  if (pos >= 0) {
+    el.classList.remove("is-scrollable");
+    if (inner) inner.style.transform = "";
+    delete el.dataset.currentTranslate;
+  }
+}
 const INLINE_SCROLL_PROPS = {
-  onTouchStart: (e) => { const el = e.currentTarget; if (el?.classList) el.classList.add("is-scrollable"); },
-  onTouchMove:  (e) => { const el = e.currentTarget; if (el?.classList) el.classList.add("is-scrollable"); },
+  onTouchStart: handleInlineTouchStart,
+  onTouchMove: handleInlineTouchMove,
+  onTouchEnd: handleInlineTouchEnd,
+  onTouchCancel: handleInlineTouchEnd,
 };
+function updateNativeInlineScrollState(el) {
+  if (!el || !el.classList) return;
+  const isOverflowing = el.scrollWidth > el.clientWidth + 1;
+  el.classList.toggle("is-overflowing", isOverflowing);
+  el.classList.toggle("is-scrolled", el.scrollLeft > 0);
+}
+function handleNativeInlineScroll(e) {
+  updateNativeInlineScrollState(e.currentTarget);
+}
 
 const LEGEND_JUROR_STATES = ["completed", "ready_to_submit", "in_progress", "editing", "not_started"];
 
@@ -101,11 +220,16 @@ class GridErrorBoundary extends Component {
 
 // ── Sub-components ─────────────────────────────────────────────
 
-const JurorCell = memo(function JurorCell({ juror, workflowState }) {
+const JurorCell = memo(function JurorCell({ juror, workflowState, isTouchInput = false }) {
   const wfState  = workflowState ?? "not_started";
   const meta     = jurorStatusMeta[wfState] ?? jurorStatusMeta.not_started;
   const Icon     = meta.icon;
   const fullName = juror.dept ? `${juror.name} (${juror.dept})` : juror.name;
+  const nativeNameRef = useRef(null);
+  useEffect(() => {
+    if (!isTouchInput) return;
+    updateNativeInlineScrollState(nativeNameRef.current);
+  }, [isTouchInput, fullName]);
   return (
     <div className="matrix-juror-inner">
       <span
@@ -115,9 +239,17 @@ const JurorCell = memo(function JurorCell({ juror, workflowState }) {
       >
         <Icon />
       </span>
-      <span className="matrix-juror-name" title={fullName} {...INLINE_SCROLL_PROPS}>
-        <span className="matrix-juror-name-text">{juror.name}</span>
-        {juror.dept && <span className="matrix-juror-dept">({juror.dept})</span>}
+      <span
+        className={`matrix-juror-name${isTouchInput ? " is-native-scroll" : ""}`}
+        title={fullName}
+        {...(isTouchInput ? {} : INLINE_SCROLL_PROPS)}
+        ref={isTouchInput ? nativeNameRef : undefined}
+        onScroll={isTouchInput ? handleNativeInlineScroll : undefined}
+      >
+        <span className="matrix-juror-name-inner">
+          <span className="matrix-juror-name-text">{juror.name}</span>
+          {juror.dept && <span className="matrix-juror-dept">({juror.dept})</span>}
+        </span>
       </span>
     </div>
   );
@@ -129,20 +261,22 @@ function MatrixLegend({
   sortGroupDir,
   sortJurorDir,
   groups,
+  hasAnyFilter,
   filterLabel,
+  onClearAllFilters,
   onClearFilter,
   onClearSort,
   groupFilterChips,
   onClearGroupFilter,
 }) {
-  const sortLabel = (() => {
+  const sortValueLabel = (() => {
     if (sortMode === "group" && sortGroupId !== null) {
       const g   = groups.find((g) => g.id === sortGroupId);
       const dir = sortGroupDir === "desc" ? "high → low" : "low → high";
-      return `Sorted by: ${g?.label ?? "Group"} (${dir})`;
+      return `${g?.label ?? "Group"} (${dir})`;
     }
     if (sortMode === "juror") {
-      return `Sorted by: Name (${sortJurorDir === "asc" ? "A → Z" : "Z → A"})`;
+      return `Name (${sortJurorDir === "asc" ? "A → Z" : "Z → A"})`;
     }
     return null;
   })();
@@ -176,7 +310,19 @@ function MatrixLegend({
       </div>
       {/* Toolbar: filter count + active filter/sort indicators */}
       <div className="matrix-legend-row matrix-toolbar-row">
-        {sortLabel && (
+        {hasAnyFilter && (
+          <button
+            type="button"
+            className="filter-chip filter-chip-clear-all"
+            onClick={onClearAllFilters}
+            title="Clear all filters"
+            aria-label="Clear all filters"
+          >
+            <span className="chip-label">Clear all</span>
+            <XIcon />
+          </button>
+        )}
+        {sortValueLabel && (
           <button
             type="button"
             className="matrix-sort-indicator"
@@ -184,7 +330,8 @@ function MatrixLegend({
             title="Clear sort"
             aria-label="Clear sort"
           >
-            <span className="matrix-sort-text">{sortLabel}</span>
+            <span className="chip-label">Sorted By</span>
+            <span className="chip-value">{sortValueLabel}</span>
             <span className="matrix-sort-close" aria-hidden="true">×</span>
           </button>
         )}
@@ -218,7 +365,7 @@ function MatrixLegend({
       </div>
       <div className="matrix-scroll-hint">
         <span className="matrix-scroll-icon" aria-hidden="true"><InfoIcon /></span>
-        <span>Scroll horizontally to view all groups. Long names can be swiped on touch.</span>
+        <span>Swipe to view more columns. Long text scrolls on touch.</span>
       </div>
     </div>
   );
@@ -263,6 +410,9 @@ const AverageRow = memo(function AverageRow({ groups, averages, onShowTip, onHid
 //   jurors  – { key, name, dept }[]  (from AdminPanel uniqueJurors)
 //   groups  – { id, label }[]
 function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
+  const [isTouchInput, setIsTouchInput] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches
+  ));
   // Scroll refs (declared before the scroll-sync useEffect)
   const topScrollRef   = useRef(null);
   const tableScrollRef = useRef(null);
@@ -282,6 +432,18 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
     setCellTip({ x: r.left + r.width / 2, y: r.top - 8, text });
   }, []);
   const hideCellTip = useCallback(() => setCellTip(null), []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(hover: none), (pointer: coarse)");
+    const update = () => setIsTouchInput(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.addEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
   // Hide tooltip when table is scrolled (position would be stale)
   useEffect(() => {
     const el = tableScrollRef.current;
@@ -302,7 +464,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
   const {
     sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter, groupScoreFilters,
     visibleJurors, toggleGroupSort, toggleJurorSort, setJurorFilter, clearSort,
-    setGroupScoreFilter, clearGroupScoreFilter,
+    setGroupScoreFilter, clearGroupScoreFilter, clearAllFilters,
   } = useGridSort(jurors, groups, lookup);
 
   const {
@@ -383,6 +545,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                   :              `≤${max}`;
       return { id: g.id, label, value };
     });
+  const hasAnyFilter = !!jurorFilter || activeGroupFilterChips.length > 0;
 
   if (!jurors.length) {
     return (
@@ -494,7 +657,13 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
         sortGroupDir={sortGroupDir}
         sortJurorDir={sortJurorDir}
         groups={groups}
+        hasAnyFilter={hasAnyFilter}
         filterLabel={jurorFilter}
+        onClearAllFilters={() => {
+          clearAllFilters();
+          clearSort();
+          closePopover();
+        }}
         onClearFilter={() => { setJurorFilter(""); closePopover(); }}
         onClearSort={clearSort}
         groupFilterChips={activeGroupFilterChips}
@@ -578,7 +747,11 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                 return (
                   <tr key={juror.key}>
                     <td className="matrix-juror">
-                      <JurorCell juror={juror} workflowState={jurorWorkflowMap.get(juror.key)} />
+                      <JurorCell
+                        juror={juror}
+                        workflowState={jurorWorkflowMap.get(juror.key)}
+                        isTouchInput={isTouchInput}
+                      />
                     </td>
                     {groups.map((g) => {
                       const entry = lookup[juror.key]?.[g.id] ?? null;

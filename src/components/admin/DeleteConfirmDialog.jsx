@@ -130,7 +130,7 @@ export default function DeleteConfirmDialog({
             <label className="manage-label">Delete Password</label>
             <input
               type="password"
-              className="manage-input"
+              className={`manage-input${error ? " is-danger" : ""}`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}

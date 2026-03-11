@@ -29,7 +29,7 @@ import {
   adminFullImport,
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
-import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, FileUpIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon, TriangleAlertIcon } from "../shared/Icons";
+import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, FileUpIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon, TriangleAlertIcon, CircleXLucideIcon } from "../shared/Icons";
 import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
@@ -37,6 +37,16 @@ import JurorSettingsPanel from "./ManageJurorsPanel";
 import AccessSettingsPanel from "./ManagePermissionsPanel";
 import AdminSecurityPanel from "../components/admin/AdminSecurityPanel";
 import DeleteConfirmDialog from "../components/admin/DeleteConfirmDialog";
+import {
+  APP_DATE_MIN_YEAR,
+  APP_DATE_MAX_YEAR,
+  APP_DATE_MIN_DATE,
+  APP_DATE_MAX_DATE,
+  APP_DATE_MIN_DATETIME,
+  APP_DATE_MAX_DATETIME,
+  isValidDateParts,
+  isIsoDateWithinBounds,
+} from "../shared/dateBounds";
 
 const SETTINGS_KEYS = {
   evalLock: "eval_lock_active_semester",
@@ -67,17 +77,15 @@ const formatAuditTimestamp = (value) => {
   return `${day} ${month} ${year} ${hours}:${minutes}`;
 };
 
-const AUDIT_MIN_YEAR = 2000;
-const AUDIT_MAX_YEAR = 2100;
-const AUDIT_MIN_DATETIME = "2000-01-01T00:00";
-const AUDIT_MAX_DATETIME = "2100-12-31T23:59";
+const AUDIT_MIN_YEAR = APP_DATE_MIN_YEAR;
+const AUDIT_MAX_YEAR = APP_DATE_MAX_YEAR;
+const AUDIT_MIN_DATETIME = APP_DATE_MIN_DATETIME;
+const AUDIT_MAX_DATETIME = APP_DATE_MAX_DATETIME;
+const SEMESTER_MIN_DATE = APP_DATE_MIN_DATE;
+const SEMESTER_MAX_DATE = APP_DATE_MAX_DATE;
 
-const isValidDateParts = (yyyy, mm, dd) => {
-  if (yyyy < AUDIT_MIN_YEAR || yyyy > AUDIT_MAX_YEAR) return false;
-  if (mm < 1 || mm > 12) return false;
-  if (dd < 1) return false;
-  const maxDays = new Date(yyyy, mm, 0).getDate();
-  return dd <= maxDays;
+const isSemesterPosterDateInRange = (value) => {
+  return isIsoDateWithinBounds(value, { minDate: SEMESTER_MIN_DATE, maxDate: SEMESTER_MAX_DATE });
 };
 
 const isValidTimeParts = (hh, mi, ss) => {
@@ -772,6 +780,9 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       setSystemErrorSafe("Admin password missing. Please re-login.");
       return { ok: false };
     }
+    if (!isSemesterPosterDateInRange(payload?.poster_date)) {
+      return { ok: false, fieldErrors: { poster_date: `Poster date must be between ${SEMESTER_MIN_DATE} and ${SEMESTER_MAX_DATE}.` } };
+    }
     setLoading(true);
     try {
       const created = await adminCreateSemester(payload, adminPass);
@@ -811,6 +822,9 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
     if (!adminPass) {
       setSystemErrorSafe("Admin password missing. Please re-login.");
       return { ok: false };
+    }
+    if (!isSemesterPosterDateInRange(payload?.poster_date)) {
+      return { ok: false, fieldErrors: { poster_date: `Poster date must be between ${SEMESTER_MIN_DATE} and ${SEMESTER_MAX_DATE}.` } };
     }
     setLoading(true);
     try {
@@ -1520,7 +1534,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
         <div className="manage-alerts-sticky">
           <div className="manage-alerts">
             <span className="manage-alert error with-icon">
-              <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+              <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
               <span>{systemError}</span>
             </span>
           </div>
@@ -1636,7 +1650,6 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
             await handleConfirmDelete(password);
           } catch (e) {
             const msg = mapDeleteError(e);
-            setSystemErrorSafe(msg);
             throw new Error(msg);
           }
         }}
@@ -2149,7 +2162,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                     {dbBackupError && (
                       <div className="manage-alerts">
                         <span className="manage-alert error with-icon">
-                          <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+                          <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
                           <span>{dbBackupError}</span>
                         </span>
                       </div>

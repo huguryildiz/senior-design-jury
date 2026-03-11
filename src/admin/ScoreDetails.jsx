@@ -9,6 +9,11 @@ import { readSection, writeSection } from "./persist";
 import { FilterPopoverPortal, StatusBadge } from "./components";
 import { getCellState } from "./scoreHelpers";
 import { FilterIcon, DownloadIcon, InfoIcon, XIcon } from "../shared/Icons";
+import {
+  APP_DATE_MIN_DATETIME,
+  APP_DATE_MAX_DATETIME,
+  isValidDateParts,
+} from "../shared/dateBounds";
 
 // Show "" for null/undefined/empty/NaN.  0 is a valid score.
 function displayScore(val) {
@@ -52,18 +57,8 @@ const VALID_SORT_DIRS = ["asc", "desc"];
 const DEFAULT_SORT_KEY = "updatedMs";
 const DEFAULT_SORT_DIR = "desc";
 
-const DATE_MIN_YEAR = 2000;
-const DATE_MAX_YEAR = 2100;
-const DATE_MIN_DATETIME = "2000-01-01T00:00";
-const DATE_MAX_DATETIME = "2100-12-31T23:59";
-
-function isValidDateParts(yyyy, mm, dd) {
-  if (yyyy < DATE_MIN_YEAR || yyyy > DATE_MAX_YEAR) return false;
-  if (mm < 1 || mm > 12) return false;
-  if (dd < 1) return false;
-  const maxDays = new Date(yyyy, mm, 0).getDate();
-  return dd <= maxDays;
-}
+const DATE_MIN_DATETIME = APP_DATE_MIN_DATETIME;
+const DATE_MAX_DATETIME = APP_DATE_MAX_DATETIME;
 
 function isValidTimeParts(hh, mi, ss) {
   if (hh < 0 || hh > 23) return false;
@@ -157,25 +152,148 @@ function isMissing(val) {
 const NUMERIC_SORT_KEYS = new Set(SCORE_COLS.map(({ key }) => key));
 const joinClass = (...parts) => parts.filter(Boolean).join(" ");
 
+const SWIPE_ACTIVATION_PX = 6;
+
 function enableCellScroll(evt) {
   const el = evt.currentTarget;
   if (!el || !el.classList) return;
+  if (typeof el.matches === "function" && !el.matches(":focus-visible")) return;
   el.classList.add("is-scrollable");
-  if (typeof el.focus === "function" && document?.activeElement !== el) {
-    el.focus({ preventScroll: true });
-  }
 }
 function disableCellScroll(evt) {
   const el = evt.currentTarget;
   if (!el || !el.classList) return;
   el.classList.remove("is-scrollable");
+  const inner = el.firstElementChild;
+  if (inner) { inner.style.transition = ""; inner.style.transform = ""; }
+  delete el.dataset.currentTranslate;
+}
+function handleCellTouchStart(evt) {
+  const el = evt.currentTarget;
+  const t = evt.touches?.[0];
+  if (!el || !el.classList || !t) return;
+  const inner = el.firstElementChild;
+  if (inner) inner.style.transition = "";
+  el.dataset.touchStartX   = String(t.clientX);
+  el.dataset.touchStartY   = String(t.clientY);
+  el.dataset.baseTranslate = el.dataset.currentTranslate ?? "0";
+  delete el.dataset.maxScroll;
+  delete el.dataset.lastMoveX;
+  delete el.dataset.lastMoveTime;
+  delete el.dataset.pastMoveX;
+  delete el.dataset.pastMoveTime;
+}
+function handleCellTouchMove(evt) {
+  const el = evt.currentTarget;
+  const t = evt.touches?.[0];
+  if (!el || !el.classList || !t) return;
+  const startX = Number(el.dataset.touchStartX);
+  const startY = Number(el.dataset.touchStartY);
+  if (!Number.isFinite(startX) || !Number.isFinite(startY)) return;
+  const rawDx = t.clientX - startX;
+  const dy    = Math.abs(t.clientY - startY);
+  if (Math.abs(rawDx) < SWIPE_ACTIVATION_PX || Math.abs(rawDx) <= dy) return;
+
+  const inner = el.firstElementChild;
+  if (!inner) return;
+
+  if (!el.classList.contains("is-scrollable")) {
+    el.classList.add("is-scrollable");
+    void el.offsetWidth;
+  }
+  if (!el.dataset.maxScroll) {
+    const overflow = inner.scrollWidth - el.clientWidth;
+    el.dataset.maxScroll = String(overflow > 0 ? overflow : 0);
+  }
+
+  const now = Date.now();
+  if (now - Number(el.dataset.pastMoveTime ?? 0) > 80) {
+    el.dataset.pastMoveX    = el.dataset.lastMoveX    ?? String(t.clientX);
+    el.dataset.pastMoveTime = el.dataset.lastMoveTime ?? String(now);
+  }
+  el.dataset.lastMoveX    = String(t.clientX);
+  el.dataset.lastMoveTime = String(now);
+
+  const maxScroll    = Number(el.dataset.maxScroll ?? "0");
+  const baseTranslate = Number(el.dataset.baseTranslate ?? "0");
+  const newTranslate  = Math.min(0, Math.max(-maxScroll, baseTranslate + rawDx));
+  inner.style.transform = `translateX(${newTranslate}px)`;
+  el.dataset.currentTranslate = String(newTranslate);
+}
+function handleCellTouchEnd(evt) {
+  const el = evt.currentTarget;
+  if (!el || !el.classList) return;
+  const pos       = Number(el.dataset.currentTranslate ?? "0");
+  const maxScroll = Number(el.dataset.maxScroll ?? "0");
+  const inner     = el.firstElementChild;
+
+  const lastX    = Number(el.dataset.lastMoveX    ?? "0");
+  const lastTime = Number(el.dataset.lastMoveTime ?? "0");
+  const pastX    = Number(el.dataset.pastMoveX    ?? lastX);
+  const pastTime = Number(el.dataset.pastMoveTime ?? lastTime);
+  const dt       = lastTime - pastTime;
+  const velocity = dt > 10 ? (lastX - pastX) / dt : 0;
+
+  delete el.dataset.touchStartX;
+  delete el.dataset.touchStartY;
+  delete el.dataset.baseTranslate;
+  delete el.dataset.maxScroll;
+  delete el.dataset.lastMoveX;
+  delete el.dataset.lastMoveTime;
+  delete el.dataset.pastMoveX;
+  delete el.dataset.pastMoveTime;
+
+  if (inner && maxScroll > 0 && Math.abs(velocity) > 0.15) {
+    const target = Math.min(0, Math.max(-maxScroll, pos + velocity * 280));
+    if (Math.abs(target - pos) > 3) {
+      inner.style.transition = "transform 450ms cubic-bezier(0.22, 1, 0.36, 1)";
+      inner.style.transform  = `translateX(${target}px)`;
+      el.dataset.currentTranslate = String(target);
+      inner.addEventListener("transitionend", function onEnd() {
+        inner.style.transition = "";
+        inner.removeEventListener("transitionend", onEnd);
+        if (Number(el.dataset.currentTranslate ?? "0") >= 0) {
+          el.classList.remove("is-scrollable");
+          inner.style.transform = "";
+          delete el.dataset.currentTranslate;
+        }
+      });
+      return;
+    }
+  }
+
+  if (pos >= 0) {
+    el.classList.remove("is-scrollable");
+    if (inner) inner.style.transform = "";
+    delete el.dataset.currentTranslate;
+  }
 }
 const CELL_SCROLL_PROPS = {
   className: "detail-cell-scroll",
   tabIndex: 0,
   onFocus: enableCellScroll,
   onBlur: disableCellScroll,
-  onTouchStart: enableCellScroll,
+  onTouchStart: handleCellTouchStart,
+  onTouchMove: handleCellTouchMove,
+  onTouchEnd: handleCellTouchEnd,
+  onTouchCancel: handleCellTouchEnd,
+};
+function updateNativeCellScrollState(el) {
+  if (!el || !el.classList) return;
+  const isOverflowing = el.scrollWidth > el.clientWidth + 1;
+  el.classList.toggle("is-overflowing", isOverflowing);
+  el.classList.toggle("is-scrolled", el.scrollLeft > 0);
+}
+function handleNativeCellScroll(evt) {
+  updateNativeCellScrollState(evt.currentTarget);
+}
+function setNativeCellScrollRef(el) {
+  updateNativeCellScrollState(el);
+}
+const CELL_SCROLL_NATIVE_PROPS = {
+  className: "detail-cell-scroll is-native-scroll",
+  onScroll: handleNativeCellScroll,
+  ref: setNativeCellScrollRef,
 };
 
 // ── Pagination helpers ─────────────────────────────────────────
@@ -399,8 +517,12 @@ export default function ScoreDetails({
   const [isMobile, setIsMobile] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches
   ));
+  const [isTouchInput, setIsTouchInput] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches
+  ));
   const topScrollRef = useRef(null);
   const tableScrollRef = useRef(null);
+  const cellScrollProps = isTouchInput ? CELL_SCROLL_NATIVE_PROPS : CELL_SCROLL_PROPS;
 
   const projectMetaById = useMemo(
     () => new Map((summaryData || []).map((p) => [p.id, { title: p?.name ?? "", students: p?.students ?? "" }])),
@@ -442,6 +564,18 @@ export default function ScoreDetails({
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 480px)");
     const update = () => setIsMobile(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.addEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(hover: none), (pointer: coarse)");
+    const update = () => setIsTouchInput(mq.matches);
     update();
     if (mq.addEventListener) mq.addEventListener("change", update);
     else mq.addListener(update);
@@ -1107,11 +1241,11 @@ export default function ScoreDetails({
       "jurorStatus",
     ].includes(sortKey);
     const dirLabel = isDateSort
-      ? (sortDir === "asc" ? "oldest -> newest" : "newest -> oldest")
+      ? (sortDir === "asc" ? "oldest → newest" : "newest → oldest")
       : isTextSort
-        ? (sortDir === "asc" ? "A -> Z" : "Z -> A")
-        : (sortDir === "asc" ? "low -> high" : "high -> low");
-    return `Sorted by: ${colLabel} (${dirLabel})`;
+        ? (sortDir === "asc" ? "A → Z" : "Z → A")
+        : (sortDir === "asc" ? "low → high" : "high → low");
+    return `${colLabel} (${dirLabel})`;
   }, [columns, sortKey, sortDir]);
 
   function clearSort() {
@@ -1504,6 +1638,18 @@ export default function ScoreDetails({
           )}
           {(hasAnyFilter || sortLabel) && (
             <div className="filters-chip-row">
+              {hasAnyFilter && (
+                <button
+                  type="button"
+                  className="filter-chip filter-chip-clear-all"
+                  onClick={resetFilters}
+                  title="Clear all filters"
+                  aria-label="Clear all filters"
+                >
+                  <span className="chip-label">Clear all</span>
+                  <XIcon />
+                </button>
+              )}
               {sortLabel && (
                 <button
                   type="button"
@@ -1512,7 +1658,8 @@ export default function ScoreDetails({
                   title="Clear sort"
                   aria-label="Clear sort"
                 >
-                  <span className="details-sort-text">{sortLabel}</span>
+                  <span className="chip-label">Sorted By</span>
+                  <span className="chip-value">{sortLabel}</span>
                   <span className="details-sort-close" aria-hidden="true">×</span>
                 </button>
               )}
@@ -1551,7 +1698,7 @@ export default function ScoreDetails({
 
       <div className="details-scroll-hint">
         <span className="details-scroll-icon" aria-hidden="true"><InfoIcon /></span>
-        <span>Scroll horizontally to view all columns. Long text can be swiped on touch.</span>
+        <span>Swipe to view more columns. Long text scrolls on touch.</span>
       </div>
 
       {/* Details table */}
@@ -1627,8 +1774,8 @@ export default function ScoreDetails({
                         title={cellTitle}
                       >
                         {isTextCell ? (
-                          <span {...CELL_SCROLL_PROPS}>
-                            {content}
+                          <span {...cellScrollProps}>
+                            <span className="detail-cell-scroll-inner">{content}</span>
                           </span>
                         ) : (
                           content

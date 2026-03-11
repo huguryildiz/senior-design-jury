@@ -88,6 +88,8 @@ function reducer(state, action) {
       delete next[action.groupId];
       return { ...state, groupScoreFilters: next };
     }
+    case "CLEAR_ALL_FILTERS":
+      return { ...state, jurorFilter: "", groupScoreFilters: {} };
     case "CLEAR_SORT":
       return { ...state, sortMode: "none", sortGroupId: null, sortGroupDir: "desc", sortJurorDir: "asc" };
     default:
@@ -166,11 +168,12 @@ export function useGridSort(jurors, groups, lookup) {
   const setJurorFilter       = (v)               => dispatch({ type: "SET_JUROR_FILTER", value: v });
   const setGroupScoreFilter  = (groupId, min, max) => dispatch({ type: "SET_GROUP_SCORE_FILTER", groupId, min, max });
   const clearGroupScoreFilter = (groupId)        => dispatch({ type: "CLEAR_GROUP_SCORE_FILTER", groupId });
+  const clearAllFilters      = ()                => dispatch({ type: "CLEAR_ALL_FILTERS" });
   const clearSort            = ()                => dispatch({ type: "CLEAR_SORT" });
 
   return {
     sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter, groupScoreFilters,
     visibleJurors, toggleGroupSort, toggleJurorSort, setJurorFilter, clearSort,
-    setGroupScoreFilter, clearGroupScoreFilter,
+    setGroupScoreFilter, clearGroupScoreFilter, clearAllFilters,
   };
 }

@@ -1,7 +1,7 @@
 // src/components/admin/AdminSecurityPanel.jsx
 
 import { useEffect, useState } from "react";
-import { ChevronDownIcon, ShieldUserIcon, TriangleAlertIcon } from "../../shared/Icons";
+import { ChevronDownIcon, ShieldUserIcon, CircleXLucideIcon } from "../../shared/Icons";
 import {
   adminBootstrapBackupPassword,
   adminBootstrapDeletePassword,
@@ -299,7 +299,7 @@ export default function AdminSecurityPanel({
                 <div className="manage-mini-card-body">
                   {adminFormError && (
                     <div className="manage-alert error with-icon">
-                      <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+                      <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
                       <span>{adminFormError}</span>
                     </div>
                   )}
@@ -369,7 +369,7 @@ export default function AdminSecurityPanel({
                 <div className="manage-mini-card-body">
                   {deleteFormError && (
                     <div className="manage-alert error with-icon">
-                      <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+                      <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
                       <span>{deleteFormError}</span>
                     </div>
                   )}
@@ -446,7 +446,7 @@ export default function AdminSecurityPanel({
                 <div className="manage-mini-card-body">
                   {backupFormError && (
                     <div className="manage-alert error with-icon">
-                      <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+                      <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
                       <span>{backupFormError}</span>
                     </div>
                   )}

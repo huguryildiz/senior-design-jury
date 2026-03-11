@@ -23,7 +23,7 @@ function parseCsv(text) {
       }
       continue;
     }
-    if ((ch === ',' || ch === ';') && !inQuotes) {
+    if (ch === "," && !inQuotes) {
       row.push(cur.trim());
       cur = "";
       continue;
@@ -54,6 +54,8 @@ function splitStudents(text) {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+const STUDENTS_EXAMPLE = "Ali Yilmaz; Ayse Demir; Mehmet Can";
 
 export default function ManageProjectsPanel({
   projects,
@@ -207,6 +209,12 @@ export default function ManageProjectsPanel({
 
   const handleFile = async (file) => {
     if (!file) return;
+    const fileName = String(file.name || "").toLowerCase();
+    if (!fileName.endsWith(".csv")) {
+      setImportError("Only .csv files are supported.");
+      setImportWarning("");
+      return;
+    }
     const text = await file.text();
     const rows = parseCsv(text);
     if (!rows.length) return;
@@ -222,17 +230,20 @@ export default function ManageProjectsPanel({
     const invalidGroupRows = [];
     const invalidTitleRows = [];
     const invalidStudentsRows = [];
+    const invalidStudentSeparatorRows = [];
     const duplicateGroupRows = [];
     const seenGroups = new Set();
     const data = rows.slice(1).map((r) => {
-      const studentsRaw = idxStudents >= 0 ? r.slice(idxStudents).join(";") : "";
+      const studentsRaw = idxStudents >= 0 ? r[idxStudents] : "";
       const studentsText = String(studentsRaw || "").trim();
       const groupNo = Number(r[idxGroup] || 0);
       const title = String(r[idxTitle] || "").trim();
+      const hasExtraValues = r.slice(idxStudents + 1).some((cell) => String(cell || "").trim() !== "");
       return {
         group_no: groupNo,
         project_title: title,
         group_students: studentsText,
+        has_extra_values: hasExtraValues,
       };
     }).filter((r, idx) => {
       const rowNo = idx + 2; // include header row
@@ -249,6 +260,10 @@ export default function ManageProjectsPanel({
         invalidStudentsRows.push(rowNo);
         isValid = false;
       }
+      if (r.group_students.includes(",") || r.has_extra_values) {
+        invalidStudentSeparatorRows.push(rowNo);
+        isValid = false;
+      }
       if (seenGroups.has(r.group_no)) {
         duplicateGroupRows.push(rowNo);
         isValid = false;
@@ -262,6 +277,7 @@ export default function ManageProjectsPanel({
       invalidGroupRows.length ||
       invalidTitleRows.length ||
       invalidStudentsRows.length ||
+      invalidStudentSeparatorRows.length ||
       duplicateGroupRows.length
     ) {
       const parts = [];
@@ -273,6 +289,9 @@ export default function ManageProjectsPanel({
       }
       if (invalidStudentsRows.length) {
         parts.push(`Missing group_students at rows: ${invalidStudentsRows.slice(0, 6).join(", ")}.`);
+      }
+      if (invalidStudentSeparatorRows.length) {
+        parts.push(`Use semicolon (;) between student names in group_students at rows: ${invalidStudentSeparatorRows.slice(0, 6).join(", ")}.`);
       }
       if (duplicateGroupRows.length) {
         parts.push(`Duplicate group_no at rows: ${duplicateGroupRows.slice(0, 6).join(", ")}.`);
@@ -344,7 +363,7 @@ export default function ManageProjectsPanel({
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Manage groups, titles, and student lists for the active semester.</div>
+          <div className="manage-card-desc">Manage groups, project titles, and student lists for the active semester.</div>
           <div className="manage-hint manage-hint-inline">Active semester: {activeSemesterName || "—"}</div>
           <div className="manage-card-actions">
             <button
@@ -459,12 +478,17 @@ export default function ManageProjectsPanel({
                     onChange={(e) => setForm((f) => ({ ...f, project_title: e.target.value }))}
                     placeholder="Smart Traffic AI"
                   />
-                  <label className="manage-label">Students <span className="manage-label-note">(separate with ;)</span></label>
+                  <label className="manage-label">
+                    Students{" "}
+                    <span className="manage-label-note">
+                      (separate with <span className="manage-code-inline">;</span> e.g. {STUDENTS_EXAMPLE})
+                    </span>
+                  </label>
                   <textarea
                     className="manage-input manage-textarea"
                     value={form.group_students}
                     onChange={(e) => setForm((f) => ({ ...f, group_students: e.target.value }))}
-                    placeholder="Ali;Ayşe;Mehmet"
+                    placeholder={STUDENTS_EXAMPLE}
                     rows={3}
                   />
                 </div>
@@ -536,11 +560,17 @@ export default function ManageProjectsPanel({
                     value={editForm.project_title}
                     onChange={(e) => setEditForm((f) => ({ ...f, project_title: e.target.value }))}
                   />
-                  <label className="manage-label">Students <span className="manage-label-note">(separate students with ;)</span></label>
+                  <label className="manage-label">
+                    Students{" "}
+                    <span className="manage-label-note">
+                      (separate with <span className="manage-code-inline">;</span> e.g. {STUDENTS_EXAMPLE})
+                    </span>
+                  </label>
                   <textarea
                     className="manage-input manage-textarea"
                     value={editForm.group_students}
                     onChange={(e) => setEditForm((f) => ({ ...f, group_students: e.target.value }))}
+                    placeholder={STUDENTS_EXAMPLE}
                     rows={3}
                   />
                 </div>
@@ -580,18 +610,6 @@ export default function ManageProjectsPanel({
                   <div className="edit-dialog__title">Import CSV</div>
                 </div>
                 <div className="manage-modal-body">
-                  <div className="manage-hint">
-                    Upload your CSV file here. Header must include <span className="manage-code">project_title</span> (group title).
-                  </div>
-                  <div className="manage-hint">
-                    Excel import: Save As → CSV (UTF-8) with comma-separated columns.
-                  </div>
-                  <div className="manage-hint">
-                    Required headers: <span className="manage-code">group_no</span>, <span className="manage-code">project_title</span>, <span className="manage-code">group_students</span>. One row per group.
-                  </div>
-                  <div className="manage-hint">
-                    Use semicolons between student names inside <span className="manage-code">group_students</span>. Existing groups are skipped.
-                  </div>
                   <input
                     ref={fileRef}
                     type="file"
@@ -601,7 +619,7 @@ export default function ManageProjectsPanel({
                     onChange={handleFileChange}
                   />
                   <div
-                    className={`manage-dropzone${isDragging ? " is-dragging" : ""}`}
+                    className={`manage-dropzone${isDragging ? " is-dragging" : ""}${importError ? " is-error" : ""}`}
                     onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
@@ -631,21 +649,36 @@ export default function ManageProjectsPanel({
                     </button>
                   </div>
                   {importError && (
-                    <div className="manage-hint manage-hint-error">
+                    <div className="manage-import-feedback manage-import-feedback--error" role="alert">
                       {importError}
                     </div>
                   )}
                   {importWarning && !importError && (
-                    <div className="manage-hint manage-hint-warn">
+                    <div className="manage-import-feedback manage-import-feedback--warn" role="status">
                       {importWarning}
                     </div>
                   )}
-                  <div className="manage-hint">
-                    Format:
-                    <div className="manage-code">group_no,project_title,group_students</div>
-                    <div className="manage-code">1,Smart Traffic AI,Ali Yılmaz;Ayşe Demir;Mehmet Kaya</div>
-                    <div className="manage-code">2,Edge AI Drone,Zeynep Arslan;Deniz Aydın</div>
-                  </div>
+                  <details className="manage-collapsible">
+                    <summary className="manage-collapsible-summary">CSV example</summary>
+                    <div className="manage-collapsible-content">
+                      <div className="manage-code">group_no,project_title,group_students</div>
+                      <div className="manage-code">1,Autonomous Drone Navigation,Ali Yilmaz; Ayse Demir; Mehmet Can</div>
+                      <div className="manage-code">2,Power Quality Monitoring,Elif Kaya; Mert Arslan</div>
+                      <div className="manage-code">3,Embedded Vision for Robots,Zeynep Acar; Kerem Sahin</div>
+                    </div>
+                  </details>
+                  <details className="manage-collapsible">
+                    <summary className="manage-collapsible-summary">Rules</summary>
+                    <div className="manage-collapsible-content">
+                      <ul className="manage-hint-list manage-rules-list">
+                        <li>Header row is required with exact field names: <span className="manage-code-inline">group_no</span>, <span className="manage-code-inline">project_title</span>, <span className="manage-code-inline">group_students</span>.</li>
+                        <li><span className="manage-code-inline">group_no</span> must be a positive number and unique in the CSV.</li>
+                        <li><span className="manage-code-inline">project_title</span> and <span className="manage-code-inline">group_students</span> cannot be empty.</li>
+                        <li>One row must represent one group. Separate students with <span className="manage-code-inline">;</span> in <span className="manage-code-inline">group_students</span>.</li>
+                        <li>Existing <span className="manage-code-inline">group_no</span> values are skipped during import.</li>
+                      </ul>
+                    </div>
+                  </details>
                 </div>
                 <div className="manage-modal-actions">
                   <button className="manage-btn" type="button" onClick={() => setShowImport(false)}>

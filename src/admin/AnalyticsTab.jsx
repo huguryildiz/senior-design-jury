@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx-js-style";
 import { formatDashboardTs, buildExportFilename } from "./utils";
 import { CRITERIA, MUDEK_OUTCOMES } from "../config";
-import { ChevronDownIcon, DownloadIcon, LoaderIcon, TriangleAlertIcon } from "../shared/Icons";
+import { ChevronDownIcon, DownloadIcon, LoaderIcon, CircleXLucideIcon } from "../shared/Icons";
 import { mean, stdDev, outcomeValues, fmt1, fmt2, buildBoxplotStats } from "../shared/stats";
 import {
   OutcomeByGroupChart,
@@ -447,7 +447,7 @@ function DashboardSkeleton() {
 function DashboardError({ message }) {
   return (
     <div className="premium-error-banner is-critical" role="alert">
-      <TriangleAlertIcon />
+      <CircleXLucideIcon />
       <div>
         <div className="premium-error-title">Could not load analytics data</div>
         <div className="premium-error-detail">
@@ -1087,10 +1087,10 @@ export default function AnalyticsTab({
               {mudekMappingRows.map((row, idx) => (
                 <tr key={`${row.code}-${idx}`}>
                   {row.showCriteria ? (
-                    <td rowSpan={row.rowSpan}>{row.criteria}</td>
+                    <td className="print-mudek-cell-criteria" rowSpan={row.rowSpan}>{row.criteria}</td>
                   ) : null}
-                  <td>{row.code}</td>
-                  <td>{row.text}</td>
+                  <td className="print-mudek-cell-code">{row.code}</td>
+                  <td className="print-mudek-cell-outcome">{row.text}</td>
                 </tr>
               ))}
             </tbody>
@@ -1101,7 +1101,7 @@ export default function AnalyticsTab({
         <section className="print-page print-appendix">
           <h2 className="print-card-title">Group Details</h2>
           <div className="print-card-note">Group names, project titles, and student lists.</div>
-          <table className="print-appendix-table">
+          <table className="print-appendix-table print-group-details-table">
             <thead>
               <tr>
                 <th>Group</th>

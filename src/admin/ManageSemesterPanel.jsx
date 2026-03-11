@@ -4,6 +4,13 @@ import { useMemo, useState } from "react";
 import { CheckCircle2Icon, ChevronDownIcon, PencilIcon, SearchIcon, CirclePlusIcon, CalendarPlusIcon } from "../shared/Icons";
 import LastActivity from "./LastActivity";
 import DangerIconButton from "../components/admin/DangerIconButton";
+import {
+  APP_DATE_MIN_YEAR,
+  APP_DATE_MAX_YEAR,
+  APP_DATE_MIN_DATE,
+  APP_DATE_MAX_DATE,
+  isIsoDateWithinBounds,
+} from "../shared/dateBounds";
 
 export default function ManageSemesterPanel({
   semesters,
@@ -26,18 +33,17 @@ export default function ManageSemesterPanel({
   const [createError, setCreateError] = useState("");
   const [editError, setEditError] = useState("");
 
-  const maxYear = 9999;
-  const yearOf = (value) => {
-    if (!value) return null;
-    const [y] = String(value).split("-");
-    const n = Number(y);
-    return Number.isFinite(n) ? n : null;
-  };
+  const minYear = APP_DATE_MIN_YEAR;
+  const maxYear = APP_DATE_MAX_YEAR;
+  const minPosterDate = APP_DATE_MIN_DATE;
+  const maxPosterDate = APP_DATE_MAX_DATE;
   const getFormMeta = (value) => {
-    const posterYear = yearOf(value.poster_date);
+    const hasPosterDate = !!value.poster_date;
     const yearError =
-      posterYear && posterYear > maxYear ? "Year cannot exceed 9999." : "";
-    const canSubmit = value.name.trim() && value.poster_date && !yearError;
+      hasPosterDate && !isIsoDateWithinBounds(value.poster_date)
+        ? `Year must be between ${minYear} and ${maxYear}.`
+        : "";
+    const canSubmit = value.name.trim() && hasPosterDate && !yearError;
     return { yearError, canSubmit };
   };
   const createMeta = getFormMeta(createForm);
@@ -158,7 +164,6 @@ export default function ManageSemesterPanel({
       {isOpen && (
         <div className="manage-card-body">
           <div className="manage-card-desc">Manage semesters, dates, and the active term.</div>
-          <div className="manage-hint manage-hint-inline">Active semester: {activeSemesterName || "—"}</div>
           <div className="manage-field">
             <label className="manage-list-header">Active Semester</label>
             <div className="manage-row">
@@ -194,7 +199,7 @@ export default function ManageSemesterPanel({
               />
             </div>
             {visibleSemesters.map((s) => (
-              <div key={s.id} className={`manage-item${s.is_active ? " is-active" : ""}`}>
+              <div key={s.id} className={`manage-item manage-item--semester${s.is_active ? " is-active" : ""}`}>
                 <div>
                   <div className="manage-item-title-row">
                     <div className="manage-item-title">{s.name}</div>
@@ -222,7 +227,7 @@ export default function ManageSemesterPanel({
                     <LastActivity value={getLastActivity(s)} />
                   </div>
                 </div>
-                <div className="manage-item-actions">
+                <div className="manage-item-actions manage-item-actions--semester">
                   <button
                     className="manage-icon-btn"
                     type="button"
@@ -288,10 +293,12 @@ export default function ManageSemesterPanel({
                     <label className="manage-label">Poster date</label>
                     <input
                       type="date"
-                      className={`manage-input manage-date${createForm.poster_date ? "" : " is-empty"}`}
+                      className={`manage-input manage-date${createForm.poster_date ? "" : " is-empty"}${createMeta.yearError ? " is-danger" : ""}`}
                       value={createForm.poster_date}
                       onChange={(e) => setCreateForm((f) => ({ ...f, poster_date: e.target.value }))}
-                      max="9999-12-31"
+                      min={minPosterDate}
+                      max={maxPosterDate}
+                      aria-invalid={!!createMeta.yearError}
                     />
                   </div>
                   {createMeta.yearError && <div className="manage-field-error">{createMeta.yearError}</div>}
@@ -316,8 +323,8 @@ export default function ManageSemesterPanel({
                         name: createForm.name.trim(),
                         poster_date: createForm.poster_date,
                       });
-                      if (res?.fieldErrors?.name) {
-                        setCreateError(res.fieldErrors.name);
+                      if (res?.fieldErrors) {
+                        setCreateError(res.fieldErrors.name || res.fieldErrors.poster_date || "Invalid semester data.");
                         return;
                       }
                       setCreateError("");
@@ -357,10 +364,12 @@ export default function ManageSemesterPanel({
                     <label className="manage-label">Poster date</label>
                     <input
                       type="date"
-                      className={`manage-input manage-date${editForm.poster_date ? "" : " is-empty"}`}
+                      className={`manage-input manage-date${editForm.poster_date ? "" : " is-empty"}${editMeta.yearError ? " is-danger" : ""}`}
                       value={editForm.poster_date}
                       onChange={(e) => setEditForm((f) => ({ ...f, poster_date: e.target.value }))}
-                      max="9999-12-31"
+                      min={minPosterDate}
+                      max={maxPosterDate}
+                      aria-invalid={!!editMeta.yearError}
                     />
                   </div>
                   {editMeta.yearError && <div className="manage-field-error">{editMeta.yearError}</div>}
@@ -386,8 +395,8 @@ export default function ManageSemesterPanel({
                         name: editForm.name.trim(),
                         poster_date: editForm.poster_date,
                       });
-                      if (res?.fieldErrors?.name) {
-                        setEditError(res.fieldErrors.name);
+                      if (res?.fieldErrors) {
+                        setEditError(res.fieldErrors.name || res.fieldErrors.poster_date || "Invalid semester data.");
                         return;
                       }
                       setEditError("");

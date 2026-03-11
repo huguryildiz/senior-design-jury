@@ -528,7 +528,7 @@
   .overview-stat-cards .stat-ring::after { inset: 4px; }
   .overview-stat-cards .stat-ring span { font-size: 13px; }
   .overview-stat-cards .stat-icon-circle svg { width: 22px; height: 22px; }
-  .details-scroll-hint { display: flex; }
+  .details-scroll-hint { display: none; }
 }
 
 /* ── Print report layout (shared) ──────────────────────────── */
@@ -790,29 +790,55 @@
   .print-appendix-table td {
     border: 1px solid #e2e8f0;
     padding: 6px 8px;
-    text-align: left;
     vertical-align: top;
   }
+  .print-appendix-table td {
+    text-align: justify;
+    text-justify: inter-word;
+  }
   .print-appendix-table th {
+    text-align: left;
     font-size: 10px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #475569;
     background: #f8fafc;
   }
-  .print-mudek-table th:nth-child(1),
-  .print-mudek-table td:nth-child(1) { width: 14%; }
-  .print-mudek-table th:nth-child(2),
-  .print-mudek-table td:nth-child(2) { width: 10%; }
-  .print-mudek-table th:nth-child(3),
-  .print-mudek-table td:nth-child(3) { width: 76%; }
-  .print-mudek-table td:nth-child(3) {
+  .print-mudek-table th:nth-child(1) { width: 14%; text-align: center; }
+  .print-mudek-table th:nth-child(2) { width: 10%; text-align: center; }
+  .print-mudek-table th:nth-child(3) { width: 76%; }
+  .print-mudek-table td.print-mudek-cell-criteria,
+  .print-mudek-table td.print-mudek-cell-code {
+    width: 10%;
+    text-align: center;
+    text-justify: auto;
+  }
+  .print-mudek-table td.print-mudek-cell-criteria { width: 14%; }
+  .print-mudek-table td.print-mudek-cell-outcome {
+    width: 76%;
+    text-align: left;
+    text-justify: auto;
     white-space: normal;
     word-break: break-word;
     overflow-wrap: anywhere;
     max-width: 0;
   }
-  .print-mudek-table td:first-child { vertical-align: middle; }
+  .print-mudek-table td.print-mudek-cell-criteria { vertical-align: middle; }
+  .print-group-details-table {
+    table-layout: auto;
+  }
+  .print-group-details-table th:nth-child(1),
+  .print-group-details-table td:nth-child(1) {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .print-group-details-table th:nth-child(2),
+  .print-group-details-table td:nth-child(2),
+  .print-group-details-table th:nth-child(3),
+  .print-group-details-table td:nth-child(3) {
+    width: 49.5%;
+  }
+  .print-group-details-table td { vertical-align: middle; }
 
   /* Page breaks after every printed chart */
   .print-page {

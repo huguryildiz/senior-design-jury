@@ -316,14 +316,14 @@ body {
   align-items: flex-start;
 }
 .premium-error-banner {
-  background: #fef2f2;
+  background: #fff1f2;
   border: 1px solid #fecaca;
-  border-left: 4px solid #f87171;
-  border-radius: 16px;
+  border-left: 5px solid #ef4444;
+  border-radius: 14px;
   padding: 12px 14px;
   text-align: left;
   font-size: 14px;
-  color: #991b1b;
+  color: #b91c1c;
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -332,7 +332,7 @@ body {
   border-left-color: #ef4444;
   box-shadow: 0 0 0 2px rgba(239,68,68,0.12);
 }
-.premium-error-banner svg { width: 16px; height: 16px; margin-top: 2px; }
+.premium-error-banner svg { width: 18px; height: 18px; margin-top: 1px; }
 .premium-error-title { font-weight: 700; color: #b91c1c; }
 .premium-error-detail { color: #b91c1c; }
 .premium-overlay {
@@ -580,7 +580,29 @@ body {
 
 /* ── Shared utility ────────────────────────────────────────── */
 .loading   { text-align: center; padding: 40px; color: var(--gray-500); }
-.error-msg { background: var(--red-light); color: var(--red); padding: 14px 20px; margin: 20px; border-radius: var(--radius); font-size: 14px; }
+.error-msg {
+  background: #fff1f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-left: 5px solid #ef4444;
+  padding: 12px 14px;
+  margin: 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.error-msg::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .empty-msg { text-align: center; padding: 40px; color: var(--gray-500); }
 
 /* ── Horizontal swipe helper ───────────────────────────────── */
