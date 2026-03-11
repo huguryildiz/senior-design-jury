@@ -22,16 +22,27 @@ function normalizeScoreFilterValue(value) {
   return String(Math.min(SCORE_FILTER_MAX, Math.max(SCORE_FILTER_MIN, n)));
 }
 
+function isInvalidRange(min, max) {
+  if (min === "" || max === "") return false;
+  const minNum = Number(min);
+  const maxNum = Number(max);
+  if (!Number.isFinite(minNum) || !Number.isFinite(maxNum)) return true;
+  return minNum > maxNum;
+}
+
 function normalizeGroupScoreFilters(filters) {
   if (!filters || typeof filters !== "object") return {};
   return Object.fromEntries(
-    Object.entries(filters).map(([groupId, range]) => [
-      groupId,
-      {
-        min: normalizeScoreFilterValue(range?.min),
-        max: normalizeScoreFilterValue(range?.max),
-      },
-    ])
+    Object.entries(filters).map(([groupId, range]) => {
+      const min = normalizeScoreFilterValue(range?.min);
+      const max = normalizeScoreFilterValue(range?.max);
+      return [
+        groupId,
+        isInvalidRange(min, max)
+          ? { min: "", max: "" }
+          : { min, max },
+      ];
+    })
   );
 }
 
@@ -123,7 +134,9 @@ export function useGridSort(jurors, groups, lookup) {
     // 2. Group score range filters (AND logic — all active filters must match)
     const activeGroupFilters = Object.entries(groupScoreFilters).filter(
       ([groupId, { min, max }]) =>
-        validGroupIds.has(String(groupId)) && (min !== "" || max !== "")
+        validGroupIds.has(String(groupId))
+        && (min !== "" || max !== "")
+        && !isInvalidRange(min, max)
     );
     if (activeGroupFilters.length > 0) {
       list = list.filter((j) =>

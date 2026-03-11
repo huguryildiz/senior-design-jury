@@ -260,22 +260,22 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
   const allRows = includeEmptyRows ? [...baseRows, ...generated] : baseRows;
 
   const headers = [
-    "semester",
-    "group_no",
-    "project_title",
-    "group_students",
-    "juror_name",
-    "juror_inst",
-    "cell_status",
-    "juror_status",
-    "technical",
-    "written",
-    "oral",
-    "teamwork",
-    "total",
-    "updated_at",
-    "final_submitted_at",
-    "comment",
+    "Semester",
+    "Group No",
+    "Project Title",
+    "Students",
+    "Juror",
+    "Institution / Department",
+    "Score Status",
+    "Juror Status",
+    "Technical /30",
+    "Written /30",
+    "Oral /30",
+    "Teamwork /10",
+    "Total",
+    "Updated At",
+    "Completed At",
+    "Comment",
   ];
 
   const totalGroups =
@@ -365,10 +365,10 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
   });
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  // semester(A), group_no(B), project_title(C), group_students(D),
-  // juror_name(E), juror_inst(F), cell_status(G), juror_status(H),
-  // technical(I), written(J), oral(K), teamwork(L), total(M),
-  // updated_at(N), final_submitted_at(O), comment(P)
+  // Semester(A), Group No(B), Project Title(C), Students(D),
+  // Juror(E), Institution / Department(F), Score Status(G), Juror Status(H),
+  // Technical /30(I), Written /30(J), Oral /30(K), Teamwork /10(L), Total(M),
+  // Updated At(N), Completed At(O), Comment(P)
   ws["!cols"] = [18, 8, 32, 42, 24, 26, 12, 14, 11, 9, 7, 11, 8, 24, 24, 32]
     .map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
@@ -383,7 +383,7 @@ export async function exportGridXLSX(exportRows, groups, { semesterName = "" } =
   const XLSX = await import("xlsx-js-style");
 
   const groupHeaders = groups.map((g) => g.groupNo != null ? `Group ${g.groupNo}` : g.label);
-  const headers = ["Juror", "Institution", "Status", ...groupHeaders];
+  const headers = ["Juror", "Institution / Department", "Status", ...groupHeaders];
 
   const data = exportRows.map((r) => [
     r.name,

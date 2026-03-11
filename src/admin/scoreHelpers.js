@@ -104,7 +104,7 @@ export const jurorStatusMeta = {
   scored: {
     label:      "Scored",
     icon:       CheckIcon,
-    colorClass: "status-green",
+    colorClass: "status-green-soft",
   },
   partial: {
     label:      "Partial",

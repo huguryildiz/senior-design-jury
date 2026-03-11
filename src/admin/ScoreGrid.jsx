@@ -17,6 +17,7 @@ import {
   FilterIcon,
   InfoIcon,
   DownloadIcon,
+  SearchIcon,
   XIcon,
 } from "../shared/Icons";
 import { CRITERIA } from "../config";
@@ -166,6 +167,21 @@ function clampRangeInput(raw, min = 0, max = 100) {
   return String(Math.min(max, Math.max(min, n)));
 }
 
+function isInvalidRange(minRaw, maxRaw) {
+  const minNum = toFiniteNumber(minRaw);
+  const maxNum = toFiniteNumber(maxRaw);
+  if (minRaw !== "" && minNum === null) return true;
+  if (maxRaw !== "" && maxNum === null) return true;
+  return minNum !== null && maxNum !== null && minNum > maxNum;
+}
+
+function hasActiveValidRange(range) {
+  const minRaw = range?.min ?? "";
+  const maxRaw = range?.max ?? "";
+  if (!minRaw && !maxRaw) return false;
+  return !isInvalidRange(minRaw, maxRaw);
+}
+
 // ── Cell helpers ───────────────────────────────────────────────
 const cellClassName = (state, isFinal = false) => {
   if (state === "scored") return isFinal ? "matrix-cell matrix-cell-scored-final" : "matrix-cell matrix-cell-scored";
@@ -227,7 +243,6 @@ const JurorCell = memo(function JurorCell({ juror, workflowState, isTouchInput =
   const fullName = juror.dept ? `${juror.name} (${juror.dept})` : juror.name;
   const nativeNameRef = useRef(null);
   useEffect(() => {
-    if (!isTouchInput) return;
     updateNativeInlineScrollState(nativeNameRef.current);
   }, [isTouchInput, fullName]);
   return (
@@ -243,8 +258,8 @@ const JurorCell = memo(function JurorCell({ juror, workflowState, isTouchInput =
         className={`matrix-juror-name${isTouchInput ? " is-native-scroll" : ""}`}
         title={fullName}
         {...(isTouchInput ? {} : INLINE_SCROLL_PROPS)}
-        ref={isTouchInput ? nativeNameRef : undefined}
-        onScroll={isTouchInput ? handleNativeInlineScroll : undefined}
+        ref={nativeNameRef}
+        onScroll={handleNativeInlineScroll}
       >
         <span className="matrix-juror-name-inner">
           <span className="matrix-juror-name-text">{juror.name}</span>
@@ -310,7 +325,7 @@ function MatrixLegend({
       </div>
       {/* Toolbar: filter count + active filter/sort indicators */}
       <div className="matrix-legend-row matrix-toolbar-row">
-        {hasAnyFilter && (
+        {(hasAnyFilter || sortValueLabel) && (
           <button
             type="button"
             className="filter-chip filter-chip-clear-all"
@@ -535,7 +550,10 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
 
   // Active group filter chips for MatrixLegend
   const activeGroupFilterChips = groups
-    .filter((g) => { const f = groupScoreFilters[g.id]; return f?.min || f?.max; })
+    .filter((g) => {
+      const f = groupScoreFilters[g.id];
+      return hasActiveValidRange(f);
+    })
     .map((g) => {
       const { min, max } = groupScoreFilters[g.id];
       const rawLabel = String(g.groupNo ?? g.label ?? "").trim();
@@ -585,15 +603,12 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
             min={0}
             max={100}
             value={draftMin}
+            className="filter-input-active"
             onChange={(e) => {
               const nextMin = clampRangeInput(e.target.value);
               setGroupScoreDraft((p) => {
                 const next = { ...p, min: nextMin };
-                const nextMinNum = toFiniteNumber(next.min);
-                const nextMaxNum = toFiniteNumber(next.max);
-                if (!(nextMinNum !== null && nextMaxNum !== null && nextMinNum > nextMaxNum)) {
-                  setGroupScoreFilter(groupId, next.min, next.max);
-                }
+                setGroupScoreFilter(groupId, next.min, next.max);
                 return next;
               });
             }}
@@ -607,15 +622,12 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
             min={0}
             max={100}
             value={draftMax}
+            className="filter-input-active"
             onChange={(e) => {
               const nextMax = clampRangeInput(e.target.value);
               setGroupScoreDraft((p) => {
                 const next = { ...p, max: nextMax };
-                const nextMinNum = toFiniteNumber(next.min);
-                const nextMaxNum = toFiniteNumber(next.max);
-                if (!(nextMinNum !== null && nextMaxNum !== null && nextMinNum > nextMaxNum)) {
-                  setGroupScoreFilter(groupId, next.min, next.max);
-                }
+                setGroupScoreFilter(groupId, next.min, next.max);
                 return next;
               });
             }}
@@ -714,7 +726,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                 {groups.map((g) => {
                   const isSortActive   = sortMode === "group" && sortGroupId === g.id;
                   const gFilter        = groupScoreFilters[g.id] || { min: "", max: "" };
-                  const isFilterActive = !!(gFilter.min || gFilter.max) || activeFilterCol === g.id;
+                  const isFilterActive = hasActiveValidRange(gFilter) || activeFilterCol === g.id;
                   return (
                     <th key={g.id}>
                       <div className="matrix-group-th-inner">
@@ -802,19 +814,21 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
         contentKey={jurorFilter}
         trapFocus
       >
-        <div className="col-filter-label">Filter jurors</div>
         <label htmlFor="juror-filter-input" className="sr-only">
           Filter jurors by name or institution
         </label>
-        <input
-          id="juror-filter-input"
-          autoFocus
-          placeholder="Search juror or institution"
-          aria-label="Filter jurors by name or institution"
-          value={jurorFilter}
-          onChange={(e) => setJurorFilter(e.target.value)}
-          className={isJurorFilterActive ? "filter-input-active" : ""}
-        />
+        <div className="col-filter-search-wrap">
+          <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
+          <input
+            id="juror-filter-input"
+            autoFocus
+            placeholder="Search juror or institution"
+            aria-label="Filter jurors by name or institution"
+            value={jurorFilter}
+            onChange={(e) => setJurorFilter(e.target.value)}
+            className={`col-filter-search-input${isJurorFilterActive ? " filter-input-active" : ""}`}
+          />
+        </div>
         {jurorFilter && (
           <button className="col-filter-clear" onClick={() => { setJurorFilter(""); closePopover(); }}>
             Clear

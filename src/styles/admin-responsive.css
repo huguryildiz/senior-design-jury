@@ -264,13 +264,7 @@
   .tab-bar { padding-right: 24px; }
   .tab-scroll-hint { display: inline-flex; }
 
-  /* Matrix: disable frozen first column on small screens */
-  .matrix-table th:first-child,
-  .matrix-table td:first-child {
-    position: static;
-    left: auto;
-    box-shadow: none;
-  }
+  /* Matrix: keep frozen first column on small screens */
   .matrix-table th:first-child,
   .matrix-table td:first-child { min-width: 220px; max-width: none; width: auto; }
   .matrix-table th:not(:first-child),
@@ -307,12 +301,6 @@
     scrollbar-width: none;
   }
   .matrix-scroll::-webkit-scrollbar { display: none; }
-  .matrix-table th:first-child,
-  .matrix-table td:first-child {
-    position: static;
-    left: auto;
-    box-shadow: none;
-  }
   .matrix-table th:first-child,
   .matrix-table td:first-child { min-width: 220px; max-width: none; width: auto; }
   .matrix-table th:not(:first-child),
@@ -813,11 +801,14 @@
     text-align: center;
     text-justify: auto;
   }
+  .print-mudek-table td.print-mudek-cell-code {
+    vertical-align: middle;
+  }
   .print-mudek-table td.print-mudek-cell-criteria { width: 14%; }
   .print-mudek-table td.print-mudek-cell-outcome {
     width: 76%;
-    text-align: left;
-    text-justify: auto;
+    text-align: justify;
+    text-justify: inter-word;
     white-space: normal;
     word-break: break-word;
     overflow-wrap: anywhere;

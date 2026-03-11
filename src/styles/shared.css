@@ -321,7 +321,9 @@ body {
   border-left: 5px solid #ef4444;
   border-radius: 14px;
   padding: 12px 14px;
-  text-align: left;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
   font-size: 14px;
   color: #b91c1c;
   display: flex;
@@ -406,6 +408,7 @@ body {
 .status-badge.status-purple,
 .status-badge.status-blue,
 .status-badge.status-green,
+.status-badge.status-green-soft,
 .status-badge.status-amber {
   animation: none;
   box-shadow: none;
@@ -592,6 +595,9 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
 }
 .error-msg::before {
   content: "";
