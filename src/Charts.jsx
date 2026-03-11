@@ -17,7 +17,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { CRITERIA, MUDEK_OUTCOMES, MUDEK_THRESHOLD } from "./config";
 import LevelPill from "./shared/LevelPill";
-import { GraduationCapIcon, ChevronDownIcon, SearchIcon } from "./shared/Icons";
+import { GraduationCapIcon, ChevronDownIcon, SearchIcon, InfoIcon } from "./shared/Icons";
 import { mean, stdDev, quantile, outcomeValues } from "./shared/stats";
 
 // ── Per-chart MÜDEK outcome code lists ───────────────────────
@@ -33,6 +33,37 @@ const OUTCOMES = CRITERIA.map((c) => ({
   max:   c.max,
   color: c.color,
 }));
+
+export const CHART_COPY = {
+  outcomeByGroup: {
+    title: "Outcome Achievement by Group",
+    note: "Compares each group's normalized score across all four MÜDEK-mapped criteria.",
+  },
+  programmeAverages: {
+    title: "Programme-Level Outcome Averages",
+    note: "Grand mean ±1 std. deviation (σ) normalized score per outcome across all groups and jurors.",
+  },
+  semesterTrend: {
+    title: "Semester Trend",
+    note: "Normalized averages across selected semesters.",
+  },
+  competencyProfile: {
+    title: "Competency Profile per Group",
+    note: "Shows whether a group's competency development is balanced or skewed across all four outcomes.",
+  },
+  scoreDistribution: {
+    title: "Score Distribution by Criterion",
+    note: "Reveals inter-juror spread for each criterion — evidence of measurement reliability.",
+  },
+  jurorConsistency: {
+    title: "Juror Consistency Heatmap",
+    note: "Identifies which group × criterion combinations have poor juror agreement, guiding rubric improvement.",
+  },
+  achievementDistribution: {
+    title: "Achievement Level Distribution",
+    note: "% of evaluations per rubric band — directly maps to MÜDEK continuous improvement evidence.",
+  },
+};
 
 function parseOutcomeCode(code) {
   const [majorRaw, minorRaw] = String(code).split(".");
@@ -50,6 +81,74 @@ function compareOutcomeCodes(a, b) {
   if (A.major !== B.major) return A.major - B.major;
   if (A.minor !== B.minor) return A.minor - B.minor;
   return String(a).localeCompare(String(b));
+}
+
+function formatMudekCodes(code) {
+  return String(code || "")
+    .split("/")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .join(" / ");
+}
+
+function outcomeCodeLine(code) {
+  const formatted = formatMudekCodes(code);
+  return formatted ? `(${formatted})` : "";
+}
+
+function OutcomeLegendLabel({ label, code }) {
+  const codeLine = outcomeCodeLine(code);
+  return (
+    <span className="legend-label">
+      <span className="legend-label-main">{label}</span>
+      {codeLine ? <span className="legend-label-sub">{codeLine}</span> : null}
+    </span>
+  );
+}
+
+function OutcomeLabelSvg({
+  x,
+  y,
+  label,
+  code,
+  anchor = "middle",
+  mainSize = 9,
+  subSize = 7,
+  mainFill = "#475569",
+  subFill = "#94a3b8",
+  fontWeight = 600,
+  lineGap = 11,
+  mainClassName = "",
+  subClassName = "",
+}) {
+  const codeLine = outcomeCodeLine(code);
+  return (
+    <g>
+      <text
+        x={x}
+        y={y}
+        textAnchor={anchor}
+        fontSize={mainSize}
+        fill={mainFill}
+        fontWeight={fontWeight}
+        className={mainClassName || undefined}
+      >
+        {label}
+      </text>
+      {codeLine ? (
+        <text
+          x={x}
+          y={y + lineGap}
+          textAnchor={anchor}
+          fontSize={subSize}
+          fill={subFill}
+          className={subClassName || undefined}
+        >
+          {codeLine}
+        </text>
+      ) : null}
+    </g>
+  );
 }
 
 // ── Shared empty state ────────────────────────────────────────
@@ -293,7 +392,8 @@ export function MudekBadge({ outcomeCodes = CHART_OUTCOMES }) {
             {tab === "rubric"   && <MudekRubricTab />}
           </div>
           <div className="mudek-dropdown-footer">
-            ℹ This chart provides evidence for the outcomes above.
+            <span className="mudek-info-icon" aria-hidden="true"><InfoIcon /></span>
+            <span>This chart provides evidence for the outcomes above.</span>
           </div>
         </div>
       )}
@@ -324,7 +424,7 @@ export function OutcomeOverviewChart({ data }) {
   const padL    = 34;   // room for y-axis labels
   const padR    = 8;
   const padTop  = 22;   // room for value labels above bars
-  const padBot  = 20;   // room for x-axis labels
+  const padBot  = 32;   // room for x-axis labels + MÜDEK codes
   const chartH  = 160;  // height of the bar area
 
   const n    = items.length;                                 // 4
@@ -341,8 +441,8 @@ export function OutcomeOverviewChart({ data }) {
     <div className="chart-card chart-compact-equal chart-fill-card dashboard-chart-card">
       <div className="chart-title-row">
         <div>
-          <div className="chart-title">Programme-Level Outcome Averages</div>
-          <div className="chart-note">Grand mean ±1 SD normalized score per outcome across all groups and jurors.</div>
+          <div className="chart-title">{CHART_COPY.programmeAverages.title}</div>
+          <div className="chart-note">{CHART_COPY.programmeAverages.note}</div>
         </div>
       </div>
 
@@ -388,7 +488,7 @@ export function OutcomeOverviewChart({ data }) {
             const sdLoY   = pctY(Math.max(0, o.pct - o.sd));
             return (
               <g key={o.key}>
-                <title>{o.label} ({o.code}){"\n"}Grand mean: {o.pct.toFixed(1)}%{"\n"}SD: ±{o.sd.toFixed(1)}%{"\n"}N evaluations: {o.n}</title>
+                <title>{o.label} ({o.code}){"\n"}Grand mean: {o.pct.toFixed(1)}%{"\n"}Std. deviation (σ): ±{o.sd.toFixed(1)}%{"\n"}N evaluations: {o.n}</title>
 
                 {/* Track (background) */}
                 <rect x={x} y={padTop} width={barW} height={chartH} rx="3" fill="#f1f5f9" />
@@ -437,13 +537,20 @@ export function OutcomeOverviewChart({ data }) {
                 </text>
 
                 {/* X-axis label */}
-                <text
-                  className="chart-x-label"
-                  x={cx} y={padTop + chartH + 13}
-                  textAnchor="middle" fontSize="8.5" fill="#374151" fontWeight="500"
-                >
-                  {o.label}
-                </text>
+                <OutcomeLabelSvg
+                  x={cx}
+                  y={padTop + chartH + 13}
+                  label={o.label}
+                  code={o.code}
+                  mainSize={8.5}
+                  subSize={7}
+                  mainFill="#374151"
+                  subFill="#94a3b8"
+                  fontWeight={500}
+                  lineGap={10}
+                  mainClassName="chart-x-label"
+                  subClassName="chart-x-label-sub"
+                />
               </g>
             );
           })}
@@ -475,27 +582,31 @@ export function OutcomeTrendChart({
     {
       key: "technical",
       label: outcomeByKey.technical?.label || "Technical",
+      code: outcomeByKey.technical?.code || "1.2/2/3.1/3.2",
       color: outcomeByKey.technical?.color || "#f59e0b",
       max: outcomeByKey.technical?.max || 1,
       field: "avgTechnical",
     },
     {
       key: "design",
-      label: "Written (9.2)",
+      label: outcomeByKey.design?.label || "Written",
+      code: outcomeByKey.design?.code || "9.2",
       color: outcomeByKey.design?.color || "#22c55e",
       max: outcomeByKey.design?.max || 1,
       field: "avgWritten",
     },
     {
       key: "delivery",
-      label: "Oral (9.1)",
+      label: outcomeByKey.delivery?.label || "Oral",
+      code: outcomeByKey.delivery?.code || "9.1",
       color: outcomeByKey.delivery?.color || "#3b82f6",
       max: outcomeByKey.delivery?.max || 1,
       field: "avgOral",
     },
     {
       key: "teamwork",
-      label: "Teamwork (8.1/8.2)",
+      label: outcomeByKey.teamwork?.label || "Teamwork",
+      code: outcomeByKey.teamwork?.code || "8.1/8.2",
       color: outcomeByKey.teamwork?.color || "#ef4444",
       max: outcomeByKey.teamwork?.max || 1,
       field: "avgTeamwork",
@@ -652,8 +763,8 @@ export function OutcomeTrendChart({
     <div className="chart-card chart-fill-card dashboard-chart-card">
       <div className="chart-title-row trend-title-row">
         <div>
-          <div className="chart-title">Semester Trend</div>
-          <div className="chart-note">Normalized averages across selected semesters.</div>
+          <div className="chart-title">{CHART_COPY.semesterTrend.title}</div>
+          <div className="chart-note">{CHART_COPY.semesterTrend.note}</div>
         </div>
         {headerRight}
       </div>
@@ -661,9 +772,9 @@ export function OutcomeTrendChart({
       {renderBody()}
       <div className="chart-legend trend-legend">
         {series.map((ser) => (
-          <span key={ser.key} className="legend-item">
+          <span key={ser.key} className="legend-item legend-item--stacked">
             <span className="legend-dot" style={{ background: ser.color }} />
-            {ser.label}
+            <OutcomeLegendLabel label={ser.label} code={ser.code} />
           </span>
         ))}
       </div>
@@ -713,8 +824,8 @@ export function OutcomeByGroupChart({ stats }) {
     <div className="chart-card chart-compact-equal">
       <div className="chart-title-row">
         <div>
-          <div className="chart-title">Outcome Achievement by Group</div>
-          <div className="chart-note">Compares each group's normalized score across all four MÜDEK-mapped criteria.</div>
+          <div className="chart-title">{CHART_COPY.outcomeByGroup.title}</div>
+          <div className="chart-note">{CHART_COPY.outcomeByGroup.note}</div>
         </div>
       </div>
 
@@ -786,9 +897,9 @@ export function OutcomeByGroupChart({ stats }) {
 
       <div className="chart-legend">
         {OUTCOMES.map((o) => (
-          <span key={o.key} className="legend-item">
+          <span key={o.key} className="legend-item legend-item--stacked">
             <span className="legend-dot" style={{ background: o.color }} />
-            {o.label}
+            <OutcomeLegendLabel label={o.label} code={o.code} />
           </span>
         ))}
         <span className="legend-item">
@@ -829,8 +940,8 @@ export function CompetencyRadarChart({ stats }) {
     <div className="chart-card chart-fill-card">
       <div className="chart-title-row">
         <div>
-          <div className="chart-title">Competency Profile per Group</div>
-          <div className="chart-note">Shows whether a group's competency development is balanced or skewed across all four outcomes.</div>
+          <div className="chart-title">{CHART_COPY.competencyProfile.title}</div>
+          <div className="chart-note">{CHART_COPY.competencyProfile.note}</div>
         </div>
       </div>
 
@@ -894,16 +1005,21 @@ export function CompetencyRadarChart({ stats }) {
             </g>
           ))}
           {OUTCOMES.map((o, i) => {
-            const lp = spoke(i, R + 16);
+            const lp = spoke(i, R + 28);
             return (
-              <text
+              <OutcomeLabelSvg
                 key={o.key}
-                x={lp.x.toFixed(1)} y={lp.y.toFixed(1)}
-                textAnchor="middle" dominantBaseline="middle"
-                fontSize="9" fill="#334155" fontWeight="700"
-              >
-                {o.label}
-              </text>
+                x={lp.x}
+                y={lp.y}
+                label={o.label}
+                code={o.code}
+                mainSize={9}
+                subSize={7}
+                mainFill="#334155"
+                subFill="#94a3b8"
+                fontWeight={700}
+                lineGap={9}
+              />
             );
           })}
         </svg>
@@ -958,8 +1074,9 @@ export function RadarPrintAll({ stats }) {
         const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + " Z";
         return (
           <section key={group.id} className="print-page report-chart radar-print-page">
-            <h2 className="print-card-title">Competency Profile — {group.name}</h2>
-            <div className="print-card-note">Dashed line shows the cohort average across all groups.</div>
+            <h2 className="print-card-title">{CHART_COPY.competencyProfile.title}</h2>
+            <div className="print-card-subtitle">{group.name}</div>
+            <div className="print-card-note">{CHART_COPY.competencyProfile.note}</div>
             <div className="chart-wrapper">
               <div className="radar-print-card">
                 <svg
@@ -995,20 +1112,35 @@ export function RadarPrintAll({ stats }) {
                   <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="3.5" fill="#3b82f6" stroke="#fff" strokeWidth="1.2" />
                 ))}
                 {OUTCOMES.map((o, i) => {
-                  const lp = spoke(i, R + 16);
+                  const lp = spoke(i, R + 28);
                   return (
-                    <text
+                    <OutcomeLabelSvg
                       key={o.key}
-                      x={lp.x.toFixed(1)} y={lp.y.toFixed(1)}
-                      textAnchor="middle" dominantBaseline="middle"
-                      fontSize="9" fill="#334155" fontWeight="700"
-                    >
-                      {o.label}
-                    </text>
+                      x={lp.x}
+                      y={lp.y}
+                      label={o.label}
+                      code={o.code}
+                      mainSize={8.5}
+                      subSize={6.8}
+                      mainFill="#334155"
+                      subFill="#94a3b8"
+                      fontWeight={700}
+                      lineGap={8}
+                    />
                   );
                 })}
                 </svg>
               </div>
+            </div>
+            <div className="chart-legend">
+              <span className="legend-item">
+                <span className="legend-dot" style={{ background: "#3b82f6" }} />
+                {group.name}
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot" style={{ background: "#9CA3AF" }} />
+                Cohort Average (dashed)
+              </span>
             </div>
           </section>
         );
@@ -1049,7 +1181,7 @@ export function CriterionBoxPlotChart({ data }) {
   const padR = 10;
   const chartPadTop = 6;
   const chartH = 160;
-  const totalH = chartH + chartPadTop + 20;
+  const totalH = chartH + chartPadTop + 32;
   const groupW = (W - padL - padR) / boxes.length;
   const bandW = 18;
   const allVals = boxes.flatMap((b) =>
@@ -1082,8 +1214,8 @@ export function CriterionBoxPlotChart({ data }) {
     <div className="chart-card chart-equal-bottom dashboard-chart-card">
       <div className="chart-title-row">
         <div>
-          <div className="chart-title">Score Distribution by Criterion</div>
-          <div className="chart-note">Reveals inter-juror spread for each criterion — evidence of measurement reliability.</div>
+          <div className="chart-title">{CHART_COPY.scoreDistribution.title}</div>
+          <div className="chart-note">{CHART_COPY.scoreDistribution.note}</div>
         </div>
       </div>
 
@@ -1115,7 +1247,19 @@ export function CriterionBoxPlotChart({ data }) {
             const bx = padL + i * groupW + groupW / 2;
             if (b.empty) {
               return (
-                <text key={b.key} x={bx} y={chartPadTop + chartH + 16} fontSize="9" textAnchor="middle" fill="#94a3b8">{b.label}</text>
+                <OutcomeLabelSvg
+                  key={b.key}
+                  x={bx}
+                  y={chartPadTop + chartH + 14}
+                  label={b.label}
+                  code={b.code}
+                  mainSize={9}
+                  subSize={7}
+                  mainFill="#94a3b8"
+                  subFill="#94a3b8"
+                  fontWeight={600}
+                  lineGap={10}
+                />
               );
             }
             const yQ1  = yv(b.q1);
@@ -1129,9 +1273,18 @@ export function CriterionBoxPlotChart({ data }) {
                   fill="rgba(59,130,246,0.18)" stroke={b.color} strokeWidth="1.6"
                 />
                 <line x1={bx - bandW / 2} y1={yMed} x2={bx + bandW / 2} y2={yMed} stroke={b.color} strokeWidth="2.2" />
-                <text x={bx} y={chartPadTop + chartH + 16} fontSize="9" textAnchor="middle" fill="#475569" fontWeight="600">
-                  {b.label}
-                </text>
+                <OutcomeLabelSvg
+                  x={bx}
+                  y={chartPadTop + chartH + 14}
+                  label={b.label}
+                  code={b.code}
+                  mainSize={9}
+                  subSize={7}
+                  mainFill="#475569"
+                  subFill="#94a3b8"
+                  fontWeight={600}
+                  lineGap={10}
+                />
               </g>
             );
           })}
@@ -1206,8 +1359,8 @@ export function JurorConsistencyHeatmap({ stats, data }) {
     <div className="chart-card chart-fill-card">
       <div className="chart-title-row">
         <div>
-          <div className="chart-title">Juror Consistency Heatmap</div>
-          <div className="chart-note">Identifies which group × criterion combinations have poor juror agreement, guiding rubric improvement.</div>
+          <div className="chart-title">{CHART_COPY.jurorConsistency.title}</div>
+          <div className="chart-note">{CHART_COPY.jurorConsistency.note}</div>
         </div>
       </div>
 
@@ -1249,11 +1402,19 @@ export function JurorConsistencyHeatmap({ stats, data }) {
           ))}
           {OUTCOMES.map((o, i) => (
             <g key={o.key}>
-              <text x={leftW - 10} y={topH + i * cellH + cellH / 2 + 6}
-                textAnchor="end" fontSize="12" fill="#475569" fontWeight="600"
-              >
-                {o.label}
-              </text>
+              <OutcomeLabelSvg
+                x={leftW - 10}
+                y={topH + i * cellH + cellH / 2 - 4}
+                label={o.label}
+                code={o.code}
+                anchor="end"
+                mainSize={11}
+                subSize={8.5}
+                mainFill="#475569"
+                subFill="#94a3b8"
+                fontWeight={600}
+                lineGap={9}
+              />
               {groups.map((g, j) => {
                 const cell = cellData[i][j];
                 const v    = cell.cv;
@@ -1357,7 +1518,7 @@ export function RubricAchievementChart({ data }) {
   const padL    = 32;  // y-axis labels
   const padR    = 10;
   const padT    = 8;
-  const padB    = 28;  // x-axis labels
+  const padB    = 40;  // x-axis labels + MÜDEK codes
   const chartH  = 180;
   const H       = padT + chartH + padB;
   const groupW  = (W - padL - padR) / stacks.length;
@@ -1368,8 +1529,8 @@ export function RubricAchievementChart({ data }) {
     <div className="chart-card chart-equal-bottom dashboard-chart-card">
       <div className="chart-title-row">
         <div>
-          <div className="chart-title">Achievement Level Distribution</div>
-          <div className="chart-note">% of evaluations per rubric band — directly maps to MÜDEK continuous improvement evidence.</div>
+          <div className="chart-title">{CHART_COPY.achievementDistribution.title}</div>
+          <div className="chart-note">{CHART_COPY.achievementDistribution.note}</div>
         </div>
       </div>
 
@@ -1412,9 +1573,18 @@ export function RubricAchievementChart({ data }) {
                   );
                 })}
                 {/* Criterion label below bar */}
-                <text x={cx} y={padT + chartH + 16} textAnchor="middle" fontSize="9" fill="#475569" fontWeight="600">
-                  {c.label}
-                </text>
+                <OutcomeLabelSvg
+                  x={cx}
+                  y={padT + chartH + 14}
+                  label={c.label}
+                  code={c.code}
+                  mainSize={9}
+                  subSize={7}
+                  mainFill="#475569"
+                  subFill="#94a3b8"
+                  fontWeight={600}
+                  lineGap={10}
+                />
               </g>
             );
           })}
@@ -1462,19 +1632,20 @@ export function OutcomeByGroupChartPrint({ stats }) {
   const padR        = 12;
   const chartPadTop = 14;
   const chartH      = 148;
-  const padBot      = 43;   // group names + legend row + gap
+  const padBot      = 54;   // group names + two-line legend + gap
   const H           = chartPadTop + chartH + padBot;
 
-  const chartW  = W - padL - padR;
-  const groupW  = chartW / data.length;
-  const barW    = Math.min(14, groupW / (OUTCOMES.length + 1.2));
-  const gap     = Math.max(1, Math.min(4, barW * 0.3));
-  const cluster = OUTCOMES.length * (barW + gap) - gap;
+  const chartW   = W - padL - padR;
+  const groupGap = Math.max(6, Math.min(12, chartW * 0.02));
+  const groupW   = (chartW - groupGap * (data.length - 1)) / data.length;
+  const barW     = Math.min(12, groupW / (OUTCOMES.length + 1.8));
+  const gap      = Math.max(1, Math.min(3, barW * 0.28));
+  const cluster  = OUTCOMES.length * (barW + gap) - gap;
 
   const threshY     = chartPadTop + chartH - (MUDEK_THRESHOLD / 100) * chartH;
   const yv          = (pct) => chartPadTop + chartH - (Math.max(0, Math.min(100, pct)) / 100) * chartH;
-  const legendY     = H - 8;
-  const legendItemW = Math.min(90, chartW / (OUTCOMES.length + 1));
+  const legendY     = H - 20;
+  const legendItemW = Math.min(130, chartW / OUTCOMES.length);
 
   return (
     <svg
@@ -1503,7 +1674,8 @@ export function OutcomeByGroupChartPrint({ stats }) {
 
       {/* One cluster per group */}
       {data.map((group, gi) => {
-        const cx       = padL + gi * groupW + groupW / 2;
+        const groupX   = padL + gi * (groupW + groupGap);
+        const cx       = groupX + groupW / 2;
         const clusterX = cx - cluster / 2;
         return (
           <g key={group.id}>
@@ -1531,7 +1703,19 @@ export function OutcomeByGroupChartPrint({ stats }) {
       {OUTCOMES.map((o, i) => (
         <g key={o.key}>
           <rect x={padL + i * legendItemW} y={legendY - 8} width={10} height={10} fill={o.color} rx="2" />
-          <text x={padL + i * legendItemW + 13} y={legendY} fontSize="8.5" fill="#475569">{o.label}</text>
+          <OutcomeLabelSvg
+            x={padL + i * legendItemW + 13}
+            y={legendY}
+            label={o.label}
+            code={o.code}
+            anchor="start"
+            mainSize={8.5}
+            subSize={7}
+            mainFill="#475569"
+            subFill="#94a3b8"
+            fontWeight={600}
+            lineGap={9}
+          />
         </g>
       ))}
       {/* Threshold legend item */}
@@ -1541,7 +1725,7 @@ export function OutcomeByGroupChartPrint({ stats }) {
         stroke="#6B7280" strokeWidth="1.5" strokeDasharray="3,3"
       />
       <text x={padL + OUTCOMES.length * legendItemW + 19} y={legendY} fontSize="8.5" fill="#6B7280">
-        Ref ({MUDEK_THRESHOLD}%)
+        Reference ({MUDEK_THRESHOLD}%)
       </text>
     </svg>
   );
@@ -1605,9 +1789,6 @@ export function OutcomeOverviewChartPrint({ data }) {
       {/* Threshold */}
       <line x1={padL} y1={threshY} x2={W - padR} y2={threshY}
         stroke="#6B7280" strokeWidth="1" strokeDasharray="4,3" />
-      <text x={W - padR - 2} y={threshY - 3} textAnchor="end" fontSize="7.5" fill="#6B7280">
-        Ref {MUDEK_THRESHOLD}%
-      </text>
 
       {/* Bars + whiskers + labels */}
       {items.map((o, i) => {
@@ -1652,12 +1833,18 @@ export function OutcomeOverviewChartPrint({ data }) {
               >{o.pct.toFixed(1)}</text>
             )}
             {/* X-axis label */}
-            <text x={cx} y={padTop + chartH + 14} textAnchor="middle" fontSize="9.5" fill="#374151" fontWeight="600">
-              {o.label}
-            </text>
-            <text x={cx} y={padTop + chartH + 26} textAnchor="middle" fontSize="7.5" fill="#94a3b8">
-              ({o.code})
-            </text>
+            <OutcomeLabelSvg
+              x={cx}
+              y={padTop + chartH + 14}
+              label={o.label}
+              code={o.code}
+              mainSize={9.5}
+              subSize={7.5}
+              mainFill="#374151"
+              subFill="#94a3b8"
+              fontWeight={600}
+              lineGap={12}
+            />
           </g>
         );
       })}
@@ -1671,10 +1858,10 @@ export function OutcomeOverviewChartPrint({ data }) {
 // ════════════════════════════════════════════════════════════
 export function OutcomeTrendChartPrint({ data = [], semesters = [], selectedIds = [] }) {
   const series = [
-    { key: "technical", label: "Technical", color: "#f59e0b", max: OUTCOMES.find((o) => o.key === "technical")?.max || 1, field: "avgTechnical" },
-    { key: "design", label: "Written (9.2)", color: "#22c55e", max: OUTCOMES.find((o) => o.key === "design")?.max || 1, field: "avgWritten" },
-    { key: "delivery", label: "Oral (9.1)", color: "#3b82f6", max: OUTCOMES.find((o) => o.key === "delivery")?.max || 1, field: "avgOral" },
-    { key: "teamwork", label: "Teamwork (8.1/8.2)", color: "#ef4444", max: OUTCOMES.find((o) => o.key === "teamwork")?.max || 1, field: "avgTeamwork" },
+    { key: "technical", label: OUTCOMES.find((o) => o.key === "technical")?.label || "Technical", color: "#f59e0b", max: OUTCOMES.find((o) => o.key === "technical")?.max || 1, field: "avgTechnical" },
+    { key: "design", label: OUTCOMES.find((o) => o.key === "design")?.label || "Written", color: "#22c55e", max: OUTCOMES.find((o) => o.key === "design")?.max || 1, field: "avgWritten" },
+    { key: "delivery", label: OUTCOMES.find((o) => o.key === "delivery")?.label || "Oral", color: "#3b82f6", max: OUTCOMES.find((o) => o.key === "delivery")?.max || 1, field: "avgOral" },
+    { key: "teamwork", label: OUTCOMES.find((o) => o.key === "teamwork")?.label || "Teamwork", color: "#ef4444", max: OUTCOMES.find((o) => o.key === "teamwork")?.max || 1, field: "avgTeamwork" },
   ];
 
   const orderIndex = new Map((semesters || []).map((s, i) => [s.id, i]));
@@ -1835,7 +2022,7 @@ export function JurorConsistencyHeatmapPrint({ stats, data }) {
 
   const leftW = 88;
   const topH  = 26;
-  const cellH = 42;
+  const cellH = 44;
   const maxW  = 700;
   const cellW = Math.min(100, Math.floor((maxW - leftW) / groups.length));
   const W     = leftW + groups.length * cellW;
@@ -1866,10 +2053,19 @@ export function JurorConsistencyHeatmapPrint({ stats, data }) {
       {/* Rows */}
       {OUTCOMES.map((o, i) => (
         <g key={o.key}>
-          <text
-            x={leftW - 8} y={topH + i * cellH + cellH / 2 + 5}
-            textAnchor="end" fontSize="11" fill="#475569" fontWeight="600"
-          >{o.label}</text>
+          <OutcomeLabelSvg
+            x={leftW - 8}
+            y={topH + i * cellH + cellH / 2 - 4}
+            label={o.label}
+            code={o.code}
+            anchor="end"
+            mainSize={10.5}
+            subSize={8}
+            mainFill="#475569"
+            subFill="#94a3b8"
+            fontWeight={600}
+            lineGap={8}
+          />
           {groups.map((g, j) => {
             const cv   = cellData[i][j].cv;
             const x    = leftW + j * cellW;
@@ -1936,7 +2132,7 @@ export function CriterionBoxPlotChartPrint({ data }) {
   const padR        = 10;
   const chartPadTop = 8;
   const chartH      = 152;
-  const padBot      = 40;   // x-label + legend
+  const padBot      = 52;   // x-label + MÜDEK codes + legend
   const H           = chartPadTop + chartH + padBot;
   const groupW      = (W - padL - padR) / boxes.length;
   const bandW       = 20;
@@ -1983,8 +2179,19 @@ export function CriterionBoxPlotChartPrint({ data }) {
         const bx = padL + i * groupW + groupW / 2;
         if (b.empty) {
           return (
-            <text key={b.key} x={bx} y={chartPadTop + chartH + 14}
-              fontSize="9" textAnchor="middle" fill="#94a3b8">{b.label}</text>
+            <OutcomeLabelSvg
+              key={b.key}
+              x={bx}
+              y={chartPadTop + chartH + 12}
+              label={b.label}
+              code={b.code}
+              mainSize={9}
+              subSize={7}
+              mainFill="#94a3b8"
+              subFill="#94a3b8"
+              fontWeight={600}
+              lineGap={10}
+            />
           );
         }
         const yQ1  = yv(b.q1);
@@ -2019,8 +2226,18 @@ export function CriterionBoxPlotChartPrint({ data }) {
                 fill="none" stroke={b.color} strokeWidth="1.2" opacity="0.6" />
             ))}
             {/* X label */}
-            <text x={bx} y={chartPadTop + chartH + 14}
-              fontSize="9" textAnchor="middle" fill="#475569" fontWeight="600">{b.label}</text>
+            <OutcomeLabelSvg
+              x={bx}
+              y={chartPadTop + chartH + 12}
+              label={b.label}
+              code={b.code}
+              mainSize={9}
+              subSize={7}
+              mainFill="#475569"
+              subFill="#94a3b8"
+              fontWeight={600}
+              lineGap={10}
+            />
           </g>
         );
       })}
@@ -2084,7 +2301,7 @@ export function RubricAchievementChartPrint({ data }) {
   const padL   = 32;
   const padR   = 10;
   const padT   = 8;
-  const padB   = 42;   // x-labels + legend
+  const padB   = 54;   // x-labels + MÜDEK codes + legend
   const chartH = 160;
   const H      = padT + chartH + padB;
   const groupW = (W - padL - padR) / stacks.length;
@@ -2133,8 +2350,18 @@ export function RubricAchievementChartPrint({ data }) {
                 </g>
               );
             })}
-            <text x={cx} y={padT + chartH + 13}
-              textAnchor="middle" fontSize="9" fill="#475569" fontWeight="600">{c.label}</text>
+            <OutcomeLabelSvg
+              x={cx}
+              y={padT + chartH + 12}
+              label={c.label}
+              code={c.code}
+              mainSize={9}
+              subSize={7}
+              mainFill="#475569"
+              subFill="#94a3b8"
+              fontWeight={600}
+              lineGap={10}
+            />
           </g>
         );
       })}

@@ -339,7 +339,7 @@ export default function ManageProjectsPanel({
           <span className="manage-card-icon" aria-hidden="true"><MonitorCogIcon /></span>
           <span className="section-label">Group Settings</span>
         </div>
-        {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
+        {isMobile && <ChevronDownIcon className={`settings-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {(!isMobile || isOpen) && (
@@ -377,8 +377,8 @@ export default function ManageProjectsPanel({
             <input
               className="manage-input manage-search-input"
               type="text"
-              placeholder="Search groups, titles, students"
-              aria-label="Search groups, titles, students"
+              placeholder="Search groups, projects, or students"
+              aria-label="Search groups, projects, or students"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -582,6 +582,15 @@ export default function ManageProjectsPanel({
                 <div className="manage-modal-body">
                   <div className="manage-hint">
                     Upload your CSV file here. Header must include <span className="manage-code">project_title</span> (group title).
+                  </div>
+                  <div className="manage-hint">
+                    Excel import: Save As → CSV (UTF-8) with comma-separated columns.
+                  </div>
+                  <div className="manage-hint">
+                    Required headers: <span className="manage-code">group_no</span>, <span className="manage-code">project_title</span>, <span className="manage-code">group_students</span>. One row per group.
+                  </div>
+                  <div className="manage-hint">
+                    Use semicolons between student names inside <span className="manage-code">group_students</span>. Existing groups are skipped.
                   </div>
                   <input
                     ref={fileRef}

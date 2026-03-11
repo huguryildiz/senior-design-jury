@@ -1736,12 +1736,16 @@
   height: auto !important;
 }
 
-.manage-chevron {
+.manage-chevron,
+.settings-chevron {
   transition: transform 0.2s ease;
-  color: var(--primary-action);
+  color: #475569;
+  stroke: currentColor;
+  fill: none;
 }
 
-.manage-chevron.open {
+.manage-chevron.open,
+.settings-chevron.open {
   transform: rotate(180deg);
 }
 

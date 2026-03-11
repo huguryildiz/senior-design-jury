@@ -3,9 +3,10 @@
 // - Column-based sorting (click group header: desc → asc → reset)
 // - Sticky header + frozen first column
 // - Juror column text filter with Escape-to-close
+// - Group score column numeric range filters (0–100, auto-apply)
 // - Scored-only averages (fully scored cells only)
 
-import { useState, useRef, useCallback, memo, Component } from "react";
+import { useState, useRef, useCallback, memo, Component, useEffect } from "react";
 import { FilterPopoverPortal } from "./components";
 import {
   getCellState,
@@ -14,18 +15,15 @@ import {
 } from "./scoreHelpers";
 import {
   FilterIcon,
-  ArrowUpDownIcon,
-  ArrowDown01Icon,
-  ArrowDown10Icon,
   InfoIcon,
   DownloadIcon,
+  XIcon,
 } from "../shared/Icons";
 import { CRITERIA } from "../config";
 import { useGridSort } from "./useGridSort";
 import { useScoreGridData } from "./useScoreGridData";
 import { useScrollSync } from "./useScrollSync";
 import { useGridExport } from "./useGridExport";
-import GridExportPrompt from "./GridExportPrompt";
 
 // ── Module-level constants ─────────────────────────────────────
 // Inline scroll props: focus/touch activates horizontal scroll on long juror names
@@ -35,6 +33,19 @@ const INLINE_SCROLL_PROPS = {
 };
 
 const LEGEND_JUROR_STATES = ["completed", "ready_to_submit", "in_progress", "editing", "not_started"];
+
+// ── Local utility ──────────────────────────────────────────────
+function toFiniteNumber(v) {
+  const n = parseFloat(String(v ?? "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function clampRangeInput(raw, min = 0, max = 100) {
+  if (raw === "") return "";
+  const n = toFiniteNumber(raw);
+  if (n === null) return raw;
+  return String(Math.min(max, Math.max(min, n)));
+}
 
 // ── Cell helpers ───────────────────────────────────────────────
 const cellClassName = (state, isFinal = false) => {
@@ -52,10 +63,11 @@ const cellText = (state, entry) => {
 // Hover tooltip: per-criteria breakdown, driven by CRITERIA from config.js
 const cellTooltip = (state, entry) => {
   if (!entry || state === "empty") return undefined;
-  const parts = CRITERIA
-    .map((c) => `${c.shortLabel}: ${entry[c.id] != null ? entry[c.id] : "—"}`)
-    .join(" | ");
-  return state === "partial" ? `${parts} (partial)` : parts;
+  const parts = CRITERIA.map((c) => `${c.shortLabel || c.label}: ${entry[c.id] != null ? entry[c.id] : "—"}`);
+  const line1 = parts.slice(0, 2).join(" · ");
+  const line2Base = parts.slice(2).join(" · ");
+  const line2 = state === "partial" ? `${line2Base} (partial)` : line2Base;
+  return `${line1}\n${line2}`;
 };
 
 // ── Error boundary ─────────────────────────────────────────────
@@ -95,7 +107,7 @@ const JurorCell = memo(function JurorCell({ juror, workflowState }) {
   const Icon     = meta.icon;
   const fullName = juror.dept ? `${juror.name} (${juror.dept})` : juror.name;
   return (
-    <>
+    <div className="matrix-juror-inner">
       <span
         className={`matrix-status-icon ${meta.colorClass}`}
         title={meta.label}
@@ -105,13 +117,24 @@ const JurorCell = memo(function JurorCell({ juror, workflowState }) {
       </span>
       <span className="matrix-juror-name" title={fullName} {...INLINE_SCROLL_PROPS}>
         <span className="matrix-juror-name-text">{juror.name}</span>
-        {juror.dept && <span className="matrix-juror-dept"> ({juror.dept})</span>}
+        {juror.dept && <span className="matrix-juror-dept">({juror.dept})</span>}
       </span>
-    </>
+    </div>
   );
 });
 
-function MatrixLegend({ visibleCount, totalCount, sortMode, sortGroupId, sortGroupDir, sortJurorDir, groups }) {
+function MatrixLegend({
+  sortMode,
+  sortGroupId,
+  sortGroupDir,
+  sortJurorDir,
+  groups,
+  filterLabel,
+  onClearFilter,
+  onClearSort,
+  groupFilterChips,
+  onClearGroupFilter,
+}) {
   const sortLabel = (() => {
     if (sortMode === "group" && sortGroupId !== null) {
       const g   = groups.find((g) => g.id === sortGroupId);
@@ -151,43 +174,78 @@ function MatrixLegend({ visibleCount, totalCount, sortMode, sortGroupId, sortGro
           })}
         </div>
       </div>
-      {/* Toolbar: filter count + active sort indicator */}
+      {/* Toolbar: filter count + active filter/sort indicators */}
       <div className="matrix-legend-row matrix-toolbar-row">
-        {visibleCount < totalCount && (
-          <span className="matrix-legend-count">
-            Showing {visibleCount}/{totalCount} jurors
-          </span>
-        )}
         {sortLabel && (
-          <span className="matrix-sort-indicator">{sortLabel}</span>
+          <button
+            type="button"
+            className="matrix-sort-indicator"
+            onClick={onClearSort}
+            title="Clear sort"
+            aria-label="Clear sort"
+          >
+            <span className="matrix-sort-text">{sortLabel}</span>
+            <span className="matrix-sort-close" aria-hidden="true">×</span>
+          </button>
         )}
+        {filterLabel && (
+          <button
+            type="button"
+            className="filter-chip"
+            onClick={onClearFilter}
+            title={`Clear filter: ${filterLabel}`}
+            aria-label={`Clear filter: ${filterLabel}`}
+          >
+            <span className="chip-label">Juror</span>
+            <span className="chip-value">{filterLabel}</span>
+            <XIcon />
+          </button>
+        )}
+        {groupFilterChips.map((chip) => (
+          <button
+            key={chip.id}
+            type="button"
+            className="filter-chip"
+            onClick={() => onClearGroupFilter(chip.id)}
+            title={`Clear filter: ${chip.label}${chip.value ? ` ${chip.value}` : ""}`}
+            aria-label={`Clear filter: ${chip.label}${chip.value ? ` ${chip.value}` : ""}`}
+          >
+            <span className="chip-label">{chip.label}</span>
+            {chip.value && <span className="chip-value">{chip.value}</span>}
+            <XIcon />
+          </button>
+        ))}
       </div>
       <div className="matrix-scroll-hint">
-        Tip: scroll horizontally to view all groups. Long names can be swiped on touch.
+        <span className="matrix-scroll-icon" aria-hidden="true"><InfoIcon /></span>
+        <span>Scroll horizontally to view all groups. Long names can be swiped on touch.</span>
       </div>
     </div>
   );
 }
 
-// AverageRow: CSS tooltip on desktop hover/focus, click-toggled on mobile/touch
-const AverageRow = memo(function AverageRow({ groups, averages }) {
-  const [tooltipOpen, setTooltipOpen] = useState(false);
+const AVG_TIP_TEXT = "Averages include only completed jurors.";
+
+// AverageRow: info icon shows a fixed-position tooltip via callbacks
+const AverageRow = memo(function AverageRow({ groups, averages, onShowTip, onHideTip }) {
   return (
     <tfoot>
       <tr className="matrix-avg-row">
         <td className="matrix-juror matrix-avg-label">
-          <span>Average</span>
-          <span
-            className={`matrix-avg-tooltip${tooltipOpen ? " is-open" : ""}`}
-            data-tooltip="Averages include only completed jurors."
-            aria-label="Averages include only completed jurors."
-            tabIndex={0}
-            onClick={() => setTooltipOpen((v) => !v)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setTooltipOpen((v) => !v); }}
-            onBlur={() => setTooltipOpen(false)}
-          >
-            <InfoIcon />
-          </span>
+          <div className="matrix-juror-inner">
+            <span>Average</span>
+            <span
+              className="matrix-avg-tooltip"
+              aria-label={AVG_TIP_TEXT}
+              tabIndex={0}
+              onMouseEnter={(e) => onShowTip(e, AVG_TIP_TEXT)}
+              onMouseLeave={onHideTip}
+              onFocus={(e) => onShowTip(e, AVG_TIP_TEXT)}
+              onBlur={onHideTip}
+            >
+              <InfoIcon />
+            </span>
+          </div>
         </td>
         {averages.map((avg, i) => (
           <td key={groups[i].id} className="matrix-avg-cell">
@@ -214,6 +272,24 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
   const [anchorRect,       setAnchorRect]        = useState(null);
   const [anchorEl,         setAnchorEl]          = useState(null);
 
+  // Draft state for the currently open group score filter
+  const [groupScoreDraft, setGroupScoreDraft] = useState({ min: "", max: "" });
+
+  // Fixed-position tooltip (escapes overflow-x:auto clipping)
+  const [cellTip, setCellTip] = useState(null); // { x, y, text } | null
+  const showCellTip = useCallback((e, text) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setCellTip({ x: r.left + r.width / 2, y: r.top - 8, text });
+  }, []);
+  const hideCellTip = useCallback(() => setCellTip(null), []);
+  // Hide tooltip when table is scrolled (position would be stale)
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", hideCellTip, { passive: true });
+    return () => el.removeEventListener("scroll", hideCellTip);
+  }, [hideCellTip]);
+
   const {
     lookup,
     jurorFinalMap,
@@ -224,26 +300,43 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
 
   // All sort + filter logic extracted to custom hook
   const {
-    sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter,
-    visibleJurors, toggleGroupSort, toggleJurorSort, setJurorFilter,
-  } = useGridSort(jurors, lookup);
+    sortGroupId, sortGroupDir, sortJurorDir, sortMode, jurorFilter, groupScoreFilters,
+    visibleJurors, toggleGroupSort, toggleJurorSort, setJurorFilter, clearSort,
+    setGroupScoreFilter, clearGroupScoreFilter,
+  } = useGridSort(jurors, groups, lookup);
 
   const {
-    showExportPrompt,
     requestExport,
-    exportFiltered,
-    exportAll,
-    dismissExportPrompt,
   } = useGridExport({
     buildExportRows,
     groups,
     semesterName,
-    jurors,
     visibleJurors,
   });
 
   // ── Scroll sync: top phantom bar ↔ table horizontal scroll ──
   useScrollSync(topScrollRef, tableScrollRef);
+
+  const minFirstCol = 180;
+  const scoreColWidth = 72;
+  const scoreColsWidth = groups.length * scoreColWidth;
+  const minTableWidth = scoreColsWidth + minFirstCol;
+  const tableStyle = {
+    width: "100%",
+    minWidth: `${minTableWidth}px`,
+    "--matrix-first-col": `${minFirstCol}px`,
+    "--matrix-score-col": `${scoreColWidth}px`,
+  };
+
+  const handleMatrixWheel = useCallback((e) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    if (e.shiftKey) return;
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    if (el.scrollWidth <= el.clientWidth) return;
+    el.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, []);
 
   // ── Escape key closes filter popover ───────────────────────
   const closePopover = useCallback(() => {
@@ -264,13 +357,32 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
     });
   }, []);
 
-  // ── Sort icon helper ────────────────────────────────────────
-  const groupSortIcon = (gId) => {
-    if (sortMode !== "group" || sortGroupId !== gId) return <ArrowUpDownIcon />;
-    return sortGroupDir === "desc" ? <ArrowDown10Icon /> : <ArrowDown01Icon />;
-  };
+  // Open group score filter: sync draft from persisted filter state first
+  const openGroupFilter = useCallback((groupId, evt) => {
+    const current = groupScoreFilters[groupId] || { min: "", max: "" };
+    const min = clampRangeInput(current.min ?? "");
+    const max = clampRangeInput(current.max ?? "");
+    setGroupScoreDraft({ min, max });
+    if (min !== (current.min ?? "") || max !== (current.max ?? "")) {
+      setGroupScoreFilter(groupId, min, max);
+    }
+    toggleFilterCol(groupId, evt);
+  }, [groupScoreFilters, setGroupScoreFilter, toggleFilterCol]);
 
   const isJurorFilterActive = !!jurorFilter || activeFilterCol === "juror";
+
+  // Active group filter chips for MatrixLegend
+  const activeGroupFilterChips = groups
+    .filter((g) => { const f = groupScoreFilters[g.id]; return f?.min || f?.max; })
+    .map((g) => {
+      const { min, max } = groupScoreFilters[g.id];
+      const rawLabel = String(g.groupNo ?? g.label ?? "").trim();
+      const label = /^group\b/i.test(rawLabel) ? rawLabel : `Group ${rawLabel}`;
+      const value = min && max ? `${min}–${max}`
+                  : min       ? `≥${min}`
+                  :              `≤${max}`;
+      return { id: g.id, label, value };
+    });
 
   if (!jurors.length) {
     return (
@@ -282,6 +394,87 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
       </div>
     );
   }
+
+  // Group score filter popover content (rendered when a group column is active)
+  const groupFilterPopover = (() => {
+    const groupId = activeFilterCol && activeFilterCol !== "juror" ? activeFilterCol : null;
+    if (!groupId) return null;
+    const { min: draftMin, max: draftMax } = groupScoreDraft;
+    const minNum   = toFiniteNumber(draftMin);
+    const maxNum   = toFiniteNumber(draftMax);
+    const hasError = minNum !== null && maxNum !== null && minNum > maxNum;
+    return (
+      <FilterPopoverPortal
+        open={true}
+        anchorRect={anchorRect}
+        anchorEl={anchorEl}
+        onClose={closePopover}
+        className="col-filter-popover col-filter-popover-portal col-filter-popover-number"
+        contentKey={`${draftMin}|${draftMax}`}
+        trapFocus
+      >
+        <div className="range-field">
+          <label>Min</label>
+          <input
+            autoFocus
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={100}
+            value={draftMin}
+            onChange={(e) => {
+              const nextMin = clampRangeInput(e.target.value);
+              setGroupScoreDraft((p) => {
+                const next = { ...p, min: nextMin };
+                const nextMinNum = toFiniteNumber(next.min);
+                const nextMaxNum = toFiniteNumber(next.max);
+                if (!(nextMinNum !== null && nextMaxNum !== null && nextMinNum > nextMaxNum)) {
+                  setGroupScoreFilter(groupId, next.min, next.max);
+                }
+                return next;
+              });
+            }}
+          />
+        </div>
+        <div className="range-field">
+          <label>Max</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={100}
+            value={draftMax}
+            onChange={(e) => {
+              const nextMax = clampRangeInput(e.target.value);
+              setGroupScoreDraft((p) => {
+                const next = { ...p, max: nextMax };
+                const nextMinNum = toFiniteNumber(next.min);
+                const nextMaxNum = toFiniteNumber(next.max);
+                if (!(nextMinNum !== null && nextMaxNum !== null && nextMinNum > nextMaxNum)) {
+                  setGroupScoreFilter(groupId, next.min, next.max);
+                }
+                return next;
+              });
+            }}
+          />
+        </div>
+        {hasError && <div className="range-error">Min must be ≤ Max.</div>}
+        {(draftMin || draftMax) && (
+          <button
+            type="button"
+            className="col-filter-clear"
+            onClick={() => {
+              clearGroupScoreFilter(groupId);
+              setGroupScoreDraft({ min: "", max: "" });
+              closePopover();
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </FilterPopoverPortal>
+    );
+  })();
 
   return (
     <div className="matrix-wrap">
@@ -295,31 +488,25 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
         </div>
       </div>
 
-      <GridExportPrompt
-        open={showExportPrompt}
-        visibleCount={visibleJurors.length}
-        totalCount={jurors.length}
-        onExportFiltered={exportFiltered}
-        onExportAll={exportAll}
-        onDismiss={dismissExportPrompt}
-      />
-
       <MatrixLegend
-        visibleCount={visibleJurors.length}
-        totalCount={jurors.length}
         sortMode={sortMode}
         sortGroupId={sortGroupId}
         sortGroupDir={sortGroupDir}
         sortJurorDir={sortJurorDir}
         groups={groups}
+        filterLabel={jurorFilter}
+        onClearFilter={() => { setJurorFilter(""); closePopover(); }}
+        onClearSort={clearSort}
+        groupFilterChips={activeGroupFilterChips}
+        onClearGroupFilter={(groupId) => { clearGroupScoreFilter(groupId); }}
       />
 
       <div className="matrix-scroll-top" ref={topScrollRef} aria-hidden="true">
         <div className="matrix-scroll-top-inner" />
       </div>
       <div className="matrix-scroll-wrap">
-        <div className="matrix-scroll" ref={tableScrollRef}>
-          <table className="matrix-table">
+        <div className="matrix-scroll" ref={tableScrollRef} onWheel={handleMatrixWheel}>
+          <table className="matrix-table" style={tableStyle}>
             <thead>
               <tr>
                 {/* Juror column — sort + text filter */}
@@ -354,19 +541,31 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                   </div>
                 </th>
 
-                {/* Group columns — click-to-sort only */}
+                {/* Group columns — sort + numeric range filter */}
                 {groups.map((g) => {
-                  const isActive = sortMode === "group" && sortGroupId === g.id;
+                  const isSortActive   = sortMode === "group" && sortGroupId === g.id;
+                  const gFilter        = groupScoreFilters[g.id] || { min: "", max: "" };
+                  const isFilterActive = !!(gFilter.min || gFilter.max) || activeFilterCol === g.id;
                   return (
                     <th key={g.id}>
-                      <button
-                        className={`matrix-col-sort${isActive ? " active" : ""}`}
-                        onClick={() => toggleGroupSort(g.id)}
-                        title={`Sort by ${g.label} — click again to reverse, third click to reset`}
-                      >
-                        <span>{g.groupNo ?? g.label}</span>
-                        <span className="sort-icon">{groupSortIcon(g.id)}</span>
-                      </button>
+                      <div className="matrix-group-th-inner">
+                        <button
+                          className={`matrix-col-sort${isSortActive ? " active" : ""}`}
+                          onClick={() => toggleGroupSort(g.id)}
+                          title={`Sort by ${g.label} — click again to reverse, third click to reset`}
+                        >
+                          <span>{g.groupNo ?? g.label}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`col-filter-hotspot${isFilterActive ? " active filter-icon-active" : ""}`}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); openGroupFilter(g.id, e); }}
+                          title={`Filter by group ${g.groupNo ?? g.label} score`}
+                          aria-label={`Filter group ${g.groupNo ?? g.label} scores`}
+                        >
+                          <FilterIcon />
+                        </button>
+                      </div>
                     </th>
                   );
                 })}
@@ -389,10 +588,12 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                         <td
                           key={g.id}
                           className={cellClassName(state, isFinal)}
-                          data-tooltip={tooltip || undefined}
-                          data-tooltip-active={tooltip ? "true" : undefined}
                           aria-label={tooltip}
                           tabIndex={tooltip ? 0 : undefined}
+                          onMouseEnter={tooltip ? (e) => showCellTip(e, tooltip) : undefined}
+                          onMouseLeave={tooltip ? hideCellTip : undefined}
+                          onFocus={tooltip ? (e) => showCellTip(e, tooltip) : undefined}
+                          onBlur={tooltip ? hideCellTip : undefined}
                         >
                           {cellText(state, entry)}
                         </td>
@@ -403,11 +604,22 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
               })}
             </tbody>
 
-            <AverageRow groups={groups} averages={groupAverages} />
+            <AverageRow groups={groups} averages={groupAverages} onShowTip={showCellTip} onHideTip={hideCellTip} />
           </table>
         </div>
       </div>
 
+      {cellTip && (
+        <div
+          className="matrix-cell-tip"
+          role="tooltip"
+          style={{ left: cellTip.x, top: cellTip.y }}
+        >
+          {cellTip.text}
+        </div>
+      )}
+
+      {/* Juror text filter popover */}
       <FilterPopoverPortal
         open={activeFilterCol === "juror"}
         anchorRect={anchorRect}
@@ -419,13 +631,13 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
       >
         <div className="col-filter-label">Filter jurors</div>
         <label htmlFor="juror-filter-input" className="sr-only">
-          Filter jurors by name or department
+          Filter jurors by name or institution
         </label>
         <input
           id="juror-filter-input"
           autoFocus
-          placeholder="Filter juror name or department…"
-          aria-label="Filter jurors by name or department"
+          placeholder="Search juror or institution"
+          aria-label="Filter jurors by name or institution"
           value={jurorFilter}
           onChange={(e) => setJurorFilter(e.target.value)}
           className={isJurorFilterActive ? "filter-input-active" : ""}
@@ -436,6 +648,9 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
           </button>
         )}
       </FilterPopoverPortal>
+
+      {/* Group score numeric range filter popover */}
+      {groupFilterPopover}
     </div>
   );
 }

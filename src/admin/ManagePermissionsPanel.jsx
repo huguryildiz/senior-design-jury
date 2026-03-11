@@ -125,7 +125,7 @@ export default function ManagePermissionsPanel({
           <span className="manage-card-icon" aria-hidden="true"><UserKeyIcon /></span>
           <span className="section-label">Evaluation Permissions</span>
         </div>
-        {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
+        {isMobile && <ChevronDownIcon className={`settings-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {(!isMobile || isOpen) && (

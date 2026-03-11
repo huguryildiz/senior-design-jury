@@ -304,12 +304,20 @@ function ScoresDropdown({
 export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLoadDone }) {
   // Raw score rows — normalized by api.js to match old GAS field names
   const [rawScores,  setRawScores]  = useState([]);
+  // Details view — scores across all semesters
+  const [detailsScores, setDetailsScores] = useState([]);
+  const [detailsSummary, setDetailsSummary] = useState([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const detailsKeyRef = useRef("");
   // All jurors for semester (includes those with zero scores)
   const [allJurors,  setAllJurors]  = useState([]);
   // Per-project aggregates from rpc_admin_project_summary
   const [summaryData, setSummaryData] = useState([]);
   // Semester trend chart data
-  const [trendSemesterIds, setTrendSemesterIds] = useState([]);
+  const [trendSemesterIds, setTrendSemesterIds] = useState(() => {
+    const s = readSection("trend");
+    return Array.isArray(s.semesterIds) ? s.semesterIds : [];
+  });
   const [trendData, setTrendData] = useState([]);
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendError, setTrendError] = useState("");
@@ -369,21 +377,34 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
   const initialLoadFiredRef = useRef(false);
   const trendInitRef = useRef(false);
-  const [adminPassState, setAdminPassState] = useState(
-    () => adminPass || sessionStorage.getItem("ee492_admin_pass") || ""
-  );
+  const readStoredAdminPass = () => {
+    try {
+      return (
+        adminPass
+        || sessionStorage.getItem("ee492_admin_pass")
+        || localStorage.getItem("ee492_admin_pass")
+        || ""
+      );
+    } catch {
+      return adminPass || "";
+    }
+  };
+  const [adminPassState, setAdminPassState] = useState(readStoredAdminPass);
   const passRef = useRef(adminPassState);
   useEffect(() => {
-    const next = adminPass || sessionStorage.getItem("ee492_admin_pass") || "";
+    const next = readStoredAdminPass();
     setAdminPassState(next);
   }, [adminPass]);
   useEffect(() => { passRef.current = adminPassState; }, [adminPassState]);
-  const getAdminPass = () => passRef.current || sessionStorage.getItem("ee492_admin_pass") || "";
+  const getAdminPass = () => passRef.current || readStoredAdminPass();
   const handleAdminPasswordChange = (nextPass) => {
     if (!nextPass) return;
     setAdminPassState(nextPass);
     passRef.current = nextPass;
-    try { sessionStorage.setItem("ee492_admin_pass", nextPass); } catch {}
+    try {
+      sessionStorage.setItem("ee492_admin_pass", nextPass);
+      localStorage.setItem("ee492_admin_pass", nextPass);
+    } catch {}
   };
 
   // Track selected semester separately so refresh uses the latest selection
@@ -415,7 +436,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       }
 
       // Cache password for the duration of this session
-      try { sessionStorage.setItem("ee492_admin_pass", pass); } catch {}
+      try {
+        sessionStorage.setItem("ee492_admin_pass", pass);
+        localStorage.setItem("ee492_admin_pass", pass);
+      } catch {}
 
       // Always refresh semesters (IDs change after reseed)
       const sems = await listSemesters();
@@ -544,6 +568,25 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     return () => window.removeEventListener("resize", updateTabHints);
   }, [adminTab]);
 
+  // ── Orientation-change reflow ───────────────────────────────
+  useEffect(() => {
+    let rafId1 = null;
+    let rafId2 = null;
+    const handleOrientation = () => {
+      rafId1 = requestAnimationFrame(() => {
+        rafId2 = requestAnimationFrame(() => {
+          window.dispatchEvent(new Event("resize"));
+        });
+      });
+    };
+    window.addEventListener("orientationchange", handleOrientation);
+    return () => {
+      window.removeEventListener("orientationchange", handleOrientation);
+      if (rafId1 !== null) cancelAnimationFrame(rafId1);
+      if (rafId2 !== null) cancelAnimationFrame(rafId2);
+    };
+  }, []);
+
   // ── Derived data ───────────────────────────────────────────
   // Total projects in this semester (dynamic)
   const totalProjects = summaryData.length;
@@ -636,6 +679,8 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       summaryData.map((p) => ({
         id:       p.id,
         name:     `Group ${p.groupNo}`,
+        groupNo:  p.groupNo,
+        projectTitle: p.name ?? "",
         students: p.students,
         count:    p.count,
         avg:      p.avg,
@@ -802,12 +847,64 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   }, [semesterList]);
   const selectedSemesterName = sortedSemesters.find((s) => s.id === selectedSemesterId)?.name ?? "—";
 
+  // Details view: load scores + project summary for all semesters
+  const detailsKey = useMemo(
+    () => sortedSemesters.map((s) => s.id).join("|"),
+    [sortedSemesters]
+  );
+  useEffect(() => {
+    if (scoresView !== "details") return;
+    if (!sortedSemesters.length) return;
+    const pass = getAdminPass();
+    if (!pass) return;
+    if (detailsKeyRef.current === detailsKey && detailsScores.length) return;
+    let cancelled = false;
+    setDetailsLoading(true);
+    (async () => {
+      try {
+        const results = await Promise.all(
+          sortedSemesters.map(async (sem) => {
+            const [scores, summary] = await Promise.all([
+              adminGetScores(sem.id, pass),
+              adminProjectSummary(sem.id, pass).catch(() => []),
+            ]);
+            const summaryMap = new Map(summary.map((p) => [p.id, p]));
+            const rows = scores.map((r) => ({
+              ...r,
+              semester: sem.name || "",
+              students: summaryMap.get(r.projectId)?.students ?? "",
+            }));
+            return { rows, summary };
+          })
+        );
+        if (cancelled) return;
+        setDetailsScores(results.flatMap((r) => r.rows));
+        setDetailsSummary(results.flatMap((r) => r.summary));
+        detailsKeyRef.current = detailsKey;
+      } catch {
+        if (!cancelled) {
+          setDetailsScores([]);
+          setDetailsSummary([]);
+        }
+      } finally {
+        if (!cancelled) setDetailsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [scoresView, detailsKey, sortedSemesters, detailsScores.length]);
+
   useEffect(() => {
     if (trendInitRef.current) return;
     if (!sortedSemesters.length) return;
-    setTrendSemesterIds(sortedSemesters.slice(0, 4).map((s) => s.id));
+    setTrendSemesterIds((prev) => (
+      prev.length ? prev : sortedSemesters.map((s) => s.id)
+    ));
     trendInitRef.current = true;
   }, [sortedSemesters]);
+
+  useEffect(() => {
+    writeSection("trend", { semesterIds: trendSemesterIds });
+  }, [trendSemesterIds]);
 
   useEffect(() => {
     if (!trendSemesterIds.length) return;
@@ -985,16 +1082,19 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               ranked={ranked}
               submittedData={submittedData}
               rawScores={rawScores}
+              detailsScores={detailsScores}
               jurors={uniqueJurors}
               matrixJurors={matrixJurors}
               groups={groups}
               semesterName={selectedSemesterName}
               summaryData={summaryData}
+              detailsSummary={detailsSummary}
               dashboardStats={dashboardStats}
               overviewMetrics={overviewMetrics}
               lastRefresh={lastRefresh}
               loading={loading}
               error={loadError || null}
+              detailsLoading={detailsLoading}
               semesterOptions={sortedSemesters}
               trendSemesterIds={trendSemesterIds}
               onTrendSelectionChange={setTrendSemesterIds}

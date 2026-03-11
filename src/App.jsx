@@ -11,7 +11,7 @@
 // Home "Resume" banner removed in v5 — draft continuity is now
 // handled inside the jury flow after PIN verification.
 // Note: localStorage is used only for same-device convenience
-// (juror_id + semester_id), not as a source of truth.
+// (juror_id + semester_id, and admin re-auth on the same device).
 // ============================================================
 
 import { useEffect, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import "./styles/home.css";
 import teduLogo from "./assets/tedu-logo.png";
 
 export default function App() {
+  const ADMIN_PASS_KEY = "ee492_admin_pass";
   const [page,           setPage]          = useState(() => {
     try {
       const saved = localStorage.getItem("tedu_portal_page");
@@ -53,6 +54,8 @@ export default function App() {
   const [adminSetupShowPass, setAdminSetupShowPass] = useState(false);
   const [adminSecurityLoading, setAdminSecurityLoading] = useState(false);
   const [adminPasswordSet, setAdminPasswordSet] = useState(null);
+  const autoLoginAttemptedRef = useRef(false);
+  const autoLoginCancelRef = useRef(null);
 
   const isStrongPassword = (value) => {
     const v = String(value || "");
@@ -93,6 +96,41 @@ export default function App() {
       });
     return () => { active = false; };
   }, [page, adminUnlocked]);
+
+  useEffect(() => {
+    if (page !== "admin" || adminUnlocked) return;
+    if (autoLoginAttemptedRef.current) return;
+    autoLoginAttemptedRef.current = true;
+    let active = true;
+    let didLogin = false;
+    autoLoginCancelRef.current = () => { active = false; };
+    let saved = "";
+    try { saved = localStorage.getItem(ADMIN_PASS_KEY) || ""; } catch {}
+    if (!saved) return;
+    adminLogin(saved)
+      .then((valid) => {
+        if (!active) return;
+        if (valid) {
+          adminPassRef.current = saved;
+          didLogin = true;
+          setAdminChecking(true);
+          setAdminUnlocked(true);
+          setAdminAuthError("");
+          setAdminInput("");
+        } else {
+          try { localStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setAdminAuthError("Connection error — try again.");
+      })
+      .finally(() => {
+        if (!active) return;
+        if (!didLogin) setAdminChecking(false);
+      });
+    return () => { active = false; };
+  }, [page, adminUnlocked]);
   
   async function handleAdminLogin() {
     const pass = adminInput.trim();
@@ -107,6 +145,7 @@ export default function App() {
         return;
       }
       adminPassRef.current = pass;
+      try { localStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
       setAdminInput("");
       setAdminUnlocked(true);
     } catch {
@@ -135,6 +174,7 @@ export default function App() {
     try {
       await adminBootstrapPassword(pass);
       adminPassRef.current = pass;
+      try { localStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
       setAdminSetupPass("");
       setAdminSetupConfirm("");
       setAdminPasswordSet(true);
@@ -157,6 +197,7 @@ export default function App() {
     setAdminUnlocked(false);
     setAdminChecking(false);
     adminPassRef.current = "";
+    try { localStorage.removeItem(ADMIN_PASS_KEY); } catch {}
     setAdminAuthError(msg || "Authentication failed.");
   }
 
@@ -262,6 +303,11 @@ export default function App() {
                 onChange={(e) => {
                   setAdminInput(e.target.value);
                   if (adminAuthError) setAdminAuthError("");
+                  if (autoLoginCancelRef.current) {
+                    autoLoginCancelRef.current();
+                    autoLoginCancelRef.current = null;
+                  }
+                  if (adminChecking) setAdminChecking(false);
                 }}
                 onKeyDown={(e) => { if (e.key === "Enter") handleAdminLogin(); }}
                 autoComplete="current-password"
@@ -317,6 +363,7 @@ export default function App() {
             setAdminChecking(false);
             setAdminAuthError("");
             adminPassRef.current = "";
+            try { localStorage.removeItem(ADMIN_PASS_KEY); } catch {}
           }}
         />
       </>

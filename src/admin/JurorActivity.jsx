@@ -10,6 +10,21 @@ import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta
 
 // jurorStats prop: { key, name, dept, jurorId, rows, latestRow, editEnabled }[]
 // groups prop: { id (uuid), groupNo, label }[]
+
+function getOverallStatus(stat, groupCount) {
+  const isEditing = !!stat.editEnabled;
+  const isFinal = !!stat.latestRow?.finalSubmittedAt;
+  const scoredCount = (stat.rows || []).filter((d) => d.total !== null && d.total !== undefined).length;
+  const startedCount = (stat.rows || []).filter((d) => getCellState(d) !== "empty").length;
+  return (
+    isEditing                                             ? "editing"         :
+    isFinal                                               ? "completed"       :
+    (scoredCount === groupCount && groupCount > 0)        ? "ready_to_submit" :
+    startedCount > 0                                      ? "in_progress"     :
+    "not_started"
+  );
+}
+
 export default function JurorActivity({ jurorStats, groups = [] }) {
   const [searchTerm, setSearchTerm] = useState(() => {
     const s = readSection("jurors");
@@ -39,27 +54,13 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
     });
   }
 
-  const getOverallStatus = (stat) => {
-    const isEditing = !!stat.editEnabled;
-    const isFinal = !!stat.latestRow?.finalSubmittedAt;
-    const scoredCount = (stat.rows || []).filter((d) => d.total !== null && d.total !== undefined).length;
-    const startedCount = (stat.rows || []).filter((d) => getCellState(d) !== "empty").length;
-    return (
-      isEditing                                             ? "editing"         :
-      isFinal                                               ? "completed"       :
-      (scoredCount === groups.length && groups.length > 0) ? "ready_to_submit" :
-      startedCount > 0                                      ? "in_progress"     :
-      "not_started"
-    );
-  };
-
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filtered = useMemo(() => {
     let list = jurorStats.slice().sort((a, b) => cmp(a.jury, b.jury));
     if (normalizedSearch) {
       list = list.filter((s) => {
         const dept = s.latestRow?.juryDept || s.dept || "";
-        const status = getOverallStatus(s);
+        const status = getOverallStatus(s, groups.length);
         const statusLabel = jurorStatusMeta[status]?.label ?? status;
         const statusText = `${status} ${statusLabel} ${String(status).replace(/_/g, " ")}`;
         const haystack = `${s.jury} ${dept} ${statusText}`.toLowerCase();
@@ -103,9 +104,8 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
       <div className="jurors-grid jurors-grid-compact">
         {filtered.map((stat) => {
           const { key, jury, rows, latestRow, editEnabled, dept } = stat;
-          const overallStatus = getOverallStatus(stat);
+          const overallStatus = getOverallStatus(stat, groups.length);
           const isEditing = !!editEnabled;
-          const badgeStatus = overallStatus;
           const totalGroups = groups.length;
           const scoredCount = (rows || []).filter((d) => d.total !== null && d.total !== undefined).length;
           const pct = adminCompletionPct(rows, totalGroups);
@@ -123,10 +123,6 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
           const lastActivity = (latestRow?.finalSubmittedAt || latestRow?.updatedAt)
             ? formatTs(latestRow?.finalSubmittedAt || latestRow?.updatedAt)
             : "—";
-          const progressSummary = totalGroups > 0
-            ? `${scoredCount} / ${totalGroups} groups scored`
-            : "No groups assigned";
-
           const rowMap = new Map((rows || []).map((r) => [r.projectId, r]));
           const perGroupRows = groups.map((g) => {
             const row = rowMap.get(g.id);
@@ -189,7 +185,7 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
                 </div>
                 <div className="juror-card-status">
                   <StatusBadge
-                    status={badgeStatus}
+                    status={overallStatus}
                     editingFlag={isEditing ? "editing" : ""}
                   />
                 </div>

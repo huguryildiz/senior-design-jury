@@ -8,7 +8,7 @@ import { cmp, exportXLSX, formatTs, tsToMillis, rowKey } from "./utils";
 import { readSection, writeSection } from "./persist";
 import { FilterPopoverPortal, StatusBadge } from "./components";
 import { getCellState } from "./scoreHelpers";
-import { FilterIcon, DownloadIcon, ArrowUpDownIcon, ArrowDown01Icon, ArrowDown10Icon, ArrowDownIcon, ArrowUpIcon, XIcon } from "../shared/Icons";
+import { FilterIcon, DownloadIcon, InfoIcon, XIcon } from "../shared/Icons";
 
 // Show "" for null/undefined/empty/NaN.  0 is a valid score.
 function displayScore(val) {
@@ -26,6 +26,15 @@ const SCORE_COLS = [
   { key: "teamwork",  label: "Teamwork /10"  },
   { key: "total",     label: "Total"         },
 ];
+const SCORE_FILTER_MIN = 0;
+const SCORE_FILTER_MAX = 100;
+const SCORE_MAX_BY_KEY = {
+  technical: 30,
+  design: 30,
+  delivery: 30,
+  teamwork: 10,
+  total: 100,
+};
 const STATUS_OPTIONS = [
   { value: "scored",      label: "Scored"       },
   { value: "partial",     label: "Partial"      },
@@ -40,6 +49,8 @@ const JUROR_STATUS_OPTIONS = [
 ];
 
 const VALID_SORT_DIRS = ["asc", "desc"];
+const DEFAULT_SORT_KEY = "updatedMs";
+const DEFAULT_SORT_DIR = "desc";
 
 const DATE_MIN_YEAR = 2000;
 const DATE_MAX_YEAR = 2100;
@@ -84,6 +95,58 @@ function parseDateString(value) {
   return null;
 }
 
+function formatDateOnlyFromMs(ms) {
+  if (!Number.isFinite(ms)) return "—";
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function buildDateRange(parsedFrom, parsedTo) {
+  const fromMs = parsedFrom?.ms ?? 0;
+  const toMsBase = parsedTo?.ms ?? Infinity;
+  const toMs = Number.isFinite(toMsBase)
+    ? toMsBase + (parsedTo?.isDateOnly ? (24 * 60 * 60 * 1000 - 1) : 0)
+    : toMsBase;
+  return { fromMs, toMs };
+}
+
+const SCORE_KEYS = SCORE_COLS.map(({ key }) => key);
+
+function normalizeScoreFilterValue(value, key = "total") {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(String(value).replace(",", "."));
+  if (!Number.isFinite(n)) return "";
+  const maxAllowed = Number.isFinite(SCORE_MAX_BY_KEY[key]) ? SCORE_MAX_BY_KEY[key] : SCORE_FILTER_MAX;
+  return String(Math.min(maxAllowed, Math.max(SCORE_FILTER_MIN, n)));
+}
+
+function buildEmptyScoreFilters(stored) {
+  const base = {};
+  SCORE_KEYS.forEach((key) => {
+    const entry = stored && typeof stored === "object" ? stored[key] : null;
+    base[key] = {
+      min: normalizeScoreFilterValue(entry?.min, key),
+      max: normalizeScoreFilterValue(entry?.max, key),
+    };
+  });
+  return base;
+}
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function clampScoreInput(raw, key = "total") {
+  if (raw === "") return "";
+  const n = Number(String(raw).replace(",", "."));
+  if (!Number.isFinite(n)) return raw;
+  const maxAllowed = Number.isFinite(SCORE_MAX_BY_KEY[key]) ? SCORE_MAX_BY_KEY[key] : SCORE_FILTER_MAX;
+  return String(Math.min(maxAllowed, Math.max(SCORE_FILTER_MIN, n)));
+}
+
 function isMissing(val) {
   if (val === "" || val === null || val === undefined) return true;
   if (typeof val === "string" && val.trim() === "") return true;
@@ -114,6 +177,70 @@ const CELL_SCROLL_PROPS = {
   onBlur: disableCellScroll,
   onTouchStart: enableCellScroll,
 };
+
+// ── Pagination helpers ─────────────────────────────────────────
+function buildPageTokens(current, total) {
+  if (total <= 1) return [1];
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const always = new Set([1, total, current, current - 1, current + 1]);
+  const pages  = Array.from(always).filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const tokens = [];
+  for (let idx = 0; idx < pages.length; idx++) {
+    if (idx > 0 && pages[idx] - pages[idx - 1] > 1) tokens.push("...");
+    tokens.push(pages[idx]);
+  }
+  return tokens;
+}
+
+function TablePagination({ currentPage, totalPages, pageSize, totalRows, onPageChange, onPageSizeChange }) {
+  const PAGE_SIZES = [10, 15, 25, 50];
+  const rangeStart = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd   = Math.min(currentPage * pageSize, totalRows);
+  const tokens     = buildPageTokens(currentPage, totalPages);
+
+  return (
+    <div className="details-pagination">
+      <div className="details-pagination__left">
+        <label className="details-pagination__size-label" htmlFor="details-page-size">
+          Rows per page
+        </label>
+        <select
+          id="details-page-size"
+          className="details-pagination__size-select"
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+        >
+          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </div>
+      <span className="details-pagination__range">
+        {totalRows === 0 ? "0 rows" : `${rangeStart}–${rangeEnd} of ${totalRows} rows`}
+      </span>
+      <div className="details-pagination__controls">
+        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(1)} disabled={currentPage === 1} aria-label="First page">{"<<"}</button>
+        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page">{"<"}</button>
+        {tokens.map((token, idx) =>
+          token === "..." ? (
+            <span key={`el-${idx}`} className="details-pagination__ellipsis">…</span>
+          ) : (
+            <button
+              key={token}
+              type="button"
+              className={`details-pagination__btn details-pagination__page-btn${token === currentPage ? " details-pagination__page-btn--active" : ""}`}
+              onClick={() => onPageChange(token)}
+              aria-label={`Page ${token}`}
+              aria-current={token === currentPage ? "page" : undefined}
+            >
+              {token}
+            </button>
+          )
+        )}
+        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next page">{">"}</button>
+        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} aria-label="Last page">{">>"}</button>
+      </div>
+    </div>
+  );
+}
 
 // ── ColHeader ─────────────────────────────────────────────────
 // Reusable <th> with optional sort button + optional filter icon.
@@ -175,17 +302,22 @@ export default function ScoreDetails({
   groups = [],
   semesterName = "",
   summaryData = [],
+  loading = false,
 }) {
   // Read persisted state exactly once (mount only) — useRef prevents re-reads on every render.
   const _sRef = useRef(null);
   if (_sRef.current === null) _sRef.current = readSection("details");
   const _s = _sRef.current;
 
-  const [filterSemester, setFilterSemester] = useState(() => typeof _s.filterSemester === "string" ? _s.filterSemester : "");
+  const [filterSemester, setFilterSemester] = useState(() => {
+    if (Array.isArray(_s.filterSemester)) return _s.filterSemester;
+    if (typeof _s.filterSemester === "string" && _s.filterSemester) return [_s.filterSemester];
+    return null; // null = all semesters
+  });
   const [filterGroupNo,  setFilterGroupNo]  = useState(() => {
     if (Array.isArray(_s.filterGroupNo)) return _s.filterGroupNo;
     if (typeof _s.filterGroupNo === "string" && _s.filterGroupNo) return [_s.filterGroupNo];
-    return [];
+    return null; // null = all groups
   });
   const [filterJuror,    setFilterJuror]    = useState(() => {
     if (typeof _s.filterJuror === "string") return _s.filterJuror === "ALL" ? "" : _s.filterJuror;
@@ -197,26 +329,47 @@ export default function ScoreDetails({
   });
   const [filterStatus,   setFilterStatus]   = useState(() => {
     if (Array.isArray(_s.filterStatus)) {
+      if (_s.filterStatus.length === 0) return null;
       return _s.filterStatus.map((v) => (v === "not_started" ? "empty" : v));
     }
     if (typeof _s.filterStatus === "string" && _s.filterStatus && _s.filterStatus !== "ALL") {
       return [_s.filterStatus === "not_started" ? "empty" : _s.filterStatus];
     }
-    return [];
+    return null; // null = all statuses
   });
   const [filterJurorStatus, setFilterJurorStatus] = useState(() => {
-    if (Array.isArray(_s.filterJurorStatus)) return _s.filterJurorStatus;
+    if (Array.isArray(_s.filterJurorStatus)) {
+      return _s.filterJurorStatus.length === 0 ? null : _s.filterJurorStatus;
+    }
     if (typeof _s.filterJurorStatus === "string" && _s.filterJurorStatus && _s.filterJurorStatus !== "ALL") {
       return [_s.filterJurorStatus];
     }
-    return [];
+    return null; // null = all juror statuses
   });
   const [filterProjectTitle, setFilterProjectTitle] = useState(() => typeof _s.filterProjectTitle === "string" ? _s.filterProjectTitle : "");
   const [filterStudents,     setFilterStudents]     = useState(() => typeof _s.filterStudents     === "string" ? _s.filterStudents     : "");
-  const [dateFrom,       setDateFrom]       = useState(() => typeof _s.dateFrom     === "string" ? _s.dateFrom     : "");
-  const [dateTo,         setDateTo]         = useState(() => typeof _s.dateTo       === "string" ? _s.dateTo       : "");
-  const [dateFilterCol,  setDateFilterCol]  = useState(() => _s.dateFilterCol === "completed" ? "completed" : "updated");
-  const [dateError,      setDateError]      = useState(null);
+  const legacyDateFrom = typeof _s.dateFrom === "string" ? _s.dateFrom : "";
+  const legacyDateTo = typeof _s.dateTo === "string" ? _s.dateTo : "";
+  const legacyDateCol = _s.dateFilterCol === "completed" ? "completed" : "updated";
+  const [updatedFrom, setUpdatedFrom] = useState(() => {
+    if (typeof _s.updatedFrom === "string") return _s.updatedFrom;
+    return legacyDateCol === "updated" ? legacyDateFrom : "";
+  });
+  const [updatedTo, setUpdatedTo] = useState(() => {
+    if (typeof _s.updatedTo === "string") return _s.updatedTo;
+    return legacyDateCol === "updated" ? legacyDateTo : "";
+  });
+  const [completedFrom, setCompletedFrom] = useState(() => {
+    if (typeof _s.completedFrom === "string") return _s.completedFrom;
+    return legacyDateCol === "completed" ? legacyDateFrom : "";
+  });
+  const [completedTo, setCompletedTo] = useState(() => {
+    if (typeof _s.completedTo === "string") return _s.completedTo;
+    return legacyDateCol === "completed" ? legacyDateTo : "";
+  });
+  const [updatedDateError, setUpdatedDateError] = useState(null);
+  const [completedDateError, setCompletedDateError] = useState(null);
+  const [scoreFilters, setScoreFilters] = useState(() => buildEmptyScoreFilters(_s.scoreFilters));
   const jurorEditMap = useMemo(() => {
     const map = new Map();
     (jurors || []).forEach((j) => {
@@ -231,14 +384,18 @@ export default function ScoreDetails({
   }, [jurors]);
   const [filterComment,  setFilterComment]  = useState(() => typeof _s.filterComment === "string" ? _s.filterComment : "");
   const [sortKey,        setSortKey]        = useState(() => {
-    const rawKey = typeof _s.sortKey === "string" && _s.sortKey ? _s.sortKey : "updatedMs";
+    if (_s.sortKey === null) return null;
+    const rawKey = typeof _s.sortKey === "string" && _s.sortKey ? _s.sortKey : DEFAULT_SORT_KEY;
     const key = rawKey === "tsMs" ? "updatedMs" : rawKey;
     return key === "projectId" ? "projectTitle" : key;
   });
-  const [sortDir,        setSortDir]        = useState(() => VALID_SORT_DIRS.includes(_s.sortDir) ? _s.sortDir : "desc");
+  const [sortDir,        setSortDir]        = useState(() => VALID_SORT_DIRS.includes(_s.sortDir) ? _s.sortDir : DEFAULT_SORT_DIR);
+  const [pageSize,       setPageSize]       = useState(15);
+  const [currentPage,    setCurrentPage]    = useState(1);
   const [activeFilterCol, setActiveFilterCol] = useState(null);
   const [anchorRect, setAnchorRect] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [multiSearchQuery, setMultiSearchQuery] = useState("");
   const [isMobile, setIsMobile] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches
   ));
@@ -339,70 +496,98 @@ export default function ScoreDetails({
   useEffect(() => {
     writeSection("details", {
       filterSemester, filterGroupNo, filterJuror, filterDept, filterProjectTitle, filterStudents,
-      filterStatus, filterJurorStatus, dateFrom, dateTo, dateFilterCol, filterComment,
+      filterStatus, filterJurorStatus, updatedFrom, updatedTo, completedFrom, completedTo, filterComment,
+      scoreFilters,
       sortKey, sortDir,
     });
-  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, dateFrom, dateTo, dateFilterCol, filterComment, sortKey, sortDir]);
+  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, updatedFrom, updatedTo, completedFrom, completedTo, filterComment, scoreFilters, sortKey, sortDir]);
 
-  const parsedFrom = useMemo(() => (dateFrom ? parseDateString(dateFrom) : null), [dateFrom]);
-  const parsedTo = useMemo(() => (dateTo ? parseDateString(dateTo) : null), [dateTo]);
-  const parsedFromMs = parsedFrom ? parsedFrom.ms : null;
-  const parsedToMs = parsedTo ? parsedTo.ms : null;
-  const isInvalidRange = useMemo(() => {
-    if (parsedFromMs === null || parsedToMs === null) return false;
-    return parsedFromMs > parsedToMs;
-  }, [parsedFromMs, parsedToMs]);
+  const updatedParsedFrom = useMemo(() => (updatedFrom ? parseDateString(updatedFrom) : null), [updatedFrom]);
+  const updatedParsedTo = useMemo(() => (updatedTo ? parseDateString(updatedTo) : null), [updatedTo]);
+  const updatedParsedFromMs = updatedParsedFrom ? updatedParsedFrom.ms : null;
+  const updatedParsedToMs = updatedParsedTo ? updatedParsedTo.ms : null;
+  const isUpdatedInvalidRange = useMemo(() => {
+    if (updatedParsedFromMs === null || updatedParsedToMs === null) return false;
+    return updatedParsedFromMs > updatedParsedToMs;
+  }, [updatedParsedFromMs, updatedParsedToMs]);
 
   useEffect(() => {
-    if ((dateFrom && parsedFromMs === null) || (dateTo && parsedToMs === null)) {
-      setDateError("Invalid date format.");
-    } else if (isInvalidRange) {
-      setDateError("The 'From' date cannot be later than the 'To' date.");
+    if ((updatedFrom && updatedParsedFromMs === null) || (updatedTo && updatedParsedToMs === null)) {
+      setUpdatedDateError("Invalid date format.");
+    } else if (isUpdatedInvalidRange) {
+      setUpdatedDateError("The 'From' date cannot be later than the 'To' date.");
     } else {
-      setDateError(null);
+      setUpdatedDateError(null);
     }
-  }, [dateFrom, dateTo, parsedFromMs, parsedToMs, isInvalidRange]);
+  }, [updatedFrom, updatedTo, updatedParsedFromMs, updatedParsedToMs, isUpdatedInvalidRange]);
+
+  const completedParsedFrom = useMemo(() => (completedFrom ? parseDateString(completedFrom) : null), [completedFrom]);
+  const completedParsedTo = useMemo(() => (completedTo ? parseDateString(completedTo) : null), [completedTo]);
+  const completedParsedFromMs = completedParsedFrom ? completedParsedFrom.ms : null;
+  const completedParsedToMs = completedParsedTo ? completedParsedTo.ms : null;
+  const isCompletedInvalidRange = useMemo(() => {
+    if (completedParsedFromMs === null || completedParsedToMs === null) return false;
+    return completedParsedFromMs > completedParsedToMs;
+  }, [completedParsedFromMs, completedParsedToMs]);
+
+  useEffect(() => {
+    if ((completedFrom && completedParsedFromMs === null) || (completedTo && completedParsedToMs === null)) {
+      setCompletedDateError("Invalid date format.");
+    } else if (isCompletedInvalidRange) {
+      setCompletedDateError("The 'From' date cannot be later than the 'To' date.");
+    } else {
+      setCompletedDateError(null);
+    }
+  }, [completedFrom, completedTo, completedParsedFromMs, completedParsedToMs, isCompletedInvalidRange]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (filterSemester) count += 1;
-    if (filterGroupNo.length > 0) count += 1;
+    if (Array.isArray(filterSemester)) count += 1;
+    if (Array.isArray(filterGroupNo)) count += 1;
     if (filterJuror) count += 1;
     if (filterDept) count += 1;
-    if (filterStatus.length > 0) count += 1;
-    if (filterJurorStatus.length > 0) count += 1;
+    if (Array.isArray(filterStatus)) count += 1;
+    if (Array.isArray(filterJurorStatus)) count += 1;
     if (filterProjectTitle) count += 1;
     if (filterStudents) count += 1;
-    if (dateFrom || dateTo) count += 1;
+    if (updatedFrom || updatedTo) count += 1;
+    if (completedFrom || completedTo) count += 1;
+    SCORE_KEYS.forEach((key) => {
+      const f = scoreFilters[key];
+      if (f?.min || f?.max) count += 1;
+    });
     if (filterComment) count += 1;
     return count;
-  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, dateFrom, dateTo, filterComment]);
+  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, updatedFrom, updatedTo, completedFrom, completedTo, scoreFilters, filterComment]);
   const hasAnyFilter = activeFilterCount > 0;
-  const isSemesterFilterActive = !!filterSemester || activeFilterCol === "semester";
-  const isGroupNoFilterActive = filterGroupNo.length > 0 || activeFilterCol === "groupNo";
+  const isSemesterFilterActive = Array.isArray(filterSemester) || activeFilterCol === "semester";
+  const isGroupNoFilterActive = Array.isArray(filterGroupNo) || activeFilterCol === "groupNo";
   const isJurorFilterActive = !!filterJuror || activeFilterCol === "juror";
   const isDeptFilterActive = !!filterDept || activeFilterCol === "dept";
-  const isStatusFilterActive = filterStatus.length > 0 || activeFilterCol === "status";
-  const isJurorStatusFilterActive = filterJurorStatus.length > 0 || activeFilterCol === "jurorStatus";
+  const isStatusFilterActive = Array.isArray(filterStatus) || activeFilterCol === "status";
+  const isJurorStatusFilterActive = Array.isArray(filterJurorStatus) || activeFilterCol === "jurorStatus";
   const isProjectTitleFilterActive = !!filterProjectTitle || activeFilterCol === "projectTitle";
   const isStudentsFilterActive = !!filterStudents || activeFilterCol === "students";
-  const isUpdatedDateFilterActive = (dateFilterCol === "updated" && (dateFrom || dateTo)) || activeFilterCol === "updatedAt";
-  const isCompletedDateFilterActive = (dateFilterCol === "completed" && (dateFrom || dateTo)) || activeFilterCol === "completedAt";
+  const isUpdatedDateFilterActive = (updatedFrom || updatedTo) || activeFilterCol === "updatedAt";
+  const isCompletedDateFilterActive = (completedFrom || completedTo) || activeFilterCol === "completedAt";
   const isCommentFilterActive = !!filterComment || activeFilterCol === "comment";
 
   function resetFilters() {
-    setFilterSemester("");
-    setFilterGroupNo([]);
+    setFilterSemester(null);
+    setFilterGroupNo(null);
     setFilterJuror("");
     setFilterDept("");
-    setFilterStatus([]);
-    setFilterJurorStatus([]);
+    setFilterStatus(null);
+    setFilterJurorStatus(null);
     setFilterProjectTitle("");
     setFilterStudents("");
-    setDateFrom("");
-    setDateTo("");
-    setDateError(null);
-    setDateFilterCol("updated");
+    setUpdatedFrom("");
+    setUpdatedTo("");
+    setUpdatedDateError(null);
+    setCompletedFrom("");
+    setCompletedTo("");
+    setCompletedDateError(null);
+    setScoreFilters(buildEmptyScoreFilters());
     setFilterComment("");
     setActiveFilterCol(null);
     setAnchorRect(null);
@@ -412,7 +597,19 @@ export default function ScoreDetails({
     setActiveFilterCol(null);
     setAnchorRect(null);
     setAnchorEl(null);
+    setMultiSearchQuery("");
   }
+
+  const updateScoreFilter = (key, field, raw) => {
+    const clipped = clampScoreInput(raw, key);
+    setScoreFilters((prev) => ({
+      ...prev,
+      [key]: {
+        ...(prev?.[key] || { min: "", max: "" }),
+        [field]: clipped,
+      },
+    }));
+  };
 
   const toggleMulti = (value, selected, setter, order = []) => {
     const next = new Set(selected);
@@ -444,11 +641,8 @@ export default function ScoreDetails({
   }
 
   const rows = useMemo(() => {
-    const fromMs = parsedFromMs ?? 0;
-    const toMsBase = parsedToMs ?? Infinity;
-    const toMs = Number.isFinite(toMsBase)
-      ? toMsBase + (parsedTo?.isDateOnly ? (24 * 60 * 60 * 1000 - 1) : 0)
-      : toMsBase;
+    const { fromMs: updatedFromMs, toMs: updatedToMs } = buildDateRange(updatedParsedFrom, updatedParsedTo);
+    const { fromMs: completedFromMs, toMs: completedToMs } = buildDateRange(completedParsedFrom, completedParsedTo);
 
     const assignedList = Array.isArray(assignedJurors) && assignedJurors.length
       ? assignedJurors
@@ -546,11 +740,13 @@ export default function ScoreDetails({
       };
     });
 
-    if (filterSemester) {
-      const q = filterSemester.toLowerCase();
-      list = list.filter((r) => String(r.semester || "").trim().toLowerCase() === q);
+    if (Array.isArray(filterSemester)) {
+      if (filterSemester.length === 0) return [];
+      const set = new Set(filterSemester.map((v) => String(v).trim().toLowerCase()));
+      list = list.filter((r) => set.has(String(r.semester || "").trim().toLowerCase()));
     }
-    if (filterGroupNo.length > 0) {
+    if (Array.isArray(filterGroupNo)) {
+      if (filterGroupNo.length === 0) return [];
       const set = new Set(filterGroupNo.map((v) => String(v).trim().toLowerCase()));
       list = list.filter((r) => set.has(String(r.groupNo ?? "").trim().toLowerCase()));
     }
@@ -562,11 +758,13 @@ export default function ScoreDetails({
       const q = filterDept.toLowerCase();
       list = list.filter((r) => String(r.juryDept ?? "").toLowerCase().includes(q));
     }
-    if (filterStatus.length > 0) {
+    if (Array.isArray(filterStatus)) {
+      if (filterStatus.length === 0) return [];
       const set = new Set(filterStatus);
       list = list.filter((r) => set.has(r.effectiveStatus));
     }
-    if (filterJurorStatus.length > 0) {
+    if (Array.isArray(filterJurorStatus)) {
+      if (filterJurorStatus.length === 0) return [];
       const set = new Set(filterJurorStatus);
       list = list.filter((r) => set.has(r.jurorStatus));
     }
@@ -578,16 +776,47 @@ export default function ScoreDetails({
       const q = filterStudents.toLowerCase();
       list = list.filter((r) => (r.students || "").toLowerCase().includes(q));
     }
-    const canApplyDateFilter =
-      (!dateFrom || parsedFromMs !== null) &&
-      (!dateTo || parsedToMs !== null) &&
-      !isInvalidRange;
-    if ((dateFrom || dateTo) && canApplyDateFilter) {
+    const canApplyUpdated =
+      (!updatedFrom || updatedParsedFromMs !== null) &&
+      (!updatedTo || updatedParsedToMs !== null) &&
+      !isUpdatedInvalidRange;
+    if ((updatedFrom || updatedTo) && canApplyUpdated) {
       list = list.filter((r) => {
-        const ms = dateFilterCol === "completed"
-          ? (r.finalSubmittedMs || tsToMillis(r.finalSubmittedAt))
-          : (r.updatedMs || tsToMillis(r.updatedAt));
-        return ms >= fromMs && ms <= toMs;
+        const ms = r.updatedMs || tsToMillis(r.updatedAt);
+        return ms >= updatedFromMs && ms <= updatedToMs;
+      });
+    }
+    const canApplyCompleted =
+      (!completedFrom || completedParsedFromMs !== null) &&
+      (!completedTo || completedParsedToMs !== null) &&
+      !isCompletedInvalidRange;
+    if ((completedFrom || completedTo) && canApplyCompleted) {
+      list = list.filter((r) => {
+        const ms = r.finalSubmittedMs || tsToMillis(r.finalSubmittedAt);
+        return ms >= completedFromMs && ms <= completedToMs;
+      });
+    }
+    const activeScoreFilters = SCORE_KEYS.filter((key) => {
+      const filter = scoreFilters[key];
+      return !!(filter?.min || filter?.max);
+    });
+    if (activeScoreFilters.length > 0) {
+      list = list.filter((r) => {
+        for (const key of activeScoreFilters) {
+          const filter = scoreFilters[key];
+          let min = toFiniteNumber(filter?.min);
+          let max = toFiniteNumber(filter?.max);
+          if (min !== null && max !== null && min > max) {
+            const swap = min;
+            min = max;
+            max = swap;
+          }
+          const value = toFiniteNumber(r[key]);
+          if (value === null) return false;
+          if (min !== null && value < min) return false;
+          if (max !== null && value > max) return false;
+        }
+        return true;
       });
     }
     if (filterComment) {
@@ -595,45 +824,66 @@ export default function ScoreDetails({
       list = list.filter((r) => (r.comments || "").toLowerCase().includes(q));
     }
 
-    // Missing values always sink to bottom regardless of sort direction.
-    list.sort((a, b) => {
-      const av = a[sortKey], bv = b[sortKey];
-      const aMiss = isMissing(av);
-      const bMiss = isMissing(bv);
-      if (aMiss && bMiss) return 0;
-      if (aMiss) return 1;
-      if (bMiss) return -1;
-      return sortDir === "asc" ? cmp(av, bv) : cmp(bv, av);
-    });
+    if (sortKey) {
+      // Missing values always sink to bottom regardless of sort direction.
+      list.sort((a, b) => {
+        const av = a[sortKey], bv = b[sortKey];
+        const aMiss = isMissing(av);
+        const bMiss = isMissing(bv);
+        if (aMiss && bMiss) return 0;
+        if (aMiss) return 1;
+        if (bMiss) return -1;
+        return sortDir === "asc" ? cmp(av, bv) : cmp(bv, av);
+      });
+    }
     return list;
   }, [data, projectMetaById, semesterName, filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents,
-      dateFrom, dateTo, dateFilterCol, filterComment, sortKey, sortDir, jurorEditMap, assignedJurors, jurors, groups]);
+      updatedFrom, updatedTo, completedFrom, completedTo, updatedParsedFrom, updatedParsedTo, completedParsedFrom, completedParsedTo,
+      updatedParsedFromMs, updatedParsedToMs, completedParsedFromMs, completedParsedToMs, isUpdatedInvalidRange, isCompletedInvalidRange,
+      scoreFilters, filterComment, sortKey, sortDir, jurorEditMap, assignedJurors, jurors, groups]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus,
+      filterProjectTitle, filterStudents, updatedFrom, updatedTo, completedFrom, completedTo, scoreFilters, filterComment,
+      sortKey, sortDir, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage   = Math.min(Math.max(1, currentPage), totalPages);
+  const pageStart  = (safePage - 1) * pageSize;
+  const pageRows   = rows.slice(pageStart, pageStart + pageSize);
 
   function setSort(key) {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("desc"); }
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("desc");
+      return;
+    }
+    if (sortDir === "desc") {
+      setSortDir("asc");
+      return;
+    }
+    setSortKey(null);
+    setSortDir(DEFAULT_SORT_DIR);
   }
-  const sortIcon = (key) => {
-    if (sortKey !== key) return <ArrowUpDownIcon />;
-    if (NUMERIC_SORT_KEYS.has(key)) return sortDir === "asc" ? <ArrowDown01Icon /> : <ArrowDown10Icon />;
-    return sortDir === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />;
-  };
-
   const columns = useMemo(() => {
-    const dateFilterValue = { from: dateFrom, to: dateTo };
+    const updatedDateFilterValue = { from: updatedFrom, to: updatedTo };
+    const completedDateFilterValue = { from: completedFrom, to: completedTo };
     const base = [
       {
         id: "semester",
         label: "Semester",
         sortKey: "semester",
         filter: {
-          type: "select",
+          type: "multi",
           value: filterSemester,
           setValue: setFilterSemester,
-          options: semesterOptions,
+          options: semesterOptions.map((label) => ({ value: label, label })),
           allLabel: "All semesters",
+          allMode: "all",
           isActive: isSemesterFilterActive,
-          clear: () => setFilterSemester(""),
+          clear: () => setFilterSemester(null),
+          searchable: true,
         },
         className: "cell-semester",
       },
@@ -647,8 +897,10 @@ export default function ScoreDetails({
           setValue: setFilterGroupNo,
           options: groupNoOptions.map((l) => ({ value: l, label: l })),
           allLabel: "All groups",
+          allMode: "all",
           isActive: isGroupNoFilterActive,
-          clear: () => setFilterGroupNo([]),
+          clear: () => setFilterGroupNo(null),
+          searchable: true,
         },
         className: "cell-group-no",
       },
@@ -660,7 +912,7 @@ export default function ScoreDetails({
           type: "text",
           value: filterProjectTitle,
           setValue: setFilterProjectTitle,
-          placeholder: "Search project title…",
+          placeholder: "Search projects",
           isActive: isProjectTitleFilterActive,
           clear: () => setFilterProjectTitle(""),
         },
@@ -675,7 +927,7 @@ export default function ScoreDetails({
           type: "text",
           value: filterStudents,
           setValue: setFilterStudents,
-          placeholder: "Search students…",
+          placeholder: "Search students",
           isActive: isStudentsFilterActive,
           clear: () => setFilterStudents(""),
         },
@@ -690,7 +942,7 @@ export default function ScoreDetails({
           type: "text",
           value: filterJuror,
           setValue: setFilterJuror,
-          placeholder: "Search juror…",
+          placeholder: "Search jurors",
           isActive: isJurorFilterActive,
           clear: () => setFilterJuror(""),
         },
@@ -705,7 +957,7 @@ export default function ScoreDetails({
           type: "text",
           value: filterDept,
           setValue: setFilterDept,
-          placeholder: "Search department…",
+          placeholder: "Search departments",
           isActive: isDeptFilterActive,
           clear: () => setFilterDept(""),
         },
@@ -722,8 +974,9 @@ export default function ScoreDetails({
           setValue: setFilterStatus,
           options: STATUS_OPTIONS,
           allLabel: "All cell statuses",
+          allMode: "all",
           isActive: isStatusFilterActive,
-          clear: () => setFilterStatus([]),
+          clear: () => setFilterStatus(null),
         },
         className: "cell-status",
       },
@@ -737,23 +990,37 @@ export default function ScoreDetails({
           setValue: setFilterJurorStatus,
           options: JUROR_STATUS_OPTIONS,
           allLabel: "All juror statuses",
+          allMode: "all",
           isActive: isJurorStatusFilterActive,
-          clear: () => setFilterJurorStatus([]),
+          clear: () => setFilterJurorStatus(null),
         },
         className: "cell-juror-status",
       },
     ];
 
-    const scores = SCORE_COLS.map(({ key: col, label }) => ({
-      id: col,
-      label,
-      sortKey: col,
-      filter: null,
-      className: null,
-      headerIcon: <span className={`sort-icon${sortKey === col ? " icon-active-box" : ""}`}>{sortIcon(col)}</span>,
-      cellClassName: (row) => (row.effectiveStatus === "empty" ? "score-cell-unscored" : undefined),
-      renderCell: (row) => (col === "total" ? <strong>{displayScore(row[col])}</strong> : displayScore(row[col])),
-    }));
+    const scores = SCORE_COLS.map(({ key: col, label }) => {
+      const filterValue = scoreFilters[col] || { min: "", max: "" };
+      const isActive = !!(filterValue.min || filterValue.max) || activeFilterCol === col;
+      return ({
+        id: col,
+        label,
+        sortKey: col,
+        filter: {
+          type: "numberRange",
+          value: filterValue,
+          filterKey: col,
+          isActive,
+          clear: () => setScoreFilters((prev) => ({
+            ...prev,
+            [col]: { min: "", max: "" },
+          })),
+        },
+        className: null,
+        headerIcon: null,
+        cellClassName: (row) => (row.effectiveStatus === "empty" ? "score-cell-unscored" : undefined),
+        renderCell: (row) => (col === "total" ? <strong>{displayScore(row[col])}</strong> : displayScore(row[col])),
+      });
+    });
 
     const dates = [
       {
@@ -762,10 +1029,15 @@ export default function ScoreDetails({
         sortKey: "updatedMs",
         filter: {
           type: "dateRange",
-          value: dateFilterValue,
+          value: updatedDateFilterValue,
+          parsedFrom: updatedParsedFrom,
+          parsedTo: updatedParsedTo,
+          setFrom: setUpdatedFrom,
+          setTo: setUpdatedTo,
+          error: updatedDateError,
+          setError: setUpdatedDateError,
           isActive: isUpdatedDateFilterActive,
-          onOpen: () => setDateFilterCol("updated"),
-          clear: () => { setDateFrom(""); setDateTo(""); setDateError(null); },
+          clear: () => { setUpdatedFrom(""); setUpdatedTo(""); setUpdatedDateError(null); },
         },
         className: "cell-updated-at",
         renderCell: (row) => formatTs(row.updatedAt),
@@ -776,10 +1048,15 @@ export default function ScoreDetails({
         sortKey: "finalSubmittedMs",
         filter: {
           type: "dateRange",
-          value: dateFilterValue,
+          value: completedDateFilterValue,
+          parsedFrom: completedParsedFrom,
+          parsedTo: completedParsedTo,
+          setFrom: setCompletedFrom,
+          setTo: setCompletedTo,
+          error: completedDateError,
+          setError: setCompletedDateError,
           isActive: isCompletedDateFilterActive,
-          onOpen: () => setDateFilterCol("completed"),
-          clear: () => { setDateFrom(""); setDateTo(""); setDateError(null); },
+          clear: () => { setCompletedFrom(""); setCompletedTo(""); setCompletedDateError(null); },
         },
         className: "cell-completed-at",
         renderCell: (row) => formatTs(row.finalSubmittedAt),
@@ -792,7 +1069,7 @@ export default function ScoreDetails({
           type: "text",
           value: filterComment,
           setValue: setFilterComment,
-          placeholder: "Search comments…",
+          placeholder: "Search comments",
           isActive: isCommentFilterActive,
           clear: () => setFilterComment(""),
         },
@@ -806,13 +1083,41 @@ export default function ScoreDetails({
     return [...base, ...scores, ...dates];
   }, [
     filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle,
-    filterStudents, filterComment, dateFrom, dateTo, dateFilterCol, semesterOptions, groupNoOptions,
+    filterStudents, filterComment, updatedFrom, updatedTo, completedFrom, completedTo, updatedParsedFrom, updatedParsedTo,
+    completedParsedFrom, completedParsedTo, updatedDateError, completedDateError, scoreFilters, activeFilterCol,
+    semesterOptions, groupNoOptions,
     isSemesterFilterActive, isGroupNoFilterActive, isJurorFilterActive, isDeptFilterActive, isStatusFilterActive,
     isJurorStatusFilterActive, isProjectTitleFilterActive, isStudentsFilterActive, isUpdatedDateFilterActive,
     isCompletedDateFilterActive, isCommentFilterActive, sortKey, sortDir,
   ]);
 
   const columnsById = useMemo(() => new Map(columns.map((col) => [col.id, col])), [columns]);
+  const sortLabel = useMemo(() => {
+    if (!sortKey) return null;
+    const col = columns.find((c) => c.sortKey === sortKey);
+    const colLabel = col?.label || "Column";
+    const isDateSort = sortKey === "updatedMs" || sortKey === "finalSubmittedMs";
+    const isTextSort = [
+      "semester",
+      "projectTitle",
+      "students",
+      "juryName",
+      "juryDept",
+      "effectiveStatus",
+      "jurorStatus",
+    ].includes(sortKey);
+    const dirLabel = isDateSort
+      ? (sortDir === "asc" ? "oldest -> newest" : "newest -> oldest")
+      : isTextSort
+        ? (sortDir === "asc" ? "A -> Z" : "Z -> A")
+        : (sortDir === "asc" ? "low -> high" : "high -> low");
+    return `Sorted by: ${colLabel} (${dirLabel})`;
+  }, [columns, sortKey, sortDir]);
+
+  function clearSort() {
+    setSortKey(null);
+    setSortDir(DEFAULT_SORT_DIR);
+  }
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -822,30 +1127,56 @@ export default function ScoreDetails({
       let value = "";
       if (f.type === "text" || f.type === "select") value = f.value || "";
       if (f.type === "multi") {
+        const allMode = f.allMode || "empty";
+        if (allMode === "all" && f.value === null) return;
         const selected = Array.isArray(f.value) ? f.value : [];
-        if (selected.length === 0) return;
-        const labelMap = new Map((f.options || []).map((o) => {
-          if (typeof o === "string") return [o, o];
-          return [o.value, o.label];
-        }));
-        value = selected.length <= 2
-          ? selected.map((v) => labelMap.get(v) ?? v).join(", ")
-          : `${selected.length} selected`;
+        if (selected.length === 0) {
+          if (allMode === "all") {
+            value = "None";
+          } else {
+            return;
+          }
+        } else {
+          const labelMap = new Map((f.options || []).map((o) => {
+            if (typeof o === "string") return [o, o];
+            return [o.value, o.label];
+          }));
+          value = selected.length <= 2
+            ? selected.map((v) => labelMap.get(v) ?? v).join(", ")
+            : `${selected.length} selected`;
+        }
       }
       if (f.type === "dateRange") {
-        if (!dateFrom && !dateTo) return;
-        const from = dateFrom || "—";
-        const to = dateTo || "—";
+        const fromRaw = f.value?.from ?? "";
+        const toRaw = f.value?.to ?? "";
+        if (!fromRaw && !toRaw) return;
+        const fromParsed = f.parsedFrom;
+        const toParsed = f.parsedTo;
+        const from = fromRaw
+          ? (fromParsed?.isDateOnly ? formatDateOnlyFromMs(fromParsed.ms) : formatTs(fromRaw))
+          : "—";
+        const to = toRaw
+          ? (toParsed?.isDateOnly ? formatDateOnlyFromMs(toParsed.ms) : formatTs(toRaw))
+          : "—";
         value = `${from} → ${to}`;
+      }
+      if (f.type === "numberRange") {
+        const minRaw = f.value?.min ?? "";
+        const maxRaw = f.value?.max ?? "";
+        if (!minRaw && !maxRaw) return;
+        if (minRaw && maxRaw) value = `${minRaw}–${maxRaw}`;
+        else if (minRaw) value = `≥ ${minRaw}`;
+        else value = `≤ ${maxRaw}`;
       }
       chips.push({ id: col.id, label: col.label, value, onClear: f.clear });
     });
     return chips;
-  }, [columns, dateFrom, dateTo]);
+  }, [columns]);
 
   const openFilterCol = (colId, evt) => {
     const col = columnsById.get(colId);
     col?.filter?.onOpen?.();
+    setMultiSearchQuery("");
     toggleFilterCol(colId, evt);
   };
 
@@ -873,6 +1204,64 @@ export default function ScoreDetails({
     ),
   });
 
+  const makeNumberRangeFilter = (key, isActive) => {
+    const current = scoreFilters[key] || { min: "", max: "" };
+    const minValue = current.min ?? "";
+    const maxValue = current.max ?? "";
+    const minNum = toFiniteNumber(minValue);
+    const maxNum = toFiniteNumber(maxValue);
+    const hasError = minNum !== null && maxNum !== null && minNum > maxNum;
+    const maxAllowed = Number.isFinite(SCORE_MAX_BY_KEY[key]) ? SCORE_MAX_BY_KEY[key] : SCORE_FILTER_MAX;
+
+    return ({
+      className: "col-filter-popover col-filter-popover-portal col-filter-popover-number",
+      contentKey: `${minValue}|${maxValue}`,
+      content: (
+        <>
+          <div className="range-field">
+            <label>Min</label>
+            <input
+              autoFocus
+              type="number"
+              inputMode="decimal"
+              min={SCORE_FILTER_MIN}
+              max={maxAllowed}
+              value={minValue}
+              onChange={(e) => updateScoreFilter(key, "min", e.target.value)}
+              className={isActive ? "filter-input-active" : ""}
+            />
+          </div>
+          <div className="range-field">
+            <label>Max</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={SCORE_FILTER_MIN}
+              max={maxAllowed}
+              value={maxValue}
+              onChange={(e) => updateScoreFilter(key, "max", e.target.value)}
+              className={isActive ? "filter-input-active" : ""}
+            />
+          </div>
+          {hasError && (
+            <div className="range-error">Min must be ≤ Max.</div>
+          )}
+          {(minValue || maxValue) && (
+            <button
+              type="button"
+              className="col-filter-clear"
+              onClick={() => {
+                setScoreFilters((prev) => ({ ...prev, [key]: { min: "", max: "" } }));
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </>
+      ),
+    });
+  };
+
   const makeSelectFilter = (value, setValue, options, allLabel, isActive) => ({
     className: "col-filter-popover col-filter-popover-portal",
     contentKey: value,
@@ -899,37 +1288,85 @@ export default function ScoreDetails({
     ),
   });
 
-  const makeMultiFilter = (options, selected, setSelected, allLabel) => ({
-    className: "col-filter-popover col-filter-popover-portal col-filter-popover-multi",
-    contentKey: selected.join("|"),
-    content: (
-      <>
-        <label className="status-option">
-          <input type="checkbox" checked={selected.length === 0} onChange={() => setSelected([])} />
-          <span>{allLabel}</span>
-        </label>
-        {options.map((opt) => {
-          const val = typeof opt === "string" ? opt : opt.value;
-          const lbl = typeof opt === "string" ? opt : opt.label;
-          return (
-            <label key={val} className="status-option">
-              <input
-                type="checkbox"
-                checked={selected.includes(val)}
-                onChange={() => toggleMulti(val, selected, setSelected, options.map((o) => typeof o === "string" ? o : o.value))}
-              />
-              <span>{lbl}</span>
-            </label>
-          );
-        })}
-        {selected.length > 0 && (
-          <button className="col-filter-clear" onClick={() => { setSelected([]); closePopover(); }}>
-            Clear
-          </button>
-        )}
-      </>
-    ),
-  });
+  const makeMultiFilter = (
+    options, selected, setSelected, allLabel, allMode = "empty",
+    searchable = false, searchQuery = "", setSearchQuery = () => {}
+  ) => {
+    const optionValues = options.map((o) => (typeof o === "string" ? o : o.value));
+    const isAll = allMode === "all" ? selected == null : (Array.isArray(selected) && selected.length === 0);
+    const toggleOption = (val) => {
+      if (isAll && allMode === "all") {
+        setSelected(optionValues.filter((v) => v !== val));
+        return;
+      }
+      if (!Array.isArray(selected) || selected.length === 0) {
+        setSelected([val]);
+        return;
+      }
+      toggleMulti(val, selected, setSelected, optionValues);
+    };
+    const filteredOptions = searchable && searchQuery.trim()
+      ? options.filter((o) => {
+          const lbl = typeof o === "string" ? o : o.label;
+          return lbl.toLowerCase().includes(searchQuery.trim().toLowerCase());
+        })
+      : options;
+    return {
+      className: "col-filter-popover col-filter-popover-portal col-filter-popover-multi",
+      contentKey: Array.isArray(selected) ? selected.join("|") : "ALL",
+      content: (
+        <>
+          {searchable && (
+            <input
+              autoFocus
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${allLabel.replace(/^All\s+/i, "").toLowerCase()}...`}
+              className="multi-filter-search"
+              aria-label={`Search ${allLabel}`}
+            />
+          )}
+          <label className="status-option">
+            <input
+              type="checkbox"
+              checked={isAll}
+              onChange={() => {
+                if (allMode === "all") {
+                  setSelected(isAll ? [] : null);
+                } else {
+                  setSelected([]);
+                }
+              }}
+            />
+            <span>{allLabel}</span>
+          </label>
+          {filteredOptions.map((opt) => {
+            const val = typeof opt === "string" ? opt : opt.value;
+            const lbl = typeof opt === "string" ? opt : opt.label;
+            return (
+              <label key={val} className="status-option">
+                <input
+                  type="checkbox"
+                  checked={isAll || (Array.isArray(selected) && selected.includes(val))}
+                  onChange={() => toggleOption(val)}
+                />
+                <span>{lbl}</span>
+              </label>
+            );
+          })}
+          {searchable && searchQuery.trim() && filteredOptions.length === 0 && (
+            <div className="multi-filter-empty">No results</div>
+          )}
+          {Array.isArray(selected) && selected.length > 0 && (
+            <button className="col-filter-clear" onClick={() => { setSelected(allMode === "all" ? null : []); closePopover(); }}>
+              Clear
+            </button>
+          )}
+        </>
+      ),
+    };
+  };
 
   const popoverConfig = (() => {
     if (!activeFilterCol) return null;
@@ -941,16 +1378,34 @@ export default function ScoreDetails({
       return makeSelectFilter(filter.value, filter.setValue, filter.options, filter.allLabel, filter.isActive);
     }
     if (filter.type === "multi") {
-      return makeMultiFilter(filter.options, filter.value, filter.setValue, filter.allLabel);
+      return makeMultiFilter(
+        filter.options, filter.value, filter.setValue,
+        filter.allLabel, filter.allMode,
+        filter.searchable ?? false,
+        multiSearchQuery, setMultiSearchQuery
+      );
     }
     if (filter.type === "text") {
       return makeTextFilter(filter.value, filter.setValue, filter.placeholder, filter.isActive);
     }
+    if (filter.type === "numberRange") {
+      return makeNumberRangeFilter(filter.filterKey, filter.isActive);
+    }
     if (filter.type === "dateRange") {
-      const isDateFilterActive =
-        dateFilterCol === "completed" ? isCompletedDateFilterActive : isUpdatedDateFilterActive;
+      const from = filter.value?.from ?? "";
+      const to = filter.value?.to ?? "";
+      const parsedFrom = filter.parsedFrom;
+      const parsedTo = filter.parsedTo;
+      const parsedFromMs = parsedFrom ? parsedFrom.ms : null;
+      const parsedToMs = parsedTo ? parsedTo.ms : null;
+      const isInvalidRange = parsedFromMs !== null && parsedToMs !== null && parsedFromMs > parsedToMs;
+      const isDateFilterActive = filter.isActive;
+      const dateError = filter.error;
+      const setDateError = filter.setError || (() => {});
+      const setFrom = filter.setFrom || (() => {});
+      const setTo = filter.setTo || (() => {});
       const handleDateBlur = () => {
-        if ((dateFrom && parsedFromMs === null) || (dateTo && parsedToMs === null)) {
+        if ((from && parsedFromMs === null) || (to && parsedToMs === null)) {
           setDateError("Invalid date format.");
           return;
         }
@@ -958,7 +1413,7 @@ export default function ScoreDetails({
       };
       return {
         className: `col-filter-popover col-filter-popover-portal col-filter-popover-timestamp${isMobile ? " is-centered" : ""}`,
-        contentKey: `${dateFrom}|${dateTo}`,
+        contentKey: `${from}|${to}`,
         mode: isMobile ? "center" : "anchor",
         content: (
           <>
@@ -969,10 +1424,10 @@ export default function ScoreDetails({
                 type="datetime-local"
                 step="60"
                 placeholder="YYYY-MM-DDThh:mm"
-                value={dateFrom}
+                value={from}
                 min={DATE_MIN_DATETIME}
                 max={DATE_MAX_DATETIME}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => setFrom(e.target.value)}
                 onBlur={handleDateBlur}
                 className={`timestamp-date-input ${dateError ? "is-invalid " : ""}${isDateFilterActive ? "filter-input-active" : ""}`}
                 aria-invalid={!!dateError}
@@ -984,10 +1439,10 @@ export default function ScoreDetails({
                 type="datetime-local"
                 step="60"
                 placeholder="YYYY-MM-DDThh:mm"
-                value={dateTo}
+                value={to}
                 min={DATE_MIN_DATETIME}
                 max={DATE_MAX_DATETIME}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => setTo(e.target.value)}
                 onBlur={handleDateBlur}
                 className={`timestamp-date-input ${dateError ? "is-invalid " : ""}${isDateFilterActive ? "filter-input-active" : ""}`}
                 aria-invalid={!!dateError}
@@ -998,8 +1453,8 @@ export default function ScoreDetails({
             )}
             {isMobile ? (
               <div className="timestamp-actions">
-                {(dateFrom || dateTo) && (
-                  <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                {(from || to) && (
+                  <button className="col-filter-clear" onClick={() => { setFrom(""); setTo(""); setDateError(null); }}>
                     Clear
                   </button>
                 )}
@@ -1008,8 +1463,8 @@ export default function ScoreDetails({
                 </button>
               </div>
             ) : (
-              (dateFrom || dateTo) && (
-                <button className="col-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+              (from || to) && (
+                <button className="col-filter-clear" onClick={() => { setFrom(""); setTo(""); setDateError(null); }}>
                   Clear
                 </button>
               )
@@ -1026,50 +1481,59 @@ export default function ScoreDetails({
     <div className="score-details">
       <div className="admin-section-header">
         <div className="section-label">Details</div>
+        <div className="admin-section-actions">
+          <button
+            className="xlsx-export-btn"
+            onClick={() => {
+              const exportSemesterLabel = Array.isArray(filterSemester)
+                ? (filterSemester.length === 1 ? filterSemester[0] : (filterSemester.length === 0 ? "no-semester" : "multi-semesters"))
+                : "all-semesters";
+              void exportXLSX(rows, { semesterName: exportSemesterLabel, summaryData });
+            }}
+          >
+            <DownloadIcon />
+            <span className="export-label">Excel</span>
+          </button>
+        </div>
       </div>
 
-      {/* Compact toolbar: row count + clear + export */}
-      <div className="detail-table-toolbar">
-        <span className="filter-count">
-          Showing <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
-        </span>
-        {hasAnyFilter && (
-          <>
-            <span className="filters-active-pill">Filters: {activeFilterCount}</span>
-            {activeFilterChips.length > 0 && (
-              <div className="filters-chip-row">
-                {activeFilterChips.map((chip) => (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    className="filter-chip"
-                    onClick={chip.onClear}
-                    title={`Clear ${chip.label}`}
-                    aria-label={`Clear ${chip.label}`}
-                  >
-                    <span className="chip-label">{chip.label}</span>
-                    {chip.value && <span className="chip-value">{chip.value}</span>}
-                    <XIcon />
-                  </button>
-                ))}
-              </div>
-            )}
-            <button
-              type="button"
-              className="filters-clear-btn"
-              onClick={resetFilters}
-              aria-label="Clear filters"
-              title="Clear filters"
-            >
-              <XIcon />
-            </button>
-          </>
-        )}
-        <button className="xlsx-export-btn" onClick={() => { void exportXLSX(rows, { semesterName, summaryData }); }}>
-          <DownloadIcon />
-          <span className="export-label">Excel</span>
-        </button>
-      </div>
+      {(loading || hasAnyFilter || sortLabel) && (
+        <div className="detail-table-toolbar">
+          {loading && (
+            <span className="detail-loading">Loading all semesters…</span>
+          )}
+          {(hasAnyFilter || sortLabel) && (
+            <div className="filters-chip-row">
+              {sortLabel && (
+                <button
+                  type="button"
+                  className="details-sort-indicator"
+                  onClick={clearSort}
+                  title="Clear sort"
+                  aria-label="Clear sort"
+                >
+                  <span className="details-sort-text">{sortLabel}</span>
+                  <span className="details-sort-close" aria-hidden="true">×</span>
+                </button>
+              )}
+              {activeFilterChips.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className="filter-chip"
+                  onClick={chip.onClear}
+                  title={`Clear ${chip.label}`}
+                  aria-label={`Clear ${chip.label}`}
+                >
+                  <span className="chip-label">{chip.label}</span>
+                  {chip.value && <span className="chip-value">{chip.value}</span>}
+                  <XIcon />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <FilterPopoverPortal
         open={!!popoverConfig}
@@ -1084,6 +1548,11 @@ export default function ScoreDetails({
       >
         {popoverConfig?.content}
       </FilterPopoverPortal>
+
+      <div className="details-scroll-hint">
+        <span className="details-scroll-icon" aria-hidden="true"><InfoIcon /></span>
+        <span>Scroll horizontally to view all columns. Long text can be swiped on touch.</span>
+      </div>
 
       {/* Details table */}
       <div className="detail-table-scroll-top" ref={topScrollRef} aria-hidden="true">
@@ -1123,7 +1592,7 @@ export default function ScoreDetails({
                 </td>
               </tr>
             )}
-            {rows.map((row, i) => {
+            {pageRows.map((row, i) => {
               return (
                 <tr
                   key={`${rowKey(row)}-${row.projectId}`}
@@ -1173,6 +1642,15 @@ export default function ScoreDetails({
           </tbody>
         </table>
       </div>
+
+      <TablePagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalRows={rows.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
     </div>
   );
 }

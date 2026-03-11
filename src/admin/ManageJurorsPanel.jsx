@@ -304,7 +304,7 @@ export default function ManageJurorsPanel({
           <span className="manage-card-icon" aria-hidden="true"><UserCogIcon /></span>
           <span className="section-label">Juror Settings</span>
         </div>
-        {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
+        {isMobile && <ChevronDownIcon className={`settings-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {(!isMobile || isOpen) && (
@@ -646,6 +646,15 @@ export default function ManageJurorsPanel({
                 <div className="manage-modal-body">
                   <div className="manage-hint">
                     Upload your CSV file here.
+                  </div>
+                  <div className="manage-hint">
+                    Excel import: Save As → CSV (UTF-8) with comma-separated columns.
+                  </div>
+                  <div className="manage-hint">
+                    Required headers: <span className="manage-code">juror_name</span>, <span className="manage-code">juror_inst</span>. One row per juror.
+                  </div>
+                  <div className="manage-hint">
+                    Existing jurors are skipped during import.
                   </div>
                   <input
                     ref={fileRef}

@@ -884,7 +884,7 @@
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: conic-gradient(var(--ring-color) calc(var(--ring-pct) * 1%), #e2e8f0 0);
+  background: conic-gradient(var(--ring-color) calc(var(--ring-pct) * 1%), var(--ring-track) 0);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -946,9 +946,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #e6efff;
-  color: var(--brand-600, #2f56d6);
-  border: 1px solid #dbeafe;
+  background: #ffffff;
+  color: var(--gray-900, #0f172a);
+  border: 1px solid var(--gray-200, #e2e8f0);
 }
 .stat-icon-circle svg { width: 32px; height: 32px; }
 
@@ -973,7 +973,7 @@
   font-weight: 600;
 }
 .admin-section-header .section-label {
-  margin: 4px 2px 12px;
+  margin: 0 2px;
 }
 .overview-section-header { margin-top: 8px; }
 
@@ -982,6 +982,30 @@
 }
 @media (max-width: 440px) {
   .stat-card-cluster { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .overview-stat-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overview-stat-cards .stat-card--minimal {
+    padding: 14px 14px;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .overview-stat-cards .stat-card-value { font-size: 22px; }
+  .overview-stat-cards .stat-card-label { font-size: 11px; }
+  .overview-stat-cards .stat-card-sub { font-size: 11px; }
+  .overview-stat-cards .stat-card-meta { font-size: 10px; }
+  .overview-stat-cards .stat-ring,
+  .overview-stat-cards .stat-icon-circle {
+    width: 56px;
+    height: 56px;
+  }
+  .overview-stat-cards .stat-ring::after { inset: 5px; }
+  .overview-stat-cards .stat-ring span { font-size: 14px; }
+  .overview-stat-cards .stat-icon-circle svg { width: 24px; height: 24px; }
+}
+
+.overview-stat-cards .stat-icon-circle {
+  color: var(--gray-600, #64748b);
 }
 
 /* ── OverviewTab rankings toggle ─────────────────────────── */

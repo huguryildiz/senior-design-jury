@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import AutoSizer from "react-virtualized-auto-sizer";
 import { VariableSizeList as List } from "react-window";
 import { APP_CONFIG, CRITERIA, TOTAL_MAX } from "../config";
-import { InfoIcon, ChevronDownIcon, DownloadIcon, ArrowUpIcon, ArrowDownIcon } from "../shared/Icons";
+import { InfoIcon, ChevronDownIcon, DownloadIcon, ArrowUpIcon, ArrowDownIcon, SearchIcon, FilterIcon } from "../shared/Icons";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 import { readSection, writeSection } from "./persist";
 import { exportRankingsXLSX } from "./utils";
@@ -53,10 +53,6 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
     const s = readSection("rankings");
     return typeof s.search === "string" ? s.search : "";
   });
-  const [minCount, setMinCount] = useState(() => {
-    const s = readSection("rankings");
-    return typeof s.minCount === "string" ? s.minCount : "0";
-  });
   const [sortKey, setSortKey] = useState(() => {
     const s = readSection("rankings");
     const valid = SORT_OPTIONS.some((opt) => opt.value === s.sortKey);
@@ -82,22 +78,21 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   }, [semesterName]);
 
   useEffect(() => {
-    writeSection("rankings", { search, minCount, sortKey, sortDir, filtersOpen });
-  }, [search, minCount, sortKey, sortDir, filtersOpen]);
+    writeSection("rankings", { search, sortKey, sortDir, filtersOpen });
+  }, [search, sortKey, sortDir, filtersOpen]);
 
-  const minCountValue = useMemo(() => {
-    const parsed = Number.parseInt(minCount, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  }, [minCount]);
+  const finalized = useMemo(
+    () => (ranked || []).filter((p) => Number.isFinite(p?.totalAvg)),
+    [ranked]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (ranked || []).filter((p) => {
-      if (minCountValue > 0 && (p?.count ?? 0) < minCountValue) return false;
+    return finalized.filter((p) => {
       if (!q) return true;
       return buildSearchText(p).includes(q);
     });
-  }, [ranked, search, minCountValue]);
+  }, [finalized, search]);
 
   const sorted = useMemo(() => {
     const items = [...filtered];
@@ -180,7 +175,7 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   useEffect(() => {
     sizeMapRef.current = {};
     if (listRef.current) listRef.current.resetAfterIndex(0, true);
-  }, [sorted.length, sortKey, sortDir, search, minCountValue]);
+  }, [sorted.length, sortKey, sortDir, search]);
 
   const updateVirtualHeight = useCallback(() => {
     if (!virtualWrapRef.current) return;
@@ -216,8 +211,8 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   }
 
   // Guard: ranked may be undefined during initial render
-  if (!ranked?.length) {
-    return <div className="empty-msg">No submitted evaluations yet.</div>;
+  if (!finalized.length) {
+    return <div className="empty-msg">No finalized evaluations yet.</div>;
   }
 
   const RankCard = ({ p, index }) => {
@@ -376,7 +371,7 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
         <div className="summary-note">
           <InfoIcon />
           <span className="summary-note-text">
-            Ranking = Total Avg (finalized juror evaluations only). Ties share the same rank (1,1,3). Sorting does not change rank numbers.
+            Ranking is based on finalized submissions only (Total Avg). Ties share the same rank (1,1,3). 
           </span>
         </div>
         <div className="admin-section-actions">
@@ -389,7 +384,10 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
 
       <div className="rankings-toolbar">
         <div className="rankings-toolbar-header">
-          <span className="rankings-toolbar-title">Filters</span>
+          <span className="rankings-toolbar-title">
+            <span className="rankings-toolbar-icon" aria-hidden="true"><FilterIcon /></span>
+            Filters
+          </span>
           <button
             type="button"
             className={`rankings-toolbar-toggle${filtersOpen ? " is-open" : ""}`}
@@ -404,13 +402,16 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
           <div className="rankings-toolbar-main">
             <label className="rankings-control rankings-search">
               <span className="rankings-label">Search</span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Group, project, students"
-                aria-label="Search group, project, or students"
-              />
+              <div className="rankings-input-wrap">
+                <span className="rankings-input-icon" aria-hidden="true"><SearchIcon /></span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search groups, projects, or students"
+                  aria-label="Search groups, projects, or students"
+                />
+              </div>
             </label>
             <label className="rankings-control">
               <span className="rankings-label">Sort</span>
@@ -430,21 +431,9 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
                 </button>
               </div>
             </label>
-            <label className="rankings-control rankings-min-count">
-              <span className="rankings-label">Min jurors</span>
-              <input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={minCount}
-                onChange={(e) => setMinCount(e.target.value)}
-                placeholder="0"
-                aria-label="Minimum juror count"
-              />
-            </label>
           </div>
           <div className="rankings-toolbar-meta">
-            Showing {sorted.length} of {ranked.length}
+            Showing {sorted.length} of {finalized.length}
           </div>
         </div>
       </div>

@@ -12,16 +12,19 @@ export default function ScoresTab({
   ranked,
   submittedData,
   rawScores,
+  detailsScores,
   jurors,
   matrixJurors,
   groups,
   semesterName,
   summaryData,
+  detailsSummary,
   dashboardStats,
   overviewMetrics,
   lastRefresh,
   loading,
   error,
+  detailsLoading,
   semesterOptions,
   trendSemesterIds,
   onTrendSelectionChange,
@@ -53,12 +56,13 @@ export default function ScoresTab({
       )}
       {view === "details" && (
         <ScoreDetails
-          data={rawScores}
+          data={detailsScores && detailsScores.length ? detailsScores : rawScores}
           jurors={jurors}
           assignedJurors={matrixJurors || jurors}
           groups={groups}
           semesterName={semesterName}
-          summaryData={summaryData}
+          summaryData={detailsSummary && detailsSummary.length ? detailsSummary : summaryData}
+          loading={detailsLoading}
         />
       )}
       {view === "grid" && (

@@ -102,6 +102,9 @@
   box-shadow: var(--surface-shadow);
   background: var(--surface-bg);
   overflow: visible;
+  display: block;
+  width: 100%;
+  max-width: 100%;
 }
 .matrix-scroll   {
   overflow-x: auto;
@@ -110,12 +113,21 @@
   touch-action: pan-x;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
+  width: 100%;
 }
 .matrix-scroll::-webkit-scrollbar { display: none; }
-.matrix-table    { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; background: #fff; table-layout: fixed; }
+.matrix-table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+  table-layout: fixed;
+  display: table;
+}
 .matrix-table th {
   background: #f1f5f9;
-  padding: 10px 12px;
+  padding: 6px 8px;
   font-weight: 700;
   color: #475569;
   border-bottom: 1px solid var(--gray-200);
@@ -148,7 +160,7 @@
   justify-content: flex-start;
 }
 .matrix-table td {
-  padding: 10px 12px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--gray-200);
   border-right: 1px solid var(--gray-200);
   text-align: center;
@@ -160,13 +172,12 @@
 .matrix-cell-partial      { background: #fef9c3; color: #92400e; font-weight: 700; }
 .matrix-cell-empty        { background: #f8fafc; color: #94a3b8; }
 
-/* Cell tooltip (non-title, hover/active) */
-.matrix-cell[data-tooltip-active="true"]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
+/* Fixed-position tooltip — rendered via JS, escapes overflow-x:auto clipping */
+.matrix-cell-tip {
+  position: fixed;
+  z-index: 9999;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
   background: #0f172a;
   color: #fff;
   font-size: 11px;
@@ -174,51 +185,44 @@
   padding: 6px 8px;
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
-  z-index: 40;
   max-width: 260px;
   width: max-content;
-  white-space: normal;
-  line-break: anywhere;
+  white-space: pre-line;
   word-break: break-word;
-  opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.matrix-cell[data-tooltip-active="true"]:hover::after,
-.matrix-cell[data-tooltip-active="true"]:active::after,
-.matrix-cell[data-tooltip-active="true"]:focus::after,
-.matrix-cell[data-tooltip-active="true"]:focus-visible::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(-2px);
-}
-.matrix-cell[data-tooltip-active="true"]:focus,
-.matrix-cell[data-tooltip-active="true"]:focus-visible {
-  outline: 2px solid var(--brand-600);
-  outline-offset: -2px;
 }
 /* Frozen first column */
 .matrix-table th:first-child,
 .matrix-table td:first-child {
   position: sticky;
   left: 0;
-  min-width: 220px;
-  max-width: 220px;
-  width: 220px;
+  min-width: var(--matrix-first-col, 200px);
+  width: auto;
+  max-width: none;
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* Compact score columns */
+.matrix-table th:not(:first-child),
+.matrix-table td:not(:first-child) {
+  width: var(--matrix-score-col, 72px);
+  min-width: var(--matrix-score-col, 72px);
+  max-width: 80px;
+  text-align: center;
 }
 .matrix-table th:first-child {
   z-index: 30;
   background: #f1f5f9;
-  border-right-color: transparent;
-  box-shadow: 8px 0 16px rgba(0,0,0,0.06);
+  border-right-color: var(--gray-200);
+  box-shadow: 1px 0 0 var(--gray-200), 8px 0 16px rgba(0,0,0,0.06);
 }
 .matrix-table td:first-child {
   z-index: 20;
   background: #fff;
   --surface-bg: #fff;
-  border-right-color: transparent;
-  box-shadow: 8px 0 16px rgba(0,0,0,0.06);
+  border-right-color: var(--gray-200);
+  box-shadow: 1px 0 0 var(--gray-200), 8px 0 16px rgba(0,0,0,0.06);
 }
 .matrix-table tbody tr:nth-child(even) td:first-child {
   background: #f8fafc;
@@ -233,38 +237,64 @@
   font-weight: 600;
   color: #0f172a;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 !important;
+}
+.matrix-juror-inner {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
   overflow: hidden;
+  padding: 6px 8px;
+  height: 100%;
 }
 .matrix-juror-name {
-  display: block;
+  display: flex;
+  align-items: baseline;
   min-width: 0;
   max-width: 100%;
   flex: 1 1 auto;
-  gap: 0;
+  gap: 3px;
+  overflow: hidden;
+  touch-action: pan-x;
+}
+/* Each segment is its own overflow container so the ellipsis inherits that
+   segment's own color/weight rather than the parent container's color. */
+.matrix-juror-name-text {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  touch-action: pan-x;
-  color: #94a3b8;
+  color: #0f172a;
 }
-.matrix-juror-name-text,
 .matrix-juror-dept {
+  flex: 1 1 0;
   min-width: 0;
-  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
 }
-.matrix-juror-name-text { flex: 1 1 0; color: #0f172a; }
-.matrix-juror-dept  { flex: 1 1 0; font-size: 11px; color: #94a3b8; font-weight: 500; }
+/* On hover/scroll: release each child's clipping so the parent can scroll. */
 .matrix-juror-name:hover,
 .matrix-juror-name.is-scrollable {
   overflow-x: auto;
-  text-overflow: clip;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+}
+.matrix-juror-name:hover .matrix-juror-name-text,
+.matrix-juror-name:hover .matrix-juror-dept,
+.matrix-juror-name.is-scrollable .matrix-juror-name-text,
+.matrix-juror-name.is-scrollable .matrix-juror-dept {
+  flex: 0 0 auto;
+  overflow: visible;
+  text-overflow: clip;
 }
 .matrix-juror-name:hover::-webkit-scrollbar,
 .matrix-juror-name.is-scrollable::-webkit-scrollbar { display: none; }
@@ -383,11 +413,7 @@
 .matrix-avg-label { color: #a16207 !important; font-weight: 700 !important; }
 .matrix-avg-cell  { color: #a16207; font-weight: 600; font-size: 13px; }
 .matrix-avg-row td:first-child { overflow: visible; }
-.matrix-avg-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
+.matrix-avg-label { /* layout from .matrix-juror-inner */ }
 .matrix-avg-tooltip {
   display: inline-flex;
   align-items: center;
@@ -396,37 +422,6 @@
   position: relative;
 }
 .matrix-avg-tooltip svg { width: 14px; height: 14px; }
-.matrix-avg-tooltip::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 10px);
-  transform: translateX(0);
-  background: var(--blue-light);
-  color: var(--blue);
-  font-size: 11px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid #bfdbfe;
-  box-shadow: 0 8px 24px rgba(47,86,214,0.18);
-  z-index: 20;
-  white-space: nowrap;
-  width: max-content;
-  min-width: max-content;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  transform-origin: bottom center;
-}
-.matrix-avg-tooltip::before {
-  display: none;
-}
-.matrix-avg-tooltip:hover::after,
-.matrix-avg-tooltip:focus::after,
-.matrix-avg-tooltip.is-open::after {
-  opacity: 1;
-  transform: translateY(-2px);
-}
 
 
 
@@ -434,7 +429,7 @@
 .matrix-toolbar-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   flex-wrap: wrap;
   gap: 8px;
@@ -507,6 +502,51 @@
   padding: 2px 10px;
   white-space: nowrap;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.matrix-sort-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.matrix-sort-close {
+  font-size: 12px;
+  line-height: 1;
+}
+.matrix-sort-indicator:hover {
+  background: #e0e7ff;
+}
+.matrix-filter-indicator {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.matrix-filter-indicator:hover {
+  background: #e0e7ff;
+}
+.matrix-filter-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.matrix-filter-close {
+  font-size: 12px;
+  line-height: 1;
 }
 
 /* Scroll hint (shown on small screens) */
@@ -514,13 +554,77 @@
   display: none;
   font-size: 11px;
   color: #94a3b8;
+  align-items: center;
+  gap: 6px;
 }
+.matrix-scroll-icon {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+.matrix-scroll-icon svg { width: 12px; height: 12px; }
 @media (hover: hover) and (pointer: fine) {
-  .matrix-scroll-hint { display: block; }
+  .matrix-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--brand-600, #2f56d6) transparent;
+  }
+  .matrix-scroll::-webkit-scrollbar {
+    display: block;
+    height: 10px;
+    background: transparent;
+  }
+  .matrix-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 999px;
+  }
+  .matrix-scroll::-webkit-scrollbar-thumb {
+    background: var(--brand-600, #2f56d6);
+    border-radius: 999px;
+  }
+  .matrix-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--brand-500, #3d66e6);
+  }
 }
 
 /* ── Matrix info note ────────────────────────────────────────── */
 .matrix-info-note {
   margin-top: 10px;
   margin-bottom: 0;
+}
+
+/* ── Group column header: sort button + filter icon inline ───── */
+.matrix-group-th-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+/* ── Numeric range filter popover buttons (used in grid) ─────── */
+.col-filter-popover-number .range-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+.col-filter-popover-number .range-cancel-btn,
+.col-filter-popover-number .range-apply-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+}
+.col-filter-popover-number .range-apply-btn {
+  border-color: var(--brand-600);
+  background: #eef2ff;
+  color: var(--brand-700);
+}
+.col-filter-popover-number .range-apply-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

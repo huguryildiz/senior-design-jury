@@ -57,8 +57,8 @@
   background: transparent;
   transform: none;
 }
-.dashboard-chart-card { min-height: 0; }
-.dashboard-chart-card .chart-svg-fill,
+.dashboard-chart-card { min-height: 180px; }
+.dashboard-chart-card .chart-svg-fill { min-height: 100px; }
 .dashboard-chart-card .chart-svg-wrap { min-height: 0; }
 .chart-compact-equal {
   min-height: 210px;
@@ -129,12 +129,17 @@
 }
 .chart-title    { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
 .chart-subtitle { font-size: 11px; color: #94a3b8; margin-bottom: 12px; }
-.chart-note     { font-size: 11px; color: var(--gray-500); margin-top: 4px; margin-bottom: 8px; }
+.chart-note     { font-size: 11px; color: var(--gray-500); margin-top: 4px; margin-bottom: 8px; text-align: justify; text-justify: inter-word; }
 .chart-empty    { font-size: 13px; color: #94a3b8; padding: 12px 0; }
 .chart-legend   { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 .legend-item    { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #475569; }
+.legend-item--stacked { align-items: flex-start; }
 .legend-dot     { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .legend-line    { width: 16px; border-top: 2px dashed #6B7280; display: inline-block; }
+.legend-label { display: flex; flex-direction: column; line-height: 1.15; }
+.legend-label-main { font-weight: 600; color: #475569; }
+.legend-label-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+.chart-x-label-sub { fill: #94a3b8; }
 .boxplot-legend { margin-top: 8px; }
 .boxplot-legend-box {
   width: 12px;
@@ -373,7 +378,22 @@
 /* Radar chart */
 .radar-chart-card { display: flex; flex-direction: column; align-items: center; }
 .radar-svg        { width: 100%; max-width: 300px; height: auto; }
-.radar-group-select { padding: 6px 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; margin-bottom: 8px; width: 100%; }
+.radar-group-select {
+  padding: 6px 30px 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+  color: #0f172a;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 12px;
+  -webkit-appearance: none;
+  appearance: none;
+}
 
 /* Clustered bar */
 .clustered-scroll { overflow-x: auto; }
@@ -535,6 +555,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.kpi-card-value--stack {
+  white-space: normal;
+  overflow: visible;
+}
+.kpi-date-stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.kpi-date-stack .kpi-time {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-600, #64748b);
+}
 .kpi-card-sub {
   font-size: 11px;
   color: #94a3b8;
@@ -609,6 +643,11 @@
   cursor: pointer;
   white-space: nowrap;
 }
+.trend-select-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .trend-select-count {
   font-size: 10px;
   font-weight: 700;
@@ -625,7 +664,9 @@
   right: 0;
   top: calc(100% + 6px);
   z-index: 60;
-  width: min(320px, calc(100vw - 24px));
+  width: 100%;
+  min-width: 100%;
+  max-width: none;
   max-height: 320px;
   display: flex;
   flex-direction: column;
@@ -634,6 +675,15 @@
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(15,23,42,0.12);
   overflow: hidden;
+}
+@media (max-width: 640px) {
+  .trend-select-panel {
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+  }
 }
 .trend-select-actions {
   display: flex;
@@ -654,8 +704,10 @@
 .trend-select-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .trend-select-list {
   overflow: auto;
-  max-height: 260px;
+  max-height: 240px;
   padding: 6px 10px;
+  flex: 1;
+  min-height: 0;
 }
 .trend-select-option {
   display: flex;
@@ -825,6 +877,13 @@
   border-top: 1px solid #F3F4F6;
   background: #F9FAFB;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mudek-info-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* MÜDEK outcomes table */

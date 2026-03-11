@@ -1434,7 +1434,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
 
   const handleExportProjects = async () => {
     if (!projects.length) return;
-    const XLSX = await import("xlsx");
+    const XLSX = await import("xlsx-js-style");
     const headers = ["semester", "group_no", "project_title", "group_students"];
     const semesterLabel = activeSemester?.name || "";
     const data = projects.map((p) => [semesterLabel, p.group_no, p.project_title, p.group_students || ""]);
@@ -1447,7 +1447,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
 
   const handleExportJurors = async () => {
     if (!jurors.length) return;
-    const XLSX = await import("xlsx");
+    const XLSX = await import("xlsx-js-style");
     const headers = ["semester", "juror_name", "juror_inst"];
     const semesterLabel = activeSemester?.name || "";
     const assignedJurors = jurors.filter((j) => {
@@ -1807,7 +1807,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                     <span className="manage-card-icon" aria-hidden="true"><HistoryIcon /></span>
                     <span className="section-label">Audit Log</span>
                   </div>
-                  {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.audit ? " open" : ""}`} />}
+                  {isMobile && <ChevronDownIcon className={`settings-chevron${openPanels.audit ? " open" : ""}`} />}
                 </button>
               </div>
 
@@ -1964,7 +1964,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   <span className="manage-card-icon" aria-hidden="true"><FileDownIcon /></span>
                   <span className="section-label">Export Tools</span>
                 </div>
-                {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.export ? " open" : ""}`} />}
+                {isMobile && <ChevronDownIcon className={`settings-chevron${openPanels.export ? " open" : ""}`} />}
               </button>
 
               {(!isMobile || openPanels.export) && (
@@ -1996,7 +1996,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   <span className="manage-card-icon" aria-hidden="true"><DatabaseBackupIcon /></span>
                   <span className="section-label">Database Backup</span>
                 </div>
-                {isMobile && <ChevronDownIcon className={`manage-chevron${openPanels.dbbackup ? " open" : ""}`} />}
+                {isMobile && <ChevronDownIcon className={`settings-chevron${openPanels.dbbackup ? " open" : ""}`} />}
               </button>
 
               {(!isMobile || openPanels.dbbackup) && (

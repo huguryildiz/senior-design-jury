@@ -159,7 +159,7 @@ function buildAuditExportFilename(filters = {}, search = "") {
 }
 
 export async function exportAuditLogsXLSX(rows, { filters = {}, search = "" } = {}) {
-  const XLSX = await import("xlsx");
+  const XLSX = await import("xlsx-js-style");
   const headers = [
     "created_at",
     "actor_type",
@@ -202,7 +202,7 @@ export function buildExportFilename(type, semesterName, ext = "xlsx") {
 }
 
 export async function exportXLSX(rows, { semesterName = "", summaryData = [], jurors = [], includeEmptyRows = false } = {}) {
-  const XLSX = await import("xlsx");
+  const XLSX = await import("xlsx-js-style");
 
   // Build projectId → group_students lookup from summaryData
   const studentsMap = new Map(
@@ -345,7 +345,7 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
       ?? jurorStatusMap.get(jurorKey)
       ?? normalizeJurorStatus(r.status);
     return [
-    semesterName,
+    r.semester ?? semesterName ?? "",
     r.groupNo     ?? "",
     r.projectName ?? "",
     studentsMap.get(r.projectId) ?? "",
@@ -380,7 +380,7 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
 // exportRows: { name, dept, statusLabel, scores: { [groupId]: number|null } }[]
 // groups:     { id, label, groupNo }[]
 export async function exportGridXLSX(exportRows, groups, { semesterName = "" } = {}) {
-  const XLSX = await import("xlsx");
+  const XLSX = await import("xlsx-js-style");
 
   const groupHeaders = groups.map((g) => g.groupNo != null ? `Group ${g.groupNo}` : g.label);
   const headers = ["Juror", "Institution", "Status", ...groupHeaders];
@@ -461,7 +461,7 @@ export function dedupeAndSort(rows) {
 
 // ── Rankings export ───────────────────────────────────────────
 export async function exportRankingsXLSX(ranked, criteria, { semesterName = "" } = {}) {
-  const XLSX = await import("xlsx");
+  const XLSX = await import("xlsx-js-style");
   const headers = [
     "Rank", "Group", "Project Title", "Students",
     ...criteria.flatMap((c) => [`${c.label} Avg`, `${c.label} Max`]),

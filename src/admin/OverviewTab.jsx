@@ -1,90 +1,68 @@
 // src/admin/OverviewTab.jsx
 
-import { useMemo } from "react";
 import { FolderKanbanIcon, UserCheckIcon } from "../shared/Icons";
+import StatCard from "../shared/StatCard";
 import JurorActivity from "./JurorActivity";
 
-function StatCard({ value, label, kicker, sub, meta, metaLines, ring, icon }) {
-  return (
-    <div className="stat-card stat-card--minimal">
-      <div className="stat-card-body">
-        <div className="stat-card-value">{value}</div>
-        {kicker && <div className="stat-card-kicker">{kicker}</div>}
-        <div className="stat-card-label">{label}</div>
-        {sub && <div className="stat-card-sub">{sub}</div>}
-        {Array.isArray(metaLines) && metaLines.length > 0 ? (
-          <div className="stat-card-meta">
-            {metaLines.map((line) => (
-              <div key={line} className="stat-card-meta-line">{line}</div>
-            ))}
-          </div>
-        ) : (
-          meta && <div className="stat-card-meta">{meta}</div>
-        )}
-      </div>
-      {ring ? (
-        <div
-          className="stat-ring"
-          style={{ "--ring-pct": ring.pct, "--ring-color": ring.color }}
-        >
-          {(() => {
-            const label = ring.label === undefined ? `${ring.pct}%` : ring.label;
-            return label ? <span>{label}</span> : null;
-          })()}
-        </div>
-      ) : icon ? (
-        <div className="stat-icon-circle">{icon}</div>
-      ) : null}
-    </div>
-  );
+function ringColor(pct) {
+  if (pct === 0) return "var(--ring-empty)";
+  if (pct <= 33) return "var(--ring-low)";
+  if (pct <= 66) return "var(--ring-mid)";
+  if (pct < 100) return "var(--ring-high)";
+  return "var(--ring-full)";
+}
+
+function clampPct(value) {
+  return Math.min(100, Math.max(0, value));
 }
 
 export default function OverviewTab({ jurorStats, groups, metrics }) {
-  const totalJurors = metrics?.totalJurors ?? 0;
+  const {
+    totalJurors = 0,
+    completedJurors = 0,
+    inProgressJurors = 0,
+    editingJurors = 0,
+    readyToSubmitJurors = 0,
+    totalEvaluations = 0,
+    scoredEvaluations = 0,
+    partialEvaluations = 0,
+    emptyEvaluations = 0,
+  } = metrics ?? {};
   const totalGroups = groups?.length ?? 0;
-  const completedJurors = metrics?.completedJurors ?? 0;
-  const inProgressJurors = metrics?.inProgressJurors ?? 0;
-  const editingJurors = metrics?.editingJurors ?? 0;
-  const readyToSubmitJurors = metrics?.readyToSubmitJurors ?? 0;
-  const totalEvaluations = metrics?.totalEvaluations ?? 0;
-  const scoredEvaluations = metrics?.scoredEvaluations ?? 0;
-  const partialEvaluations = metrics?.partialEvaluations ?? 0;
-  const emptyEvaluations = metrics?.emptyEvaluations ?? 0;
 
-  const completedPct = totalJurors > 0 ? Math.round((completedJurors / totalJurors) * 100) : 0;
-  const scoredPct = totalEvaluations > 0 ? Math.round((scoredEvaluations / totalEvaluations) * 100) : 0;
-  const ringColor = (pct) => {
-    if (pct === 0) return "#e2e8f0";
-    if (pct <= 33) return "#f97316";
-    if (pct <= 66) return "#eab308";
-    if (pct < 100) return "#84cc16";
-    return "#22c55e";
-  };
+  const completedPct = clampPct(
+    totalJurors > 0 ? Math.round((completedJurors / totalJurors) * 100) : 0
+  );
+  const scoredPct = clampPct(
+    totalEvaluations > 0 ? Math.round((scoredEvaluations / totalEvaluations) * 100) : 0
+  );
+  const completedHasData = totalJurors > 0;
+  const scoredHasData = totalEvaluations > 0;
 
-  const completedMetaLines = useMemo(() => {
-    const parts = [];
-    const notStartedJurors = Math.max(
-      0,
-      totalJurors - completedJurors - inProgressJurors - readyToSubmitJurors - editingJurors
-    );
-    if (inProgressJurors > 0) parts.push(`${inProgressJurors} in progress`);
-    if (readyToSubmitJurors > 0) parts.push(`${readyToSubmitJurors} ready to submit`);
-    if (editingJurors > 0) parts.push(`${editingJurors} editing`);
-    if (notStartedJurors > 0) parts.push(`${notStartedJurors} not started`);
-    return parts;
-  }, [completedJurors, editingJurors, inProgressJurors, readyToSubmitJurors, totalJurors]);
+  const notStartedJurors = Math.max(
+    0,
+    totalJurors - completedJurors - inProgressJurors - readyToSubmitJurors - editingJurors
+  );
+  const completedMetaLines = [
+    inProgressJurors > 0 && `${inProgressJurors} in progress`,
+    readyToSubmitJurors > 0 && `${readyToSubmitJurors} ready to submit`,
+    editingJurors > 0 && `${editingJurors} editing`,
+    notStartedJurors > 0 && `${notStartedJurors} not started`,
+  ].filter(Boolean);
 
-  const scoredMetaLines = useMemo(() => {
-    const parts = [];
-    if (partialEvaluations > 0) parts.push(`${partialEvaluations} partial`);
-    if (emptyEvaluations > 0) parts.push(`${emptyEvaluations} empty`);
-    return parts;
-  }, [emptyEvaluations, partialEvaluations]);
-  const scoredMeta =
+  const scoredMetaLines = [
+    partialEvaluations > 0 && `${partialEvaluations} partial`,
+    emptyEvaluations > 0 && `${emptyEvaluations} empty`,
+  ].filter(Boolean);
+
+  // Show total count only when some evaluations are still unscored
+  const scoredSub =
     totalEvaluations > 0 && scoredEvaluations < totalEvaluations
       ? `${totalEvaluations} total`
-      : "";
-  const scoredValue = totalEvaluations > 0 ? scoredEvaluations : "—";
+      : undefined;
+  const scoredValue = scoredHasData ? scoredEvaluations : "—";
+  const completedValue = completedHasData ? completedJurors : "—";
+
 
   return (
     <div className="overview-tab">
@@ -93,27 +71,26 @@ export default function OverviewTab({ jurorStats, groups, metrics }) {
           value={totalJurors}
           label="Jurors"
           sub="Total assigned"
-          icon={<UserCheckIcon />}
+          icon={<UserCheckIcon className="overview-icon" />}
         />
         <StatCard
           value={totalGroups}
           label="Groups"
           sub="Total groups"
-          icon={<FolderKanbanIcon />}
+          icon={<FolderKanbanIcon className="overview-icon" />}
         />
         <StatCard
-          value={completedJurors || 0}
+          value={completedValue}
           label="Completed Jurors"
-          sub={null}
           metaLines={completedMetaLines}
-          ring={{ pct: completedPct, color: ringColor(completedPct) }}
+          ring={completedHasData ? { pct: completedPct, color: ringColor(completedPct) } : null}
         />
         <StatCard
           value={scoredValue}
           label="Scored Evaluations"
-          sub={scoredMeta || ""}
+          sub={scoredSub}
           metaLines={scoredMetaLines}
-          ring={{ pct: scoredPct, color: ringColor(scoredPct) }}
+          ring={scoredHasData ? { pct: scoredPct, color: ringColor(scoredPct) } : null}
         />
       </div>
 

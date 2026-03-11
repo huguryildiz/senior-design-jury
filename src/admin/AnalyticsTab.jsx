@@ -2,9 +2,9 @@
 // ── Charts dashboard ─────────────────────────────────────────
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { formatDashboardTs, buildExportFilename } from "./utils";
-import { CRITERIA } from "../config";
+import { CRITERIA, MUDEK_OUTCOMES } from "../config";
 import { ChevronDownIcon, DownloadIcon, LoaderIcon, TriangleAlertIcon } from "../shared/Icons";
 import { mean, stdDev, outcomeValues, fmt1, fmt2, buildBoxplotStats } from "../shared/stats";
 import {
@@ -17,6 +17,7 @@ import {
   RubricAchievementChart,
   RadarPrintAll,
   MudekBadge,
+  CHART_COPY,
   OutcomeByGroupChartPrint,
   OutcomeOverviewChartPrint,
   OutcomeTrendChartPrint,
@@ -31,34 +32,88 @@ const OUTCOMES = CRITERIA.map((c) => ({
   label: c.shortLabel || c.label,
   max: c.max,
   rubric: c.rubric || [],
+  code: (c.mudek || []).join("/"),
 }));
 
 const getCriterionColor = (id, fallback) =>
   CRITERIA.find((c) => c.id === id)?.color || fallback;
 
+const formatMudekCodes = (code) =>
+  String(code || "")
+    .split("/")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .join(" / ");
+
+const outcomeCodeLine = (code) => {
+  const formatted = formatMudekCodes(code);
+  return formatted ? `(${formatted})` : "";
+};
+
 const TREND_LEGEND = [
   {
     key: "technical",
     label: OUTCOMES.find((o) => o.key === "technical")?.label || "Technical",
+    code: OUTCOMES.find((o) => o.key === "technical")?.code || "1.2/2/3.1/3.2",
     color: getCriterionColor("technical", "#f59e0b"),
   },
-  { key: "design", label: "Written (9.2)", color: getCriterionColor("design", "#22c55e") },
-  { key: "delivery", label: "Oral (9.1)", color: getCriterionColor("delivery", "#3b82f6") },
-  { key: "teamwork", label: "Teamwork (8.1/8.2)", color: getCriterionColor("teamwork", "#ef4444") },
+  {
+    key: "design",
+    label: OUTCOMES.find((o) => o.key === "design")?.label || "Written",
+    code: OUTCOMES.find((o) => o.key === "design")?.code || "9.2",
+    color: getCriterionColor("design", "#22c55e"),
+  },
+  {
+    key: "delivery",
+    label: OUTCOMES.find((o) => o.key === "delivery")?.label || "Oral",
+    code: OUTCOMES.find((o) => o.key === "delivery")?.code || "9.1",
+    color: getCriterionColor("delivery", "#3b82f6"),
+  },
+  {
+    key: "teamwork",
+    label: OUTCOMES.find((o) => o.key === "teamwork")?.label || "Teamwork",
+    code: OUTCOMES.find((o) => o.key === "teamwork")?.code || "8.1/8.2",
+    color: getCriterionColor("teamwork", "#ef4444"),
+  },
 ];
 
-function addTableSheet(wb, name, title, headers, rows, extraSections = []) {
+function addTableSheet(wb, name, title, headers, rows, extraSections = [], note = "", merges = [], alignments = []) {
   const aoa = [
     [title],
+    ...(note ? [[note]] : []),
     [],
     headers,
     ...rows,
   ];
   extraSections.forEach((section) => {
     if (!section) return;
-    aoa.push([], [section.title], section.headers, ...section.rows);
+    aoa.push([], [section.title], ...(section.note ? [[section.note]] : []), section.headers, ...section.rows);
   });
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  if (merges.length) {
+    const headerRowIndex = 1 + (note ? 1 : 0) + 1;
+    const dataStartRow = headerRowIndex + 1;
+    const sheetMerges = merges.map((m) => ({
+      s: { r: dataStartRow + m.start, c: m.col },
+      e: { r: dataStartRow + m.end, c: m.col },
+    }));
+    ws["!merges"] = [...(ws["!merges"] || []), ...sheetMerges];
+    if (alignments.length) {
+      alignments.forEach((a) => {
+        for (let r = a.start; r <= a.end; r += 1) {
+          const cellRef = XLSX.utils.encode_cell({ r: dataStartRow + r, c: a.col });
+          const cell = ws[cellRef];
+          if (!cell) continue;
+          cell.s = cell.s || {};
+          cell.s.alignment = {
+            ...(cell.s.alignment || {}),
+            vertical: a.valign || "center",
+            horizontal: a.halign || "left",
+          };
+        }
+      });
+    }
+  }
   XLSX.utils.book_append_sheet(wb, ws, name);
 }
 
@@ -96,7 +151,8 @@ function buildOutcomeByGroupDataset(dashboardStats) {
   });
   return {
     sheet: "Outcome Group",
-    title: "Outcome Achievement by Group",
+    title: CHART_COPY.outcomeByGroup.title,
+    note: CHART_COPY.outcomeByGroup.note,
     headers,
     rows,
   };
@@ -104,7 +160,7 @@ function buildOutcomeByGroupDataset(dashboardStats) {
 
 function buildProgrammeAveragesDataset(submittedData) {
   const rows = submittedData || [];
-  const headers = ["Outcome", "Max", "Avg (raw)", "Avg (%)", "SD (%) [sample]", "N"];
+  const headers = ["Outcome", "Max", "Avg (raw)", "Avg (%)", "Std. deviation (σ) (%) [sample]", "N"];
   const dataRows = OUTCOMES.map((o) => {
     const vals   = outcomeValues(rows, o.key);
     const avgRaw = vals.length ? mean(vals) : 0;
@@ -114,7 +170,8 @@ function buildProgrammeAveragesDataset(submittedData) {
   });
   return {
     sheet: "Programme Avg",
-    title: "Programme-Level Outcome Averages",
+    title: CHART_COPY.programmeAverages.title,
+    note: CHART_COPY.programmeAverages.note,
     headers,
     rows: dataRows,
   };
@@ -149,7 +206,8 @@ function buildTrendDataset(trendData, semesterOptions, selectedIds) {
   });
   return {
     sheet: "Semester Trend",
-    title: "Semester Trend (Normalized %)",
+    title: CHART_COPY.semesterTrend.title,
+    note: CHART_COPY.semesterTrend.note,
     headers,
     rows,
   };
@@ -176,7 +234,8 @@ function buildCompetencyProfilesDataset(dashboardStats) {
   if (rows.length) rows.push(["Cohort Average", ...cohort]);
   return {
     sheet: "Competency",
-    title: "Competency Profiles (Radar Data)",
+    title: CHART_COPY.competencyProfile.title,
+    note: CHART_COPY.competencyProfile.note,
     headers,
     rows,
   };
@@ -210,12 +269,13 @@ function buildJurorConsistencyDataset(dashboardStats, submittedData) {
 
   return {
     sheet: "Juror CV",
-    title: "Juror Consistency Heatmap (CV%)",
+    title: CHART_COPY.jurorConsistency.title,
+    note: CHART_COPY.jurorConsistency.note,
     headers,
     rows: buildMatrix("cv"),
     extra: [
       { title: "Mean (%) by Group x Criterion", headers, rows: buildMatrix("mean") },
-      { title: "SD by Group x Criterion", headers, rows: buildMatrix("sd") },
+      { title: "Std. deviation (σ) by Group x Criterion", headers, rows: buildMatrix("sd") },
       { title: "N (Juror Count) by Group x Criterion", headers, rows: buildMatrix("n") },
     ],
   };
@@ -254,7 +314,8 @@ function buildCriterionBoxplotDataset(submittedData) {
   });
   return {
     sheet: "Boxplot",
-    title: "Score Distribution by Criterion (Boxplot)",
+    title: CHART_COPY.scoreDistribution.title,
+    note: CHART_COPY.scoreDistribution.note,
     headers,
     rows: dataRows,
   };
@@ -312,11 +373,51 @@ function buildRubricAchievementDataset(submittedData) {
       fmt1(pct(insufficient)),
     ];
   });
+
   return {
     sheet: "Rubric Dist",
-    title: "Achievement Level Distribution (Rubric)",
+    title: CHART_COPY.achievementDistribution.title,
+    note: CHART_COPY.achievementDistribution.note,
     headers,
     rows: dataRows,
+  };
+}
+
+function buildMudekMappingDataset() {
+  const headers = ["Criteria", "MÜDEK Code(s)", "MÜDEK Outcome(s)"];
+  const rows = [];
+  const merges = [];
+  const alignments = [];
+  let rowIndex = 0;
+  CRITERIA.forEach((c) => {
+    const codes = (c.mudek || []).filter(Boolean);
+    const label = c.shortLabel || c.label;
+    const count = Math.max(1, codes.length);
+    if (!codes.length) {
+      rows.push([label, "—", "—"]);
+      alignments.push({ start: rowIndex, end: rowIndex, col: 0, valign: "center" });
+    } else {
+      codes.forEach((code, idx) => {
+        const text = MUDEK_OUTCOMES[code]?.en || MUDEK_OUTCOMES[code]?.tr || "—";
+        rows.push([idx === 0 ? label : "", code, text]);
+        if (idx === 0) {
+          alignments.push({ start: rowIndex, end: rowIndex + count - 1, col: 0, valign: "center" });
+        }
+      });
+    }
+    if (count > 1) {
+      merges.push({ start: rowIndex, end: rowIndex + count - 1, col: 0 });
+    }
+    rowIndex += count;
+  });
+  return {
+    sheet: "MÜDEK Mapping",
+    title: "MÜDEK Outcome Mapping",
+    note: "Criteria-to-MÜDEK outcome references used in analytics.",
+    headers,
+    rows,
+    merges,
+    alignments,
   };
 }
 
@@ -371,11 +472,11 @@ function DashboardEmpty() {
 }
 
 // ── KPI summary strip ─────────────────────────────────────────
-function KpiCard({ label, value, sub }) {
+function KpiCard({ label, value, sub, valueClassName }) {
   return (
     <div className="kpi-card">
       <div className="kpi-card-label">{label}</div>
-      <div className="kpi-card-value">{value}</div>
+      <div className={`kpi-card-value${valueClassName ? ` ${valueClassName}` : ""}`}>{value}</div>
       {sub && <div className="kpi-card-sub">{sub}</div>}
     </div>
   );
@@ -384,6 +485,11 @@ function KpiCard({ label, value, sub }) {
 function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
+  const semesterList = useMemo(() => {
+    if (Array.isArray(semesters)) return semesters;
+    if (semesters && typeof semesters === "object") return Object.values(semesters);
+    return [];
+  }, [semesters]);
 
   useEffect(() => {
     if (!open) return;
@@ -420,9 +526,12 @@ function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="Select semesters for trend chart"
+        aria-haspopup="dialog"
       >
-        <span>Semesters</span>
-        <span className="trend-select-count">{(selectedIds || []).length}</span>
+        <span className="trend-select-label">
+          <span>Semesters</span>
+          <span className="trend-select-count">{(selectedIds || []).length}</span>
+        </span>
         <span className={`trend-select-chevron${open ? " open" : ""}`} aria-hidden="true">
           <ChevronDownIcon />
         </span>
@@ -433,24 +542,26 @@ function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
           <div className="trend-select-actions">
             <button
               type="button"
-              onClick={() => onChange((semesters || []).map((s) => s.id))}
-              disabled={loading || !(semesters || []).length}
+              onClick={() => onChange(semesterList.map((s) => s.id))}
+              disabled={loading || !semesterList.length}
             >
               Select all
             </button>
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              disabled={loading || !(selectedIds || []).length}
-            >
-              Clear
-            </button>
+            {(selectedIds || []).length > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                disabled={loading}
+              >
+                Clear
+              </button>
+            )}
           </div>
           <div className="trend-select-list">
-            {(semesters || []).length === 0 && (
+            {semesterList.length === 0 && (
               <div className="trend-select-empty">No semesters available.</div>
             )}
-            {(semesters || []).map((s) => (
+            {semesterList.map((s) => (
               <label key={s.id} className="trend-select-option">
                 <input
                   type="checkbox"
@@ -531,6 +642,23 @@ export default function AnalyticsTab({
 
   // Clean up on unmount (e.g. tab switch while dialog is open)
   useEffect(() => () => { restoreRef.current?.(); }, []);
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      window.dispatchEvent(new Event("resize"));
+    };
+    const mq = window.matchMedia?.("print");
+    const onMqChange = (e) => {
+      if (e.matches) window.dispatchEvent(new Event("resize"));
+    };
+    window.addEventListener("beforeprint", handleBeforePrint);
+    if (mq?.addEventListener) mq.addEventListener("change", onMqChange);
+    else if (mq?.addListener) mq.addListener(onMqChange);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      if (mq?.removeEventListener) mq.removeEventListener("change", onMqChange);
+      else if (mq?.removeListener) mq.removeListener(onMqChange);
+    };
+  }, []);
 
   // ── Excel export ───────────────────────────────────────────
   function exportExcelAll() {
@@ -546,9 +674,10 @@ export default function AnalyticsTab({
         buildJurorConsistencyDataset(dashboardStats, submittedData),
         buildCriterionBoxplotDataset(submittedData),
         buildRubricAchievementDataset(submittedData),
+        buildMudekMappingDataset(),
       ];
       datasets.forEach((ds) => {
-        addTableSheet(wb, ds.sheet, ds.title, ds.headers, ds.rows, ds.extra);
+        addTableSheet(wb, ds.sheet, ds.title, ds.headers, ds.rows, ds.extra, ds.note, ds.merges, ds.alignments);
       });
       XLSX.writeFile(wb, buildExportFilename("analytics", semesterName));
     } finally {
@@ -558,6 +687,29 @@ export default function AnalyticsTab({
 
   // ── Derived metrics ──────────────────────────────────────────
   const showPrint = formatDashboardTs(lastRefresh);
+  const lastRefreshDate = (() => {
+    if (!lastRefresh) return "—";
+    const dt = new Date(lastRefresh);
+    if (Number.isNaN(dt.getTime())) return "—";
+    return dt
+      .toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" })
+      .replace(/\//g, ".");
+  })();
+  const lastRefreshTime = (() => {
+    if (!lastRefresh) return "—";
+    const dt = new Date(lastRefresh);
+    if (Number.isNaN(dt.getTime())) return "—";
+    return dt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  })();
+  const lastRefreshValue =
+    lastRefreshDate !== "—" && lastRefreshTime !== "—"
+      ? (
+        <span className="kpi-date-stack">
+          <span className="kpi-date">{lastRefreshDate}</span>
+          <span className="kpi-time">{lastRefreshTime}</span>
+        </span>
+      )
+      : "—";
   const printDate = (() => {
     const dt = lastRefresh ? new Date(lastRefresh) : new Date();
     if (Number.isNaN(dt.getTime())) return showPrint;
@@ -592,6 +744,52 @@ export default function AnalyticsTab({
   const hasSubmitted = (submittedData || []).length > 0;
   const trendSelectedCount = (trendSemesterIds || []).length;
   const trendTooMany = trendSelectedCount > 8;
+  const appendixRows = useMemo(() => {
+    const normalizeStudents = (value) => {
+      if (Array.isArray(value)) {
+        return value.map((s) => String(s || "").trim()).filter(Boolean);
+      }
+      return String(value || "")
+        .split(/[;,]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    };
+    const rows = (dashboardStats || []).map((p) => ({
+      groupNo: Number.isFinite(p.groupNo) ? p.groupNo : null,
+      groupLabel: p.name || (Number.isFinite(p.groupNo) ? `Group ${p.groupNo}` : "Group —"),
+      projectTitle: String(p.projectTitle || "").trim(),
+      students: normalizeStudents(p.students),
+    }));
+    return rows.sort((a, b) => {
+      if (a.groupNo == null && b.groupNo == null) return 0;
+      if (a.groupNo == null) return 1;
+      if (b.groupNo == null) return -1;
+      return a.groupNo - b.groupNo;
+    });
+  }, [dashboardStats]);
+
+  const mudekMappingRows = useMemo(() => {
+    const rows = [];
+    CRITERIA.forEach((c) => {
+      const codes = (c.mudek || []).filter(Boolean);
+      const label = c.shortLabel || c.label;
+      const count = Math.max(1, codes.length);
+      if (!codes.length) {
+        rows.push({ criteria: label, code: "—", text: "—", rowSpan: 1, showCriteria: true });
+        return;
+      }
+      codes.forEach((code, idx) => {
+        rows.push({
+          criteria: label,
+          code,
+          text: MUDEK_OUTCOMES[code]?.en || MUDEK_OUTCOMES[code]?.tr || "—",
+          rowSpan: idx === 0 ? count : 0,
+          showCriteria: idx === 0,
+        });
+      });
+    });
+    return rows;
+  }, []);
 
   // ── Render states ─────────────────────────────────────────
   if (loading) {
@@ -643,7 +841,8 @@ export default function AnalyticsTab({
           />
           <KpiCard
             label="Last Refresh"
-            value={showPrint || "—"}
+            value={lastRefreshValue}
+            valueClassName="kpi-card-value--stack"
             sub=""
           />
         </div>
@@ -664,7 +863,6 @@ export default function AnalyticsTab({
             {exporting ? <span className="spin-icon"><LoaderIcon /></span> : <DownloadIcon />}
             {exporting ? "Exporting…" : "PDF"}
           </button>
-          <span className="no-print pdf-hint">Tip: uncheck &ldquo;Headers and footers&rdquo; in the print dialog</span>
           <button
             className="xlsx-export-btn"
             onClick={exportExcelAll}
@@ -754,7 +952,7 @@ export default function AnalyticsTab({
           Uses dedicated print-only SVG components with fixed viewBox
           and no ResizeObserver / scroll wrappers.
 
-          Layout (A4 portrait, one chart per page):
+          Layout (A4 landscape, one chart per page):
           Page 1:   Outcome by Group
           Page 2:   Programme-Level Outcome Averages
           Page 3:   Semester Trend (selected terms)
@@ -763,7 +961,6 @@ export default function AnalyticsTab({
           Page 6+N: Score Distribution by Criterion (Boxplot)
           Page 7+N: Achievement Level Distribution (Rubric)
           ═══════════════════════════════════════════════════════ */}
-      {exporting && (
       <div className="print-report">
         {/* Print-only header — appears above page 1 */}
         <div className="print-header">
@@ -777,8 +974,8 @@ export default function AnalyticsTab({
 
         {/* Page 1: Outcome by Group */}
         <section className="print-page report-chart page-chart">
-          <h2 className="print-card-title">Outcome Achievement by Group</h2>
-          <div className="print-card-note">Normalized score per MÜDEK-mapped criterion, by group.</div>
+          <h2 className="print-card-title">{CHART_COPY.outcomeByGroup.title}</h2>
+          <div className="print-card-note">{CHART_COPY.outcomeByGroup.note}</div>
           <div className="chart-wrapper">
             <OutcomeByGroupChartPrint stats={dashboardStats} />
           </div>
@@ -786,8 +983,8 @@ export default function AnalyticsTab({
 
         {/* Page 2: Programme Averages */}
         <section className="print-page report-chart page-chart">
-          <h2 className="print-card-title">Programme-Level Outcome Averages</h2>
-          <div className="print-card-note">Grand mean ±1 SD per outcome, all groups &amp; jurors.</div>
+          <h2 className="print-card-title">{CHART_COPY.programmeAverages.title}</h2>
+          <div className="print-card-note">{CHART_COPY.programmeAverages.note}</div>
           <div className="chart-wrapper">
             <OutcomeOverviewChartPrint data={submittedData} />
           </div>
@@ -796,8 +993,8 @@ export default function AnalyticsTab({
         {/* Page 3: Semester Trend */}
         {trendSemesterIds.length > 0 && (
           <section className="print-page report-chart page-chart">
-            <h2 className="print-card-title">Semester Trend</h2>
-            <div className="print-card-note">Normalized averages across selected semesters.</div>
+            <h2 className="print-card-title">{CHART_COPY.semesterTrend.title}</h2>
+            <div className="print-card-note">{CHART_COPY.semesterTrend.note}</div>
             <div className="chart-wrapper">
               <OutcomeTrendChartPrint
                 data={trendData}
@@ -807,9 +1004,12 @@ export default function AnalyticsTab({
             </div>
             <div className="print-chart-legend">
               {TREND_LEGEND.map((item) => (
-                <span key={item.key} className="legend-item">
+                <span key={item.key} className="legend-item legend-item--stacked">
                   <span className="legend-dot" style={{ background: item.color }} />
-                  {item.label}
+                  <span className="legend-label">
+                    <span className="legend-label-main">{item.label}</span>
+                    <span className="legend-label-sub">{outcomeCodeLine(item.code)}</span>
+                  </span>
                 </span>
               ))}
             </div>
@@ -821,8 +1021,31 @@ export default function AnalyticsTab({
 
         {/* Page 4+N: Juror Consistency Heatmap */}
         <section className="print-page report-chart page-chart">
-          <h2 className="print-card-title">Juror Consistency Heatmap (CV)</h2>
-          <div className="print-card-note">CV = σ/μ × 100. Low CV = good inter-juror agreement.</div>
+          <h2 className="print-card-title">{CHART_COPY.jurorConsistency.title}</h2>
+          <div className="print-card-note">{CHART_COPY.jurorConsistency.note}</div>
+          <div className="cv-formula-block">
+            <span className="cv-formula-pill" aria-label="CV equals sigma divided by x bar times 100">
+              <math xmlns="http://www.w3.org/1998/Math/MathML" className="cv-formula-math">
+                <mrow>
+                  <mi>CV</mi>
+                  <mo>=</mo>
+                  <mrow>
+                    <mo>(</mo>
+                    <mfrac>
+                      <mi>σ</mi>
+                      <mi>μ</mi>
+                    </mfrac>
+                    <mo>)</mo>
+                  </mrow>
+                  <mo>×</mo>
+                  <mn>100</mn>
+                </mrow>
+              </math>
+            </span>
+            <span className="cv-formula-legend">
+              σ = std. deviation &nbsp;·&nbsp; μ = mean score &nbsp;·&nbsp; CV = juror disagreement %
+            </span>
+          </div>
           <div className="chart-wrapper">
             <JurorConsistencyHeatmapPrint stats={dashboardStats} data={submittedData} />
           </div>
@@ -830,8 +1053,8 @@ export default function AnalyticsTab({
 
         {/* Page 5+N: Score Distribution by Criterion */}
         <section className="print-page report-chart page-chart">
-          <h2 className="print-card-title">Score Distribution by Criterion</h2>
-          <div className="print-card-note">Inter-juror spread per criterion — measurement reliability evidence.</div>
+          <h2 className="print-card-title">{CHART_COPY.scoreDistribution.title}</h2>
+          <div className="print-card-note">{CHART_COPY.scoreDistribution.note}</div>
           <div className="chart-wrapper">
             <CriterionBoxPlotChartPrint data={submittedData} />
           </div>
@@ -839,14 +1062,65 @@ export default function AnalyticsTab({
 
         {/* Page 6+N: Achievement Level Distribution */}
         <section className="print-page report-chart page-chart">
-          <h2 className="print-card-title">Achievement Level Distribution</h2>
-          <div className="print-card-note">% of evaluations per rubric band — MÜDEK CI evidence.</div>
+          <h2 className="print-card-title">{CHART_COPY.achievementDistribution.title}</h2>
+          <div className="print-card-note">{CHART_COPY.achievementDistribution.note}</div>
           <div className="chart-wrapper">
             <RubricAchievementChartPrint data={submittedData} />
           </div>
         </section>
+
+        {/* MÜDEK Outcome Mapping (new page) */}
+        <section className="print-page print-appendix">
+          <h2 className="print-card-title">MÜDEK Outcome Mapping</h2>
+          <div className="print-card-note">
+            Criteria-to-MÜDEK outcome references used in analytics.
+          </div>
+          <table className="print-appendix-table print-mudek-table">
+            <thead>
+              <tr>
+                <th>Criteria</th>
+                <th>MÜDEK Code(s)</th>
+                <th>MÜDEK Outcome(s)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mudekMappingRows.map((row, idx) => (
+                <tr key={`${row.code}-${idx}`}>
+                  {row.showCriteria ? (
+                    <td rowSpan={row.rowSpan}>{row.criteria}</td>
+                  ) : null}
+                  <td>{row.code}</td>
+                  <td>{row.text}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {/* Final page: Group details */}
+        <section className="print-page print-appendix">
+          <h2 className="print-card-title">Group Details</h2>
+          <div className="print-card-note">Group names, project titles, and student lists.</div>
+          <table className="print-appendix-table">
+            <thead>
+              <tr>
+                <th>Group</th>
+                <th>Project Title</th>
+                <th>Students</th>
+              </tr>
+            </thead>
+            <tbody>
+              {appendixRows.map((row, idx) => (
+                <tr key={`${row.groupLabel}-${idx}`}>
+                  <td>{row.groupLabel}</td>
+                  <td>{row.projectTitle || "—"}</td>
+                  <td>{row.students.length ? row.students.join(" · ") : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       </div>
-      )}
     </div>
   );
 }

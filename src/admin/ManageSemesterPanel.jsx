@@ -152,7 +152,7 @@ export default function ManageSemesterPanel({
           </span>
           <span className="section-label">Semester Settings</span>
         </div>
-        {isMobile && <ChevronDownIcon className={`manage-chevron${isOpen ? " open" : ""}`} />}
+        {isMobile && <ChevronDownIcon className={`settings-chevron${isOpen ? " open" : ""}`} />}
       </button>
 
       {isOpen && (
