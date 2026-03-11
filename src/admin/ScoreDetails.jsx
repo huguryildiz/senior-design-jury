@@ -8,7 +8,7 @@ import { cmp, exportXLSX, formatTs, tsToMillis, rowKey } from "./utils";
 import { readSection, writeSection } from "./persist";
 import { FilterPopoverPortal, StatusBadge } from "./components";
 import { getCellState } from "./scoreHelpers";
-import { FilterIcon, DownloadIcon, InfoIcon, XIcon } from "../shared/Icons";
+import { FilterIcon, DownloadIcon, InfoIcon, SearchIcon, XIcon } from "../shared/Icons";
 import {
   APP_DATE_MIN_DATETIME,
   APP_DATE_MAX_DATETIME,
@@ -51,6 +51,18 @@ const JUROR_STATUS_OPTIONS = [
   { value: "in_progress",     label: "In Progress"     },
   { value: "editing",         label: "Editing"         },
   { value: "not_started",     label: "Not Started"     },
+];
+const SCORE_STATUS_LEGEND = [
+  { status: "scored", description: "All criteria are scored for this row." },
+  { status: "partial", description: "At least one criterion is missing." },
+  { status: "empty", description: "No score has been entered yet." },
+];
+const JUROR_STATUS_LEGEND = [
+  { status: "completed", description: "Final submission is completed." },
+  { status: "ready_to_submit", description: "All groups are scored and ready for submission." },
+  { status: "in_progress", description: "Scoring has started but is not complete." },
+  { status: "not_started", description: "No scoring activity yet." },
+  { status: "editing", description: "Editing mode is enabled for this juror." },
 ];
 
 const VALID_SORT_DIRS = ["asc", "desc"];
@@ -132,6 +144,21 @@ function toFiniteNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function isInvalidNumberRange(minRaw, maxRaw) {
+  const minNum = toFiniteNumber(minRaw);
+  const maxNum = toFiniteNumber(maxRaw);
+  if (minRaw && minNum === null) return true;
+  if (maxRaw && maxNum === null) return true;
+  return minNum !== null && maxNum !== null && minNum > maxNum;
+}
+
+function hasActiveValidNumberRange(range) {
+  const minRaw = range?.min ?? "";
+  const maxRaw = range?.max ?? "";
+  if (!minRaw && !maxRaw) return false;
+  return !isInvalidNumberRange(minRaw, maxRaw);
 }
 
 function clampScoreInput(raw, key = "total") {
@@ -514,6 +541,7 @@ export default function ScoreDetails({
   const [anchorRect, setAnchorRect] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [multiSearchQuery, setMultiSearchQuery] = useState("");
+  const [showStatusLegend, setShowStatusLegend] = useState(false);
   const [isMobile, setIsMobile] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches
   ));
@@ -646,7 +674,9 @@ export default function ScoreDetails({
   }, [updatedParsedFromMs, updatedParsedToMs]);
 
   useEffect(() => {
-    if ((updatedFrom && updatedParsedFromMs === null) || (updatedTo && updatedParsedToMs === null)) {
+    if (updatedTo && !updatedFrom) {
+      setUpdatedDateError("The 'From' date is required.");
+    } else if ((updatedFrom && updatedParsedFromMs === null) || (updatedTo && updatedParsedToMs === null)) {
       setUpdatedDateError("Invalid date format.");
     } else if (isUpdatedInvalidRange) {
       setUpdatedDateError("The 'From' date cannot be later than the 'To' date.");
@@ -665,7 +695,9 @@ export default function ScoreDetails({
   }, [completedParsedFromMs, completedParsedToMs]);
 
   useEffect(() => {
-    if ((completedFrom && completedParsedFromMs === null) || (completedTo && completedParsedToMs === null)) {
+    if (completedTo && !completedFrom) {
+      setCompletedDateError("The 'From' date is required.");
+    } else if ((completedFrom && completedParsedFromMs === null) || (completedTo && completedParsedToMs === null)) {
       setCompletedDateError("Invalid date format.");
     } else if (isCompletedInvalidRange) {
       setCompletedDateError("The 'From' date cannot be later than the 'To' date.");
@@ -673,6 +705,20 @@ export default function ScoreDetails({
       setCompletedDateError(null);
     }
   }, [completedFrom, completedTo, completedParsedFromMs, completedParsedToMs, isCompletedInvalidRange]);
+
+  const isUpdatedDateFilterValid = useMemo(() => (
+    !!updatedFrom
+    && updatedParsedFromMs !== null
+    && (!updatedTo || updatedParsedToMs !== null)
+    && !isUpdatedInvalidRange
+  ), [updatedFrom, updatedTo, updatedParsedFromMs, updatedParsedToMs, isUpdatedInvalidRange]);
+
+  const isCompletedDateFilterValid = useMemo(() => (
+    !!completedFrom
+    && completedParsedFromMs !== null
+    && (!completedTo || completedParsedToMs !== null)
+    && !isCompletedInvalidRange
+  ), [completedFrom, completedTo, completedParsedFromMs, completedParsedToMs, isCompletedInvalidRange]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -684,15 +730,15 @@ export default function ScoreDetails({
     if (Array.isArray(filterJurorStatus)) count += 1;
     if (filterProjectTitle) count += 1;
     if (filterStudents) count += 1;
-    if (updatedFrom || updatedTo) count += 1;
-    if (completedFrom || completedTo) count += 1;
+    if (isUpdatedDateFilterValid) count += 1;
+    if (isCompletedDateFilterValid) count += 1;
     SCORE_KEYS.forEach((key) => {
       const f = scoreFilters[key];
-      if (f?.min || f?.max) count += 1;
+      if (hasActiveValidNumberRange(f)) count += 1;
     });
     if (filterComment) count += 1;
     return count;
-  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, updatedFrom, updatedTo, completedFrom, completedTo, scoreFilters, filterComment]);
+  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, isUpdatedDateFilterValid, isCompletedDateFilterValid, scoreFilters, filterComment]);
   const hasAnyFilter = activeFilterCount > 0;
   const isSemesterFilterActive = Array.isArray(filterSemester) || activeFilterCol === "semester";
   const isGroupNoFilterActive = Array.isArray(filterGroupNo) || activeFilterCol === "groupNo";
@@ -702,8 +748,8 @@ export default function ScoreDetails({
   const isJurorStatusFilterActive = Array.isArray(filterJurorStatus) || activeFilterCol === "jurorStatus";
   const isProjectTitleFilterActive = !!filterProjectTitle || activeFilterCol === "projectTitle";
   const isStudentsFilterActive = !!filterStudents || activeFilterCol === "students";
-  const isUpdatedDateFilterActive = (updatedFrom || updatedTo) || activeFilterCol === "updatedAt";
-  const isCompletedDateFilterActive = (completedFrom || completedTo) || activeFilterCol === "completedAt";
+  const isUpdatedDateFilterActive = isUpdatedDateFilterValid || activeFilterCol === "updatedAt";
+  const isCompletedDateFilterActive = isCompletedDateFilterValid || activeFilterCol === "completedAt";
   const isCommentFilterActive = !!filterComment || activeFilterCol === "comment";
 
   function resetFilters() {
@@ -723,6 +769,8 @@ export default function ScoreDetails({
     setCompletedDateError(null);
     setScoreFilters(buildEmptyScoreFilters());
     setFilterComment("");
+    setSortKey(null);
+    setSortDir(DEFAULT_SORT_DIR);
     setActiveFilterCol(null);
     setAnchorRect(null);
   }
@@ -911,7 +959,7 @@ export default function ScoreDetails({
       list = list.filter((r) => (r.students || "").toLowerCase().includes(q));
     }
     const canApplyUpdated =
-      (!updatedFrom || updatedParsedFromMs !== null) &&
+      (updatedFrom && updatedParsedFromMs !== null) &&
       (!updatedTo || updatedParsedToMs !== null) &&
       !isUpdatedInvalidRange;
     if ((updatedFrom || updatedTo) && canApplyUpdated) {
@@ -921,7 +969,7 @@ export default function ScoreDetails({
       });
     }
     const canApplyCompleted =
-      (!completedFrom || completedParsedFromMs !== null) &&
+      (completedFrom && completedParsedFromMs !== null) &&
       (!completedTo || completedParsedToMs !== null) &&
       !isCompletedInvalidRange;
     if ((completedFrom || completedTo) && canApplyCompleted) {
@@ -941,9 +989,8 @@ export default function ScoreDetails({
           let min = toFiniteNumber(filter?.min);
           let max = toFiniteNumber(filter?.max);
           if (min !== null && max !== null && min > max) {
-            const swap = min;
-            min = max;
-            max = swap;
+            // Keep invalid ranges visible in chips, but do not apply them.
+            continue;
           }
           const value = toFiniteNumber(r[key]);
           if (value === null) return false;
@@ -1013,7 +1060,7 @@ export default function ScoreDetails({
           value: filterSemester,
           setValue: setFilterSemester,
           options: semesterOptions.map((label) => ({ value: label, label })),
-          allLabel: "All semesters",
+          allLabel: "All Semesters",
           allMode: "all",
           isActive: isSemesterFilterActive,
           clear: () => setFilterSemester(null),
@@ -1030,7 +1077,7 @@ export default function ScoreDetails({
           value: filterGroupNo,
           setValue: setFilterGroupNo,
           options: groupNoOptions.map((l) => ({ value: l, label: l })),
-          allLabel: "All groups",
+          allLabel: "All Groups",
           allMode: "all",
           isActive: isGroupNoFilterActive,
           clear: () => setFilterGroupNo(null),
@@ -1055,7 +1102,7 @@ export default function ScoreDetails({
       },
       {
         id: "students",
-        label: "Group Students",
+        label: "Students",
         sortKey: "students",
         filter: {
           type: "text",
@@ -1085,7 +1132,7 @@ export default function ScoreDetails({
       },
       {
         id: "dept",
-        label: "Department",
+        label: "Institution / Department",
         sortKey: "juryDept",
         filter: {
           type: "text",
@@ -1100,14 +1147,14 @@ export default function ScoreDetails({
       },
       {
         id: "status",
-        label: "Cell Status",
+        label: "Score Status",
         sortKey: "effectiveStatus",
         filter: {
           type: "multi",
           value: filterStatus,
           setValue: setFilterStatus,
           options: STATUS_OPTIONS,
-          allLabel: "All cell statuses",
+          allLabel: "All Statuses",
           allMode: "all",
           isActive: isStatusFilterActive,
           clear: () => setFilterStatus(null),
@@ -1123,7 +1170,7 @@ export default function ScoreDetails({
           value: filterJurorStatus,
           setValue: setFilterJurorStatus,
           options: JUROR_STATUS_OPTIONS,
-          allLabel: "All juror statuses",
+          allLabel: "All Statuses",
           allMode: "all",
           isActive: isJurorStatusFilterActive,
           clear: () => setFilterJurorStatus(null),
@@ -1134,7 +1181,7 @@ export default function ScoreDetails({
 
     const scores = SCORE_COLS.map(({ key: col, label }) => {
       const filterValue = scoreFilters[col] || { min: "", max: "" };
-      const isActive = !!(filterValue.min || filterValue.max) || activeFilterCol === col;
+      const isActive = hasActiveValidNumberRange(filterValue) || activeFilterCol === col;
       return ({
         id: col,
         label,
@@ -1286,6 +1333,13 @@ export default function ScoreDetails({
         if (!fromRaw && !toRaw) return;
         const fromParsed = f.parsedFrom;
         const toParsed = f.parsedTo;
+        const fromMs = fromParsed ? fromParsed.ms : null;
+        const toMs = toParsed ? toParsed.ms : null;
+        const invalidDateRange = (fromRaw && fromMs === null)
+          || (toRaw && toMs === null)
+          || (toRaw && !fromRaw)
+          || (fromMs !== null && toMs !== null && fromMs > toMs);
+        if (invalidDateRange) return;
         const from = fromRaw
           ? (fromParsed?.isDateOnly ? formatDateOnlyFromMs(fromParsed.ms) : formatTs(fromRaw))
           : "—";
@@ -1298,6 +1352,7 @@ export default function ScoreDetails({
         const minRaw = f.value?.min ?? "";
         const maxRaw = f.value?.max ?? "";
         if (!minRaw && !maxRaw) return;
+        if (isInvalidNumberRange(minRaw, maxRaw)) return;
         if (minRaw && maxRaw) value = `${minRaw}–${maxRaw}`;
         else if (minRaw) value = `≥ ${minRaw}`;
         else value = `≤ ${maxRaw}`;
@@ -1321,14 +1376,17 @@ export default function ScoreDetails({
     contentKey: value,
     content: (
       <>
-        <input
-          autoFocus
-          placeholder={placeholder}
-          aria-label={placeholder}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className={isActive ? "filter-input-active" : ""}
-        />
+        <div className="col-filter-search-wrap">
+          <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
+          <input
+            autoFocus
+            placeholder={placeholder}
+            aria-label={placeholder}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className={joinClass("col-filter-search-input", isActive && "filter-input-active")}
+          />
+        </div>
         {value && (
           <button className="col-filter-clear" onClick={() => { setValue(""); closePopover(); }}>
             Clear
@@ -1451,15 +1509,18 @@ export default function ScoreDetails({
       content: (
         <>
           {searchable && (
-            <input
-              autoFocus
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${allLabel.replace(/^All\s+/i, "").toLowerCase()}...`}
-              className="multi-filter-search"
-              aria-label={`Search ${allLabel}`}
-            />
+            <div className="col-filter-search-wrap multi-filter-search-wrap">
+              <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${allLabel.replace(/^All\s+/i, "").toLowerCase()}`}
+                className="multi-filter-search col-filter-search-input"
+                aria-label={`Search ${allLabel}`}
+              />
+            </div>
           )}
           <label className="status-option">
             <input
@@ -1539,6 +1600,10 @@ export default function ScoreDetails({
       const setFrom = filter.setFrom || (() => {});
       const setTo = filter.setTo || (() => {});
       const handleDateBlur = () => {
+        if (to && !from) {
+          setDateError("The 'From' date is required.");
+          return;
+        }
         if ((from && parsedFromMs === null) || (to && parsedToMs === null)) {
           setDateError("Invalid date format.");
           return;
@@ -1631,6 +1696,54 @@ export default function ScoreDetails({
         </div>
       </div>
 
+      <div className="details-status-legend">
+        <button
+          type="button"
+          className={`details-status-legend-toggle${showStatusLegend ? " is-open" : ""}`}
+          onClick={() => setShowStatusLegend((prev) => !prev)}
+          aria-expanded={showStatusLegend}
+          aria-controls="details-status-legend-panel"
+        >
+          <span className="details-status-legend-icon" aria-hidden="true"><InfoIcon /></span>
+          <span>Status Legend</span>
+          <span className="details-status-legend-toggle-label">{showStatusLegend ? "Hide" : "Show"}</span>
+        </button>
+        {showStatusLegend && (
+          <div id="details-status-legend-panel" className="details-status-legend-panel" role="note" aria-label="Status legend">
+            <div className="details-status-legend-group">
+              <div className="details-status-legend-title">Score Status</div>
+              <table className="details-status-legend-table" aria-label="Score status legend">
+                <tbody>
+                  {SCORE_STATUS_LEGEND.map((item) => (
+                    <tr key={`score-legend-${item.status}`}>
+                      <td className="details-status-legend-col-badge">
+                        <StatusBadge status={item.status} editingFlag={null} />
+                      </td>
+                      <td className="details-status-legend-col-desc">{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="details-status-legend-group">
+              <div className="details-status-legend-title">Juror Status</div>
+              <table className="details-status-legend-table" aria-label="Juror status legend">
+                <tbody>
+                  {JUROR_STATUS_LEGEND.map((item) => (
+                    <tr key={`juror-legend-${item.status}`}>
+                      <td className="details-status-legend-col-badge">
+                        <StatusBadge status={item.status} editingFlag={item.status === "editing" ? "editing" : null} />
+                      </td>
+                      <td className="details-status-legend-col-desc">{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
       {(loading || hasAnyFilter || sortLabel) && (
         <div className="detail-table-toolbar">
           {loading && (
@@ -1638,7 +1751,7 @@ export default function ScoreDetails({
           )}
           {(hasAnyFilter || sortLabel) && (
             <div className="filters-chip-row">
-              {hasAnyFilter && (
+              {(hasAnyFilter || sortLabel) && (
                 <button
                   type="button"
                   className="filter-chip filter-chip-clear-all"

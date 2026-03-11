@@ -1449,7 +1449,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   const handleExportProjects = async () => {
     if (!projects.length) return;
     const XLSX = await import("xlsx-js-style");
-    const headers = ["semester", "group_no", "project_title", "group_students"];
+    const headers = ["Semester", "Group No", "Project Title", "Students"];
     const semesterLabel = activeSemester?.name || "";
     const data = projects.map((p) => [semesterLabel, p.group_no, p.project_title, p.group_students || ""]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);

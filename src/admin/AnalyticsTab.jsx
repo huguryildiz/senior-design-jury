@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx-js-style";
 import { formatDashboardTs, buildExportFilename } from "./utils";
 import { CRITERIA, MUDEK_OUTCOMES } from "../config";
-import { ChevronDownIcon, DownloadIcon, LoaderIcon, CircleXLucideIcon } from "../shared/Icons";
+import { ChevronDownIcon, DownloadIcon, LoaderIcon, CircleXLucideIcon, SearchIcon } from "../shared/Icons";
 import { mean, stdDev, outcomeValues, fmt1, fmt2, buildBoxplotStats } from "../shared/stats";
 import {
   OutcomeByGroupChart,
@@ -484,12 +484,25 @@ function KpiCard({ label, value, sub, valueClassName }) {
 
 function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
   const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const wrapRef = useRef(null);
+  const allCheckboxRef = useRef(null);
   const semesterList = useMemo(() => {
     if (Array.isArray(semesters)) return semesters;
     if (semesters && typeof semesters === "object") return Object.values(semesters);
     return [];
   }, [semesters]);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredSemesterList = useMemo(() => {
+    if (!normalizedSearch) return semesterList;
+    return semesterList.filter((s) =>
+      String(s?.name || "").toLowerCase().includes(normalizedSearch)
+    );
+  }, [semesterList, normalizedSearch]);
+
+  useEffect(() => {
+    if (!open) setSearchTerm("");
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -510,6 +523,23 @@ function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
   }, [open]);
 
   const selectedSet = useMemo(() => new Set(selectedIds || []), [selectedIds]);
+  const allSelected = semesterList.length > 0 && selectedSet.size === semesterList.length;
+  const partiallySelected = selectedSet.size > 0 && !allSelected;
+
+  useEffect(() => {
+    if (!allCheckboxRef.current) return;
+    allCheckboxRef.current.indeterminate = partiallySelected;
+  }, [partiallySelected, open]);
+
+  const toggleAll = () => {
+    if (loading) return;
+    if (allSelected) {
+      onChange([]);
+      return;
+    }
+    onChange(semesterList.map((s) => s.id));
+  };
+
   const toggle = (id) => {
     if (selectedSet.has(id)) {
       onChange((selectedIds || []).filter((x) => x !== id));
@@ -519,7 +549,7 @@ function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
   };
 
   return (
-    <div className="trend-select" ref={wrapRef}>
+    <div className={`trend-select${open ? " open" : ""}`} ref={wrapRef}>
       <button
         type="button"
         className="trend-select-trigger"
@@ -539,38 +569,52 @@ function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
 
       {open && (
         <div className="trend-select-panel" role="dialog" aria-label="Trend semester selection">
-          <div className="trend-select-actions">
-            <button
-              type="button"
-              onClick={() => onChange(semesterList.map((s) => s.id))}
-              disabled={loading || !semesterList.length}
-            >
-              Select all
-            </button>
-            {(selectedIds || []).length > 0 && (
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                disabled={loading}
-              >
-                Clear
-              </button>
-            )}
-          </div>
           <div className="trend-select-list">
+            <div className="trend-select-search-wrap">
+              <span className="trend-select-search-icon" aria-hidden="true">
+                <SearchIcon />
+              </span>
+              <input
+                type="text"
+                className="trend-select-search-input"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search semesters"
+                aria-label="Search semesters"
+              />
+            </div>
             {semesterList.length === 0 && (
               <div className="trend-select-empty">No semesters available.</div>
             )}
-            {semesterList.map((s) => (
-              <label key={s.id} className="trend-select-option">
-                <input
-                  type="checkbox"
-                  checked={selectedSet.has(s.id)}
-                  onChange={() => toggle(s.id)}
-                />
-                <span>{s.name || "—"}</span>
-              </label>
-            ))}
+            {semesterList.length > 0 && (
+              <>
+                <label className="trend-select-option trend-select-option-all">
+                  <input
+                    ref={allCheckboxRef}
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    disabled={loading}
+                  />
+                  <span>All Semesters</span>
+                </label>
+                {filteredSemesterList.length === 0 ? (
+                  <div className="trend-select-empty">No matching semesters.</div>
+                ) : (
+                  filteredSemesterList.map((s) => (
+                    <label key={s.id} className="trend-select-option">
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(s.id)}
+                        onChange={() => toggle(s.id)}
+                        disabled={loading}
+                      />
+                      <span>{s.name || "—"}</span>
+                    </label>
+                  ))
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

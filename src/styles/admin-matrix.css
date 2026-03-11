@@ -315,19 +315,29 @@
 }
 /* Keep desktop hover-scroll behavior, but avoid triggering it on touch devices (iPhone). */
 @media (hover: hover) and (pointer: fine) {
-  .matrix-juror-name:hover {
+  .matrix-juror-name:hover,
+  .matrix-juror-name.is-scrolled {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
+  .matrix-juror-name:hover .matrix-juror-name-inner,
+  .matrix-juror-name.is-scrolled .matrix-juror-name-inner {
+    display: inline-flex;
+    min-width: max-content;
+    max-width: none;
+  }
   .matrix-juror-name:hover .matrix-juror-name-text,
-  .matrix-juror-name:hover .matrix-juror-dept {
+  .matrix-juror-name:hover .matrix-juror-dept,
+  .matrix-juror-name.is-scrolled .matrix-juror-name-text,
+  .matrix-juror-name.is-scrolled .matrix-juror-dept {
     flex: 0 0 auto;
     max-width: none;
     overflow: visible;
     text-overflow: clip;
   }
-  .matrix-juror-name:hover::-webkit-scrollbar { display: none; }
+  .matrix-juror-name:hover::-webkit-scrollbar,
+  .matrix-juror-name.is-scrolled::-webkit-scrollbar { display: none; }
 }
 @media (hover: none), (pointer: coarse) {
   .matrix-juror-name.is-native-scroll {
