@@ -99,11 +99,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-100);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   align-self: center;
-  color: var(--text-900);
+  color: var(--gray-700);
   flex-shrink: 0;
 }
-.admin-title-icon svg { width: 20px; height: 20px; }
+.admin-title-icon svg { width: 18px; height: 18px; }
 .title-separator {
   color: var(--gray-400);
   font-size: 16px;

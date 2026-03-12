@@ -1,27 +1,38 @@
 // src/admin/ManagePermissionsPanel.jsx
 
-import { useEffect, useState } from "react";
-import { ChevronDownIcon, UserKeyIcon, SearchIcon, UserCheckIcon, LandmarkIcon, LoaderIcon, LockIcon, InfoIcon } from "../shared/Icons";
+import { useEffect, useRef, useState } from "react";
+import { CalendarRangeIcon, ChevronDownIcon, UserKeyIcon, SearchIcon, UserCheckIcon, UserPenIcon, LandmarkIcon, LoaderIcon, LockIcon, InfoIcon, CircleDotIcon, BanIcon } from "../shared/Icons";
 import { jurorStatusMeta } from "./scoreHelpers";
 import LastActivity from "./LastActivity";
-import { formatTs } from "./utils";
+import { buildSemesterSearchText, formatTs } from "./utils";
 
 export default function ManagePermissionsPanel({
   settings,
   jurors,
   activeSemesterId,
+  activeSemesterName,
   isMobile,
   isOpen,
   onToggle,
   onRequestEvalLockChange,
   onToggleEdit,
+  onForceCloseEdit,
 }) {
+  const panelRef = useRef(null);
   const [local, setLocal] = useState(settings);
   const [showAll, setShowAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [pendingEdits, setPendingEdits] = useState(() => new Set());
   const [evalLockPending, setEvalLockPending] = useState(false);
-  const PREVIEW_JUROR_COUNT = 4;
+  const PREVIEW_JUROR_COUNT = 3;
+
+  const updateScrollState = (el) => {
+    if (!el) return;
+    const isOverflowing = el.scrollWidth > el.clientWidth + 1;
+    el.classList.toggle("is-overflowing", isOverflowing);
+    el.classList.toggle("is-scrolled", el.scrollLeft > 0);
+  };
+  const handleTextScroll = (e) => updateScrollState(e.currentTarget);
 
   useEffect(() => {
     setLocal(settings);
@@ -64,7 +75,31 @@ export default function ManagePermissionsPanel({
       }, remaining);
     }
   };
+  const handleForceCloseEdit = async ({ jurorId }) => {
+    if (!jurorId) return;
+    if (pendingEdits.has(jurorId)) return;
+    const start = Date.now();
+    setPendingEdits((prev) => {
+      const next = new Set(prev);
+      next.add(jurorId);
+      return next;
+    });
+    try {
+      await Promise.resolve(onForceCloseEdit?.({ jurorId }));
+    } finally {
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, 1200 - elapsed);
+      setTimeout(() => {
+        setPendingEdits((prev) => {
+          const next = new Set(prev);
+          next.delete(jurorId);
+          return next;
+        });
+      }, remaining);
+    }
+  };
   const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
+  const formatProgressLabel = (label, completed, total) => `${label} (${completed}/${total})`;
   const evalLockActive = toBool(local?.evalLockActive ?? settings?.evalLockActive);
   const hasActiveSemester = !!activeSemesterId;
   const orderedJurors = Array.isArray(jurors)
@@ -105,21 +140,21 @@ export default function ManagePermissionsPanel({
           ? "juror status state durum completed tamamlandi tamamlandı"
           : statusKey === "ready_to_submit"
             ? "juror status state durum ready to submit ready_to_submit ready submit hazır hazir"
-            : statusKey === "in_progress"
+          : statusKey === "in_progress"
               ? "juror status state durum in progress in_progress devam ediyor"
               : statusKey === "editing"
                 ? "juror status state durum editing edit mode"
                 : "juror status state durum not started not_started baslamadi başlamadı";
         const progressLabel = safeTotal > 0
           ? (statusKey === "editing"
-            ? `Editing ${displayCompleted}/${safeTotal}`
+            ? formatProgressLabel("Editing", displayCompleted, safeTotal)
             : statusKey === "ready_to_submit"
-              ? `Ready to submit ${displayCompleted}/${safeTotal}`
+              ? formatProgressLabel("Ready to submit", displayCompleted, safeTotal)
             : isCompleted
-            ? `Completed ${displayCompleted}/${safeTotal}`
-            : (displayCompleted > 0
-              ? `In progress ${displayCompleted}/${safeTotal}`
-              : `Not started ${displayCompleted}/${safeTotal}`))
+              ? formatProgressLabel("Completed", displayCompleted, safeTotal)
+              : (displayCompleted > 0
+                ? formatProgressLabel("In progress", displayCompleted, safeTotal)
+                : formatProgressLabel("Not started", displayCompleted, safeTotal)))
           : "No groups assigned";
         const lastActivityAt =
           j.lastActivityAt
@@ -132,9 +167,11 @@ export default function ManagePermissionsPanel({
         const formattedActivityAlt = formattedActivity
           ? `${formattedActivity} ${formattedActivity.replace(/\./g, "/")} ${formattedActivity.replace(/\./g, "-")} ${formattedDatePart} ${formattedTimePart}`
           : "";
+        const semesterSearch = buildSemesterSearchText(activeSemesterName || "");
         const haystack = [
           name,
           inst,
+          semesterSearch,
           progressLabel,
           statusTokens,
           editStatusLabel,
@@ -157,6 +194,20 @@ export default function ManagePermissionsPanel({
     ? filteredJurors
     : (showAll ? permissionJurors : permissionJurors.slice(0, PREVIEW_JUROR_COUNT));
 
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+    const updateAll = () => {
+      root.querySelectorAll(".manage-item-text--full").forEach((el) => updateScrollState(el));
+    };
+    const raf = requestAnimationFrame(updateAll);
+    window.addEventListener("resize", updateAll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updateAll);
+    };
+  }, [visibleJurors, showAll, searchTerm, isOpen, isMobile, activeSemesterName]);
+
   return (
     <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
       <button
@@ -174,7 +225,7 @@ export default function ManagePermissionsPanel({
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Toggle edit access per juror and lock evaluations for the active semester.</div>
+          <div className="manage-card-desc">Enable edit access per juror and lock evaluations for the active semester.</div>
           <div className="manage-field">
             <label className="manage-toggle">
               <span className="manage-toggle-text">Lock evaluations for the active semester</span>
@@ -198,7 +249,7 @@ export default function ManagePermissionsPanel({
             When locked, jurors can view but cannot edit or submit scores.
           </div>
 
-          <div className="manage-list">
+          <div className="manage-list" ref={panelRef}>
             <div className="manage-search">
               <span className="manage-search-icon" aria-hidden="true"><SearchIcon /></span>
               <input
@@ -222,16 +273,10 @@ export default function ManagePermissionsPanel({
               const displayCompleted = safeTotal > 0 ? Math.min(safeCompleted, safeTotal) : safeCompleted;
               const finalSubmittedAt = j.finalSubmittedAt ?? j.final_submitted_at ?? null;
               const isCompleted = Boolean(finalSubmittedAt);
-              const isFullyComplete = safeTotal === 0 || displayCompleted >= safeTotal;
               const hasGroups = safeTotal > 0;
               const hasStartedAny = displayCompleted > 0;
               const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
               const isReadyToSubmit = hasGroups && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
-              const isReadyToFinalize = isReadyToSubmit;
-              const completionHint = isReadyToFinalize ? `Ready to finalize (${displayCompleted}/${safeTotal})` : "";
-              const disableHint = hasGroups
-                ? `Cannot disable edit mode until all scores are re-submitted (${displayCompleted}/${safeTotal}).`
-                : "No groups assigned.";
               const lastActivityAt =
                 j.lastActivityAt
                 || j.last_activity_at
@@ -241,21 +286,23 @@ export default function ManagePermissionsPanel({
               const lockHint = evalLockActive
                 ? "Evaluations are locked. Unlock to let jurors edit."
                 : (!hasActiveSemester ? "No active semester selected." : "");
-              const baseTitle = editEnabled
-                ? (!isFullyComplete ? disableHint : "")
-                : (!isCompleted ? completionHint : "");
-              const editTitle = [baseTitle, lockHint].filter(Boolean).join(" ");
               const isPending = pendingEdits.has(jurorId);
-              const isToggleDisabled =
-                !hasActiveSemester ||
-                evalLockActive ||
-                (editEnabled ? !isFullyComplete : !isCompleted) ||
-                isPending;
+              const canForceClose = hasActiveSemester && editEnabled && !isPending;
+              const canEnableEdit =
+                hasActiveSemester &&
+                !evalLockActive &&
+                !editEnabled &&
+                isCompleted &&
+                !isPending;
+              const showActionControls = !evalLockActive && (editEnabled || isCompleted);
+              const enableEditTitle = canEnableEdit
+                ? "Allow juror to reopen and resubmit the evaluation."
+                : (lockHint || "Edit mode can be enabled only after completion.");
               const completionStatusKey = hasGroups
                 ? (editEnabled ? "editing" : (isCompleted ? "completed" : (isReadyToSubmit ? "ready_to_submit" : (hasStartedAny ? "in_progress" : "not_started"))))
                 : "not_started";
-              const CompletionIcon = jurorStatusMeta[completionStatusKey]?.icon || jurorStatusMeta.not_started.icon;
-              const InProgressIcon = jurorStatusMeta.in_progress.icon;
+              const completionStatusMeta = jurorStatusMeta[completionStatusKey] || jurorStatusMeta.not_started;
+              const CompletionIcon = completionStatusMeta.icon;
               const completionClassName = [
                 "manage-item-completion",
                 "manage-status-chip",
@@ -270,14 +317,14 @@ export default function ManagePermissionsPanel({
                       : "is-not-started",
               ].join(" ");
               return (
-                <div key={jurorId} className="manage-item">
+                <div key={jurorId} className="manage-item manage-item--permissions">
                   <div>
                     <div className="manage-item-title">
                       <span className="manage-item-juror-name">
                         <span className="manage-item-icon" aria-hidden="true">
                           <UserCheckIcon />
                         </span>
-                        <span className="manage-item-text">
+                        <span className="manage-item-text manage-item-text--full" onScroll={handleTextScroll}>
                           {j.juryName || j.juror_name}
                         </span>
                       </span>
@@ -286,77 +333,104 @@ export default function ManagePermissionsPanel({
                       <span className="manage-item-icon" aria-hidden="true">
                         <LandmarkIcon />
                       </span>
-                      <span className="manage-item-text">
+                      <span className="manage-item-text manage-item-text--full" onScroll={handleTextScroll}>
                         {j.juryDept || j.juror_inst}
                       </span>
                     </div>
-                    <div className="manage-item-meta">
-                      <span className={completionClassName}>
-                        <span className="manage-status-chip-icon" aria-hidden="true"><CompletionIcon /></span>
-                        {hasGroups
-                          ? (completionStatusKey === "editing"
-                            ? `Editing ${displayCompleted}/${safeTotal}`
-                            : completionStatusKey === "ready_to_submit"
-                              ? `Ready to submit ${displayCompleted}/${safeTotal}`
-                            : isCompleted
-                              ? `Completed ${displayCompleted}/${safeTotal}`
-                              : (hasStartedAny
-                                ? `In progress ${displayCompleted}/${safeTotal}`
-                                : `Not started ${displayCompleted}/${safeTotal}`))
-                          : "No groups assigned"}
+                    <div className="manage-item-sub manage-meta-line manage-meta-line--semester-chip">
+                      <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
+                        <CalendarRangeIcon />
                       </span>
-                      {isReadyToFinalize && (
-                        <span className="manage-item-helper manage-item-helper--ready-finalize">
-                          {completionHint}
+                      <span className="manage-item-semester-chip">{activeSemesterName || "—"}</span>
+                    </div>
+                    <div className="manage-item-meta">
+                      <div className="manage-item-status-row manage-meta-line manage-meta-line--status">
+                        <span className="manage-meta-icon manage-status-dot-icon" aria-hidden="true">
+                          <CircleDotIcon />
                         </span>
-                      )}
-                      {editEnabled && !isFullyComplete && hasGroups && (
-                        <span className="manage-item-helper manage-status-chip is-warning">
-                          <span className="manage-status-chip-icon" aria-hidden="true"><InProgressIcon /></span>
-                          {disableHint}
+                        <span className={completionClassName}>
+                          <span className="manage-status-chip-icon" aria-hidden="true"><CompletionIcon /></span>
+                          {hasGroups ? formatProgressLabel(completionStatusMeta.label, displayCompleted, safeTotal) : "No groups assigned"}
                         </span>
+                      </div>
+                      {editEnabled && !evalLockActive && (
+                        <div className="manage-item-status-row manage-meta-line manage-meta-line--status-wait">
+                          <span className="manage-meta-icon manage-status-dot-icon manage-status-dot-icon--spacer" aria-hidden="true" />
+                          <span className="manage-item-helper manage-status-chip manage-item-helper--editing-wait">
+                            <span className="manage-status-chip-icon manage-editing-wait-spinner" aria-hidden="true">
+                              <LoaderIcon />
+                            </span>
+                            Waiting for juror resubmission
+                          </span>
+                        </div>
                       )}
                       {(evalLockActive || !hasActiveSemester) && (
-                        <span className={`manage-item-helper manage-status-chip${evalLockActive ? " is-info" : " is-muted"}`}>
-                          <span className="manage-status-chip-icon" aria-hidden="true">
-                            {evalLockActive ? <LockIcon /> : <InfoIcon />}
+                        <div className="manage-item-status-row manage-meta-line manage-meta-line--status-info">
+                          <span className="manage-meta-icon manage-status-dot-icon manage-status-dot-icon--spacer" aria-hidden="true" />
+                          <span className={`manage-item-helper manage-status-chip${evalLockActive ? " is-info" : " is-muted"}`}>
+                            <span className="manage-status-chip-icon" aria-hidden="true">
+                              {evalLockActive ? <LockIcon /> : <InfoIcon />}
+                            </span>
+                            {evalLockActive ? "Evaluation lock is active." : lockHint}
                           </span>
-                          {evalLockActive ? "Evaluation lock is active." : lockHint}
-                        </span>
+                        </div>
                       )}
                     </div>
                     <div className="manage-item-sub manage-meta-line">
                       <LastActivity value={lastActivityAt} />
                     </div>
                   </div>
-                  <div className="manage-item-actions">
-                    <div className="manage-toggle-wrap">
-                      <span className="manage-toggle-label">
-                        Edit Mode
-                        {isPending && (
-                          <span className="manage-toggle-spinner" aria-hidden="true">
-                            <LoaderIcon />
-                          </span>
+                  {showActionControls && (
+                    <div className="manage-item-actions manage-item-actions--permissions">
+                      <div className="manage-toggle-wrap">
+                        {editEnabled && (
+                          <button
+                            type="button"
+                            className="manage-icon-btn with-label manage-cancel-edit-action"
+                            disabled={!canForceClose}
+                            title="Cancel edit mode and return juror to completed state."
+                            aria-label="Cancel edit mode"
+                            onClick={() => {
+                              if (!canForceClose) return;
+                              handleForceCloseEdit({ jurorId: j.jurorId || j.juror_id });
+                            }}
+                          >
+                            <span aria-hidden="true"><BanIcon /></span>
+                            <span className="manage-icon-btn-label">Cancel Edit</span>
+                            {isPending && (
+                              <span className="manage-toggle-spinner" aria-hidden="true">
+                                <LoaderIcon />
+                              </span>
+                            )}
+                          </button>
                         )}
-                      </span>
-                      <label className={`manage-switch${(editEnabled ? isFullyComplete : isCompleted) ? " is-ready" : " is-locked"}`}>
-                        <input
-                          type="checkbox"
-                          checked={editEnabled}
-                          disabled={isToggleDisabled}
-                          title={editTitle}
-                          onChange={(e) => {
-                            if (isToggleDisabled) return;
-                            handleToggleEdit({
-                              jurorId: j.jurorId || j.juror_id,
-                              enabled: e.target.checked,
-                            });
-                          }}
-                        />
-                        <span className="manage-switch-slider" />
-                      </label>
+                        {!editEnabled && isCompleted && (
+                          <button
+                            type="button"
+                            className="manage-icon-btn with-label manage-enable-edit-action"
+                            disabled={!canEnableEdit}
+                            title={enableEditTitle}
+                            aria-label="Enable edit mode"
+                            onClick={() => {
+                              if (!canEnableEdit) return;
+                              handleToggleEdit({
+                                jurorId: j.jurorId || j.juror_id,
+                                enabled: true,
+                              });
+                            }}
+                          >
+                            <span aria-hidden="true"><UserPenIcon /></span>
+                            <span className="manage-icon-btn-label">Enable Edit</span>
+                            {isPending && (
+                              <span className="manage-toggle-spinner" aria-hidden="true">
+                                <LoaderIcon />
+                              </span>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -373,7 +447,7 @@ export default function ManagePermissionsPanel({
               type="button"
               onClick={() => setShowAll((v) => !v)}
             >
-              {showAll ? "Show fewer jurors" : `Show all jurors (${permissionJurors.length})`}
+              {showAll ? "Show fewer active jurors" : `Show all active jurors (${permissionJurors.length})`}
             </button>
           )}
 

@@ -1,10 +1,13 @@
 // src/admin/ManageProjectsPanel.jsx
 
 import { useEffect, useRef, useState } from "react";
+import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { CalendarRangeIcon, ChevronDownIcon, FileTextIcon, MonitorCogIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, FileUpIcon, CloudUploadIcon, FolderPlusIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
-import { formatTs } from "./utils";
+import { buildTimestampSearchText } from "./utils";
 
 function parseCsv(text) {
   const rows = [];
@@ -49,13 +52,108 @@ function parseCsv(text) {
 
 function splitStudents(text) {
   if (!text) return [];
-  return text
-    .split(/[;,]/)
-    .map((s) => s.trim())
+  return String(text)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n+/g, ";")
+    .replace(/[,/|&]+/g, ";")
+    .replace(/\s+-\s+/g, ";")
+    .replace(/;+/g, ";")
+    .split(";")
+    .map((s) => s.trim().replace(/\s+/g, " "))
     .filter(Boolean);
 }
 
-const STUDENTS_EXAMPLE = "Ali Yilmaz; Ayse Demir; Mehmet Can";
+function normalizeStudents(value) {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((entry) => splitStudents(entry))
+      .join("; ");
+  }
+  return splitStudents(value).join("; ");
+}
+
+function parseStudentInputList(value) {
+  const parsed = Array.isArray(value)
+    ? value.flatMap((entry) => splitStudents(entry))
+    : splitStudents(value);
+  return parsed.length ? parsed : [""];
+}
+
+function getInvalidStudentSeparators(text) {
+  const matches = String(text || "").match(/(?:\.{2,}|\s+\.\s+|[,#&|/+*=:!?@$%^~`<>()[\]{}\\\n\r])/g) || [];
+  const normalized = matches
+    .map((token) => {
+      if (/\.{2,}/.test(token)) return "..";
+      if (/\s+\.\s+/.test(token)) return ".";
+      if (/[\n\r]/.test(token)) return "newline";
+      return token.trim();
+    })
+    .filter(Boolean);
+  return [...new Set(normalized)];
+}
+
+function buildCsvSeparatorReason(tokens) {
+  if (!tokens.length) return "invalid separator";
+  const quoted = tokens.map((t) => `"${t}"`).join(", ");
+  return `invalid separator${tokens.length > 1 ? "s" : ""} ${quoted}`;
+}
+
+function digitsOnly(value) {
+  return String(value ?? "").replace(/\D+/g, "");
+}
+
+function CircleMinusIcon({ className = "" } = {}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 12h8" />
+    </svg>
+  );
+}
+
+function CirclePlusSmallIcon({ className = "" } = {}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 12h8" />
+      <path d="M12 8v8" />
+    </svg>
+  );
+}
+
+function SortableStudentRow({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.55 : 1,
+  };
+  return children({ attributes, listeners, setNodeRef, style });
+}
 
 export default function ManageProjectsPanel({
   projects,
@@ -75,11 +173,12 @@ export default function ManageProjectsPanel({
   const [showImport, setShowImport] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [form, setForm] = useState({ group_no: "", project_title: "", group_students: "" });
+  const [form, setForm] = useState({ group_no: "", project_title: "", group_students: [""] });
   const [addError, setAddError] = useState("");
   const [showEdit, setShowEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ group_no: "", project_title: "", group_students: "" });
+  const [editForm, setEditForm] = useState({ group_no: "", project_title: "", group_students: [""] });
   const [editSaving, setEditSaving] = useState(false);
+  const [importSuccess, setImportSuccess] = useState("");
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,14 +191,105 @@ export default function ManageProjectsPanel({
   };
   const handleMetaScroll = (e) => updateScrollState(e.currentTarget);
 
+  const normalizedAddStudents = normalizeStudents(form.group_students);
+  const normalizedEditStudents = normalizeStudents(editForm.group_students);
+  const addStudentIds = form.group_students.map((_, idx) => `add-${idx}`);
+  const editStudentIds = editForm.group_students.map((_, idx) => `edit-${idx}`);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } })
+  );
+
+  const updateStudentInput = (setter, index, nextValue) => {
+    setter((prev) => ({
+      ...prev,
+      group_students: prev.group_students.map((entry, idx) => (idx === index ? nextValue : entry)),
+    }));
+  };
+
+  const blurStudentInput = (setter, index) => {
+    setter((prev) => {
+      const current = [...prev.group_students];
+      const expanded = splitStudents(current[index]);
+      if (expanded.length > 1) {
+        current.splice(index, 1, ...expanded);
+      } else {
+        current[index] = expanded[0] || "";
+      }
+      return {
+        ...prev,
+        group_students: current,
+      };
+    });
+  };
+
+  const addStudentInput = (setter) => {
+    setter((prev) => ({
+      ...prev,
+      group_students: [...prev.group_students, ""],
+    }));
+  };
+
+  const moveStudentInput = (setter, fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    setter((prev) => {
+      const list = [...prev.group_students];
+      if (fromIndex >= list.length || toIndex >= list.length) return prev;
+      const [moved] = list.splice(fromIndex, 1);
+      list.splice(toIndex, 0, moved);
+      return {
+        ...prev,
+        group_students: list,
+      };
+    });
+  };
+
+  const dragHandle = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </svg>
+  );
+
+  const removeStudentInput = (setter, index) => {
+    setter((prev) => {
+      const next = prev.group_students.filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        group_students: next.length ? next : [""],
+      };
+    });
+  };
+
   const canSubmit =
     String(form.group_no).trim() &&
     form.project_title.trim() &&
-    String(form.group_students).trim();
+    String(normalizedAddStudents).trim();
   const canEditSubmit =
     String(editForm.group_no).trim() &&
     editForm.project_title.trim() &&
-    String(editForm.group_students).trim();
+    String(normalizedEditStudents).trim();
+
+  const handleAddStudentsDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const fromIndex = addStudentIds.indexOf(String(active.id));
+    const toIndex = addStudentIds.indexOf(String(over.id));
+    if (fromIndex < 0 || toIndex < 0) return;
+    moveStudentInput(setForm, fromIndex, toIndex);
+  };
+
+  const handleEditStudentsDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const fromIndex = editStudentIds.indexOf(String(active.id));
+    const toIndex = editStudentIds.indexOf(String(over.id));
+    if (fromIndex < 0 || toIndex < 0) return;
+    moveStudentInput(setEditForm, fromIndex, toIndex);
+  };
+
   const orderedProjects = [...projects].sort((a, b) => {
     const aNo = Number(a.group_no || 0);
     const bNo = Number(b.group_no || 0);
@@ -109,7 +299,7 @@ export default function ManageProjectsPanel({
   const filteredProjects = normalizedSearch
     ? orderedProjects.filter((p) => {
         const lastActivity = p.updated_at || p.updatedAt || "";
-        const lastActivityLabel = lastActivity ? formatTs(lastActivity) : "";
+        const lastActivitySearch = buildTimestampSearchText(lastActivity);
         const groupNo = p?.group_no ?? "";
         const haystack = [
           "group",
@@ -118,8 +308,7 @@ export default function ManageProjectsPanel({
           p?.project_title || "",
           p?.group_students || "",
           semesterName || "",
-          lastActivity,
-          lastActivityLabel,
+          lastActivitySearch,
         ]
           .join(" ")
           .toLowerCase();
@@ -171,11 +360,11 @@ export default function ManageProjectsPanel({
           </div>
           <div className="manage-item-footer manage-item-footer--project">
             <div className="manage-item-meta-block">
-              <div className="manage-item-sub manage-meta-line">
+              <div className="manage-item-sub manage-meta-line manage-meta-line--semester-chip">
                 <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
                   <CalendarRangeIcon />
                 </span>
-                <span className="manage-item-semester-text">{semesterName || "—"}</span>
+                <span className="manage-item-semester-chip">{semesterName || "—"}</span>
               </div>
               <div className="manage-item-sub manage-meta-line">
                 <LastActivity value={lastActivity} />
@@ -191,7 +380,7 @@ export default function ManageProjectsPanel({
                   setEditForm({
                     group_no: p.group_no,
                     project_title: p.project_title || "",
-                    group_students: p.group_students || "",
+                    group_students: parseStudentInputList(p.group_students || ""),
                   });
                   setShowEdit(true);
                 }}
@@ -213,10 +402,12 @@ export default function ManageProjectsPanel({
 
   const handleFile = async (file) => {
     if (!file) return;
+    setImportSuccess("");
+    setImportError("");
+    setImportWarning("");
     const fileName = String(file.name || "").toLowerCase();
     if (!fileName.endsWith(".csv")) {
       setImportError("Only .csv files are supported.");
-      setImportWarning("");
       return;
     }
     const text = await file.text();
@@ -228,13 +419,12 @@ export default function ManageProjectsPanel({
     const idxStudents = header.indexOf("group_students");
     if (idxGroup < 0 || idxTitle < 0 || idxStudents < 0) {
       setImportError("Header row is required and must include: group_no, project_title, group_students.");
-      setImportWarning("");
       return;
     }
     const invalidGroupRows = [];
     const invalidTitleRows = [];
     const invalidStudentsRows = [];
-    const invalidStudentSeparatorRows = [];
+    const invalidStudentSeparatorSkips = [];
     const duplicateGroupRows = [];
     const seenGroups = new Set();
     const data = rows.slice(1).map((r) => {
@@ -264,15 +454,24 @@ export default function ManageProjectsPanel({
         invalidStudentsRows.push(rowNo);
         isValid = false;
       }
+      const invalidSeparators = getInvalidStudentSeparators(r.group_students);
       if (r.group_students.includes(",") || r.has_extra_values) {
-        invalidStudentSeparatorRows.push(rowNo);
+        invalidSeparators.push(",");
+      }
+      const uniqueInvalidSeparators = [...new Set(invalidSeparators)];
+      if (uniqueInvalidSeparators.length > 0) {
+        invalidStudentSeparatorSkips.push({
+          rowNo,
+          groupNo: Number.isFinite(r.group_no) && r.group_no > 0 ? r.group_no : null,
+          separators: uniqueInvalidSeparators,
+        });
         isValid = false;
       }
-      if (seenGroups.has(r.group_no)) {
+      if (isValid && seenGroups.has(r.group_no)) {
         duplicateGroupRows.push(rowNo);
         isValid = false;
       }
-      if (Number.isFinite(r.group_no) && r.group_no > 0) {
+      if (isValid && Number.isFinite(r.group_no) && r.group_no > 0) {
         seenGroups.add(r.group_no);
       }
       return isValid;
@@ -281,7 +480,6 @@ export default function ManageProjectsPanel({
       invalidGroupRows.length ||
       invalidTitleRows.length ||
       invalidStudentsRows.length ||
-      invalidStudentSeparatorRows.length ||
       duplicateGroupRows.length
     ) {
       const parts = [];
@@ -294,19 +492,27 @@ export default function ManageProjectsPanel({
       if (invalidStudentsRows.length) {
         parts.push(`Missing group_students at rows: ${invalidStudentsRows.slice(0, 6).join(", ")}.`);
       }
-      if (invalidStudentSeparatorRows.length) {
-        parts.push(`Use semicolon (;) between student names in group_students at rows: ${invalidStudentSeparatorRows.slice(0, 6).join(", ")}.`);
-      }
       if (duplicateGroupRows.length) {
         parts.push(`Duplicate group_no at rows: ${duplicateGroupRows.slice(0, 6).join(", ")}.`);
       }
       setImportError(parts.join(" "));
-      setImportWarning("");
       return;
     }
     if (!data.length) {
+      if (invalidStudentSeparatorSkips.length) {
+        const details = invalidStudentSeparatorSkips
+          .slice(0, 6)
+          .map((item) => {
+            const target = item.groupNo ? `group_no ${item.groupNo}` : `row ${item.rowNo}`;
+            return `${target} (${buildCsvSeparatorReason(item.separators)})`;
+          })
+          .join("; ");
+        const extraCount = Math.max(0, invalidStudentSeparatorSkips.length - 6);
+        const extraText = extraCount > 0 ? ` +${extraCount} more` : "";
+        setImportWarning(`• Skipped rows with invalid student separators: ${details}${extraText}.`);
+        return;
+      }
       setImportError("No valid rows found in CSV.");
-      setImportWarning("");
       return;
     }
     const existingGroupNos = new Set(
@@ -316,20 +522,40 @@ export default function ManageProjectsPanel({
     );
     const skippedExisting = data.filter((r) => existingGroupNos.has(r.group_no));
     const toImport = data.filter((r) => !existingGroupNos.has(r.group_no));
+    const addedGroupNos = Array.from(new Set(toImport.map((r) => r.group_no)));
 
-    const localWarning = skippedExisting.length
-      ? `Skipped existing group_no: ${Array.from(new Set(skippedExisting.map((r) => r.group_no))).join(", ")}.`
-      : "";
+    const successParts = [];
+    if (addedGroupNos.length) {
+      successParts.push(`• Added group_no: ${addedGroupNos.join(", ")}.`);
+    }
+    setImportSuccess(successParts.join("\n"));
+
+    const warningParts = [];
+    if (skippedExisting.length) {
+      warningParts.push(`• Skipped existing group_no: ${Array.from(new Set(skippedExisting.map((r) => r.group_no))).join(", ")}.`);
+    }
+    if (invalidStudentSeparatorSkips.length) {
+      const details = invalidStudentSeparatorSkips
+        .slice(0, 6)
+        .map((item) => {
+          const target = item.groupNo ? `group_no ${item.groupNo}` : `row ${item.rowNo}`;
+          return `${target} (${buildCsvSeparatorReason(item.separators)})`;
+        })
+        .join("; ");
+      const extraCount = Math.max(0, invalidStudentSeparatorSkips.length - 6);
+      const extraText = extraCount > 0 ? ` +${extraCount} more` : "";
+      warningParts.push(`• Skipped rows with invalid student separators: ${details}${extraText}.`);
+    }
+    const localWarning = warningParts.join("\n");
     setImportWarning(localWarning);
 
     if (!toImport.length) {
-      setImportError("");
       return;
     }
 
-    setImportError("");
     const res = await onImport(toImport);
     if (res?.formError) {
+      setImportSuccess("");
       setImportError(res.formError);
       return;
     }
@@ -338,10 +564,10 @@ export default function ManageProjectsPanel({
     }
     const serverSkipped = Number(res?.skipped || 0);
     if (serverSkipped > 0) {
-      const extra = `Skipped ${serverSkipped} existing groups during import.`;
-      setImportWarning(localWarning ? `${localWarning} ${extra}` : extra);
+      const extra = `• Skipped ${serverSkipped} existing groups during import.`;
+      setImportWarning(localWarning ? `${localWarning}\n${extra}` : extra);
     }
-    if (!skippedExisting.length && serverSkipped === 0) setShowImport(false);
+    if (!skippedExisting.length && !invalidStudentSeparatorSkips.length && serverSkipped === 0) setShowImport(false);
   };
 
   const handleFileChange = async (e) => {
@@ -375,6 +601,7 @@ export default function ManageProjectsPanel({
               onClick={() => {
                 setImportError("");
                 setImportWarning("");
+                setImportSuccess("");
                 setShowImport(true);
               }}
             >
@@ -455,42 +682,39 @@ export default function ManageProjectsPanel({
 
           {showAdd && (
             <div className="manage-modal">
-              <div className="manage-modal-card manage-modal-card--create">
+              <div className="manage-modal-card manage-modal-card--create-group">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <FolderPlusIcon />
                   </span>
                   <div className="edit-dialog__title">Create Group</div>
                 </div>
-                <div className="manage-modal-intro">
-                  <p className="manage-modal-intro-lead">
-                    Add a new project group to the active semester.
-                  </p>
-                  <ul className="manage-modal-intro-list">
-                    <li>Group number must be a unique positive integer.</li>
-                    <li>Separate students with <span className="manage-code-inline">;</span>.</li>
-                  </ul>
-                </div>
                 <div className="manage-modal-body">
                   <div className="manage-field">
                     <label className="manage-label">Group number</label>
                     <input
-                      className={`manage-input manage-input--create${addError ? " is-danger" : ""}`}
+                      className={`manage-input${addError ? " is-danger" : ""}`}
                       value={form.group_no}
                       onChange={(e) => {
-                        setForm((f) => ({ ...f, group_no: e.target.value }));
+                        setForm((f) => ({ ...f, group_no: digitsOnly(e.target.value) }));
                         if (addError) setAddError("");
                       }}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
                       placeholder="1"
                     />
                   </div>
                   {addError && <div className="manage-field-error">{addError}</div>}
                   <div className="manage-field">
-                    <label className="manage-label">Group title</label>
+                    <label className="manage-label">Project title</label>
                     <input
-                      className="manage-input manage-input--create"
+                      className="manage-input"
                       value={form.project_title}
-                      onChange={(e) => setForm((f) => ({ ...f, project_title: e.target.value }))}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, project_title: e.target.value }));
+                        if (addError) setAddError("");
+                      }}
                       placeholder="Smart Traffic AI"
                     />
                   </div>
@@ -498,24 +722,84 @@ export default function ManageProjectsPanel({
                     <label className="manage-label">
                       Students{" "}
                       <span className="manage-label-note">
-                        (separate with <span className="manage-code-inline">;</span> e.g. {STUDENTS_EXAMPLE})
+                        (one student per line item)
                       </span>
                     </label>
-                    <textarea
-                      className="manage-input manage-input--create manage-textarea"
-                      value={form.group_students}
-                      onChange={(e) => setForm((f) => ({ ...f, group_students: e.target.value }))}
-                      placeholder={STUDENTS_EXAMPLE}
-                      rows={3}
-                    />
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAddStudentsDragEnd}>
+                      <SortableContext items={addStudentIds} strategy={verticalListSortingStrategy}>
+                        {form.group_students.map((student, idx) => (
+                          <SortableStudentRow key={addStudentIds[idx]} id={addStudentIds[idx]}>
+                            {({ attributes, listeners, setNodeRef, style }) => (
+                              <div
+                                ref={setNodeRef}
+                                style={{
+                                  display: "flex",
+                                  gap: "0.5rem",
+                                  marginBottom: "0.5rem",
+                                  ...style,
+                                }}
+                              >
+                                <button
+                                  className="manage-icon-btn"
+                                  type="button"
+                                  title="Drag to reorder"
+                                  aria-label={`Drag student ${idx + 1} to reorder`}
+                                  style={{ cursor: "grab", alignSelf: "center", touchAction: "none" }}
+                                  {...attributes}
+                                  {...listeners}
+                                >
+                                  {dragHandle}
+                                </button>
+                                <input
+                                  className="manage-input"
+                                  value={student}
+                                  onChange={(e) => {
+                                    updateStudentInput(setForm, idx, e.target.value);
+                                    if (addError) setAddError("");
+                                  }}
+                                  onBlur={() => blurStudentInput(setForm, idx)}
+                                  placeholder={idx === 0 ? "Ali Yilmaz" : "Ayse Demir"}
+                                />
+                                <button
+                                  className="manage-btn manage-btn--create-remove"
+                                  type="button"
+                                  onClick={() => removeStudentInput(setForm, idx)}
+                                  disabled={form.group_students.length === 1}
+                                  title="Remove student"
+                                  aria-label={`tudent ${idx + 1}`}
+                                >
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                    <CircleMinusIcon />
+                                    Student
+                                  </span>
+                                </button>
+                              </div>
+                            )}
+                          </SortableStudentRow>
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                    <button
+                      className="manage-btn manage-btn--create-add"
+                      type="button"
+                      onClick={() => addStudentInput(setForm)}
+                      style={{ width: "auto", alignSelf: "flex-start" }}
+                      title="Add student"
+                      aria-label="Add student"
+                    >
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        <CirclePlusSmallIcon />
+                        Student
+                      </span>
+                    </button>
                   </div>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn" type="button" onClick={() => setShowAdd(false)}>
+                  <button className="manage-btn manage-btn--create-cancel" type="button" onClick={() => setShowAdd(false)}>
                     Cancel
                   </button>
                   <button
-                    className="manage-btn primary"
+                    className="manage-btn primary manage-btn--create-save"
                     type="button"
                     disabled={!canSubmit}
                     onClick={async () => {
@@ -538,7 +822,7 @@ export default function ManageProjectsPanel({
                       const res = await onAddGroup({
                         group_no: groupNo,
                         project_title: form.project_title.trim(),
-                        group_students: form.group_students.trim(),
+                        group_students: normalizedAddStudents,
                       });
                       if (res?.fieldErrors?.group_no) {
                         setAddError(res.fieldErrors.group_no);
@@ -546,7 +830,7 @@ export default function ManageProjectsPanel({
                       }
                       setShowAdd(false);
                       if (res?.ok === false) return;
-                      setForm({ group_no: "", project_title: "", group_students: "" });
+                      setForm({ group_no: "", project_title: "", group_students: [""] });
                     }}
                   >
                     Create
@@ -558,7 +842,7 @@ export default function ManageProjectsPanel({
 
           {showEdit && (
             <div className="manage-modal">
-              <div className="manage-modal-card">
+              <div className="manage-modal-card manage-modal-card--edit-group">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <PencilIcon />
@@ -572,7 +856,7 @@ export default function ManageProjectsPanel({
                     value={editForm.group_no}
                     disabled
                   />
-                  <label className="manage-label">Group title</label>
+                  <label className="manage-label">Project title</label>
                   <input
                     className="manage-input"
                     value={editForm.project_title}
@@ -581,23 +865,80 @@ export default function ManageProjectsPanel({
                   <label className="manage-label">
                     Students{" "}
                     <span className="manage-label-note">
-                      (separate with <span className="manage-code-inline">;</span> e.g. {STUDENTS_EXAMPLE})
+                      (one student per line item)
                     </span>
                   </label>
-                  <textarea
-                    className="manage-input manage-textarea"
-                    value={editForm.group_students}
-                    onChange={(e) => setEditForm((f) => ({ ...f, group_students: e.target.value }))}
-                    placeholder={STUDENTS_EXAMPLE}
-                    rows={3}
-                  />
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleEditStudentsDragEnd}>
+                    <SortableContext items={editStudentIds} strategy={verticalListSortingStrategy}>
+                      {editForm.group_students.map((student, idx) => (
+                        <SortableStudentRow key={editStudentIds[idx]} id={editStudentIds[idx]}>
+                          {({ attributes, listeners, setNodeRef, style }) => (
+                            <div
+                              ref={setNodeRef}
+                              style={{
+                                display: "flex",
+                                gap: "0.5rem",
+                                marginBottom: "0.5rem",
+                                ...style,
+                              }}
+                            >
+                              <button
+                                className="manage-icon-btn"
+                                type="button"
+                                title="Drag to reorder"
+                                aria-label={`Drag student ${idx + 1} to reorder`}
+                                style={{ cursor: "grab", alignSelf: "center", touchAction: "none" }}
+                                {...attributes}
+                                {...listeners}
+                              >
+                                {dragHandle}
+                              </button>
+                              <input
+                                className="manage-input"
+                                value={student}
+                                onChange={(e) => updateStudentInput(setEditForm, idx, e.target.value)}
+                                onBlur={() => blurStudentInput(setEditForm, idx)}
+                                placeholder={idx === 0 ? "Ali Yilmaz" : "Ayse Demir"}
+                              />
+                              <button
+                                className="manage-btn manage-btn--edit-remove"
+                                type="button"
+                                onClick={() => removeStudentInput(setEditForm, idx)}
+                                disabled={editForm.group_students.length === 1}
+                                title="Remove student"
+                                aria-label={`Remove student ${idx + 1}`}
+                              >
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                                  <CircleMinusIcon />
+                                  Student
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </SortableStudentRow>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                  <button
+                    className="manage-btn manage-btn--edit-add"
+                    type="button"
+                    onClick={() => addStudentInput(setEditForm)}
+                    style={{ width: "auto", alignSelf: "flex-start" }}
+                    title="Add student"
+                    aria-label="Add student"
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                      <CirclePlusSmallIcon />
+                      Student
+                    </span>
+                  </button>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn" type="button" onClick={() => setShowEdit(false)}>
+                  <button className="manage-btn manage-btn--edit-cancel" type="button" onClick={() => setShowEdit(false)}>
                     Cancel
                   </button>
                   <button
-                    className="manage-btn primary"
+                    className="manage-btn primary manage-btn--edit-save"
                     type="button"
                     disabled={!canEditSubmit || editSaving}
                     onClick={async () => {
@@ -605,7 +946,7 @@ export default function ManageProjectsPanel({
                       await onEditGroup?.({
                         group_no: Number(editForm.group_no),
                         project_title: editForm.project_title.trim(),
-                        group_students: editForm.group_students.trim(),
+                        group_students: normalizedEditStudents,
                       });
                       setEditSaving(false);
                       setShowEdit(false);
@@ -620,7 +961,7 @@ export default function ManageProjectsPanel({
 
           {showImport && (
             <div className="manage-modal">
-              <div className="manage-modal-card">
+              <div className="manage-modal-card manage-modal-card--import-csv">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <FileUpIcon />
@@ -659,13 +1000,20 @@ export default function ManageProjectsPanel({
                   >
                     <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
-                    <button className="manage-btn ghost" type="button">
-                      Select File
+                    <button className="manage-btn manage-btn--import-select" type="button">
+                      Select CSV File
                     </button>
+                    <div className="manage-dropzone-sub">Only .csv files supported</div>
+                    <div className="manage-dropzone-sub manage-dropzone-sub--muted">Max file size: 2MB</div>
                   </div>
                   {importError && (
                     <div className="manage-import-feedback manage-import-feedback--error" role="alert">
                       {importError}
+                    </div>
+                  )}
+                  {importSuccess && !importError && (
+                    <div className="manage-import-feedback manage-import-feedback--success" role="status">
+                      {importSuccess}
                     </div>
                   )}
                   {importWarning && !importError && (
@@ -673,7 +1021,7 @@ export default function ManageProjectsPanel({
                       {importWarning}
                     </div>
                   )}
-                  <details className="manage-collapsible">
+                  <details className="manage-collapsible" open>
                     <summary className="manage-collapsible-summary">CSV example</summary>
                     <div className="manage-collapsible-content">
                       <div className="manage-code">group_no,project_title,group_students</div>
@@ -682,7 +1030,7 @@ export default function ManageProjectsPanel({
                       <div className="manage-code">3,Embedded Vision for Robots,Zeynep Acar; Kerem Sahin</div>
                     </div>
                   </details>
-                  <details className="manage-collapsible">
+                  <details className="manage-collapsible" open>
                     <summary className="manage-collapsible-summary">Rules</summary>
                     <div className="manage-collapsible-content">
                       <ul className="manage-hint-list manage-rules-list">
@@ -696,7 +1044,7 @@ export default function ManageProjectsPanel({
                   </details>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn" type="button" onClick={() => setShowImport(false)}>
+                  <button className="manage-btn manage-btn--import-cancel" type="button" onClick={() => setShowImport(false)}>
                     Cancel
                   </button>
                 </div>

@@ -98,7 +98,7 @@ export default function AdminSecurityPanel({
     setLoading(true);
     try {
       await adminChangePassword(currentPassword, newPassword);
-      setSuccess("Password updated successfully.");
+      setSuccess("Admin password updated");
       if (onPasswordChanged) {
         onPasswordChanged(newPassword);
       }
@@ -153,11 +153,11 @@ export default function AdminSecurityPanel({
     try {
       if (deleteMissingHash) {
         await adminBootstrapDeletePassword(deletePassword, adminPass);
-        setDeleteSuccess("Delete password initialized successfully.");
+        setDeleteSuccess("Delete password initialized");
         setDeleteMissingHash(false);
       } else {
         await adminChangeDeletePassword(deleteCurrent, deletePassword, adminPass);
-        setDeleteSuccess("Delete password updated successfully.");
+        setDeleteSuccess("Delete password updated");
       }
       setDeleteCurrent("");
       setDeletePassword("");
@@ -212,11 +212,11 @@ export default function AdminSecurityPanel({
     try {
       if (backupMissingHash) {
         await adminBootstrapBackupPassword(backupPassword, adminPass);
-        setBackupSuccess("Backup & restore password initialized successfully.");
+        setBackupSuccess("Backup and restore password initialized");
         setBackupMissingHash(false);
       } else {
         await adminChangeBackupPassword(backupCurrent, backupPassword, adminPass);
-        setBackupSuccess("Backup & restore password updated successfully.");
+        setBackupSuccess("Backup and restore password updated");
       }
       setBackupCurrent("");
       setBackupPassword("");

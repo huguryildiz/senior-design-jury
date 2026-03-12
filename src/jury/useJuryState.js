@@ -109,6 +109,9 @@ const normalizeScoreValue = (val, max) => {
   return Math.min(Math.max(n, 0), max);
 };
 
+const isSemesterLockedError = (err) =>
+  String(err?.message || "").includes("semester_locked");
+
 const buildScoreSnapshot = (scores, comment) => {
   const normalizedScores = {};
   let hasAnyScores = false;
@@ -224,6 +227,7 @@ export default function useJuryState() {
     async (pid) => {
       const { jurorId: jid, semesterId: sid } = stateRef.current;
       if (!jid || !sid || !pid) return false;
+      if (editLockActive) return false;
 
       const s = pendingScoresRef.current;
       const c = pendingCommentsRef.current;
@@ -250,13 +254,16 @@ export default function useJuryState() {
           setGroupSynced((prev) => ({ ...prev, [pid]: true }));
         }
         return true;
-      } catch (_) {
+      } catch (e) {
+        if (isSemesterLockedError(e)) {
+          setEditLockActive(true);
+        }
         setSaveStatus("error");
         setTimeout(() => setSaveStatus("idle"), 3000);
         return false;
       }
     },
-    [] // stateRef and refs are stable
+    [editLockActive] // stateRef and refs are stable
   );
 
   // ── Group navigation with guaranteed write ────────────────
@@ -274,6 +281,10 @@ export default function useJuryState() {
 
   const handleRequestSubmit = useCallback(async () => {
     setSubmitError("");
+    if (editLockActive) {
+      setSubmitError("Evaluations are locked for this semester.");
+      return;
+    }
     const { scores: s, projects: projs } = stateRef.current;
     if (!isAllComplete(s, projs)) {
       setTouched(makeAllTouched(projs));
@@ -295,13 +306,24 @@ export default function useJuryState() {
 
     setLoadingState(null);
     if (!allSaved) {
-      setSubmitError("Could not save all scores. Please check your connection and try again.");
+      const { jurorId: jid, semesterId: sid } = stateRef.current;
+      try {
+        const editState = await getJurorEditState(sid, jid);
+        if (editState?.lock_active) {
+          setEditLockActive(true);
+          setSubmitError("Evaluations are locked for this semester.");
+        } else {
+          setSubmitError("Could not save all scores. Please check your connection and try again.");
+        }
+      } catch {
+        setSubmitError("Could not save all scores. Please check your connection and try again.");
+      }
       submitPendingRef.current = false;
       return;
     }
 
     setConfirmingSubmit(true);
-  }, [writeGroup]);
+  }, [editLockActive, writeGroup]);
 
   // ── Auto-upgrade groupSynced ──────────────────────────────
   useEffect(() => {
@@ -331,6 +353,7 @@ export default function useJuryState() {
 
   const handleScore = useCallback(
     (pid, cid, val) => {
+      if (editLockActive) return;
       const stored = val === "" ? null : val;
       const newScores = {
         ...pendingScoresRef.current,
@@ -343,11 +366,12 @@ export default function useJuryState() {
         setGroupSynced((prev) => ({ ...prev, [pid]: false }));
       }
     },
-    []
+    [editLockActive]
   );
 
   const handleScoreBlur = useCallback(
     (pid, cid) => {
+      if (editLockActive) return;
       const crit = CRITERIA.find((c) => c.id === cid);
       setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
       // Clamp and normalize value
@@ -369,19 +393,21 @@ export default function useJuryState() {
       setScores(newScores);
       writeGroup(pid);
     },
-    [writeGroup]
+    [editLockActive, writeGroup]
   );
 
   const handleCommentChange = useCallback((pid, val) => {
+    if (editLockActive) return;
     pendingCommentsRef.current = { ...pendingCommentsRef.current, [pid]: val };
     setComments((prev) => ({ ...prev, [pid]: val }));
-  }, []);
+  }, [editLockActive]);
 
   const handleCommentBlur = useCallback(
     (pid) => {
+      if (editLockActive) return;
       writeGroup(pid);
     },
-    [writeGroup]
+    [editLockActive, writeGroup]
   );
 
   const handleConfirmSubmit = useCallback(async () => {
@@ -441,9 +467,14 @@ export default function useJuryState() {
           setProjects(uiProjects);
         })
         .catch(() => {});
-    } catch (_) {
+    } catch (e) {
       // Keep user in eval mode; submission didn't finalize.
-      setSubmitError("Final submission failed. Please try again.");
+      if (isSemesterLockedError(e)) {
+        setEditLockActive(true);
+        setSubmitError("Evaluations are locked for this semester.");
+      } else {
+        setSubmitError("Final submission failed. Please try again.");
+      }
     } finally {
       setLoadingState(null);
       submitPendingRef.current = false;
@@ -456,19 +487,19 @@ export default function useJuryState() {
   }, []);
 
   useEffect(() => {
-    if (step !== "done" || !jurorId || !semesterId) return;
+    if ((step !== "done" && step !== "eval") || !jurorId || !semesterId) return;
     let alive = true;
     const refreshEditState = async () => {
       try {
         const editState = await getJurorEditState(semesterId, jurorId);
         if (!alive) return;
-        setEditAllowed(!!editState?.edit_allowed);
+        if (step === "done") setEditAllowed(!!editState?.edit_allowed);
         setEditLockActive(!!editState?.lock_active);
       } catch {}
     };
 
     refreshEditState();
-    const timer = setInterval(refreshEditState, 15000);
+    const timer = setInterval(refreshEditState, step === "eval" ? 10000 : 15000);
     return () => {
       alive = false;
       clearInterval(timer);

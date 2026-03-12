@@ -87,7 +87,7 @@ export default function EvalStep({
   projects,
   current, onNavigate,
   scores, comments, touched,
-  groupSynced, editMode,
+  groupSynced, editMode, lockActive,
   progressPct, allComplete,
   saveStatus,
   handleScore, handleScoreBlur,
@@ -299,6 +299,12 @@ export default function EvalStep({
             Edit mode enabled — adjust scores and click "Submit Final Scores" when ready.
           </div>
         )}
+        {lockActive && (
+          <div className="group-done-banner">
+            <TriangleAlertIcon />
+            Evaluations are locked for this semester. You can view scores, but edits and submission are disabled.
+          </div>
+        )}
 
         {/* Criterion cards */}
         {CRITERIA.map((crit) => {
@@ -358,6 +364,7 @@ export default function EvalStep({
                   onBlur={()   => handleScoreBlur(pid, crit.id)}
                   placeholder="—"
                   className="score-input"
+                  disabled={lockActive}
                 />
                 <span className="score-bar-wrap">
                   <span className="score-bar" style={{ width: `${barPct}%` }} />
@@ -386,6 +393,7 @@ export default function EvalStep({
             onBlur={()    => handleCommentBlur(pid)}
             placeholder="Optional feedback about the project, presentation, or teamwork…"
             rows={3}
+            disabled={lockActive}
           />
         </div>
 
@@ -403,6 +411,7 @@ export default function EvalStep({
             className="premium-btn-primary eval-submit-btn"
             style={{ width: "100%", marginTop: 8 }}
             onClick={handleFinalSubmit}
+            disabled={lockActive}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clipboard-pen-line-icon lucide-clipboard-pen-line" aria-hidden="true">
               <rect width="8" height="4" x="8" y="2" rx="1" />
@@ -421,6 +430,7 @@ export default function EvalStep({
             className={`premium-btn-primary eval-submit-btn ${allComplete ? "eval-submit-green" : "eval-submit-amber"}`}
             style={{ width: "100%", marginTop: 8 }}
             onClick={handleFinalSubmit}
+            disabled={lockActive}
           >
             {allComplete ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-icon lucide-send" aria-hidden="true">

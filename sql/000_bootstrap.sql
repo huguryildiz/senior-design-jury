@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS public.semesters (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name        text NOT NULL,
   is_active   boolean NOT NULL DEFAULT false,
+  is_locked   boolean NOT NULL DEFAULT false,
   poster_date date,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
@@ -101,14 +102,10 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   metadata    jsonb
 );
 
--- Default setting for evaluation lock
-INSERT INTO public.settings (key, value)
-VALUES ('eval_lock_active_semester', 'false')
-ON CONFLICT (key) DO NOTHING;
-
 -- ── Schema upgrades / legacy cleanup (idempotent) ───────────
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS poster_date date;
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS is_locked boolean NOT NULL DEFAULT false;
 ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
 -- Encrypt legacy pin_plain_once values if a secret is configured.
@@ -587,6 +584,7 @@ RETURNS TABLE (
   id          uuid,
   name        text,
   is_active   boolean,
+  is_locked   boolean,
   poster_date date,
   updated_at  timestamptz
 )
@@ -594,7 +592,7 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
-  SELECT id, name, is_active, poster_date, updated_at
+  SELECT id, name, is_active, is_locked, poster_date, updated_at
   FROM semesters
   ORDER BY poster_date DESC NULLS LAST;
 $$;
@@ -605,13 +603,14 @@ RETURNS TABLE (
   id          uuid,
   name        text,
   is_active   boolean,
+  is_locked   boolean,
   poster_date date
 )
 LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
-  SELECT id, name, is_active, poster_date
+  SELECT id, name, is_active, is_locked, poster_date
   FROM semesters
   WHERE is_active = true
   LIMIT 1;
@@ -704,13 +703,20 @@ DECLARE
   v_new_writ integer;
   v_new_oral integer;
   v_new_team integer;
+  v_sem_locked boolean := false;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM semesters s
-    WHERE s.id = p_semester_id
-      AND s.is_active = true
-  ) THEN
+  SELECT COALESCE(s.is_locked, false)
+    INTO v_sem_locked
+  FROM semesters s
+  WHERE s.id = p_semester_id
+    AND s.is_active = true;
+
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'semester_inactive';
+  END IF;
+
+  IF v_sem_locked THEN
+    RAISE EXCEPTION 'semester_locked';
   END IF;
 
   SELECT group_no, project_title
@@ -1181,11 +1187,12 @@ BEGIN
 
   -- 1. Semesters (no FK deps)
   FOR r IN SELECT * FROM jsonb_array_elements(COALESCE(p_data->'semesters', '[]'::jsonb)) LOOP
-    INSERT INTO semesters (id, name, is_active, poster_date, created_at, updated_at)
+    INSERT INTO semesters (id, name, is_active, is_locked, poster_date, created_at, updated_at)
     VALUES (
       (r->>'id')::uuid,
       r->>'name',
       COALESCE((r->>'is_active')::boolean, false),
+      COALESCE((r->>'is_locked')::boolean, false),
       (r->>'poster_date')::date,
       COALESCE((r->>'created_at')::timestamptz, now()),
       COALESCE((r->>'updated_at')::timestamptz, now())
@@ -1193,6 +1200,7 @@ BEGIN
     ON CONFLICT (id) DO UPDATE SET
       name        = EXCLUDED.name,
       is_active   = EXCLUDED.is_active,
+      is_locked   = EXCLUDED.is_locked,
       poster_date = EXCLUDED.poster_date,
       updated_at  = EXCLUDED.updated_at;
   END LOOP;
@@ -2390,19 +2398,10 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 #variable_conflict use_column
-DECLARE
-  v_prev text;
-  v_is_lock boolean;
-  v_sem_id uuid;
-  v_sem_name text;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
-
-  SELECT value INTO v_prev
-  FROM settings
-  WHERE key = p_key;
 
   INSERT INTO settings (key, value)
   VALUES (p_key, p_value)
@@ -2410,31 +2409,57 @@ BEGIN
     SET value = EXCLUDED.value,
         updated_at = now();
 
-  IF p_key = 'eval_lock_active_semester' AND v_prev IS DISTINCT FROM p_value THEN
-    v_is_lock := (p_value = 'true');
-    SELECT id, name
-      INTO v_sem_id, v_sem_name
-    FROM semesters
-    WHERE is_active = true
-    LIMIT 1;
+  RETURN true;
+END;
+$$;
 
-    PERFORM public._audit_log(
-      'admin',
-      null::uuid,
-      'eval_lock_toggle',
-      'settings',
-      null::uuid,
-      format(
-        'Admin turned evaluation lock %s (active semester)',
-        CASE WHEN v_is_lock THEN 'ON' ELSE 'OFF' END
-      ),
-      jsonb_build_object(
-        'semester_id', v_sem_id,
-        'semester_name', v_sem_name,
-        'enabled', v_is_lock
-      )
-    );
+DROP FUNCTION IF EXISTS public.rpc_admin_set_semester_eval_lock(uuid, boolean, text);
+CREATE OR REPLACE FUNCTION public.rpc_admin_set_semester_eval_lock(
+  p_semester_id uuid,
+  p_enabled boolean,
+  p_admin_password text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_sem_name text;
+  v_enabled boolean := COALESCE(p_enabled, false);
+BEGIN
+  IF NOT public._verify_admin_password(p_admin_password) THEN
+    RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
+
+  UPDATE semesters s
+  SET is_locked = v_enabled,
+      updated_at = now()
+  WHERE s.id = p_semester_id
+    AND s.is_active = true
+  RETURNING s.name INTO v_sem_name;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'semester_inactive';
+  END IF;
+
+  PERFORM public._audit_log(
+    'admin',
+    null::uuid,
+    'eval_lock_toggle',
+    'semester',
+    p_semester_id,
+    format(
+      'Admin turned evaluation lock %s (%s)',
+      CASE WHEN v_enabled THEN 'ON' ELSE 'OFF' END,
+      COALESCE(v_sem_name, p_semester_id::text)
+    ),
+    jsonb_build_object(
+      'semester_id', p_semester_id,
+      'semester_name', v_sem_name,
+      'enabled', v_enabled
+    )
+  );
 
   RETURN true;
 END;
@@ -2541,7 +2566,7 @@ BEGIN
 END;
 $$;
 
--- ── Admin: toggle per-juror edit mode ───────────────────────
+-- ── Admin: enable per-juror edit mode (one-way) ─────────────
 
 DROP FUNCTION IF EXISTS public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_set_juror_edit_mode(
@@ -2558,42 +2583,45 @@ AS $$
 DECLARE
   v_name text;
   v_sem_name text;
-  v_total_projects integer := 0;
-  v_completed_projects integer := 0;
+  v_has_final_submission boolean := false;
+  v_sem_locked boolean := false;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM semesters s
-    WHERE s.id = p_semester_id
-      AND s.is_active = true
-  ) THEN
+  SELECT COALESCE(s.is_locked, false)
+    INTO v_sem_locked
+  FROM semesters s
+  WHERE s.id = p_semester_id
+    AND s.is_active = true;
+
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'semester_inactive';
   END IF;
 
-  IF COALESCE(p_enabled, false) = false THEN
-    SELECT COUNT(*)::int INTO v_total_projects
-    FROM projects p
-    WHERE p.semester_id = p_semester_id;
+  IF v_sem_locked THEN
+    RAISE EXCEPTION 'semester_locked';
+  END IF;
 
-    SELECT COUNT(*)::int INTO v_completed_projects
+  IF COALESCE(p_enabled, false) = false THEN
+    RAISE EXCEPTION 'edit_mode_disable_not_allowed';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1
     FROM scores sc
     WHERE sc.semester_id = p_semester_id
       AND sc.juror_id = p_juror_id
-      AND sc.technical IS NOT NULL
-      AND sc.written   IS NOT NULL
-      AND sc.oral      IS NOT NULL
-      AND sc.teamwork  IS NOT NULL;
+      AND sc.final_submitted_at IS NOT NULL
+  ) INTO v_has_final_submission;
 
-    IF v_total_projects > 0 AND v_completed_projects < v_total_projects THEN
-      RAISE EXCEPTION 'final_submit_required';
-    END IF;
+  IF NOT v_has_final_submission THEN
+    RAISE EXCEPTION 'final_submission_required';
   END IF;
 
   UPDATE juror_semester_auth
-  SET edit_enabled = COALESCE(p_enabled, false)
+  SET edit_enabled = true
   WHERE juror_id = p_juror_id
     AND semester_id = p_semester_id;
 
@@ -2610,12 +2638,69 @@ BEGIN
     'juror',
     p_juror_id,
     format(
-      'Admin %s edit mode for Juror %s (%s)',
-      CASE WHEN COALESCE(p_enabled, false) THEN 'enabled' ELSE 'disabled' END,
+      'Admin enabled edit mode for Juror %s (%s)',
       COALESCE(v_name, p_juror_id::text),
       COALESCE(v_sem_name, p_semester_id::text)
     ),
-    jsonb_build_object('semester_id', p_semester_id, 'enabled', COALESCE(p_enabled, false))
+    jsonb_build_object('semester_id', p_semester_id, 'enabled', true)
+  );
+
+  RETURN true;
+END;
+$$;
+
+-- ── Admin: force-close per-juror edit mode ──────────────────
+
+DROP FUNCTION IF EXISTS public.rpc_admin_force_close_juror_edit_mode(uuid, uuid, text);
+CREATE OR REPLACE FUNCTION public.rpc_admin_force_close_juror_edit_mode(
+  p_semester_id uuid,
+  p_juror_id uuid,
+  p_admin_password text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_name text;
+  v_sem_name text;
+BEGIN
+  IF NOT public._verify_admin_password(p_admin_password) THEN
+    RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM semesters s
+    WHERE s.id = p_semester_id
+      AND s.is_active = true
+  ) THEN
+    RAISE EXCEPTION 'semester_inactive';
+  END IF;
+
+  UPDATE juror_semester_auth
+  SET edit_enabled = false
+  WHERE juror_id = p_juror_id
+    AND semester_id = p_semester_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'no_pin';
+  END IF;
+
+  SELECT juror_name INTO v_name FROM jurors WHERE id = p_juror_id;
+  SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
+  PERFORM public._audit_log(
+    'admin',
+    null::uuid,
+    'admin_juror_edit_force_close',
+    'juror',
+    p_juror_id,
+    format(
+      'Admin force-closed edit mode for Juror %s (%s)',
+      COALESCE(v_name, p_juror_id::text),
+      COALESCE(v_sem_name, p_semester_id::text)
+    ),
+    jsonb_build_object('semester_id', p_semester_id, 'enabled', false)
   );
 
   RETURN true;
@@ -2641,17 +2726,19 @@ AS $$
 DECLARE
   v_lock boolean := false;
   v_enabled boolean := false;
+  v_sem_active boolean := false;
 BEGIN
-  SELECT (value = 'true') INTO v_lock
-  FROM settings
-  WHERE key = 'eval_lock_active_semester';
-  v_lock := COALESCE(v_lock, false);
+  SELECT s.is_active, COALESCE(s.is_locked, false)
+    INTO v_sem_active, v_lock
+  FROM semesters s
+  WHERE s.id = p_semester_id;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM semesters s
-    WHERE s.id = p_semester_id
-      AND s.is_active = true
-  ) THEN
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT false, false, false;
+    RETURN;
+  END IF;
+
+  IF NOT v_sem_active THEN
     RETURN QUERY SELECT false, false, v_lock;
     RETURN;
   END IF;
@@ -2690,13 +2777,20 @@ DECLARE
   v_now timestamptz := now();
   v_juror_name text;
   v_sem_name   text;
+  v_sem_locked boolean := false;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM semesters s
-    WHERE s.id = p_semester_id
-      AND s.is_active = true
-  ) THEN
+  SELECT COALESCE(s.is_locked, false)
+    INTO v_sem_locked
+  FROM semesters s
+  WHERE s.id = p_semester_id
+    AND s.is_active = true;
+
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'semester_inactive';
+  END IF;
+
+  IF v_sem_locked THEN
+    RAISE EXCEPTION 'semester_locked';
   END IF;
 
   SELECT COUNT(*)::int INTO v_total
@@ -3216,9 +3310,11 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text) TO anon, aut
 GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_juror_pin(uuid, uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_settings(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_setting(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_set_semester_eval_lock(uuid, boolean, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer, integer, integer, integer, timestamptz, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_jurors(text, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_force_close_juror_edit_mode(uuid, uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, text) TO anon, authenticated;

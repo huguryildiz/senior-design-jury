@@ -1,0 +1,40 @@
+Sayfa;Fonksiyon;Konum;Kategori;Test Edilecekler;Oncelik
+Settings;formatAuditTimestamp;src/admin/SettingsPage.jsx:65;Utility;Gecerli tarih formatlama, bos/null deger davranisi, gecersiz tarih fallback;Orta
+Settings;isSemesterPosterDateInRange;src/admin/SettingsPage.jsx:84;Utility;Baslangic-bitis siniri dahil tarih, sinir disi tarih, bos deger;Yuksek
+Settings;normalizeStudentNames;src/admin/SettingsPage.jsx:88;Utility;Virgullu/ayracli isim temizleme, ekstra bosluk normalizasyonu, bos string;Orta
+Settings;isValidTimeParts;src/admin/SettingsPage.jsx:99;Validation;00-23 saat, 00-59 dakika/saniye, numerik olmayan input;Yuksek
+Settings;normalizeSearchYear;src/admin/SettingsPage.jsx:122;Validation;2/4 haneli yil tokeni, gecersiz token, trim kontrolu;Orta
+Settings;parseSearchDateParts;src/admin/SettingsPage.jsx:130;Validation;Beklenen tarih pattern parse, eksik parca, gecersiz separator;Yuksek
+Settings;isValidAuditYear;src/admin/SettingsPage.jsx:169;Validation;Min-max yil siniri, sinir degerleri, sinir disi degerler;Orta
+Settings;parseAuditDateString;src/admin/SettingsPage.jsx:171;Validation;Gecerli denetim tarihini parse etme, null/invalid deger donusu;Yuksek
+Settings;getAuditDateRangeError;src/admin/SettingsPage.jsx:191;Validation;Baslangic>bitis hatasi, tek tarafli tarih girisi, gecerli aralikta hata olmamasi;Yuksek
+Settings;buildAuditParams;src/admin/SettingsPage.jsx:205;Data Mapping;Filter-limit-cursor-search alanlarinin RPC parametrelerine dogru map edilmesi;Yuksek
+Settings;useMediaQuery;src/admin/SettingsPage.jsx:238;Hook;Ilk render degeri, media query degisiminde state guncellenmesi, cleanup;Orta
+Settings;handleSetActiveSemester;src/admin/SettingsPage.jsx:743;Action Handler;Aktif donem degistirme basarili akis, API hata mesaji, state rollback;Kritik
+Settings;handleCreateSemester;src/admin/SettingsPage.jsx:768;Action Handler;Donem olusturma basarili akis, zorunlu alan validasyonu, API hata yakalama;Kritik
+Settings;handleUpdateSemester;src/admin/SettingsPage.jsx:812;Action Handler;Donem guncelleme, poster tarih kontrolu, API hatasinda UI mesaji;Kritik
+Settings;handleImportProjects;src/admin/SettingsPage.jsx:850;Bulk Import;Toplu proje import basarili akis, duplicate/invalid satir, kismi basari raporu;Kritik
+Settings;handleAddProject;src/admin/SettingsPage.jsx:907;Action Handler;Tek proje ekleme, required alanlar, API hata ve loading durumu;Yuksek
+Settings;handleEditProject;src/admin/SettingsPage.jsx:954;Action Handler;Proje duzenleme kaydi, degisiklik yok senaryosu, API hata;Yuksek
+Settings;handleAddJuror;src/admin/SettingsPage.jsx:986;Action Handler;Juri ekleme basarili akis, email/alan validasyonu, hata mesaji;Kritik
+Settings;handleImportJurors;src/admin/SettingsPage.jsx:1030;Bulk Import;Toplu juri importu, duplicate email, gecersiz satir loglama;Kritik
+Settings;handleEditJuror;src/admin/SettingsPage.jsx:1089;Action Handler;Juri bilgi guncelleme, read-only alan korumasi, API hata;Yuksek
+Settings;handleResetPin;src/admin/SettingsPage.jsx:1111;Security;PIN sifirlama basarili akis, yetki/kimlik hatasi, sonuc bildirimi;Kritik
+Settings;handleToggleJurorEdit;src/admin/SettingsPage.jsx:1179;Permission;Juri edit kilidi ac/kapat, id bulunamama, API failback;Yuksek
+Settings;handleForceCloseJurorEdit;src/admin/SettingsPage.jsx:1221;Permission;Acik edit oturumunu zorlama kapatma, hedef juri bulunamazsa hata;Yuksek
+Settings;handleSaveSettings;src/admin/SettingsPage.jsx:1251;Permission;Eval lock degisikligi, aktif donem yokken engelleme, API hata durumunda geri alma;Kritik
+Settings;handleAuditRefresh;src/admin/SettingsPage.jsx:1292;Audit;Filter korunarak liste yenileme, loading bayragi kontrolu;Orta
+Settings;handleAuditReset;src/admin/SettingsPage.jsx:1296;Audit;Tum filtreleri sifirlama, default degerlere donus, listeyi yeniden cekme;Orta
+Settings;handleAuditLoadMore;src/admin/SettingsPage.jsx:1303;Audit Pagination;Cursor ile devam sayfasi, son sayfa davranisi, duplicate kayit olmamasi;Yuksek
+Settings;handleAuditExport;src/admin/SettingsPage.jsx:1308;Export;Denetim log export olusumu, bos sonuc seti, indirme hatasi;Yuksek
+Settings;handleRequestDelete;src/admin/SettingsPage.jsx:1341;Danger Zone;Silme modalinin dogru hedefle acilmasi, gecersiz hedef reddi;Yuksek
+Settings;handleConfirmDelete;src/admin/SettingsPage.jsx:1366;Danger Zone;Parola dogrulamali silme, yanlis parola mesaji, silme sonrasi state temizlik;Kritik
+Settings;handleDbExportStart;src/admin/SettingsPage.jsx:1388;DB Backup;Export akisi baslatma, modal state kontrolu;Orta
+Settings;handleDbImportStart;src/admin/SettingsPage.jsx:1400;DB Backup;Import akisi baslatma, gerekli onay adimlari;Orta
+Settings;handleDbImportFile;src/admin/SettingsPage.jsx:1422;DB Backup;Dosya tipi/boyut validasyonu, okunabilirlik kontrolu, parse hatasi;Kritik
+Settings;handleDbImportFileSelect;src/admin/SettingsPage.jsx:1459;DB Backup;Input file event ile dosya secimi, bos secim davranisi;Orta
+Settings;handleDbExportConfirm;src/admin/SettingsPage.jsx:1476;DB Backup;Export onayi ile RPC cagrisi, basarisiz export hata yuzeyi;Yuksek
+Settings;handleDbImportConfirm;src/admin/SettingsPage.jsx:1504;DB Backup;Import onayi, dry-run/gercek import akisi, hata durumunda rollback beklentisi;Kritik
+Settings;handleExportProjects;src/admin/SettingsPage.jsx:1532;Export;Proje excel/csv exportu, bos veri setinde davranis, dosya adlandirma;Yuksek
+Settings;handleExportJurors;src/admin/SettingsPage.jsx:1564;Export;Juri export alan mapleme, bos veri, indirme tetigi;Yuksek
+Settings;handleExportScores;src/admin/SettingsPage.jsx:1607;Export;Skor exportu hesaplanan alanlar, aktif donem filtreleme, hata yakalama;Kritik

@@ -81,6 +81,65 @@ export function formatTs(ts) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// ── Search tokens for timestamp/date queries ──────────────────
+// Produces multiple normalized forms so search can match:
+// - raw value (ISO / stored)
+// - DD.MM.YYYY HH:mm (display)
+// - DD/MM/YYYY HH:mm and DD-MM-YYYY HH:mm
+// - date-only and time-only fragments
+export function buildTimestampSearchText(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const formatted = formatTs(raw);
+  const safeFormatted = formatted && formatted !== "—" ? formatted : "";
+  const [datePart = "", timePart = ""] = safeFormatted ? safeFormatted.split(" ") : [];
+  const tokens = [
+    raw,
+    raw.includes("T") ? raw.replace("T", " ") : "",
+    safeFormatted,
+    safeFormatted ? safeFormatted.replace(/\./g, "/") : "",
+    safeFormatted ? safeFormatted.replace(/\./g, "-") : "",
+    datePart,
+    datePart ? datePart.replace(/\./g, "/") : "",
+    datePart ? datePart.replace(/\./g, "-") : "",
+    timePart,
+  ];
+  return Array.from(new Set(tokens.filter(Boolean))).join(" ");
+}
+
+// ── Search tokens for semester/chip queries ───────────────────
+// Produces variants so search can match:
+// - "2025 Fall" / "Fall 2025"
+// - "2025-Fall" / "2025/Fall"
+// - "2025Fall"
+export function buildSemesterSearchText(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const compact = raw.replace(/\s+/g, " ").trim();
+  const words = compact
+    .replace(/[./_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const year = words.find((w) => /^\d{4}$/.test(w)) || "";
+  const nonYearWords = words.filter((w) => w !== year);
+  const nonYear = nonYearWords.join(" ");
+  const tokens = [
+    raw,
+    compact,
+    compact.replace(/\s+/g, "-"),
+    compact.replace(/\s+/g, "/"),
+    compact.replace(/\s+/g, ""),
+    words.join(" "),
+    words.join("-"),
+    words.join("/"),
+    year && nonYear ? `${year} ${nonYear}` : "",
+    year && nonYear ? `${nonYear} ${year}` : "",
+    year && nonYearWords.length ? `${year}${nonYearWords.join("")}` : "",
+    year && nonYearWords.length ? `${nonYearWords.join("")}${year}` : "",
+  ];
+  return Array.from(new Set(tokens.filter(Boolean))).join(" ");
+}
+
 // ── Dashboard timestamp formatting ───────────────────────────
 export function formatDashboardTs(date) {
   if (!date) return "—";

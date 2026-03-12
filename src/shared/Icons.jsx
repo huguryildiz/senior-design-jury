@@ -147,6 +147,17 @@ export function UserCheckIcon() {
   );
 }
 
+export function UserPenIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11.5 15H7a4 4 0 0 0-4 4v2" />
+      <path d="M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
+      <circle cx="10" cy="7" r="4" />
+    </svg>
+  );
+}
+
 export function LoaderIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -176,6 +187,26 @@ export function CircleDotDashedIcon() {
       <path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8" />
       <path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69" />
       <circle cx="12" cy="12" r="1" />
+    </svg>
+  );
+}
+
+export function CircleDotIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="1" />
+    </svg>
+  );
+}
+
+export function BanIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M4.929 4.929 19.07 19.071" />
     </svg>
   );
 }
@@ -368,6 +399,26 @@ export function UserCogIcon() {
       <path d="m20.772 16.148.924.383" />
       <circle cx="18" cy="15" r="3" />
       <circle cx="9" cy="7" r="4" />
+    </svg>
+  );
+}
+
+export function UserRoundCogIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="lucide lucide-user-round-cog-icon lucide-user-round-cog">
+      <path d="m14.305 19.53.923-.382" />
+      <path d="m15.228 16.852-.923-.383" />
+      <path d="m16.852 15.228-.383-.923" />
+      <path d="m16.852 20.772-.383.924" />
+      <path d="m19.148 15.228.383-.923" />
+      <path d="m19.53 21.696-.382-.924" />
+      <path d="M2 21a8 8 0 0 1 10.434-7.62" />
+      <path d="m20.772 16.852.924-.383" />
+      <path d="m20.772 19.148.924.383" />
+      <circle cx="10" cy="8" r="5" />
+      <circle cx="18" cy="18" r="3" />
     </svg>
   );
 }
@@ -800,6 +851,16 @@ export function XIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 6l12 12M18 6l-12 12"/>
+    </svg>
+  );
+}
+
+export function CloseXIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }

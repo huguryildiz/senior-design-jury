@@ -410,6 +410,16 @@ export async function adminSetJurorEditMode(payload, adminPassword) {
   return data === true;
 }
 
+export async function adminForceCloseJurorEditMode(payload, adminPassword) {
+  const { data, error } = await supabase.rpc("rpc_admin_force_close_juror_edit_mode", {
+    p_semester_id: payload.semesterId,
+    p_juror_id: payload.jurorId,
+    p_admin_password: adminPassword,
+  });
+  if (error) throw error;
+  return data === true;
+}
+
 export async function adminGetSettings(adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_get_settings", {
     p_admin_password: adminPassword,
@@ -452,6 +462,16 @@ export async function adminSetSetting(key, value, adminPassword) {
   });
   if (error) throw error;
   return data;
+}
+
+export async function adminSetSemesterEvalLock(semesterId, enabled, adminPassword) {
+  const { data, error } = await supabase.rpc("rpc_admin_set_semester_eval_lock", {
+    p_semester_id: semesterId,
+    p_enabled: !!enabled,
+    p_admin_password: adminPassword,
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 export async function getJurorEditState(semesterId, jurorId) {

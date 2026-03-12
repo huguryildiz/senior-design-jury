@@ -147,16 +147,17 @@ export default function DeleteConfirmDialog({
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               autoComplete="off"
+              placeholder="Enter delete password"
             />
             {error && <div className="manage-field-error">{error}</div>}
           </div>
         </div>
         <div className="delete-dialog__actions">
-          <button className="manage-btn" type="button" onClick={handleClose} disabled={loading}>
+          <button className="manage-btn manage-btn--delete-cancel" type="button" onClick={handleClose} disabled={loading}>
             Cancel
           </button>
           <button
-            className="manage-btn danger"
+            className="manage-btn manage-btn--delete-confirm"
             type="button"
             onClick={handleConfirm}
             disabled={!password.trim() || loading}

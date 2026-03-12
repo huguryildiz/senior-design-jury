@@ -34,13 +34,6 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 
 -- ------------------------------------------------------------
--- 0) Settings
--- ------------------------------------------------------------
-INSERT INTO public.settings (key, value)
-VALUES ('eval_lock_active_semester', 'false')
-ON CONFLICT (key) DO NOTHING;
-
--- ------------------------------------------------------------
 -- 1) Semesters — 6 total, poster_date only, 2025 Fall active
 -- ------------------------------------------------------------
 INSERT INTO public.semesters (name, is_active, poster_date)

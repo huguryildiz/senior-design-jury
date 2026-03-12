@@ -38,7 +38,7 @@ import {
   TableIcon,
   Grid3x3Icon,
   TriangleAlertIcon,
-  ShieldUserIcon,
+  UserRoundCogIcon,
 } from "./shared/Icons";
 import OverviewTab from "./admin/OverviewTab";
 import ScoresTab from "./admin/ScoresTab";
@@ -984,7 +984,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
             </button>
             <div className="header-title">
               <div className="admin-title-row">
-                <span className="admin-title-icon" aria-label="Admin Panel"><ShieldUserIcon /></span>
+                <span className="admin-title-icon" aria-label="Admin Panel"><UserRoundCogIcon /></span>
                 {semesterList.length > 0 && (
                   <>
                     <span className="title-separator" aria-hidden="true">·</span>

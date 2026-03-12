@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2Icon, ChevronDownIcon, PencilIcon, SearchIcon, CirclePlusIcon, CalendarPlusIcon } from "../shared/Icons";
 import LastActivity from "./LastActivity";
 import DangerIconButton from "../components/admin/DangerIconButton";
+import { buildTimestampSearchText } from "./utils";
 import {
   APP_DATE_MIN_YEAR,
   APP_DATE_MAX_YEAR,
@@ -110,13 +111,15 @@ export default function ManageSemesterPanel({
         const rawDate = s?.poster_date || "";
         const prettyDate = formatDate(rawDate);
         const updatedRaw = s?.updated_at || s?.updatedAt || "";
-        const updatedPretty = formatDate(updatedRaw);
+        const updatedSearch = buildTimestampSearchText(updatedRaw);
+        const prettyDateAlt = prettyDate
+          ? `${prettyDate} ${prettyDate.replace(/\./g, "/")} ${prettyDate.replace(/\./g, "-")}`
+          : "";
         const haystack = [
           s?.name || "",
           rawDate,
-          prettyDate,
-          updatedRaw,
-          updatedPretty,
+          prettyDateAlt,
+          updatedSearch,
         ]
           .join(" ")
           .toLowerCase();

@@ -31,6 +31,7 @@ export default function JuryForm({ onBack }) {
     scores, comments, touched,
     groupSynced, editMode,
     editAllowed,
+    editLockActive,
     progressPct, allComplete,
     doneScores,
     loadingState,
@@ -177,6 +178,7 @@ export default function JuryForm({ onBack }) {
         touched={touched}
         groupSynced={groupSynced}
         editMode={editMode}
+        lockActive={editLockActive}
         progressPct={progressPct}
         allComplete={allComplete}
         saveStatus={saveStatus}

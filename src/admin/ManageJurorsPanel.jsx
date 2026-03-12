@@ -19,7 +19,7 @@ import {
 } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
-import { formatTs } from "./utils";
+import { buildSemesterSearchText, buildTimestampSearchText } from "./utils";
 
 function parseCsv(text) {
   const rows = [];
@@ -105,6 +105,7 @@ export default function ManageJurorsPanel({
   const [editSaving, setEditSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [importSuccess, setImportSuccess] = useState("");
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -151,20 +152,21 @@ export default function ManageJurorsPanel({
             : [];
         const semestersText = scoredSemesters.join(" ");
         const semestersLabel = scoredSemesters.join(" · ");
+        const semestersSearch = scoredSemesters.map((s) => buildSemesterSearchText(s)).join(" ");
         const lastActivity =
           j.lastActivityAt
           || j.last_activity_at
           || j.lastSeenAt
           || j.last_seen_at
           || "";
-        const lastActivityLabel = lastActivity ? formatTs(lastActivity) : "";
+        const lastActivitySearch = buildTimestampSearchText(lastActivity);
         const haystack = [
           name,
           inst,
           semestersText,
           semestersLabel,
-          lastActivity,
-          lastActivityLabel,
+          semestersSearch,
+          lastActivitySearch,
         ]
           .join(" ")
           .toLowerCase();
@@ -216,10 +218,12 @@ export default function ManageJurorsPanel({
 
   const handleFile = async (file) => {
     if (!file) return;
+    setImportSuccess("");
+    setImportError("");
+    setImportWarning("");
     const fileName = String(file.name || "").toLowerCase();
     if (!fileName.endsWith(".csv")) {
       setImportError("Only .csv files are supported.");
-      setImportWarning("");
       return;
     }
     const text = await file.text();
@@ -230,7 +234,6 @@ export default function ManageJurorsPanel({
     const idxInst = header.indexOf("juror_inst");
     if (idxName < 0 || idxInst < 0) {
       setImportError("Header row is required and must include: juror_name, juror_inst.");
-      setImportWarning("");
       return;
     }
     const invalidNameRows = [];
@@ -278,12 +281,10 @@ export default function ManageJurorsPanel({
         parts.push(`Duplicate juror rows at: ${duplicateRows.slice(0, 6).join(", ")}.`);
       }
       setImportError(parts.join(" "));
-      setImportWarning("");
       return;
     }
     if (!data.length) {
       setImportError("No valid rows found in CSV.");
-      setImportWarning("");
       return;
     }
 
@@ -293,26 +294,36 @@ export default function ManageJurorsPanel({
     const skippedExisting = data.filter((r) => existingKeys.has(r._key));
     const toImport = data.filter((r) => !existingKeys.has(r._key));
 
-    const localWarning = skippedExisting.length
-      ? (() => {
-          const preview = skippedExisting
-            .slice(0, 4)
-            .map((r) => `${r.juror_name} / ${r.juror_inst}`)
-            .join("; ");
-          const more = skippedExisting.length > 4 ? ` (+${skippedExisting.length - 4} more)` : "";
-          return `Skipped existing jurors: ${preview}${more}.`;
-        })()
-      : "";
+    const successParts = [];
+    if (toImport.length) {
+      const preview = toImport
+        .slice(0, 4)
+        .map((r) => `${r.juror_name} / ${r.juror_inst}`)
+        .join("; ");
+      const more = toImport.length > 4 ? ` (+${toImport.length - 4} more)` : "";
+      successParts.push(`• Added jurors: ${preview}${more}.`);
+    }
+    setImportSuccess(successParts.join("\n"));
+
+    const warningParts = [];
+    if (skippedExisting.length) {
+      const preview = skippedExisting
+        .slice(0, 4)
+        .map((r) => `${r.juror_name} / ${r.juror_inst}`)
+        .join("; ");
+      const more = skippedExisting.length > 4 ? ` (+${skippedExisting.length - 4} more)` : "";
+      warningParts.push(`• Skipped existing jurors: ${preview}${more}.`);
+    }
+    const localWarning = warningParts.join("\n");
     setImportWarning(localWarning);
 
     if (!toImport.length) {
-      setImportError("");
       return;
     }
 
-    setImportError("");
     const res = await onImport?.(toImport.map(({ juror_name, juror_inst }) => ({ juror_name, juror_inst })));
     if (res?.formError) {
+      setImportSuccess("");
       setImportError(res.formError);
       return;
     }
@@ -321,8 +332,8 @@ export default function ManageJurorsPanel({
     }
     const serverSkipped = Number(res?.skipped || 0);
     if (serverSkipped > 0) {
-      const extra = `Skipped ${serverSkipped} existing jurors during import.`;
-      setImportWarning(localWarning ? `${localWarning} ${extra}` : extra);
+      const extra = `• Skipped ${serverSkipped} existing jurors during import.`;
+      setImportWarning(localWarning ? `${localWarning}\n${extra}` : extra);
     }
     if (!skippedExisting.length && serverSkipped === 0) setShowImport(false);
   };
@@ -358,6 +369,7 @@ export default function ManageJurorsPanel({
               onClick={() => {
                 setImportError("");
                 setImportWarning("");
+                setImportSuccess("");
                 setAddError("");
                 setShowImport(true);
               }}
@@ -468,6 +480,9 @@ export default function ManageJurorsPanel({
                             </button>
                             {isSemesterMenuOpen && (
                               <div className="manage-semesters-dropdown" role="dialog" aria-label="Scored semesters">
+                                <div className="manage-semesters-dropdown-title">
+                                  Semesters with completed evaluations
+                                </div>
                                 {scoredSemesters.map((s, idx) => (
                                   <span key={`${jurorId}-all-sem-${idx}`} className="manage-item-semester-chip">
                                     {s}
@@ -547,27 +562,18 @@ export default function ManageJurorsPanel({
 
           {showAdd && (
             <div className="manage-modal">
-              <div className="manage-modal-card manage-modal-card--create">
+              <div className="manage-modal-card">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <UserPlusIcon />
                   </span>
                   <div className="edit-dialog__title">Create Juror</div>
                 </div>
-                <div className="manage-modal-intro">
-                  <p className="manage-modal-intro-lead">
-                    Add a juror with name and institution details.
-                  </p>
-                  <ul className="manage-modal-intro-list">
-                    <li>Both fields are required.</li>
-                    <li>Duplicate name + institution pairs are not allowed.</li>
-                  </ul>
-                </div>
                 <div className="manage-modal-body">
                   <div className="manage-field">
                     <label className="manage-label">Full name</label>
                     <input
-                      className={`manage-input manage-input--create${addError ? " is-danger" : ""}`}
+                      className={`manage-input${addError ? " is-danger" : ""}`}
                       value={form.juror_name}
                       onChange={(e) => {
                         setForm((f) => ({ ...f, juror_name: e.target.value }));
@@ -579,7 +585,7 @@ export default function ManageJurorsPanel({
                   <div className="manage-field">
                     <label className="manage-label">Institution / Department</label>
                     <input
-                      className={`manage-input manage-input--create${addError ? " is-danger" : ""}`}
+                      className={`manage-input${addError ? " is-danger" : ""}`}
                       value={form.juror_inst}
                       onChange={(e) => {
                         setForm((f) => ({ ...f, juror_inst: e.target.value }));
@@ -686,7 +692,7 @@ export default function ManageJurorsPanel({
 
           {showImport && (
             <div className="manage-modal">
-              <div className="manage-modal-card">
+              <div className="manage-modal-card manage-modal-card--import-juror-csv">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <FileUpIcon />
@@ -725,13 +731,20 @@ export default function ManageJurorsPanel({
                   >
                     <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
-                    <button className="manage-btn ghost" type="button">
-                      Select File
+                    <button className="manage-btn manage-btn--import-juror-select" type="button">
+                      Select CSV File
                     </button>
+                    <div className="manage-dropzone-sub">Only .csv files supported</div>
+                    <div className="manage-dropzone-sub manage-dropzone-sub--muted">Max file size: 2MB</div>
                   </div>
                   {importError && (
                     <div className="manage-import-feedback manage-import-feedback--error" role="alert">
                       {renderImportMessage(importError)}
+                    </div>
+                  )}
+                  {importSuccess && !importError && (
+                    <div className="manage-import-feedback manage-import-feedback--success" role="status">
+                      {renderImportMessage(importSuccess)}
                     </div>
                   )}
                   {importWarning && !importError && (
@@ -739,7 +752,7 @@ export default function ManageJurorsPanel({
                       {renderImportMessage(importWarning)}
                     </div>
                   )}
-                  <details className="manage-collapsible">
+                  <details className="manage-collapsible" open>
                     <summary className="manage-collapsible-summary">CSV example</summary>
                     <div className="manage-collapsible-content">
                       <div className="manage-code">juror_name,juror_inst</div>
@@ -748,20 +761,20 @@ export default function ManageJurorsPanel({
                       <div className="manage-code">Kerem Yildiz,TED University / Electrical and Electronics Engineering</div>
                     </div>
                   </details>
-                  <details className="manage-collapsible">
+                  <details className="manage-collapsible" open>
                     <summary className="manage-collapsible-summary">Rules</summary>
                     <div className="manage-collapsible-content">
                       <ul className="manage-hint-list manage-rules-list">
                         <li>Header row is required with exact field names: <span className="manage-code-inline">juror_name</span>, <span className="manage-code-inline">juror_inst</span>.</li>
                         <li><span className="manage-code-inline">juror_name</span> and <span className="manage-code-inline">juror_inst</span> cannot be empty.</li>
                         <li>One row must represent one juror.</li>
-                        <li>Existing jurors with the same name and Institution / Department are skipped during import.</li>
+                        <li>Existing jurors with the same name and institution / department are skipped during import.</li>
                       </ul>
                     </div>
                   </details>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn" type="button" onClick={() => setShowImport(false)}>
+                  <button className="manage-btn manage-btn--import-juror-cancel" type="button" onClick={() => setShowImport(false)}>
                     Cancel
                   </button>
                 </div>
