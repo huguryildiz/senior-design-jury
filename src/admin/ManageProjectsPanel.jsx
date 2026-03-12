@@ -150,7 +150,7 @@ export default function ManageProjectsPanel({
       : idx + 1;
     const lastActivity = p.updated_at || p.updatedAt || null;
     return (
-      <div key={p.id || `${p.group_no}-${p.project_title}`} className="manage-item">
+      <div key={p.id || `${p.group_no}-${p.project_title}`} className="manage-item manage-item--project">
         <div>
           <div className="manage-item-title">Group {groupLabel}</div>
           <div className="manage-item-sub manage-meta-line">
@@ -169,39 +169,43 @@ export default function ManageProjectsPanel({
                 : "—"}
             </span>
           </div>
-          <div className="manage-item-sub manage-meta-line">
-            <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
-              <CalendarRangeIcon />
-            </span>
-            <span className="manage-item-semester-text">{semesterName || "—"}</span>
+          <div className="manage-item-footer manage-item-footer--project">
+            <div className="manage-item-meta-block">
+              <div className="manage-item-sub manage-meta-line">
+                <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
+                  <CalendarRangeIcon />
+                </span>
+                <span className="manage-item-semester-text">{semesterName || "—"}</span>
+              </div>
+              <div className="manage-item-sub manage-meta-line">
+                <LastActivity value={lastActivity} />
+              </div>
+            </div>
+            <div className="manage-item-actions manage-item-actions--project">
+              <button
+                className="manage-icon-btn"
+                type="button"
+                title="Edit group"
+                aria-label={`Edit Group ${groupLabel}`}
+                onClick={() => {
+                  setEditForm({
+                    group_no: p.group_no,
+                    project_title: p.project_title || "",
+                    group_students: p.group_students || "",
+                  });
+                  setShowEdit(true);
+                }}
+              >
+                <PencilIcon />
+              </button>
+              <DangerIconButton
+                ariaLabel={`Delete Group ${groupLabel}`}
+                title="Delete group"
+                showLabel={false}
+                onClick={() => onDeleteProject?.(p, groupLabel)}
+              />
+            </div>
           </div>
-          <div className="manage-item-sub manage-meta-line">
-            <LastActivity value={lastActivity} />
-          </div>
-        </div>
-        <div className="manage-item-actions">
-          <button
-            className="manage-icon-btn"
-            type="button"
-            title="Edit group"
-            aria-label={`Edit Group ${groupLabel}`}
-            onClick={() => {
-              setEditForm({
-                group_no: p.group_no,
-                project_title: p.project_title || "",
-                group_students: p.group_students || "",
-              });
-              setShowEdit(true);
-            }}
-          >
-            <PencilIcon />
-          </button>
-          <DangerIconButton
-            ariaLabel={`Delete Group ${groupLabel}`}
-            title="Delete group"
-            showLabel={false}
-            onClick={() => onDeleteProject?.(p, groupLabel)}
-          />
         </div>
       </div>
     );
@@ -364,7 +368,6 @@ export default function ManageProjectsPanel({
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
           <div className="manage-card-desc">Manage groups, project titles, and student lists for the active semester.</div>
-          <div className="manage-hint manage-hint-inline">Active semester: {activeSemesterName || "—"}</div>
           <div className="manage-card-actions">
             <button
               className="manage-btn"
@@ -452,45 +455,60 @@ export default function ManageProjectsPanel({
 
           {showAdd && (
             <div className="manage-modal">
-              <div className="manage-modal-card">
+              <div className="manage-modal-card manage-modal-card--create">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <FolderPlusIcon />
                   </span>
                   <div className="edit-dialog__title">Create Group</div>
                 </div>
+                <div className="manage-modal-intro">
+                  <p className="manage-modal-intro-lead">
+                    Add a new project group to the active semester.
+                  </p>
+                  <ul className="manage-modal-intro-list">
+                    <li>Group number must be a unique positive integer.</li>
+                    <li>Separate students with <span className="manage-code-inline">;</span>.</li>
+                  </ul>
+                </div>
                 <div className="manage-modal-body">
-                  <label className="manage-label">Group number</label>
-                  <input
-                    className={`manage-input${addError ? " is-danger" : ""}`}
-                    value={form.group_no}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, group_no: e.target.value }));
-                      if (addError) setAddError("");
-                    }}
-                    placeholder="1"
-                  />
+                  <div className="manage-field">
+                    <label className="manage-label">Group number</label>
+                    <input
+                      className={`manage-input manage-input--create${addError ? " is-danger" : ""}`}
+                      value={form.group_no}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, group_no: e.target.value }));
+                        if (addError) setAddError("");
+                      }}
+                      placeholder="1"
+                    />
+                  </div>
                   {addError && <div className="manage-field-error">{addError}</div>}
-                  <label className="manage-label">Group title</label>
-                  <input
-                    className="manage-input"
-                    value={form.project_title}
-                    onChange={(e) => setForm((f) => ({ ...f, project_title: e.target.value }))}
-                    placeholder="Smart Traffic AI"
-                  />
-                  <label className="manage-label">
-                    Students{" "}
-                    <span className="manage-label-note">
-                      (separate with <span className="manage-code-inline">;</span> e.g. {STUDENTS_EXAMPLE})
-                    </span>
-                  </label>
-                  <textarea
-                    className="manage-input manage-textarea"
-                    value={form.group_students}
-                    onChange={(e) => setForm((f) => ({ ...f, group_students: e.target.value }))}
-                    placeholder={STUDENTS_EXAMPLE}
-                    rows={3}
-                  />
+                  <div className="manage-field">
+                    <label className="manage-label">Group title</label>
+                    <input
+                      className="manage-input manage-input--create"
+                      value={form.project_title}
+                      onChange={(e) => setForm((f) => ({ ...f, project_title: e.target.value }))}
+                      placeholder="Smart Traffic AI"
+                    />
+                  </div>
+                  <div className="manage-field">
+                    <label className="manage-label">
+                      Students{" "}
+                      <span className="manage-label-note">
+                        (separate with <span className="manage-code-inline">;</span> e.g. {STUDENTS_EXAMPLE})
+                      </span>
+                    </label>
+                    <textarea
+                      className="manage-input manage-input--create manage-textarea"
+                      value={form.group_students}
+                      onChange={(e) => setForm((f) => ({ ...f, group_students: e.target.value }))}
+                      placeholder={STUDENTS_EXAMPLE}
+                      rows={3}
+                    />
+                  </div>
                 </div>
                 <div className="manage-modal-actions">
                   <button className="manage-btn" type="button" onClick={() => setShowAdd(false)}>
@@ -514,7 +532,7 @@ export default function ManageProjectsPanel({
                           .filter((n) => Number.isFinite(n) && n > 0)
                       );
                       if (Number.isFinite(groupNo) && existingGroupNos.has(groupNo)) {
-                        setAddError(`Group ${groupNo} already exists. Use Edit to update.`);
+                        setAddError(`Group ${groupNo} already exists. Use 'Edit' to update.`);
                         return;
                       }
                       const res = await onAddGroup({
@@ -641,9 +659,6 @@ export default function ManageProjectsPanel({
                   >
                     <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
-                    <div className="manage-dropzone-sub">
-                      Only ".csv" files. Use semicolon to separate students.
-                    </div>
                     <button className="manage-btn ghost" type="button">
                       Select File
                     </button>

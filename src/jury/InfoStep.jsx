@@ -113,7 +113,7 @@ export default function InfoStep({
 
         <div className="premium-info-strip">
           <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>Your name and department/institution cannot be changed once the evaluation starts.</span>
+          <span>Your name and Institution / Department cannot be changed once the evaluation starts.</span>
         </div>
 
         {error && (
@@ -143,7 +143,7 @@ export default function InfoStep({
           <div className="field">
             <label htmlFor="jury-dept">
               <span className="label-icon" aria-hidden="true"><LandmarkIcon /></span>
-              Department or Institution <span className="req">*</span>
+              Institution / Department <span className="req">*</span>
             </label>
             <input
               id="jury-dept"

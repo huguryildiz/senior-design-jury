@@ -9,6 +9,7 @@ import {
   listSemesters,
   adminListJurors,
   adminGetScores,
+  adminProjectSummary,
   adminSetActiveSemester,
   adminCreateSemester,
   adminUpdateSemester,
@@ -29,7 +30,7 @@ import {
   adminFullImport,
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
-import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, FileUpIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon, TriangleAlertIcon, CircleXLucideIcon } from "../shared/Icons";
+import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, FileUpIcon, KeyRoundIcon, LandmarkIcon, UserCheckIcon, TriangleAlertIcon, CircleXLucideIcon, InfoIcon, SearchIcon } from "../shared/Icons";
 import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
@@ -937,7 +938,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       if (msg.includes("project_group_exists")
         || msgLower.includes("projects_semester_group_no_key")
         || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, fieldErrors: { group_no: `Group ${row.group_no} already exists. Use Edit to update.` } };
+        return { ok: false, fieldErrors: { group_no: `Group ${row.group_no} already exists. Use 'Edit' to update.` } };
       } else {
         setSystemErrorSafe(msg || "Could not save group. Try again or check admin password.");
         return { ok: false };
@@ -1003,7 +1004,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       if (msg.includes("juror_exists")
         || msgLower.includes("jurors_name_inst_norm_uniq")
         || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, fieldErrors: { duplicate: "A juror with the same name and institution already exists." } };
+        return { ok: false, fieldErrors: { duplicate: "A juror with the same name and institution / department already exists." } };
       } else {
         setSystemErrorSafe(msg || "Could not add juror. Try again or check admin password.");
         return { ok: false };
@@ -1447,70 +1448,107 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
   };
 
   const handleExportProjects = async () => {
-    if (!projects.length) return;
+    if (!adminPass) return;
+    const sems = (semesterList && semesterList.length ? semesterList : await listSemesters()) || [];
+    if (!sems.length) return;
+    const orderedSemesters = [...sems].sort((a, b) => {
+      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
+      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
+      return bTs - aTs;
+    });
+    const projectsBySemester = await Promise.all(
+      orderedSemesters.map(async (sem) => ({
+        semesterName: sem?.name || "",
+        rows: await adminListProjects(sem.id, adminPass),
+      }))
+    );
     const XLSX = await import("xlsx-js-style");
     const headers = ["Semester", "Group No", "Project Title", "Students"];
-    const semesterLabel = activeSemester?.name || "";
-    const data = projects.map((p) => [semesterLabel, p.group_no, p.project_title, p.group_students || ""]);
+    const data = projectsBySemester.flatMap(({ semesterName, rows }) =>
+      (rows || []).map((p) => [
+        semesterName,
+        p?.group_no ?? "",
+        p?.project_title ?? "",
+        p?.group_students || "",
+      ])
+    );
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Groups");
-    XLSX.writeFile(wb, buildExportFilename("groups", activeSemester?.name));
+    XLSX.writeFile(wb, buildExportFilename("groups", "all-semesters"));
   };
 
   const handleExportJurors = async () => {
-    if (!jurors.length) return;
-    const XLSX = await import("xlsx-js-style");
-    const headers = ["semester", "juror_name", "juror_inst"];
-    const semesterLabel = activeSemester?.name || "";
-    const assignedJurors = jurors.filter((j) => {
+    if (!adminPass) return;
+    const sems = (semesterList && semesterList.length ? semesterList : await listSemesters()) || [];
+    if (!sems.length) return;
+    const orderedSemesters = [...sems].sort((a, b) => {
+      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
+      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
+      return bTs - aTs;
+    });
+    const jurorsBySemester = await Promise.all(
+      orderedSemesters.map(async (sem) => ({
+        semesterName: sem?.name || "",
+        rows: await adminListJurors(sem.id, adminPass),
+      }))
+    );
+    const isAssignedJuror = (j) => {
       if (j?.isAssigned === true) return true;
       if (j?.is_assigned === true) return true;
       if (typeof j?.isAssigned === "string") return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
       if (typeof j?.is_assigned === "string") return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
       return false;
+    };
+    const XLSX = await import("xlsx-js-style");
+    const headers = ["Semester", "Juror Name", "Institution / Department"];
+    const data = jurorsBySemester.flatMap(({ semesterName, rows }) => {
+      const hasAssignedFlag = (rows || []).some((j) =>
+        j?.isAssigned !== undefined && j?.isAssigned !== null
+        || j?.is_assigned !== undefined && j?.is_assigned !== null
+      );
+      const exportRows = hasAssignedFlag ? (rows || []).filter(isAssignedJuror) : (rows || []);
+      return exportRows.map((j) => [
+        semesterName,
+        j?.juryName || j?.juror_name || j?.jurorName || "",
+        j?.juryDept || j?.juror_inst || j?.jurorInst || "",
+      ]);
     });
-    const data = assignedJurors.map((j) => [
-      semesterLabel,
-      j.juryName || j.juror_name || j.jurorName,
-      j.juryDept || j.juror_inst || j.jurorInst,
-    ]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Jurors");
-    XLSX.writeFile(wb, buildExportFilename("jurors", activeSemester?.name));
+    XLSX.writeFile(wb, buildExportFilename("jurors", "all-semesters"));
   };
 
   const handleExportScores = async () => {
-    if (!activeSemesterId || !adminPass) return;
-    const [rows, activeJurors] = await Promise.all([
-      adminGetScores(activeSemesterId, adminPass),
-      adminListJurors(activeSemesterId, adminPass),
-    ]);
-    const hasAssignedFlag = (activeJurors || []).some((j) =>
-      typeof j?.isAssigned === "boolean" || typeof j?.is_assigned === "boolean"
+    if (!adminPass) return;
+    const sems = (semesterList && semesterList.length ? semesterList : await listSemesters()) || [];
+    if (!sems.length) return;
+    const orderedSemesters = [...sems].sort((a, b) => {
+      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
+      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
+      return bTs - aTs;
+    });
+    const results = await Promise.all(
+      orderedSemesters.map(async (sem) => {
+        const [rows, summary] = await Promise.all([
+          adminGetScores(sem.id, adminPass),
+          adminProjectSummary(sem.id, adminPass).catch(() => []),
+        ]);
+        const summaryMap = new Map((summary || []).map((p) => [p.id, p]));
+        const mappedRows = (rows || []).map((r) => ({
+          ...r,
+          semester: sem?.name || "",
+          students: summaryMap.get(r.projectId)?.students ?? "",
+        }));
+        return { rows: mappedRows, summary: summary || [] };
+      })
     );
-    const assignedJurors = hasAssignedFlag
-      ? (activeJurors || []).filter((j) => {
-          if (j?.isAssigned === true) return true;
-          if (j?.is_assigned === true) return true;
-          if (typeof j?.isAssigned === "string") return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
-          if (typeof j?.is_assigned === "string") return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
-          return false;
-        })
-      : (activeJurors || []);
-    await exportXLSX(rows || [], {
-      semesterName: activeSemester?.name || "",
-      summaryData: (projects || []).map((p) => ({
-        id: p.id,
-        groupNo: p.group_no ?? p.groupNo ?? null,
-        name: p.project_title ?? p.name ?? "",
-        students: p.group_students ?? p.students ?? "",
-      })),
-      jurors: assignedJurors,
-      includeEmptyRows: true,
+    await exportXLSX(results.flatMap((x) => x.rows), {
+      semesterName: "all-semesters",
+      summaryData: results.flatMap((x) => x.summary),
     });
   };
 
@@ -1553,10 +1591,17 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                 <strong className="manage-delete-focus">
                   {" "}
                   {pinResetTarget.juror_name || pinResetTarget.juryName || "this juror"}
-                </strong>.
+                </strong>
+                {(pinResetTarget.juror_inst || pinResetTarget.juryDept) && (
+                  <em className="manage-delete-focus-inst">
+                    {" "}
+                    ({pinResetTarget.juror_inst || pinResetTarget.juryDept})
+                  </em>
+                )}
+                .
               </div>
-              <div className="manage-delete-warning">
-                <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+              <div className="manage-delete-warning manage-delete-warning--info">
+                <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
                 <span className="manage-delete-warning-text">Share the new PIN securely. The old PIN will stop working.</span>
               </div>
             </div>
@@ -1640,7 +1685,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
       )}
       <DeleteConfirmDialog
         open={!!deleteTarget}
+        targetType={deleteTarget?.type}
         targetLabel={deleteTarget?.label}
+        targetName={deleteTarget?.name}
+        targetInst={deleteTarget?.inst}
         counts={deleteCounts}
         onOpenChange={(open) => {
           if (!open) { setDeleteTarget(null); setDeleteCounts(null); }
@@ -1774,6 +1822,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   type: "juror",
                   id: j?.jurorId || j?.juror_id,
                   label: `Juror ${j?.juryName || j?.juror_name || ""}`.trim(),
+                  name: j?.juryName || j?.juror_name || "",
+                  inst: j?.juryDept || j?.juror_inst || "",
                 })
               }
             />
@@ -1859,14 +1909,17 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                       </div>
                       <div className="manage-field">
                         <label className="manage-label" htmlFor="auditSearch">Search</label>
-                        <input
-                          id="auditSearch"
-                          type="text"
-                          className="manage-input"
-                          placeholder="Search message, action, entity, or metadata"
-                          value={auditSearch}
-                          onChange={(e) => setAuditSearch(e.target.value)}
-                        />
+                        <div className="manage-search">
+                          <span className="manage-search-icon" aria-hidden="true"><SearchIcon /></span>
+                          <input
+                            id="auditSearch"
+                            type="text"
+                            className="manage-input manage-search-input"
+                            placeholder="Search message, action, entity, or metadata"
+                            value={auditSearch}
+                            onChange={(e) => setAuditSearch(e.target.value)}
+                          />
+                        </div>
                       </div>
                       <div className="manage-audit-export">
                         <button
@@ -2223,8 +2276,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange }) {
                   ? "Jurors will no longer be able to edit or submit scores for the active semester."
                   : "Jurors will be able to edit and re-submit scores for the active semester."}
               </div>
-              <div className="manage-delete-warning">
-                <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+              <div className="manage-delete-warning manage-delete-warning--info">
+                <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
                 <span className="manage-delete-warning-text">
                   This affects all jurors in {activeSemesterLabel}.
                 </span>

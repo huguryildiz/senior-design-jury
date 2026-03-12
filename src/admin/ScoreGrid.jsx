@@ -7,7 +7,7 @@
 // - Scored-only averages (fully scored cells only)
 
 import { useState, useRef, useCallback, memo, Component, useEffect } from "react";
-import { FilterPopoverPortal } from "./components";
+import { FilterPanelActions, FilterPopoverPortal, useResponsiveFilterPresentation } from "./components";
 import {
   getCellState,
   getPartialTotal,
@@ -425,6 +425,8 @@ const AverageRow = memo(function AverageRow({ groups, averages, onShowTip, onHid
 //   jurors  – { key, name, dept }[]  (from AdminPanel uniqueJurors)
 //   groups  – { id, label }[]
 function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
+  const filterPresentation = useResponsiveFilterPresentation();
+  const useSheetFilters = filterPresentation.mode === "sheet";
   const [isTouchInput, setIsTouchInput] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches
   ));
@@ -580,10 +582,14 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
   const groupFilterPopover = (() => {
     const groupId = activeFilterCol && activeFilterCol !== "juror" ? activeFilterCol : null;
     if (!groupId) return null;
+    const groupMeta = groups.find((g) => g.id === groupId);
+    const rawGroupLabel = String(groupMeta?.groupNo ?? groupMeta?.label ?? "Group").trim();
+    const groupLabel = /^group\b/i.test(rawGroupLabel) ? rawGroupLabel : `Group ${rawGroupLabel}`;
     const { min: draftMin, max: draftMax } = groupScoreDraft;
     const minNum   = toFiniteNumber(draftMin);
     const maxNum   = toFiniteNumber(draftMax);
     const hasError = minNum !== null && maxNum !== null && minNum > maxNum;
+    const hasDraftValues = !!(draftMin || draftMax);
     return (
       <FilterPopoverPortal
         open={true}
@@ -592,7 +598,20 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
         onClose={closePopover}
         className="col-filter-popover col-filter-popover-portal col-filter-popover-number"
         contentKey={`${draftMin}|${draftMax}`}
+        id={`filter-popover-group-${groupId}`}
         trapFocus
+        sheetTitle={groupLabel}
+        sheetFooter={useSheetFilters ? (
+          <FilterPanelActions
+            onClear={() => {
+              clearGroupScoreFilter(groupId);
+              setGroupScoreDraft({ min: "", max: "" });
+            }}
+            onApply={closePopover}
+            clearDisabled={!hasDraftValues}
+            applyDisabled={hasError}
+          />
+        ) : null}
       >
         <div className="range-field">
           <label>Min</label>
@@ -634,7 +653,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
           />
         </div>
         {hasError && <div className="range-error">Min must be ≤ Max.</div>}
-        {(draftMin || draftMax) && (
+        {!useSheetFilters && hasDraftValues && (
           <button
             type="button"
             className="col-filter-clear"
@@ -813,23 +832,32 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
         className="col-filter-popover col-filter-popover-portal"
         contentKey={jurorFilter}
         trapFocus
+        id="filter-popover-juror"
+        sheetTitle="Juror / Group"
+        sheetFooter={useSheetFilters ? (
+          <FilterPanelActions
+            onClear={() => setJurorFilter("")}
+            onApply={closePopover}
+            clearDisabled={!jurorFilter}
+          />
+        ) : null}
       >
         <label htmlFor="juror-filter-input" className="sr-only">
-          Filter jurors by name or institution
+          Filter jurors by name or Institution / Department
         </label>
         <div className="col-filter-search-wrap">
           <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
           <input
             id="juror-filter-input"
             autoFocus
-            placeholder="Search juror or institution"
-            aria-label="Filter jurors by name or institution"
+            placeholder="Search juror or Institution / Department"
+            aria-label="Filter jurors by name or Institution / Department"
             value={jurorFilter}
             onChange={(e) => setJurorFilter(e.target.value)}
             className={`col-filter-search-input${isJurorFilterActive ? " filter-input-active" : ""}`}
           />
         </div>
-        {jurorFilter && (
+        {!useSheetFilters && jurorFilter && (
           <button className="col-filter-clear" onClick={() => { setJurorFilter(""); closePopover(); }}>
             Clear
           </button>

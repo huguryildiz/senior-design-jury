@@ -11,7 +11,7 @@ import {
   UserCheckIcon,
   UserPlusIcon,
   KeyRoundIcon,
-  LockIcon,
+  EllipsisIcon,
   PencilIcon,
   SearchIcon,
   UserCogIcon,
@@ -67,6 +67,20 @@ function normalizeKey(name, inst) {
   return `${norm(name)}|${norm(inst)}`;
 }
 
+function renderImportMessage(text) {
+  const raw = String(text || "");
+  const tokenRegex = /\b(juror_name|juror_inst)\b/g;
+  return (
+    <span className="manage-import-msg">
+      {raw.split(tokenRegex).map((part, idx) => (
+        part === "juror_name" || part === "juror_inst"
+          ? <span key={`code-${idx}`} className="manage-code-inline">{part}</span>
+          : <span key={`txt-${idx}`}>{part}</span>
+      ))}
+    </span>
+  );
+}
+
 export default function ManageJurorsPanel({
   jurors,
   activeSemesterName,
@@ -94,7 +108,8 @@ export default function ManageJurorsPanel({
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedSemesters, setExpandedSemesters] = useState(() => new Set());
+  const [openSemesterMenuId, setOpenSemesterMenuId] = useState(null);
+  const PREVIEW_JUROR_COUNT = 4;
 
   const updateScrollState = (el) => {
     if (!el) return;
@@ -158,7 +173,7 @@ export default function ManageJurorsPanel({
     : orderedJurors;
   const visibleJurors = normalizedSearch
     ? filteredJurors
-    : (showAll ? orderedJurors : orderedJurors.slice(0, 5));
+    : (showAll ? orderedJurors : orderedJurors.slice(0, PREVIEW_JUROR_COUNT));
   const existingJurorKeys = new Set(
     (jurors || []).map((j) =>
       normalizeKey(j.juryName || j.juror_name, j.juryDept || j.juror_inst)
@@ -177,10 +192,36 @@ export default function ManageJurorsPanel({
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", updateAll);
     };
-  }, [visibleJurors, showAll, searchTerm, expandedSemesters, isOpen, isMobile]);
+  }, [visibleJurors, showAll, searchTerm, isOpen, isMobile]);
+
+  useEffect(() => {
+    if (!openSemesterMenuId) return;
+    const onPointerDown = (e) => {
+      if (!(e.target instanceof Element)) return;
+      if (e.target.closest(".manage-semesters-menu")) return;
+      setOpenSemesterMenuId(null);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setOpenSemesterMenuId(null);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openSemesterMenuId]);
 
   const handleFile = async (file) => {
     if (!file) return;
+    const fileName = String(file.name || "").toLowerCase();
+    if (!fileName.endsWith(".csv")) {
+      setImportError("Only .csv files are supported.");
+      setImportWarning("");
+      return;
+    }
     const text = await file.text();
     const rows = parseCsv(text);
     if (!rows.length) return;
@@ -309,8 +350,7 @@ export default function ManageJurorsPanel({
 
       {(!isMobile || isOpen) && (
         <div className="manage-card-body">
-          <div className="manage-card-desc">Manage jurors, institutions, and PIN resets.</div>
-          <div className="manage-hint manage-hint-inline">Active semester: {activeSemesterName || "—"}</div>
+          <div className="manage-card-desc">Manage jurors, institution/department details, and PIN resets.</div>
           <div className="manage-card-actions">
             <button
               className="manage-btn"
@@ -361,11 +401,13 @@ export default function ManageJurorsPanel({
                   ? j.scored_semesters.filter(Boolean)
                   : [];
               const scoredLabel = scoredSemesters.join(" · ");
-              const maxSemesters = 3;
-              const scoredPreview = scoredSemesters.slice(0, maxSemesters).join(" · ");
-              const scoredDisplay = scoredPreview || "";
+              const maxSemesters = 1;
               const jurorId = j.jurorId || j.juror_id;
-              const isExpanded = expandedSemesters.has(jurorId);
+              const isSemesterMenuOpen = openSemesterMenuId === jurorId;
+              const previewSemesters = scoredSemesters.slice(0, maxSemesters);
+              const hiddenSemesterCount = Math.max(0, scoredSemesters.length - maxSemesters);
+              const hasScoredSemester = scoredSemesters.length > 0;
+              const semesterLineTitle = scoredLabel || "No completed evaluations";
               const lastActivityAt =
                 j.lastActivityAt
                 || j.last_activity_at
@@ -375,9 +417,9 @@ export default function ManageJurorsPanel({
               return (
                 <div
                   key={jurorId}
-                  className={`manage-item${isLocked ? " is-locked" : ""}`}
+                  className={`manage-item manage-item--juror${isLocked ? " is-locked" : ""}`}
                 >
-                  <div>
+                  <div className="manage-item-main--juror">
                     <div className="manage-item-title">
                       <span className="manage-item-juror-name">
                         <span className="manage-item-icon" aria-hidden="true">
@@ -396,59 +438,54 @@ export default function ManageJurorsPanel({
                         {j.juryDept || j.juror_inst}
                       </span>
                     </div>
-                    {scoredSemesters.length > 0 && (
-                      <div className={`manage-item-semesters${isExpanded ? " is-expanded" : ""}`} title={scoredLabel}>
-                        <span className="manage-item-semesters-icon" aria-hidden="true">
-                          <ClipboardCheckIcon />
-                        </span>
-                        {isExpanded ? (
-                          <span className="manage-item-semesters-list">
-                            {scoredSemesters.map((s, idx) => (
-                              <span key={`${jurorId}-sem-${idx}`} className="manage-item-semester">
-                                {s}
-                                {idx < scoredSemesters.length - 1 && (
-                                  <span className="manage-item-semester-sep" aria-hidden="true">·</span>
-                                )}
-                              </span>
-                            ))}
-                          </span>
-                        ) : (
-                          <span
-                            className="manage-item-semesters-text manage-meta-scroll"
-                            onScroll={handleMetaScroll}
-                          >
-                            {scoredDisplay}
-                          </span>
-                        )}
-                        {scoredSemesters.length > maxSemesters && (
-                          <button
-                            type="button"
-                            className="manage-semesters-toggle"
-                            onClick={() => {
-                              setExpandedSemesters((prev) => {
-                                const next = new Set(prev);
-                                next.has(jurorId) ? next.delete(jurorId) : next.add(jurorId);
-                                return next;
-                              });
-                            }}
-                          >
-                            {isExpanded ? "Show less" : `+${scoredSemesters.length - maxSemesters} more`}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {lastActivityAt && (
-                      <div className="manage-item-sub manage-meta-line">
-                        <LastActivity value={lastActivityAt} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="manage-item-actions">
-                    {isLocked && (
-                      <span className="manage-lock-icon" title="Locked" aria-label="Locked">
-                        <LockIcon />
+                    <div className="manage-item-semesters" title={semesterLineTitle}>
+                      <span className="manage-item-semesters-icon" aria-hidden="true">
+                        <ClipboardCheckIcon />
                       </span>
-                    )}
+                      <span className="manage-item-semesters-list">
+                        {hasScoredSemester ? (
+                          previewSemesters.map((s, idx) => (
+                            <span key={`${jurorId}-sem-${idx}`} className="manage-item-semester-chip">
+                              {s}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="manage-item-semester-empty">-</span>
+                        )}
+                        {hiddenSemesterCount > 0 && (
+                          <div className="manage-semesters-menu">
+                            <button
+                              type="button"
+                              className="manage-semesters-toggle manage-semesters-toggle--icon"
+                              aria-haspopup="dialog"
+                              aria-expanded={isSemesterMenuOpen}
+                              aria-label={isSemesterMenuOpen
+                                ? "Hide scored semesters"
+                                : `Show ${hiddenSemesterCount} more semesters`}
+                              onClick={() => setOpenSemesterMenuId((prev) => (prev === jurorId ? null : jurorId))}
+                            >
+                              <EllipsisIcon />
+                            </button>
+                            {isSemesterMenuOpen && (
+                              <div className="manage-semesters-dropdown" role="dialog" aria-label="Scored semesters">
+                                {scoredSemesters.map((s, idx) => (
+                                  <span key={`${jurorId}-all-sem-${idx}`} className="manage-item-semester-chip">
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  {lastActivityAt && (
+                    <div className="manage-item-sub manage-meta-line manage-meta-line--juror-last">
+                      <LastActivity value={lastActivityAt} />
+                    </div>
+                  )}
+                  <div className="manage-item-actions-row manage-item-actions-row--juror-actions">
                     <button
                       className={`manage-icon-btn${isLocked ? " danger" : ""}`}
                       type="button"
@@ -498,7 +535,7 @@ export default function ManageJurorsPanel({
             )}
           </div>
 
-          {!normalizedSearch && jurors.length > 5 && (
+          {!normalizedSearch && jurors.length > PREVIEW_JUROR_COUNT && (
             <button
               className="manage-btn ghost"
               type="button"
@@ -510,34 +547,47 @@ export default function ManageJurorsPanel({
 
           {showAdd && (
             <div className="manage-modal">
-              <div className="manage-modal-card">
+              <div className="manage-modal-card manage-modal-card--create">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
                     <UserPlusIcon />
                   </span>
                   <div className="edit-dialog__title">Create Juror</div>
                 </div>
+                <div className="manage-modal-intro">
+                  <p className="manage-modal-intro-lead">
+                    Add a juror with name and institution details.
+                  </p>
+                  <ul className="manage-modal-intro-list">
+                    <li>Both fields are required.</li>
+                    <li>Duplicate name + institution pairs are not allowed.</li>
+                  </ul>
+                </div>
                 <div className="manage-modal-body">
-                  <label className="manage-label">Full name</label>
-                  <input
-                    className={`manage-input${addError ? " is-danger" : ""}`}
-                    value={form.juror_name}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, juror_name: e.target.value }));
-                      if (addError) setAddError("");
-                    }}
-                    placeholder="Dr. Andrew Collins"
-                  />
-                  <label className="manage-label">Institution / Department</label>
-                  <input
-                    className={`manage-input${addError ? " is-danger" : ""}`}
-                    value={form.juror_inst}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, juror_inst: e.target.value }));
-                      if (addError) setAddError("");
-                    }}
-                    placeholder="Middle East Technical University / Electrical Engineering"
-                  />
+                  <div className="manage-field">
+                    <label className="manage-label">Full name</label>
+                    <input
+                      className={`manage-input manage-input--create${addError ? " is-danger" : ""}`}
+                      value={form.juror_name}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, juror_name: e.target.value }));
+                        if (addError) setAddError("");
+                      }}
+                      placeholder="Dr. Andrew Collins"
+                    />
+                  </div>
+                  <div className="manage-field">
+                    <label className="manage-label">Institution / Department</label>
+                    <input
+                      className={`manage-input manage-input--create${addError ? " is-danger" : ""}`}
+                      value={form.juror_inst}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, juror_inst: e.target.value }));
+                        if (addError) setAddError("");
+                      }}
+                      placeholder="Middle East Technical University / Electrical Engineering"
+                    />
+                  </div>
                   {addError && <div className="manage-field-error">{addError}</div>}
                 </div>
                 <div className="manage-modal-actions">
@@ -553,7 +603,7 @@ export default function ManageJurorsPanel({
                       const inst = form.juror_inst.trim();
                       const key = normalizeKey(name, inst);
                       if (existingJurorKeys.has(key)) {
-                        setAddError("A juror with the same name and institution already exists.");
+                        setAddError("A juror with the same name and institution / department already exists.");
                         return;
                       }
                       const res = await onAddJuror({
@@ -644,18 +694,6 @@ export default function ManageJurorsPanel({
                   <div className="edit-dialog__title">Import CSV</div>
                 </div>
                 <div className="manage-modal-body">
-                  <div className="manage-hint">
-                    Upload your CSV file here.
-                  </div>
-                  <div className="manage-hint">
-                    Excel import: Save As → CSV (UTF-8) with comma-separated columns.
-                  </div>
-                  <div className="manage-hint">
-                    Required headers: <span className="manage-code">juror_name</span>, <span className="manage-code">juror_inst</span>. One row per juror.
-                  </div>
-                  <div className="manage-hint">
-                    Existing jurors are skipped during import.
-                  </div>
                   <input
                     ref={fileRef}
                     type="file"
@@ -665,7 +703,7 @@ export default function ManageJurorsPanel({
                     onChange={handleFileChange}
                   />
                   <div
-                    className={`manage-dropzone${isDragging ? " is-dragging" : ""}`}
+                    className={`manage-dropzone${isDragging ? " is-dragging" : ""}${importError ? " is-error" : ""}`}
                     onDragEnter={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
@@ -687,29 +725,40 @@ export default function ManageJurorsPanel({
                   >
                     <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
                     <div className="manage-dropzone-title">Drag & Drop your CSV here</div>
-                    <div className="manage-dropzone-sub">
-                      Only `.csv` files. Header is required.
-                    </div>
                     <button className="manage-btn ghost" type="button">
                       Select File
                     </button>
                   </div>
                   {importError && (
-                    <div className="manage-hint manage-hint-error">
-                      {importError}
+                    <div className="manage-import-feedback manage-import-feedback--error" role="alert">
+                      {renderImportMessage(importError)}
                     </div>
                   )}
                   {importWarning && !importError && (
-                    <div className="manage-hint manage-hint-warn">
-                      {importWarning}
+                    <div className="manage-import-feedback manage-import-feedback--warn" role="status">
+                      {renderImportMessage(importWarning)}
                     </div>
                   )}
-                  <div className="manage-hint">
-                    Format:
-                    <div className="manage-code">juror_name,juror_inst</div>
-                    <div className="manage-code">Ava Johnson,Harvard University / Applied Physics</div>
-                    <div className="manage-code">Ayşe Demir,Middle East Technical University / Electrical Engineering</div>
-                  </div>
+                  <details className="manage-collapsible">
+                    <summary className="manage-collapsible-summary">CSV example</summary>
+                    <div className="manage-collapsible-content">
+                      <div className="manage-code">juror_name,juror_inst</div>
+                      <div className="manage-code">Ava Johnson,Harvard University / Applied Physics</div>
+                      <div className="manage-code">Ayse Demir,Middle East Technical University / Electrical Engineering</div>
+                      <div className="manage-code">Kerem Yildiz,TED University / Electrical and Electronics Engineering</div>
+                    </div>
+                  </details>
+                  <details className="manage-collapsible">
+                    <summary className="manage-collapsible-summary">Rules</summary>
+                    <div className="manage-collapsible-content">
+                      <ul className="manage-hint-list manage-rules-list">
+                        <li>Header row is required with exact field names: <span className="manage-code-inline">juror_name</span>, <span className="manage-code-inline">juror_inst</span>.</li>
+                        <li><span className="manage-code-inline">juror_name</span> and <span className="manage-code-inline">juror_inst</span> cannot be empty.</li>
+                        <li>One row must represent one juror.</li>
+                        <li>Existing jurors with the same name and Institution / Department are skipped during import.</li>
+                      </ul>
+                    </div>
+                  </details>
                 </div>
                 <div className="manage-modal-actions">
                   <button className="manage-btn" type="button" onClick={() => setShowImport(false)}>

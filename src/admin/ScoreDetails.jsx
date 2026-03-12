@@ -6,7 +6,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cmp, exportXLSX, formatTs, tsToMillis, rowKey } from "./utils";
 import { readSection, writeSection } from "./persist";
-import { FilterPopoverPortal, StatusBadge } from "./components";
+import {
+  FilterPanelActions,
+  FilterPopoverPortal,
+  StatusBadge,
+  useResponsiveFilterPresentation,
+} from "./components";
 import { getCellState } from "./scoreHelpers";
 import { FilterIcon, DownloadIcon, InfoIcon, SearchIcon, XIcon } from "../shared/Icons";
 import {
@@ -542,9 +547,8 @@ export default function ScoreDetails({
   const [anchorEl, setAnchorEl] = useState(null);
   const [multiSearchQuery, setMultiSearchQuery] = useState("");
   const [showStatusLegend, setShowStatusLegend] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => (
-    typeof window !== "undefined" && window.matchMedia("(max-width: 480px)").matches
-  ));
+  const filterPresentation = useResponsiveFilterPresentation();
+  const useSheetFilters = filterPresentation.mode === "sheet";
   const [isTouchInput, setIsTouchInput] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches
   ));
@@ -580,26 +584,6 @@ export default function ScoreDetails({
       .sort((a, b) => a[1].localeCompare(b[1], "tr", { numeric: true }))
       .map(([, label]) => label);
   }, [data]);
-  useEffect(() => {
-    if (!isMobile) return;
-    if (activeFilterCol !== "updatedAt" && activeFilterCol !== "completedAt") return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [activeFilterCol, isMobile]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 480px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    if (mq.addEventListener) mq.addEventListener("change", update);
-    else mq.addListener(update);
-    return () => {
-      if (mq.addEventListener) mq.removeEventListener("change", update);
-      else mq.removeListener(update);
-    };
-  }, []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(hover: none), (pointer: coarse)");
@@ -1138,7 +1122,7 @@ export default function ScoreDetails({
           type: "text",
           value: filterDept,
           setValue: setFilterDept,
-          placeholder: "Search departments",
+          placeholder: "Search Institution / Department",
           isActive: isDeptFilterActive,
           clear: () => setFilterDept(""),
         },
@@ -1371,9 +1355,17 @@ export default function ScoreDetails({
 
   // ── Popover config helpers ─────────────────────────────────
   // Closed over closePopover / toggleMulti — called inline below.
-  const makeTextFilter = (value, setValue, placeholder, isActive) => ({
+  const makeTextFilter = (title, value, setValue, placeholder, isActive) => ({
+    title,
     className: "col-filter-popover col-filter-popover-portal",
     contentKey: value,
+    sheetFooter: useSheetFilters ? (
+      <FilterPanelActions
+        onClear={() => setValue("")}
+        onApply={closePopover}
+        clearDisabled={!value}
+      />
+    ) : null,
     content: (
       <>
         <div className="col-filter-search-wrap">
@@ -1387,7 +1379,7 @@ export default function ScoreDetails({
             className={joinClass("col-filter-search-input", isActive && "filter-input-active")}
           />
         </div>
-        {value && (
+        {!useSheetFilters && value && (
           <button className="col-filter-clear" onClick={() => { setValue(""); closePopover(); }}>
             Clear
           </button>
@@ -1396,18 +1388,31 @@ export default function ScoreDetails({
     ),
   });
 
-  const makeNumberRangeFilter = (key, isActive) => {
+  const makeNumberRangeFilter = (title, key, isActive) => {
     const current = scoreFilters[key] || { min: "", max: "" };
     const minValue = current.min ?? "";
     const maxValue = current.max ?? "";
     const minNum = toFiniteNumber(minValue);
     const maxNum = toFiniteNumber(maxValue);
     const hasError = minNum !== null && maxNum !== null && minNum > maxNum;
+    const hasValue = !!(minValue || maxValue);
     const maxAllowed = Number.isFinite(SCORE_MAX_BY_KEY[key]) ? SCORE_MAX_BY_KEY[key] : SCORE_FILTER_MAX;
+    const clearRange = () => {
+      setScoreFilters((prev) => ({ ...prev, [key]: { min: "", max: "" } }));
+    };
 
     return ({
+      title,
       className: "col-filter-popover col-filter-popover-portal col-filter-popover-number",
       contentKey: `${minValue}|${maxValue}`,
+      sheetFooter: useSheetFilters ? (
+        <FilterPanelActions
+          onClear={clearRange}
+          onApply={closePopover}
+          clearDisabled={!hasValue}
+          applyDisabled={hasError}
+        />
+      ) : null,
       content: (
         <>
           <div className="range-field">
@@ -1438,13 +1443,11 @@ export default function ScoreDetails({
           {hasError && (
             <div className="range-error">Min must be ≤ Max.</div>
           )}
-          {(minValue || maxValue) && (
+          {!useSheetFilters && hasValue && (
             <button
               type="button"
               className="col-filter-clear"
-              onClick={() => {
-                setScoreFilters((prev) => ({ ...prev, [key]: { min: "", max: "" } }));
-              }}
+              onClick={clearRange}
             >
               Clear
             </button>
@@ -1454,15 +1457,26 @@ export default function ScoreDetails({
     });
   };
 
-  const makeSelectFilter = (value, setValue, options, allLabel, isActive) => ({
+  const makeSelectFilter = (title, value, setValue, options, allLabel, isActive) => ({
+    title,
     className: "col-filter-popover col-filter-popover-portal",
     contentKey: value,
+    sheetFooter: useSheetFilters ? (
+      <FilterPanelActions
+        onClear={() => setValue("")}
+        onApply={closePopover}
+        clearDisabled={!value}
+      />
+    ) : null,
     content: (
       <>
         <select
           autoFocus
           value={value}
-          onChange={(e) => { setValue(e.target.value); closePopover(); }}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (!useSheetFilters) closePopover();
+          }}
           aria-label={allLabel}
           className={isActive ? "filter-input-active" : ""}
         >
@@ -1471,7 +1485,7 @@ export default function ScoreDetails({
             <option key={label} value={label}>{label}</option>
           ))}
         </select>
-        {value && (
+        {!useSheetFilters && value && (
           <button className="col-filter-clear" onClick={() => { setValue(""); closePopover(); }}>
             Clear
           </button>
@@ -1481,11 +1495,15 @@ export default function ScoreDetails({
   });
 
   const makeMultiFilter = (
-    options, selected, setSelected, allLabel, allMode = "empty",
+    title, options, selected, setSelected, allLabel, allMode = "empty",
     searchable = false, searchQuery = "", setSearchQuery = () => {}
   ) => {
     const optionValues = options.map((o) => (typeof o === "string" ? o : o.value));
     const isAll = allMode === "all" ? selected == null : (Array.isArray(selected) && selected.length === 0);
+    const hasSelection = allMode === "all"
+      ? selected !== null
+      : (Array.isArray(selected) && selected.length > 0);
+    const clearSelection = () => setSelected(allMode === "all" ? null : []);
     const toggleOption = (val) => {
       if (isAll && allMode === "all") {
         setSelected(optionValues.filter((v) => v !== val));
@@ -1503,62 +1521,89 @@ export default function ScoreDetails({
           return lbl.toLowerCase().includes(searchQuery.trim().toLowerCase());
         })
       : options;
+
+    const searchNode = searchable ? (
+      <div className="col-filter-search-wrap multi-filter-search-wrap">
+        <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
+        <input
+          autoFocus
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={`Search ${allLabel.replace(/^All\s+/i, "").toLowerCase()}`}
+          className="multi-filter-search col-filter-search-input"
+          aria-label={`Search ${allLabel}`}
+        />
+      </div>
+    ) : null;
+
+    const optionsNode = (
+      <>
+        <label className="status-option">
+          <input
+            type="checkbox"
+            checked={isAll}
+            onChange={() => {
+              if (allMode === "all") {
+                setSelected(isAll ? [] : null);
+              } else {
+                setSelected([]);
+              }
+            }}
+          />
+          <span>{allLabel}</span>
+        </label>
+        {filteredOptions.map((opt) => {
+          const val = typeof opt === "string" ? opt : opt.value;
+          const lbl = typeof opt === "string" ? opt : opt.label;
+          return (
+            <label key={val} className="status-option">
+              <input
+                type="checkbox"
+                checked={isAll || (Array.isArray(selected) && selected.includes(val))}
+                onChange={() => toggleOption(val)}
+              />
+              <span>{lbl}</span>
+            </label>
+          );
+        })}
+        {searchable && searchQuery.trim() && filteredOptions.length === 0 && (
+          <div className="multi-filter-empty">No results</div>
+        )}
+      </>
+    );
+
     return {
+      title,
       className: "col-filter-popover col-filter-popover-portal col-filter-popover-multi",
       contentKey: Array.isArray(selected) ? selected.join("|") : "ALL",
+      sheetBodyClassName: useSheetFilters
+        ? `filter-sheet-body--multi-options ${searchable ? "is-searchable" : "is-plain"}`
+        : "",
+      sheetSearch: useSheetFilters ? searchNode : null,
+      sheetFooter: useSheetFilters ? (
+        <FilterPanelActions
+          onClear={clearSelection}
+          onApply={closePopover}
+          clearDisabled={!hasSelection}
+        />
+      ) : null,
       content: (
-        <>
-          {searchable && (
-            <div className="col-filter-search-wrap multi-filter-search-wrap">
-              <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
-              <input
-                autoFocus
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Search ${allLabel.replace(/^All\s+/i, "").toLowerCase()}`}
-                className="multi-filter-search col-filter-search-input"
-                aria-label={`Search ${allLabel}`}
-              />
-            </div>
-          )}
-          <label className="status-option">
-            <input
-              type="checkbox"
-              checked={isAll}
-              onChange={() => {
-                if (allMode === "all") {
-                  setSelected(isAll ? [] : null);
-                } else {
-                  setSelected([]);
-                }
-              }}
-            />
-            <span>{allLabel}</span>
-          </label>
-          {filteredOptions.map((opt) => {
-            const val = typeof opt === "string" ? opt : opt.value;
-            const lbl = typeof opt === "string" ? opt : opt.label;
-            return (
-              <label key={val} className="status-option">
-                <input
-                  type="checkbox"
-                  checked={isAll || (Array.isArray(selected) && selected.includes(val))}
-                  onChange={() => toggleOption(val)}
-                />
-                <span>{lbl}</span>
-              </label>
-            );
-          })}
-          {searchable && searchQuery.trim() && filteredOptions.length === 0 && (
-            <div className="multi-filter-empty">No results</div>
-          )}
-          {Array.isArray(selected) && selected.length > 0 && (
-            <button className="col-filter-clear" onClick={() => { setSelected(allMode === "all" ? null : []); closePopover(); }}>
-              Clear
-            </button>
-          )}
-        </>
+        useSheetFilters ? (
+          <div className="filter-sheet-multi-options-content">
+            {optionsNode}
+          </div>
+        ) : (
+          <>
+            {searchNode}
+            {optionsNode}
+            {hasSelection && (
+              <button className="col-filter-clear" onClick={() => { clearSelection(); closePopover(); }}>
+                Clear
+              </button>
+            )}
+          </>
+        )
       ),
     };
   };
@@ -1570,10 +1615,11 @@ export default function ScoreDetails({
     if (!filter) return null;
 
     if (filter.type === "select") {
-      return makeSelectFilter(filter.value, filter.setValue, filter.options, filter.allLabel, filter.isActive);
+      return makeSelectFilter(col.label, filter.value, filter.setValue, filter.options, filter.allLabel, filter.isActive);
     }
     if (filter.type === "multi") {
       return makeMultiFilter(
+        col.label,
         filter.options, filter.value, filter.setValue,
         filter.allLabel, filter.allMode,
         filter.searchable ?? false,
@@ -1581,10 +1627,10 @@ export default function ScoreDetails({
       );
     }
     if (filter.type === "text") {
-      return makeTextFilter(filter.value, filter.setValue, filter.placeholder, filter.isActive);
+      return makeTextFilter(col.label, filter.value, filter.setValue, filter.placeholder, filter.isActive);
     }
     if (filter.type === "numberRange") {
-      return makeNumberRangeFilter(filter.filterKey, filter.isActive);
+      return makeNumberRangeFilter(col.label, filter.filterKey, filter.isActive);
     }
     if (filter.type === "dateRange") {
       const from = filter.value?.from ?? "";
@@ -1599,21 +1645,33 @@ export default function ScoreDetails({
       const setDateError = filter.setError || (() => {});
       const setFrom = filter.setFrom || (() => {});
       const setTo = filter.setTo || (() => {});
-      const handleDateBlur = () => {
-        if (to && !from) {
-          setDateError("The 'From' date is required.");
-          return;
-        }
-        if ((from && parsedFromMs === null) || (to && parsedToMs === null)) {
-          setDateError("Invalid date format.");
-          return;
-        }
-        setDateError(isInvalidRange ? "The 'From' date cannot be later than the 'To' date." : null);
+      const validateDate = () => {
+        if (to && !from) return "The 'From' date is required.";
+        if ((from && parsedFromMs === null) || (to && parsedToMs === null)) return "Invalid date format.";
+        if (isInvalidRange) return "The 'From' date cannot be later than the 'To' date.";
+        return null;
       };
+      const handleDateBlur = () => {
+        setDateError(validateDate());
+      };
+      const handleApply = () => {
+        const nextError = validateDate();
+        setDateError(nextError);
+        if (!nextError) closePopover();
+      };
+      const hasDateValue = !!(from || to);
       return {
-        className: `col-filter-popover col-filter-popover-portal col-filter-popover-timestamp${isMobile ? " is-centered" : ""}`,
+        title: col.label,
+        className: "col-filter-popover col-filter-popover-portal col-filter-popover-timestamp",
         contentKey: `${from}|${to}`,
-        mode: isMobile ? "center" : "anchor",
+        sheetFooter: useSheetFilters ? (
+          <FilterPanelActions
+            onClear={() => { setFrom(""); setTo(""); setDateError(null); }}
+            onApply={handleApply}
+            clearDisabled={!hasDateValue}
+            applyDisabled={!!validateDate()}
+          />
+        ) : null,
         content: (
           <>
             <div className="timestamp-field">
@@ -1650,23 +1708,10 @@ export default function ScoreDetails({
             {dateError && (
               <div className="timestamp-error" role="alert">{dateError}</div>
             )}
-            {isMobile ? (
-              <div className="timestamp-actions">
-                {(from || to) && (
-                  <button className="col-filter-clear" onClick={() => { setFrom(""); setTo(""); setDateError(null); }}>
-                    Clear
-                  </button>
-                )}
-                <button className="timestamp-done-btn" onClick={closePopover} disabled={!!dateError}>
-                  Done
-                </button>
-              </div>
-            ) : (
-              (from || to) && (
-                <button className="col-filter-clear" onClick={() => { setFrom(""); setTo(""); setDateError(null); }}>
-                  Clear
-                </button>
-              )
+            {!useSheetFilters && hasDateValue && (
+              <button className="col-filter-clear" onClick={() => { setFrom(""); setTo(""); setDateError(null); }}>
+                Clear
+              </button>
             )}
           </>
         ),
@@ -1805,6 +1850,10 @@ export default function ScoreDetails({
         mode={popoverConfig?.mode}
         trapFocus
         id={activeFilterCol ? `filter-popover-${activeFilterCol}` : undefined}
+        sheetTitle={popoverConfig?.title}
+        sheetSearch={popoverConfig?.sheetSearch}
+        sheetFooter={popoverConfig?.sheetFooter}
+        sheetBodyClassName={popoverConfig?.sheetBodyClassName}
       >
         {popoverConfig?.content}
       </FilterPopoverPortal>

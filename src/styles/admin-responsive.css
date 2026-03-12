@@ -293,6 +293,16 @@
   .col-filter-popover-multi {
     max-height: min(50vh, 280px);
   }
+  .filter-sheet-panel {
+    width: min(640px, 100%);
+  }
+  .filter-sheet-title {
+    font-size: 13px;
+  }
+  .filter-panel-btn {
+    min-height: 36px;
+    font-size: 12.5px;
+  }
 }
 @media (max-width: 900px) and (orientation: landscape) {
   .matrix-scroll {
@@ -306,6 +316,12 @@
   .matrix-table th:not(:first-child),
   .matrix-table td:not(:first-child) { min-width: 84px; }
   .matrix-table th button strong { white-space: nowrap; }
+  .filter-sheet-layer {
+    padding: 6px;
+  }
+  .filter-sheet-panel--bottom {
+    max-height: min(70dvh, 430px);
+  }
 }
 @media (max-width: 480px) {
   .juror-meta .allow-edit-btn,

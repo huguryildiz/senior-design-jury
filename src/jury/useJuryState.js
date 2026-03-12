@@ -498,12 +498,12 @@ export default function useJuryState() {
     setStep("eval");
   }, [editAllowed, doneScores, doneComments, scores, comments, projects]);
 
-  // ── Identity submit (name + institution) ──────────────────
+  // ── Identity submit (name + Institution / Department) ─────
   const handleIdentitySubmit = useCallback(async () => {
     const name = juryName.trim();
     const inst = juryDept.trim();
     if (!name || !inst) {
-      setAuthError("Please enter your full name and institution.");
+      setAuthError("Please enter your full name and Institution / Department.");
       return;
     }
     setAuthError("");
@@ -575,7 +575,7 @@ export default function useJuryState() {
         } else if (res?.error_code === "not_found") {
           setPinErrorCode("not_found");
           setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-          setPinError("No juror found with this name/institution.");
+          setPinError("No juror found with this name and Institution / Department.");
         } else if (res?.error_code === "no_pin") {
           setPinErrorCode("no_pin");
           setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
@@ -766,7 +766,7 @@ export default function useJuryState() {
       const name = juryName.trim();
       const inst = juryDept.trim();
       if (!name || !inst) {
-        setAuthError("Please enter your full name and institution.");
+        setAuthError("Please enter your full name and Institution / Department.");
         setStep("identity");
         return;
       }

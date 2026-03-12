@@ -1,7 +1,8 @@
 // src/admin/ManagePermissionsPanel.jsx
 
 import { useEffect, useState } from "react";
-import { ChevronDownIcon, UserKeyIcon, SearchIcon, UserCheckIcon, LandmarkIcon, LoaderIcon } from "../shared/Icons";
+import { ChevronDownIcon, UserKeyIcon, SearchIcon, UserCheckIcon, LandmarkIcon, LoaderIcon, LockIcon, InfoIcon } from "../shared/Icons";
+import { jurorStatusMeta } from "./scoreHelpers";
 import LastActivity from "./LastActivity";
 import { formatTs } from "./utils";
 
@@ -20,6 +21,7 @@ export default function ManagePermissionsPanel({
   const [searchTerm, setSearchTerm] = useState("");
   const [pendingEdits, setPendingEdits] = useState(() => new Set());
   const [evalLockPending, setEvalLockPending] = useState(false);
+  const PREVIEW_JUROR_COUNT = 4;
 
   useEffect(() => {
     setLocal(settings);
@@ -92,26 +94,68 @@ export default function ManagePermissionsPanel({
         const finalSubmittedAt = j.finalSubmittedAt ?? j.final_submitted_at ?? null;
         const isCompleted = Boolean(finalSubmittedAt);
         const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
-        const editStatusLabel = editEnabled ? "edit mode" : "edit disabled";
+        const isReadyToSubmit = safeTotal > 0 && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+        const editStatusLabel = editEnabled
+          ? "edit mode open on enabled editing true acik açık"
+          : "edit mode closed off disabled false kapali kapalı";
+        const statusKey = editEnabled
+          ? "editing"
+          : (isCompleted ? "completed" : (isReadyToSubmit ? "ready_to_submit" : (displayCompleted > 0 ? "in_progress" : "not_started")));
+        const statusTokens = statusKey === "completed"
+          ? "juror status state durum completed tamamlandi tamamlandı"
+          : statusKey === "ready_to_submit"
+            ? "juror status state durum ready to submit ready_to_submit ready submit hazır hazir"
+            : statusKey === "in_progress"
+              ? "juror status state durum in progress in_progress devam ediyor"
+              : statusKey === "editing"
+                ? "juror status state durum editing edit mode"
+                : "juror status state durum not started not_started baslamadi başlamadı";
         const progressLabel = safeTotal > 0
-          ? (isCompleted
+          ? (statusKey === "editing"
+            ? `Editing ${displayCompleted}/${safeTotal}`
+            : statusKey === "ready_to_submit"
+              ? `Ready to submit ${displayCompleted}/${safeTotal}`
+            : isCompleted
             ? `Completed ${displayCompleted}/${safeTotal}`
-            : `In progress ${displayCompleted}/${safeTotal}`)
+            : (displayCompleted > 0
+              ? `In progress ${displayCompleted}/${safeTotal}`
+              : `Not started ${displayCompleted}/${safeTotal}`))
           : "No groups assigned";
         const lastActivityAt =
-          j.lastSeenAt
-          || j.last_seen_at
-          || j.lastActivityAt
+          j.lastActivityAt
           || j.last_activity_at
+          || j.lastSeenAt
+          || j.last_seen_at
           || "";
         const formattedActivity = lastActivityAt ? formatTs(lastActivityAt) : "";
-        const haystack = `${name} ${inst} ${progressLabel} ${editStatusLabel} ${formattedActivity} ${lastActivityAt}`.toLowerCase();
+        const [formattedDatePart = "", formattedTimePart = ""] = formattedActivity ? formattedActivity.split(" ") : [];
+        const formattedActivityAlt = formattedActivity
+          ? `${formattedActivity} ${formattedActivity.replace(/\./g, "/")} ${formattedActivity.replace(/\./g, "-")} ${formattedDatePart} ${formattedTimePart}`
+          : "";
+        const haystack = [
+          name,
+          inst,
+          progressLabel,
+          statusTokens,
+          editStatusLabel,
+          formattedActivityAlt,
+          lastActivityAt,
+          `last updated ${formattedActivity}`,
+          `updated at ${formattedActivity}`,
+          `updated ${formattedActivity}`,
+          `last activity ${formattedActivity}`,
+          `last seen ${formattedActivity}`,
+          `date ${formattedDatePart}`,
+          `time ${formattedTimePart}`,
+        ]
+          .join(" ")
+          .toLowerCase();
         return haystack.includes(normalizedSearch);
       })
     : permissionJurors;
   const visibleJurors = normalizedSearch
     ? filteredJurors
-    : (showAll ? permissionJurors : permissionJurors.slice(0, 4));
+    : (showAll ? permissionJurors : permissionJurors.slice(0, PREVIEW_JUROR_COUNT));
 
   return (
     <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
@@ -180,13 +224,14 @@ export default function ManagePermissionsPanel({
               const isCompleted = Boolean(finalSubmittedAt);
               const isFullyComplete = safeTotal === 0 || displayCompleted >= safeTotal;
               const hasGroups = safeTotal > 0;
-              const completionHint = hasGroups
-                ? `Finalize submission first (${displayCompleted}/${safeTotal})`
-                : "No groups assigned.";
+              const hasStartedAny = displayCompleted > 0;
+              const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
+              const isReadyToSubmit = hasGroups && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+              const isReadyToFinalize = isReadyToSubmit;
+              const completionHint = isReadyToFinalize ? `Ready to finalize (${displayCompleted}/${safeTotal})` : "";
               const disableHint = hasGroups
                 ? `Cannot disable edit mode until all scores are re-submitted (${displayCompleted}/${safeTotal}).`
                 : "No groups assigned.";
-              const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
               const lastActivityAt =
                 j.lastActivityAt
                 || j.last_activity_at
@@ -206,6 +251,24 @@ export default function ManagePermissionsPanel({
                 evalLockActive ||
                 (editEnabled ? !isFullyComplete : !isCompleted) ||
                 isPending;
+              const completionStatusKey = hasGroups
+                ? (editEnabled ? "editing" : (isCompleted ? "completed" : (isReadyToSubmit ? "ready_to_submit" : (hasStartedAny ? "in_progress" : "not_started"))))
+                : "not_started";
+              const CompletionIcon = jurorStatusMeta[completionStatusKey]?.icon || jurorStatusMeta.not_started.icon;
+              const InProgressIcon = jurorStatusMeta.in_progress.icon;
+              const completionClassName = [
+                "manage-item-completion",
+                "manage-status-chip",
+                completionStatusKey === "completed"
+                  ? "is-complete"
+                  : completionStatusKey === "ready_to_submit"
+                    ? "is-ready-to-submit"
+                  : completionStatusKey === "in_progress"
+                    ? "is-in-progress"
+                    : completionStatusKey === "editing"
+                      ? "is-editing"
+                      : "is-not-started",
+              ].join(" ");
               return (
                 <div key={jurorId} className="manage-item">
                   <div>
@@ -228,26 +291,37 @@ export default function ManagePermissionsPanel({
                       </span>
                     </div>
                     <div className="manage-item-meta">
-                      <span className={`manage-item-completion${isCompleted ? " is-complete" : " is-incomplete"}`}>
+                      <span className={completionClassName}>
+                        <span className="manage-status-chip-icon" aria-hidden="true"><CompletionIcon /></span>
                         {hasGroups
-                          ? (isCompleted
-                            ? `Completed ${displayCompleted}/${safeTotal}`
-                            : `In progress ${displayCompleted}/${safeTotal}`)
+                          ? (completionStatusKey === "editing"
+                            ? `Editing ${displayCompleted}/${safeTotal}`
+                            : completionStatusKey === "ready_to_submit"
+                              ? `Ready to submit ${displayCompleted}/${safeTotal}`
+                            : isCompleted
+                              ? `Completed ${displayCompleted}/${safeTotal}`
+                              : (hasStartedAny
+                                ? `In progress ${displayCompleted}/${safeTotal}`
+                                : `Not started ${displayCompleted}/${safeTotal}`))
                           : "No groups assigned"}
                       </span>
-                      {!isCompleted && hasGroups && (
-                        <span className="manage-item-helper is-warning">
+                      {isReadyToFinalize && (
+                        <span className="manage-item-helper manage-item-helper--ready-finalize">
                           {completionHint}
                         </span>
                       )}
                       {editEnabled && !isFullyComplete && hasGroups && (
-                        <span className="manage-item-helper is-warning">
+                        <span className="manage-item-helper manage-status-chip is-warning">
+                          <span className="manage-status-chip-icon" aria-hidden="true"><InProgressIcon /></span>
                           {disableHint}
                         </span>
                       )}
                       {(evalLockActive || !hasActiveSemester) && (
-                        <span className="manage-item-helper is-warning">
-                          {lockHint}
+                        <span className={`manage-item-helper manage-status-chip${evalLockActive ? " is-info" : " is-muted"}`}>
+                          <span className="manage-status-chip-icon" aria-hidden="true">
+                            {evalLockActive ? <LockIcon /> : <InfoIcon />}
+                          </span>
+                          {evalLockActive ? "Evaluation lock is active." : lockHint}
                         </span>
                       )}
                     </div>
@@ -293,8 +367,7 @@ export default function ManagePermissionsPanel({
               <div className="manage-empty manage-empty-search">No results.</div>
             )}
           </div>
-
-          {!normalizedSearch && permissionJurors.length > 4 && (
+          {!normalizedSearch && permissionJurors.length > PREVIEW_JUROR_COUNT && (
             <button
               className="manage-btn ghost"
               type="button"

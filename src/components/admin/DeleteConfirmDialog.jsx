@@ -38,7 +38,10 @@ function buildCountSummary(counts) {
 export default function DeleteConfirmDialog({
   open,
   onOpenChange,
+  targetType,
   targetLabel,
+  targetName,
+  targetInst,
   counts,
   onConfirm,
 }) {
@@ -61,6 +64,9 @@ export default function DeleteConfirmDialog({
   const isSemesterLabel = label.startsWith(semesterPrefix) && label.length > semesterPrefix.length;
   const isJurorLabel = label.startsWith(jurorPrefix) && label.length > jurorPrefix.length;
   const isGroupLabel = label.startsWith(groupPrefix) && label.length > groupPrefix.length;
+  const isJurorTarget = targetType === "juror" || isJurorLabel;
+  const jurorName = String(targetName || (isJurorLabel ? label.slice(jurorPrefix.length) : "") || "").trim();
+  const jurorInst = String(targetInst || "").trim();
 
   const handleClose = () => {
     if (loading) return;
@@ -100,10 +106,16 @@ export default function DeleteConfirmDialog({
                 <strong className="manage-delete-focus">{label.slice(semesterPrefix.length)}</strong>
                 {" will be deleted. Are you sure?"}
               </>
-            ) : isJurorLabel ? (
+            ) : isJurorTarget ? (
               <>
                 {jurorPrefix}
-                <strong className="manage-delete-focus">{label.slice(jurorPrefix.length)}</strong>
+                <strong className="manage-delete-focus">{jurorName || "this juror"}</strong>
+                {jurorInst && (
+                  <em className="manage-delete-focus-inst">
+                    {" "}
+                    ({jurorInst})
+                  </em>
+                )}
                 {" will be deleted. Are you sure?"}
               </>
             ) : isGroupLabel ? (
