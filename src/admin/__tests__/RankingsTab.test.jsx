@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import RankingsTab from "../RankingsTab";
 
 describe("RankingsTab", () => {
@@ -27,6 +27,28 @@ describe("RankingsTab", () => {
       .map((el) => el.textContent?.trim() || "");
     expect(groupLabels[0]).toContain("Group 2");
     expect(groupLabels[1]).toContain("Group 1");
+  });
+
+  it("rankMap is stable when search filters the visible list [Fix 1 regression]", () => {
+    // 4 groups: Delta has rank 4 — after search filters out top-3, Delta's rank must remain 4
+    const ranked = [
+      { id: "p1", groupNo: 1, name: "Alpha", students: "", totalAvg: 80, avg: {} }, // rank 2
+      { id: "p2", groupNo: 2, name: "Beta",  students: "", totalAvg: 90, avg: {} }, // rank 1
+      { id: "p3", groupNo: 3, name: "Gamma", students: "", totalAvg: 70, avg: {} }, // rank 3
+      { id: "p4", groupNo: 4, name: "Delta", students: "", totalAvg: 60, avg: {} }, // rank 4 → rank-num badge
+    ];
+    const { container } = render(
+      <RankingsTab ranked={ranked} semesterName="2026 Spring" />
+    );
+
+    // Filter to show only Delta — its rank must remain 4, not reset to 1
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "delta" } });
+
+    const badges = Array.from(container.querySelectorAll(".rank-badge"));
+    expect(badges).toHaveLength(1); // only Delta visible
+    const deltaBadge = badges[0];
+    expect(deltaBadge.classList.contains("rank-num")).toBe(true);
+    expect(deltaBadge.textContent?.trim()).toBe("4");
   });
 
   it("exports currently filtered/sorted list", async () => {

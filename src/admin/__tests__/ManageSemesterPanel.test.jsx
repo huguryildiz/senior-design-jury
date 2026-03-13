@@ -24,6 +24,101 @@ function renderPanel(overrides = {}) {
   return { ...view, props };
 }
 
+// ── Semester sort order ───────────────────────────────────────────────────────
+
+describe("ManageSemesterPanel — sort order", () => {
+  it("sorts newer year before older year", () => {
+    const { container } = renderPanel({
+      semesters: [
+        { id: "s1", name: "2024 Fall", poster_date: "2024-11-15", updated_at: "2024-11-20T10:00:00.000Z" },
+        { id: "s2", name: "2025 Fall", poster_date: "2025-11-15", updated_at: "2025-11-20T10:00:00.000Z" },
+      ],
+      activeSemesterId: "s2",
+      activeSemesterName: "2025 Fall",
+    });
+    const titles = Array.from(container.querySelectorAll(".manage-item-title")).map(
+      (el) => el.textContent?.trim()
+    );
+    expect(titles[0]).toBe("2025 Fall");
+    expect(titles[1]).toBe("2024 Fall");
+  });
+
+  it("sorts Fall before Spring within the same year", () => {
+    const { container } = renderPanel({
+      semesters: [
+        { id: "s1", name: "2025 Spring", poster_date: "2025-05-15", updated_at: "2025-05-20T10:00:00.000Z" },
+        { id: "s2", name: "2025 Fall",   poster_date: "2025-11-15", updated_at: "2025-11-20T10:00:00.000Z" },
+      ],
+      activeSemesterId: "s2",
+      activeSemesterName: "2025 Fall",
+    });
+    const titles = Array.from(container.querySelectorAll(".manage-item-title")).map(
+      (el) => el.textContent?.trim()
+    );
+    expect(titles[0]).toBe("2025 Fall");
+    expect(titles[1]).toBe("2025 Spring");
+  });
+
+  it("sorts Fall > Summer > Spring > Winter within the same year", () => {
+    const { container } = renderPanel({
+      semesters: [
+        { id: "s1", name: "2025 Winter", poster_date: "2025-01-15", updated_at: "2025-01-20T10:00:00.000Z" },
+        { id: "s2", name: "2025 Spring", poster_date: "2025-05-15", updated_at: "2025-05-20T10:00:00.000Z" },
+        { id: "s3", name: "2025 Summer", poster_date: "2025-08-15", updated_at: "2025-08-20T10:00:00.000Z" },
+        { id: "s4", name: "2025 Fall",   poster_date: "2025-11-15", updated_at: "2025-11-20T10:00:00.000Z" },
+      ],
+      activeSemesterId: "s4",
+      activeSemesterName: "2025 Fall",
+    });
+    const titles = Array.from(container.querySelectorAll(".manage-item-title")).map(
+      (el) => el.textContent?.trim()
+    );
+    expect(titles[0]).toBe("2025 Fall");
+    expect(titles[1]).toBe("2025 Summer");
+    expect(titles[2]).toBe("2025 Spring");
+    expect(titles[3]).toBe("2025 Winter");
+  });
+
+  it("puts semester with no year at the end", () => {
+    const { container } = renderPanel({
+      semesters: [
+        { id: "s1", name: "Pilot",     poster_date: "",           updated_at: "2024-01-01T00:00:00.000Z" },
+        { id: "s2", name: "2025 Fall", poster_date: "2025-11-15", updated_at: "2025-11-20T10:00:00.000Z" },
+      ],
+      activeSemesterId: "s2",
+      activeSemesterName: "2025 Fall",
+    });
+    const titles = Array.from(container.querySelectorAll(".manage-item-title")).map(
+      (el) => el.textContent?.trim()
+    );
+    expect(titles[0]).toBe("2025 Fall");
+    expect(titles[1]).toBe("Pilot");
+  });
+});
+
+// ── Set active + delete guard ─────────────────────────────────────────────────
+
+describe("ManageSemesterPanel — set active + delete guard", () => {
+  it("calls onSetActive with the selected semester id when dropdown changes", () => {
+    const onSetActive = vi.fn();
+    renderPanel({ onSetActive });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "s2" } });
+    expect(onSetActive).toHaveBeenCalledWith("s2");
+  });
+
+  it("disables delete button for the active semester", () => {
+    renderPanel();
+    expect(screen.getByLabelText("Delete 2025 Fall")).toBeDisabled();
+  });
+
+  it("enables delete button for a non-active semester", () => {
+    renderPanel();
+    expect(screen.getByLabelText("Delete 2026 Spring")).not.toBeDisabled();
+  });
+});
+
+// ── Existing smoke tests ──────────────────────────────────────────────────────
+
 describe("ManageSemesterPanel smoke tests", () => {
   beforeEach(() => {
     localStorage.clear();
