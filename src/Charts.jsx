@@ -819,6 +819,7 @@ export function OutcomeByGroupChart({ stats }) {
   const totalW = data.length * groupW + padL + 10;
   const totalH = chartH + chartPadTop;
   const threshY = chartPadTop + (chartH - (MUDEK_THRESHOLD / 100) * chartH);
+  const needsScroll = wrapW > 0 && totalW > Math.max(wrapW - safePad, 0);
 
   return (
     <div className="chart-card chart-compact-equal">
@@ -829,7 +830,10 @@ export function OutcomeByGroupChart({ stats }) {
         </div>
       </div>
 
-      <div className="chart-scroll-wrap" ref={scrollRef}>
+      <div
+        className={`chart-scroll-wrap chart-scroll-wrap--outcome${needsScroll ? " is-overflowing" : ""}`}
+        ref={scrollRef}
+      >
         <div className="chart-scroll-inner" style={{ minWidth: totalW }}>
           <div className="chart-svg-wrap">
             <svg

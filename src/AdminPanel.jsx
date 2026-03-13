@@ -991,7 +991,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
                 <span className="admin-title-icon" aria-label="Admin Panel"><UserRoundCogIcon /></span>
                 {semesterList.length > 0 && (
                   <>
-                    <span className="title-separator" aria-hidden="true">·</span>
                     {renderSemesterControl("semester-control--title", { variant: "title" })}
                   </>
                 )}

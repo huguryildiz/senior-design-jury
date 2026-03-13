@@ -824,7 +824,7 @@ BEGIN
       'project',
       p_project_id,
       format(
-        'Juror %s started evaluating Group %s (%s)',
+        'Juror %s started evaluating Group %s (%s).',
         COALESCE(v_juror_name, p_juror_id::text),
         COALESCE(v_group_no::text, '?'),
         COALESCE(v_sem_name, p_semester_id::text)
@@ -846,7 +846,7 @@ BEGIN
       'project',
       p_project_id,
       format(
-        'Juror %s completed evaluation for Group %s (%s)',
+        'Juror %s completed evaluation for Group %s (%s).',
         COALESCE(v_juror_name, p_juror_id::text),
         COALESCE(v_group_no::text, '?'),
         COALESCE(v_sem_name, p_semester_id::text)
@@ -868,7 +868,7 @@ BEGIN
       'semester',
       p_semester_id,
       format(
-        'Juror %s completed all project evaluations (%s)',
+        'Juror %s completed all project evaluations (%s).',
         COALESCE(v_juror_name, p_juror_id::text),
         COALESCE(v_sem_name, p_semester_id::text)
       ),
@@ -917,7 +917,7 @@ BEGIN
     COALESCE(NULLIF(trim(p_action), ''), 'unknown'),
     COALESCE(NULLIF(trim(p_entity_type), ''), 'unknown'),
     p_entity_id,
-    COALESCE(NULLIF(trim(p_message), ''), 'Audit event'),
+    COALESCE(NULLIF(trim(p_message), ''), 'Audit event.'),
     p_metadata
   );
 END;
@@ -956,6 +956,15 @@ DECLARE
   v_ok boolean;
 BEGIN
   v_ok := public._verify_admin_password(p_password);
+  PERFORM public._audit_log(
+    'system',
+    null::uuid,
+    CASE WHEN v_ok THEN 'admin_login_success' ELSE 'admin_login_failed' END,
+    'settings',
+    null::uuid,
+    CASE WHEN v_ok THEN 'Admin login succeeded.' ELSE 'Admin login failed.' END,
+    null
+  );
   RETURN v_ok;
 END;
 $$;
@@ -1067,7 +1076,7 @@ BEGIN
     'delete_password_change',
     'settings',
     null::uuid,
-    'Admin changed delete password',
+    'Admin changed delete password.',
     null
   );
 
@@ -1129,7 +1138,7 @@ BEGIN
     'backup_password_change',
     'settings',
     null::uuid,
-    'Admin changed backup password',
+    'Admin changed backup password.',
     null
   );
 
@@ -1146,6 +1155,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
+DECLARE
+  v_payload jsonb;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -1153,7 +1164,7 @@ BEGIN
 
   PERFORM public._assert_backup_password(p_backup_password);
 
-  RETURN jsonb_build_object(
+  v_payload := jsonb_build_object(
     'exported_at',     now(),
     'schema_version',  1,
     'semesters',       COALESCE((SELECT jsonb_agg(row_to_json(s)) FROM semesters s),           '[]'::jsonb),
@@ -1162,6 +1173,18 @@ BEGIN
     'scores',          COALESCE((SELECT jsonb_agg(row_to_json(sc)) FROM scores sc),            '[]'::jsonb),
     'juror_semester_auth', COALESCE((SELECT jsonb_agg(row_to_json(a)) FROM juror_semester_auth a), '[]'::jsonb)
   );
+
+  PERFORM public._audit_log(
+    'admin',
+    null::uuid,
+    'db_export',
+    'settings',
+    null::uuid,
+    'Admin exported database backup.',
+    null
+  );
+
+  RETURN v_payload;
 END;
 $$;
 
@@ -1310,7 +1333,7 @@ BEGIN
     'db_import',
     'settings',
     null::uuid,
-    'Admin restored database from backup',
+    'Admin restored database from backup.',
     null
   );
 
@@ -1347,7 +1370,7 @@ BEGIN
 
   PERFORM public._audit_log(
     'admin', null::uuid, 'backup_password_change', 'settings', null::uuid,
-    'Admin initialized backup password', null
+    'Admin initialized backup password.', null
   );
 
   RETURN true;
@@ -1706,7 +1729,7 @@ BEGIN
     'set_active_semester',
     'semester',
     p_semester_id,
-    format('Admin set active semester to %s', COALESCE(v_name, p_semester_id::text)),
+    format('Admin set active semester to %s.', COALESCE(v_name, p_semester_id::text)),
     null
   );
 
@@ -1764,7 +1787,7 @@ BEGIN
     'semester_create',
     'semester',
     v_id,
-    format('Admin created semester %s', v_name),
+    format('Admin created semester %s.', v_name),
     jsonb_build_object('poster_date', v_poster_date)
   );
 
@@ -1814,7 +1837,7 @@ BEGIN
     'semester_update',
     'semester',
     p_semester_id,
-    format('Admin updated semester %s', v_name),
+    format('Admin updated semester %s.', v_name),
     null
   );
 
@@ -1851,7 +1874,7 @@ BEGIN
     'semester_delete',
     'semester',
     p_semester_id,
-    format('Admin deleted semester %s', COALESCE(v_name, p_semester_id::text)),
+    format('Admin deleted semester %s.', COALESCE(v_name, p_semester_id::text)),
     null
   );
 
@@ -1939,7 +1962,7 @@ BEGIN
     'project_create',
     'project',
     v_id,
-    format('Admin created project Group %s — %s (%s)', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text)),
+    format('Admin created project Group %s — %s (%s).', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text)),
     jsonb_build_object('semester_id', p_semester_id, 'group_no', p_group_no, 'semester_name', v_sem_name)
   );
 
@@ -1991,8 +2014,8 @@ BEGIN
   SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
   v_action := CASE WHEN v_created THEN 'project_create' ELSE 'project_update' END;
   v_message := CASE
-    WHEN v_created THEN format('Admin created project Group %s — %s (%s)', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text))
-    ELSE format('Admin updated project Group %s — %s (%s)', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text))
+    WHEN v_created THEN format('Admin created project Group %s — %s (%s).', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text))
+    ELSE format('Admin updated project Group %s — %s (%s).', p_group_no, p_project_title, COALESCE(v_sem_name, p_semester_id::text))
   END;
 
   PERFORM public._audit_log(
@@ -2044,7 +2067,7 @@ BEGIN
     'project',
     p_project_id,
     format(
-      'Admin deleted project Group %s — %s',
+      'Admin deleted project Group %s — %s.',
       COALESCE(v_group::text, '?'),
       COALESCE(v_title, p_project_id::text)
     ),
@@ -2132,7 +2155,7 @@ BEGIN
     'juror',
     v_id,
     format(
-      'Admin created juror %s%s',
+      'Admin created juror %s%s.',
       COALESCE(v_name, ''),
       CASE
         WHEN COALESCE(NULLIF(trim(v_inst), ''), '') = '' THEN ''
@@ -2177,7 +2200,7 @@ BEGIN
     'juror_update',
     'juror',
     p_juror_id,
-    format('Admin updated juror %s', trim(p_juror_name)),
+    format('Admin updated juror %s.', trim(p_juror_name)),
     null
   );
 
@@ -2214,7 +2237,7 @@ BEGIN
     'juror_delete',
     'juror',
     p_juror_id,
-    format('Admin deleted juror %s', COALESCE(v_name, p_juror_id::text)),
+    format('Admin deleted juror %s.', COALESCE(v_name, p_juror_id::text)),
     null
   );
 
@@ -2351,7 +2374,7 @@ BEGIN
     'juror_pin_reset',
     'juror',
     p_juror_id,
-    format('Admin reset PIN for juror %s', v_label),
+    format('Admin reset PIN for juror %s.', v_label),
     jsonb_build_object('semester_id', p_semester_id)
   );
 
@@ -2408,6 +2431,16 @@ BEGIN
     SET value = EXCLUDED.value,
         updated_at = now();
 
+  PERFORM public._audit_log(
+    'admin',
+    null::uuid,
+    'setting_change',
+    'settings',
+    null::uuid,
+    format('Admin changed setting %s.', COALESCE(NULLIF(trim(p_key), ''), '?')),
+    jsonb_build_object('key', p_key)
+  );
+
   RETURN true;
 END;
 $$;
@@ -2448,7 +2481,7 @@ BEGIN
     'semester',
     p_semester_id,
     format(
-      'Admin turned evaluation lock %s (%s)',
+      'Admin turned evaluation lock %s (%s).',
       CASE WHEN v_enabled THEN 'ON' ELSE 'OFF' END,
       COALESCE(v_sem_name, p_semester_id::text)
     ),
@@ -2637,7 +2670,7 @@ BEGIN
     'juror',
     p_juror_id,
     format(
-      'Admin enabled edit mode for Juror %s (%s)',
+      'Admin enabled edit mode for Juror %s (%s).',
       COALESCE(v_name, p_juror_id::text),
       COALESCE(v_sem_name, p_semester_id::text)
     ),
@@ -2694,7 +2727,7 @@ BEGIN
     'juror',
     p_juror_id,
     format(
-      'Admin force-closed edit mode for Juror %s (%s)',
+      'Admin force-closed edit mode for Juror %s (%s).',
       COALESCE(v_name, p_juror_id::text),
       COALESCE(v_sem_name, p_semester_id::text)
     ),
@@ -2827,7 +2860,7 @@ BEGIN
     'juror_finalize_submission',
     'semester',
     p_semester_id,
-    format('Juror %s finalized submission (%s)', COALESCE(v_juror_name, p_juror_id::text), COALESCE(v_sem_name, p_semester_id::text)),
+    format('Juror %s finalized submission (%s).', COALESCE(v_juror_name, p_juror_id::text), COALESCE(v_sem_name, p_semester_id::text)),
     null
   );
 
@@ -2873,7 +2906,7 @@ BEGIN
     'admin_password_change',
     'settings',
     null::uuid,
-    'Admin changed admin password',
+    'Admin changed admin password.',
     null
   );
 
@@ -2917,7 +2950,7 @@ BEGIN
     'delete_password_change',
     'settings',
     null::uuid,
-    'Admin changed delete password',
+    'Admin changed delete password.',
     null
   );
 
@@ -2956,7 +2989,7 @@ BEGIN
     'admin_password_change',
     'settings',
     null::uuid,
-    'Admin changed admin password',
+    'Admin changed admin password.',
     null
   );
 
@@ -3256,7 +3289,7 @@ BEGIN
       'juror',
       v_juror_id,
       format(
-        'Juror %s PIN locked after too many failed attempts',
+        'Juror %s PIN locked after too many failed attempts.',
         COALESCE(v_juror_name, v_juror_id::text)
       ),
       jsonb_build_object(

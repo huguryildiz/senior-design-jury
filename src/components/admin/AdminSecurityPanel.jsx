@@ -1,7 +1,7 @@
 // src/components/admin/AdminSecurityPanel.jsx
 
 import { useEffect, useState } from "react";
-import { ChevronDownIcon, ShieldUserIcon, CircleXLucideIcon } from "../../shared/Icons";
+import { ChevronDownIcon, ShieldUserIcon, CircleXLucideIcon, TriangleAlertIcon } from "../../shared/Icons";
 import {
   adminBootstrapBackupPassword,
   adminBootstrapDeletePassword,
@@ -303,6 +303,9 @@ export default function AdminSecurityPanel({
                       <span>{adminFormError}</span>
                     </div>
                   )}
+                  <div className="manage-hint manage-hint-inline">
+                    This password secures admin login and controls access to Settings, Scores, and Analytics.
+                  </div>
                   <div className="manage-field">
                     <label className="manage-label">Current Password</label>
                     <input
@@ -340,15 +343,15 @@ export default function AdminSecurityPanel({
                     {errors.confirm && <div className="manage-field-error">{errors.confirm}</div>}
                   </div>
 
-                  <div className="manage-hint manage-hint-inline">
-                    If no admin password is set, you will be prompted to create one.
-                  </div>
-
                   {missingHash && (
                     <div className="manage-hint manage-hint-warn">
                       Admin password has not been set yet. Create it to enable secure admin access.
                     </div>
                   )}
+
+                  <div className="manage-hint manage-hint-inline">
+                    If no admin password is set, you will be prompted to create one.
+                  </div>
 
                   <div className="manage-card-actions">
                     <button
@@ -383,6 +386,9 @@ export default function AdminSecurityPanel({
                       Optional. Required before destructive actions can be performed.
                     </div>
                   )}
+                  <div className="manage-hint manage-hint-inline">
+                    This password is required to confirm destructive actions such as deleting semesters, groups, and jurors.
+                  </div>
                   <div className="manage-field">
                     <label className="manage-label">Current Delete Password</label>
                     <input
@@ -423,9 +429,13 @@ export default function AdminSecurityPanel({
 
                   {deleteMissingHash && (
                     <div className="manage-hint manage-hint-warn">
-                      Delete password is not set. Create one below to protect destructive actions.
+                      Delete password is not set. Create one to protect destructive actions.
                     </div>
                   )}
+
+                  <div className="manage-hint manage-hint-inline">
+                    If no delete password is set, you will be prompted to create one.
+                  </div>
 
                   <div className="manage-card-actions">
                     <button
@@ -460,6 +470,9 @@ export default function AdminSecurityPanel({
                       Optional. Required before export, import, or restore operations.
                     </div>
                   )}
+                  <div className="manage-hint manage-hint-inline">
+                    This password protects full data export/import and restore operations.
+                  </div>
                   <div className="manage-field">
                     <label className="manage-label">Current Backup & Restore Password</label>
                     <input
@@ -498,10 +511,17 @@ export default function AdminSecurityPanel({
                   </div>
 
                   {backupMissingHash && (
-                    <div className="manage-hint manage-hint-warn">
-                      Backup &amp; restore password is not set. Create one below to protect export/import.
+                    <div className="manage-delete-warning manage-delete-warning--caution" role="status">
+                      <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+                      <span className="manage-delete-warning-text">
+                        Backup &amp; restore password is not set. Create one to protect export/import.
+                      </span>
                     </div>
                   )}
+
+                  <div className="manage-hint manage-hint-inline">
+                    If no backup &amp; restore password is set, you will be prompted to create one.
+                  </div>
 
                   <div className="manage-card-actions">
                     <button

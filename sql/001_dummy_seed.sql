@@ -650,7 +650,7 @@ SELECT
   (p.poster_date::timestamptz - interval '45 days') + (random() * interval '6 hours')
     + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
   'admin', null, 'semester_create', 'semester', p.semester_id,
-  format('Admin created semester %s', p.semester_name),
+  format('Admin created semester %s.', p.semester_name),
   jsonb_build_object('semester_id', p.semester_id, 'semester_name', p.semester_name, 'poster_date', p.poster_date)
 FROM tmp_semester_phase p;
 
@@ -660,7 +660,7 @@ SELECT
   (p.poster_date::timestamptz - interval '21 days') + (random() * interval '5 hours')
     + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
   'admin', null, 'semester_update', 'semester', p.semester_id,
-  format('Admin updated semester %s', p.semester_name),
+  format('Admin updated semester %s.', p.semester_name),
   jsonb_build_object('semester_id', p.semester_id, 'semester_name', p.semester_name)
 FROM tmp_semester_phase p
 WHERE p.semester_name IN ('2025 Fall', '2025 Spring');
@@ -670,7 +670,7 @@ INSERT INTO public.audit_logs
 SELECT
   (p.poster_date::timestamptz - interval '10 days') + (random() * interval '3 hours'),
   'admin', null, 'set_active_semester', 'semester', p.semester_id,
-  format('Admin set active semester to %s', p.semester_name),
+  format('Admin set active semester to %s.', p.semester_name),
   jsonb_build_object('semester_id', p.semester_id, 'semester_name', p.semester_name)
 FROM tmp_semester_phase p
 WHERE p.semester_id IN (SELECT id FROM public.semesters WHERE is_active = true)
@@ -682,7 +682,7 @@ SELECT
   (x.poster_date::timestamptz - interval '7 days') + (random() * interval '6 hours')
     + (row_number() over (PARTITION BY x.semester_id ORDER BY x.group_no) * interval '1 second'),
   'admin', null, 'project_update', 'project', x.id,
-  format('Admin updated project Group %s — %s (%s)', x.group_no, x.project_title, x.semester_name),
+  format('Admin updated project Group %s — %s (%s).', x.group_no, x.project_title, x.semester_name),
   jsonb_build_object('semester_id', x.semester_id, 'semester_name', x.semester_name, 'group_no', x.group_no)
 FROM (
   SELECT
@@ -704,7 +704,7 @@ SELECT
   (x.poster_date::timestamptz - interval '4 days') + (random() * interval '5 hours')
     + (row_number() over (PARTITION BY x.semester_id ORDER BY x.juror_id) * interval '1 second'),
   'admin', null, 'juror_pin_reset', 'juror', x.juror_id,
-  format('Admin reset PIN for juror %s (%s)', x.juror_name, x.semester_name),
+  format('Admin reset PIN for juror %s (%s).', x.juror_name, x.semester_name),
   jsonb_build_object('semester_id', x.semester_id, 'semester_name', x.semester_name)
 FROM (
   SELECT a.semester_id, a.juror_id, j.juror_name, p.semester_name, p.poster_date,
@@ -715,6 +715,50 @@ FROM (
 ) x
 WHERE x.rn <= CASE WHEN lower(x.semester_name) LIKE '%summer%' THEN 1 ELSE 2 END;
 
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  (p.poster_date::timestamptz - interval '9 days') + (random() * interval '2 hours')
+    + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
+  'system', null, 'admin_login_success', 'settings', null,
+  'Admin login succeeded.',
+  null
+FROM tmp_semester_phase p
+LIMIT 2;
+
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  (p.poster_date::timestamptz - interval '9 days') + (random() * interval '2 hours')
+    + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
+  'system', null, 'admin_login_failed', 'settings', null,
+  'Admin login failed.',
+  null
+FROM tmp_semester_phase p
+LIMIT 1;
+
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  (p.poster_date::timestamptz - interval '8 days') + (random() * interval '3 hours')
+    + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
+  'admin', null, 'setting_change', 'settings', null,
+  'Admin changed setting eval_edit_lock.',
+  jsonb_build_object('key', 'eval_edit_lock')
+FROM tmp_semester_phase p
+LIMIT 1;
+
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  (p.poster_date::timestamptz - interval '6 days') + (random() * interval '2 hours'),
+  'admin', null, 'db_export', 'settings', null,
+  'Admin exported database backup.',
+  null
+FROM tmp_semester_phase p
+WHERE p.semester_id IN (SELECT id FROM public.semesters WHERE is_active = true)
+LIMIT 1;
+
 -- Phase 2 — Evaluation session (poster_date 13:00–16:30)
 INSERT INTO public.audit_logs
   (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
@@ -724,7 +768,7 @@ SELECT
     sc.poster_date::timestamptz + interval '13 hours'
   ) + (row_number() over (ORDER BY sc.updated_at) * interval '1 second'),
   'juror', sc.juror_id, 'juror_group_started', 'project', sc.project_id,
-  format('Juror %s started evaluating Group %s (%s)', j.juror_name, p.group_no, s.name),
+  format('Juror %s started evaluating Group %s (%s).', j.juror_name, p.group_no, s.name),
   jsonb_build_object('semester_id', sc.semester_id, 'semester_name', s.name,
                      'group_no', p.group_no, 'project_title', p.project_title)
 FROM public.scores sc
@@ -743,7 +787,7 @@ SELECT
   sc.updated_at - (random() * interval '8 minutes')
     + (row_number() over (ORDER BY sc.updated_at) * interval '1 second'),
   'juror', sc.juror_id, 'juror_group_completed', 'project', sc.project_id,
-  format('Juror %s completed evaluation for Group %s (%s)', j.juror_name, p.group_no, s.name),
+  format('Juror %s completed evaluation for Group %s (%s).', j.juror_name, p.group_no, s.name),
   jsonb_build_object('semester_id', sc.semester_id, 'semester_name', s.name,
                      'group_no', p.group_no, 'project_title', p.project_title)
 FROM public.scores sc
@@ -759,7 +803,7 @@ INSERT INTO public.audit_logs
 SELECT
   MAX(sc.final_submitted_at) + (row_number() over (ORDER BY sc.semester_id, sc.juror_id) * interval '1 second'),
   'juror', sc.juror_id, 'juror_finalize_submission', 'semester', sc.semester_id,
-  format('Juror %s finalized submission (%s)', j.juror_name, s.name),
+  format('Juror %s finalized submission (%s).', j.juror_name, s.name),
   jsonb_build_object('semester_id', sc.semester_id, 'semester_name', s.name)
 FROM public.scores sc
 JOIN public.jurors j ON j.id = sc.juror_id

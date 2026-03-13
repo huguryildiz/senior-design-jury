@@ -56,6 +56,14 @@ const defaultSettings = {
 const AUDIT_PAGE_SIZE = 120;
 const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const MIN_BACKUP_DELAY = 1200;
+const SAMPLE_DB_BACKUP_JSON = `{
+  "schema_version": 1,
+  "semesters": [{ "...": "..." }],
+  "jurors": [{ "...": "..." }],
+  "projects": [{ "...": "..." }],
+  "scores": [{ "...": "..." }],
+  "juror_semester_auth": [{ "...": "..." }]
+}`;
 
 const defaultAuditFilters = {
   startDate: "",
@@ -282,30 +290,16 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
   const supportsInfiniteScroll = typeof window !== "undefined" && "IntersectionObserver" in window;
   const [openPanels, setOpenPanels] = useState(() => {
     const mobileInit = typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches;
-    const portraitInit = typeof window !== "undefined" && window.matchMedia("(max-width: 900px) and (orientation: portrait)").matches;
-    const landscapeInit = typeof window !== "undefined" && window.matchMedia("(max-width: 900px) and (orientation: landscape)").matches;
-    if (portraitInit || landscapeInit) {
-      return {
-        semester: false,
-        projects: false,
-        jurors: false,
-        permissions: false,
-        security: false,
-        audit: false,
-        export: false,
-        dbbackup: false,
-      };
-    }
     if (mobileInit) {
       return {
         semester: true,
         projects: true,
-        jurors: false,
-        permissions: false,
-        security: false,
-        audit: false,
-        export: false,
-        dbbackup: false,
+        jurors: true,
+        permissions: true,
+        security: true,
+        audit: true,
+        export: true,
+        dbbackup: true,
       };
     }
     return {
@@ -384,6 +378,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
   const [dbBackupConfirmText, setDbBackupConfirmText] = useState("");
   const [dbBackupLoading, setDbBackupLoading] = useState(false);
   const [dbBackupError, setDbBackupError] = useState("");
+  const [dbImportSuccess, setDbImportSuccess] = useState("");
+  const [dbImportWarning, setDbImportWarning] = useState("");
   const [backupPasswordSet, setBackupPasswordSet] = useState(true);
   const [evalLockConfirmOpen, setEvalLockConfirmOpen] = useState(false);
   const [evalLockConfirmNext, setEvalLockConfirmNext] = useState(false);
@@ -634,9 +630,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     return () => clearInterval(interval);
   }, [adminPass, viewSemesterId, loadProjects, loadJurors, refreshSemesters]);
 
-  const AUDIT_COMPACT_COUNT = isMobile ? 2 : 3;
+  const AUDIT_COMPACT_COUNT = isMobile ? 3 : 4;
   const hasAuditToggle = auditHasMore || auditLogs.length > AUDIT_COMPACT_COUNT;
-  const auditTotalLabel = auditHasMore ? `${auditLogs.length}+` : `${auditLogs.length}`;
   const visibleAuditLogs = showAllAuditLogs
     ? auditLogs
     : auditLogs.slice(0, AUDIT_COMPACT_COUNT);
@@ -1442,6 +1437,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     setDbBackupPassword("");
     setDbBackupConfirmText("");
     setDbBackupError("");
+    setDbImportSuccess("");
+    setDbImportWarning("");
     setDbImportData(null);
     setDbImportFileName("");
     setDbImportFileSize(0);
@@ -1454,6 +1451,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     setDbBackupPassword("");
     setDbBackupConfirmText("");
     setDbBackupError("");
+    setDbImportSuccess("");
+    setDbImportWarning("");
     setDbImportData(null);
     setDbImportFileName("");
     setDbImportFileSize(0);
@@ -1470,9 +1469,34 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     return "";
   };
 
+  const buildBackupLoadFeedback = (payload) => {
+    const semesters = Array.isArray(payload?.semesters) ? payload.semesters.length : 0;
+    const jurors = Array.isArray(payload?.jurors) ? payload.jurors.length : 0;
+    const projects = Array.isArray(payload?.projects) ? payload.projects.length : 0;
+    const scores = Array.isArray(payload?.scores) ? payload.scores.length : 0;
+    const assignments = Array.isArray(payload?.juror_semester_auth) ? payload.juror_semester_auth.length : 0;
+    const schemaVersion = Number(payload?.schema_version);
+    const success = [
+      "• Backup file loaded successfully.",
+      `• Found: ${semesters} semesters, ${jurors} jurors, ${projects} groups, ${scores} scores, ${assignments} assignments (schema v${Number.isFinite(schemaVersion) ? schemaVersion : "?"}).`,
+    ].join("\n");
+    const emptySections = [];
+    if (semesters === 0) emptySections.push("semesters");
+    if (jurors === 0) emptySections.push("jurors");
+    if (projects === 0) emptySections.push("groups");
+    if (scores === 0) emptySections.push("scores");
+    if (assignments === 0) emptySections.push("assignments");
+    const warning = emptySections.length
+      ? `• Empty sections in this backup: ${emptySections.join(", ")}.`
+      : "";
+    return { success, warning };
+  };
+
   const handleDbImportFile = (file) => {
     if (!file) return;
     setDbBackupError("");
+    setDbImportSuccess("");
+    setDbImportWarning("");
     setDbImportData(null);
     if (!file.name.toLowerCase().endsWith(".json")) {
       setDbImportFileName("");
@@ -1495,13 +1519,20 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
         const schemaError = validateBackupPayload(parsed);
         if (schemaError) {
           setDbBackupError(schemaError);
+          setDbImportSuccess("");
+          setDbImportWarning("");
           setDbImportData(null);
           return;
         }
         setDbImportData(parsed);
         setDbBackupError("");
+        const feedback = buildBackupLoadFeedback(parsed);
+        setDbImportSuccess(feedback.success);
+        setDbImportWarning(feedback.warning);
       } catch {
         setDbBackupError("Invalid backup file. Could not parse JSON.");
+        setDbImportSuccess("");
+        setDbImportWarning("");
       }
     };
     reader.readAsText(file);
@@ -1570,6 +1601,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
       setDbImportData(null);
       setDbImportFileName("");
       setDbImportFileSize(0);
+      setDbImportSuccess("");
+      setDbImportWarning("");
       setMessage("Database restored from backup");
     } catch (e) {
       setDbBackupError(mapDbBackupError(e) || "Import failed. Check the backup file and try again.");
@@ -1924,7 +1957,6 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
 
             <JurorSettingsPanel
               jurors={jurors}
-              activeSemesterName={viewSemesterLabel}
               panelError={panelErrors.jurors}
               isMobile={isMobile}
               isOpen={openPanels.jurors}
@@ -2050,12 +2082,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                         >
                           <DownloadIcon /> Export
                         </button>
+                        <span className="manage-hint manage-hint-inline">
+                          Times shown in your local timezone ({localTimeZone}).
+                        </span>
                       </div>
-                    </div>
-                    <div className="manage-audit-meta">
-                      <span className="manage-hint manage-hint-inline">
-                        Times shown in your local timezone ({localTimeZone}).
-                      </span>
                     </div>
                     {auditRangeError && <div className="manage-hint manage-hint-error">{auditRangeError}</div>}
                     {auditError && !auditRangeError && (
@@ -2115,7 +2145,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                     >
                       {showAllAuditLogs
                         ? "Show fewer audit logs"
-                        : `Show all audit logs (${auditTotalLabel})`}
+                        : "Show all audit logs"}
                     </button>
                   )}
                   {!supportsInfiniteScroll && !auditLoading && auditHasMore && (
@@ -2191,11 +2221,13 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                     Export or restore the database. Requires the backup & restore password.
                   </div>
                   {!backupPasswordSet && (
-                    <div className="manage-hint manage-hint-warn">
-                      Backup &amp; restore password is not set. Create one in Admin Security to enable export/import.
+                    <div className="manage-delete-warning manage-delete-warning--caution" role="status">
+                      <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+                      <span className="manage-delete-warning-text">
+                        Backup &amp; restore password is not set. Create one in Admin Security to enable export/import.
+                      </span>
                     </div>
                   )}
-
                   <input
                     ref={importFileRef}
                     type="file"
@@ -2252,7 +2284,6 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                     </div>
                     {dbBackupMode === "import" && (
                       <div className="manage-field">
-                        <label className="manage-label">Backup File</label>
                         <div
                           className={`manage-dropzone${dbImportDragging ? " is-dragging" : ""}`}
                           onDragEnter={(e) => { e.preventDefault(); setDbImportDragging(true); }}
@@ -2294,18 +2325,42 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                             Selected: {dbImportFileName} ({Math.ceil(dbImportFileSize / 1024)} KB)
                           </div>
                         )}
+                        {dbBackupMode === "import" && dbBackupError && (
+                          <div className="manage-alerts" style={{ marginTop: "0.5rem" }}>
+                            <span className="manage-alert error with-icon">
+                              <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
+                              <span>{dbBackupError}</span>
+                            </span>
+                          </div>
+                        )}
+                        {dbBackupMode === "import" && dbImportSuccess && !dbBackupError && (
+                          <div className="manage-import-feedback manage-import-feedback--success" role="status" style={{ marginTop: "0.5rem" }}>
+                            {dbImportSuccess}
+                          </div>
+                        )}
+                        {dbBackupMode === "import" && dbImportWarning && !dbBackupError && (
+                          <div className="manage-import-feedback manage-import-feedback--warn" role="status" style={{ marginTop: "0.5rem" }}>
+                            {dbImportWarning}
+                          </div>
+                        )}
                       </div>
                     )}
                     {dbBackupMode === "import" && (
                       <>
                         <details className="manage-collapsible" open>
-                          <summary className="manage-collapsible-summary">JSON example</summary>
+                          <summary className="manage-collapsible-summary">
+                            <span>JSON example</span>
+                            <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
+                          </summary>
                           <div className="manage-collapsible-content">
-                            <div className="manage-code">{'{"semesters":[...],"jurors":[...],"projects":[...],"scores":[...],"assignments":[...]}'}</div>
+                            <pre className="manage-code" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{SAMPLE_DB_BACKUP_JSON}</pre>
                           </div>
                         </details>
                         <details className="manage-collapsible" open>
-                          <summary className="manage-collapsible-summary">Rules</summary>
+                          <summary className="manage-collapsible-summary">
+                            <span>Rules</span>
+                            <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
+                          </summary>
                           <div className="manage-collapsible-content">
                             <ul className="manage-hint-list manage-rules-list">
                               <li>Only .json files exported from this portal are supported.</li>
@@ -2342,7 +2397,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                         />
                       </div>
                     )}
-                    {dbBackupError && (
+                    {dbBackupMode !== "import" && dbBackupError && (
                       <div className="manage-alerts">
                         <span className="manage-alert error with-icon">
                           <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
@@ -2365,12 +2420,14 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                         setDbImportFileSize(0);
                         setDbImportDragging(false);
                         setDbBackupError("");
+                        setDbImportSuccess("");
+                        setDbImportWarning("");
                       }}
                     >
                       Cancel
                     </button>
                     <button
-                      className={`manage-btn ${dbBackupMode === "import" ? "danger" : "primary"}`}
+                      className={`manage-btn ${dbBackupMode === "import" ? "manage-btn--delete-confirm" : "primary"}`}
                       type="button"
                       disabled={
                         dbBackupLoading

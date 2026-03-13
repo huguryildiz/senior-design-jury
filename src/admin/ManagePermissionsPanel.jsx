@@ -145,6 +145,9 @@ export default function ManagePermissionsPanel({
         const isCompleted = Boolean(finalSubmittedAt);
         const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
         const isReadyToSubmit = safeTotal > 0 && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+        const actionTokens = editEnabled
+          ? "lock editing cancel edit close edit"
+          : (isCompleted ? "unlock editing enable edit open edit" : "");
         const editStatusLabel = editEnabled
           ? "edit mode open on enabled editing true acik açık"
           : "edit mode closed off disabled false kapali kapalı";
@@ -189,6 +192,7 @@ export default function ManagePermissionsPanel({
           inst,
           progressLabel,
           statusTokens,
+          actionTokens,
           editStatusLabel,
           formattedActivityAlt,
           lastActivityAt,
@@ -202,6 +206,9 @@ export default function ManagePermissionsPanel({
         ]
           .join(" ")
           .toLowerCase();
+        const actionQuery = normalizedSearch.replace(/\s+/g, " ").trim();
+        if (actionQuery === "lock editing") return editEnabled;
+        if (actionQuery === "unlock editing") return !editEnabled && isCompleted;
         return haystack.includes(normalizedSearch);
       })
     : permissionJurors;
@@ -390,7 +397,7 @@ export default function ManagePermissionsPanel({
                           </span>
                         )}
                       </div>
-                      {editEnabled && (
+                      {editEnabled && !evalLockActive && (
                         <div className="manage-item-status-row manage-meta-line manage-meta-line--status-wait">
                           <span className="manage-meta-icon manage-status-dot-icon manage-status-dot-icon--spacer" aria-hidden="true" />
                           <span className="manage-item-helper manage-status-chip manage-item-helper--editing-wait">
@@ -428,7 +435,7 @@ export default function ManagePermissionsPanel({
                               <LoaderIcon />
                             </span>
                           )}
-                          {editEnabled && (
+                          {editEnabled && !evalLockActive && (
                             <button
                               type="button"
                               className="manage-icon-btn with-label manage-cancel-edit-action"
@@ -491,7 +498,7 @@ export default function ManagePermissionsPanel({
               type="button"
               onClick={() => setShowAll((v) => !v)}
             >
-              {showAll ? "Show fewer active jurors" : `Show all active jurors (${permissionJurors.length})`}
+              {showAll ? "Show fewer jurors" : `Show all jurors (${permissionJurors.length})`}
             </button>
           )}
 

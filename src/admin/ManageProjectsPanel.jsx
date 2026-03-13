@@ -1071,7 +1071,10 @@ export default function ManageProjectsPanel({
                     </div>
                   )}
                   <details className="manage-collapsible">
-                    <summary className="manage-collapsible-summary">CSV example</summary>
+                    <summary className="manage-collapsible-summary">
+                      <span>CSV example</span>
+                      <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
+                    </summary>
                     <div className="manage-collapsible-content">
                       <div className="manage-code">group_no,project_title,group_students</div>
                       <div className="manage-code">1,Autonomous Drone Navigation,Ali Yilmaz; Ayse Demir; Mehmet Can</div>
@@ -1080,7 +1083,10 @@ export default function ManageProjectsPanel({
                     </div>
                   </details>
                   <details className="manage-collapsible">
-                    <summary className="manage-collapsible-summary">Rules</summary>
+                    <summary className="manage-collapsible-summary">
+                      <span>Rules</span>
+                      <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
+                    </summary>
                     <div className="manage-collapsible-content">
                       <ul className="manage-hint-list manage-rules-list">
                         <li>Header row is required with exact field names: <span className="manage-code-inline">group_no</span>, <span className="manage-code-inline">project_title</span>, <span className="manage-code-inline">group_students</span>.</li>

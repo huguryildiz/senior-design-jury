@@ -443,10 +443,24 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
   const [groupScoreDraft, setGroupScoreDraft] = useState({ min: "", max: "" });
 
   // Fixed-position tooltip (escapes overflow-x:auto clipping)
-  const [cellTip, setCellTip] = useState(null); // { x, y, text } | null
+  const [cellTip, setCellTip] = useState(null); // { x, y, text, placement, maxWidth } | null
   const showCellTip = useCallback((e, text) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setCellTip({ x: r.left + r.width / 2, y: r.top - 8, text });
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const maxWidth = Math.min(260, Math.max(160, viewportWidth - 16));
+    const half = maxWidth / 2;
+    const rawX = r.left + r.width / 2;
+    const minX = 8 + half;
+    const maxX = viewportWidth - 8 - half;
+    const x = viewportWidth > 0 ? Math.min(maxX, Math.max(minX, rawX)) : rawX;
+    const placeAbove = r.top > 56;
+    setCellTip({
+      x,
+      y: placeAbove ? r.top - 8 : r.bottom + 8,
+      text,
+      placement: placeAbove ? "top" : "bottom",
+      maxWidth,
+    });
   }, []);
   const hideCellTip = useCallback(() => setCellTip(null), []);
   useEffect(() => {
@@ -815,9 +829,9 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
 
       {cellTip && (
         <div
-          className="matrix-cell-tip"
+          className={`matrix-cell-tip${cellTip.placement === "bottom" ? " is-bottom" : ""}`}
           role="tooltip"
-          style={{ left: cellTip.x, top: cellTip.y }}
+          style={{ left: cellTip.x, top: cellTip.y, maxWidth: `${cellTip.maxWidth}px` }}
         >
           {cellTip.text}
         </div>

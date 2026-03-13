@@ -207,12 +207,22 @@
   padding: 0 14px;
   box-sizing: border-box;
 }
+.chart-scroll-wrap--outcome {
+  scrollbar-gutter: stable both-edges;
+}
+.chart-scroll-wrap--outcome:not(.is-overflowing) {
+  overflow-x: hidden;
+}
 .chart-scroll-inner {
   display: block;
   margin: 0 auto;
   min-width: 0;
 }
 .chart-scroll-wrap::-webkit-scrollbar { height: 8px; }
+.chart-scroll-wrap::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
 .chart-scroll-wrap::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 999px;

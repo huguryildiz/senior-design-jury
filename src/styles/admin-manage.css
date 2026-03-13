@@ -100,6 +100,7 @@
 .manage-security-tabs {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--gray-200);
@@ -112,11 +113,15 @@
   color: #475569;
   font-size: 12px;
   font-weight: 600;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 10px;
   cursor: pointer;
   flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  line-height: 1.2;
 }
 .manage-security-tab.is-active {
   background: #1d4ed8;
@@ -2864,6 +2869,28 @@ textarea.manage-input--create {
   font-size: 12px;
   font-weight: 600;
   color: #64748b;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.manage-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+.manage-collapsible-summary::marker {
+  content: "";
+}
+.manage-collapsible-chevron {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: #94a3b8;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.manage-collapsible[open] .manage-collapsible-chevron {
+  transform: rotate(180deg);
+  color: #64748b;
 }
 .manage-collapsible-content {
   padding: 0 12px 12px;
@@ -2899,13 +2926,15 @@ textarea.manage-input--create {
 }
 
 .manage-modal-card--delete .manage-btn--delete-confirm,
-.manage-modal-card--pin-flow .manage-btn--delete-confirm {
+.manage-modal-card--pin-flow .manage-btn--delete-confirm,
+.manage-modal-card--db-restore .manage-btn--delete-confirm {
   background: #e5484d;
   border-color: #e5484d;
   color: #fff;
 }
 .manage-modal-card--delete .manage-btn--delete-confirm:hover:not(:disabled),
-.manage-modal-card--pin-flow .manage-btn--delete-confirm:hover:not(:disabled) {
+.manage-modal-card--pin-flow .manage-btn--delete-confirm:hover:not(:disabled),
+.manage-modal-card--db-restore .manage-btn--delete-confirm:hover:not(:disabled) {
   background: #d43d43;
   border-color: #d43d43;
 }
@@ -3223,9 +3252,11 @@ textarea.manage-input--create {
 .manage-import-context-line {
   margin-top: -2px;
   margin-bottom: 2px;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.45;
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #94a3b8;
+  white-space: nowrap;
 }
 
 .manage-modal-card--import-juror-csv .manage-dropzone {
@@ -3338,6 +3369,9 @@ textarea.manage-input--create {
   width: 100%;
   display: flex;
   justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .manage-audit-body {
