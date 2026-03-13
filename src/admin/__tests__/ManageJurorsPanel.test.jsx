@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 import ManageJurorsPanel from "../ManageJurorsPanel";
+import { qaTest } from "../../test/qaTest.js";
 
 const DEFAULT_PROPS = {
   jurors: [],
@@ -35,7 +36,7 @@ function makeCSV(...lines) {
 describe("ManageJurorsPanel — CSV import validation", () => {
   beforeEach(() => localStorage.clear());
 
-  it("shows error when file exceeds 2MB [Fix 6 regression]", async () => {
+  qaTest("jurors.csv.01", async () => {
     const { container } = render(<ManageJurorsPanel {...DEFAULT_PROPS} />);
     const content = "a".repeat(3 * 1024 * 1024); // 3MB
     const bigFile = new File([content], "big.csv", { type: "text/csv" });
@@ -45,7 +46,7 @@ describe("ManageJurorsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when required header columns are missing", async () => {
+  qaTest("jurors.csv.02", async () => {
     const { container } = render(<ManageJurorsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("name,institution", "Alice,EE");
     const file = new File([csv], "jurors.csv", { type: "text/csv" });
@@ -55,7 +56,7 @@ describe("ManageJurorsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when juror_name is blank", async () => {
+  qaTest("jurors.csv.03", async () => {
     const { container } = render(<ManageJurorsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("juror_name,juror_inst", ",EE");
     const file = new File([csv], "jurors.csv", { type: "text/csv" });
@@ -65,7 +66,7 @@ describe("ManageJurorsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when juror_inst is blank", async () => {
+  qaTest("jurors.csv.04", async () => {
     const { container } = render(<ManageJurorsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("juror_name,juror_inst", "Alice,");
     const file = new File([csv], "jurors.csv", { type: "text/csv" });
@@ -75,7 +76,7 @@ describe("ManageJurorsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when same juror appears twice in the CSV", async () => {
+  qaTest("jurors.csv.05", async () => {
     const { container } = render(<ManageJurorsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("juror_name,juror_inst", "Alice,EE", "Alice,EE");
     const file = new File([csv], "jurors.csv", { type: "text/csv" });
@@ -85,7 +86,7 @@ describe("ManageJurorsPanel — CSV import validation", () => {
     });
   });
 
-  it("treats existing system jurors as a warning, not an error", async () => {
+  qaTest("jurors.csv.06", async () => {
     const existing = [{ juror_id: "j1", juror_name: "Alice", juror_inst: "EE" }];
     const { container } = render(
       <ManageJurorsPanel {...DEFAULT_PROPS} jurors={existing} />
@@ -101,7 +102,7 @@ describe("ManageJurorsPanel — CSV import validation", () => {
 });
 
 describe("ManageJurorsPanel — PIN reset", () => {
-  it("calls onResetPin with correct juror data when PIN button is clicked", () => {
+  qaTest("jurors.pin.01", () => {
     const juror = { juror_id: "j1", juror_name: "Alice", juror_inst: "EE" };
     const onResetPin = vi.fn();
     render(<ManageJurorsPanel {...DEFAULT_PROPS} jurors={[juror]} onResetPin={onResetPin} />);
@@ -114,7 +115,7 @@ describe("ManageJurorsPanel — PIN reset", () => {
 });
 
 describe("ManageJurorsPanel — CRUD smoke tests", () => {
-  it("calls onDeleteJuror when delete button is clicked", () => {
+  qaTest("jurors.crud.01", () => {
     const juror = { juror_id: "j1", juror_name: "Alice", juror_inst: "EE" };
     const onDeleteJuror = vi.fn();
     render(
@@ -125,7 +126,7 @@ describe("ManageJurorsPanel — CRUD smoke tests", () => {
     expect(onDeleteJuror).toHaveBeenCalledWith(expect.objectContaining({ juror_id: "j1" }));
   });
 
-  it("calls onAddJuror with name and inst when create form is submitted", async () => {
+  qaTest("jurors.crud.02", async () => {
     const onAddJuror = vi.fn().mockResolvedValue({});
     render(<ManageJurorsPanel {...DEFAULT_PROPS} onAddJuror={onAddJuror} />);
 

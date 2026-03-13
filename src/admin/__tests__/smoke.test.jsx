@@ -1,34 +1,35 @@
 // Smoke tests: components render without throwing with minimal/empty props
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect } from "vitest";
+import { qaTest } from "../../test/qaTest.js";
 import { render, screen } from "@testing-library/react";
 import CompletionStrip from "../CompletionStrip";
 import JurorActivity from "../JurorActivity";
 import AnalyticsTab from "../AnalyticsTab";
 
 describe("CompletionStrip smoke tests", () => {
-  it("renders nothing when metrics is null", () => {
+  qaTest("smoke.strip.01", () => {
     const { container } = render(<CompletionStrip metrics={null} />);
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders completion text with correct counts", () => {
+  qaTest("smoke.strip.02", () => {
     render(<CompletionStrip metrics={{ completedJurors: 3, totalJurors: 5 }} />);
     expect(screen.getByText(/3 of 5 jurors completed/)).toBeInTheDocument();
   });
 
-  it("shows pending count when some jurors are incomplete", () => {
+  qaTest("smoke.strip.03", () => {
     render(<CompletionStrip metrics={{ completedJurors: 2, totalJurors: 5 }} />);
     expect(screen.getByText(/3 pending/)).toBeInTheDocument();
   });
 
-  it("renders 100% completion without pending", () => {
+  qaTest("smoke.strip.04", () => {
     render(<CompletionStrip metrics={{ completedJurors: 5, totalJurors: 5 }} />);
     const text = screen.getByText(/5 of 5 jurors completed/);
     expect(text).toBeInTheDocument();
     expect(text.textContent).not.toContain("pending");
   });
 
-  it("clamps completion % to 100 when completedJurors > totalJurors", () => {
+  qaTest("smoke.strip.05", () => {
     const { container } = render(
       <CompletionStrip metrics={{ completedJurors: 8, totalJurors: 5 }} />
     );
@@ -40,22 +41,22 @@ describe("CompletionStrip smoke tests", () => {
 describe("JurorActivity smoke tests", () => {
   beforeEach(() => localStorage.clear());
 
-  it("renders without throwing when both props are empty arrays", () => {
+  qaTest("smoke.juror.01", () => {
     expect(() => render(<JurorActivity jurorStats={[]} groups={[]} />)).not.toThrow();
   });
 
-  it("renders without throwing when props are omitted (uses defaults)", () => {
+  qaTest("smoke.juror.02", () => {
     expect(() => render(<JurorActivity />)).not.toThrow();
   });
 
-  it("shows search input for filtering jurors", () => {
+  qaTest("smoke.juror.03", () => {
     render(<JurorActivity jurorStats={[]} groups={[]} />);
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
   });
 });
 
 describe("AnalyticsTab smoke tests", () => {
-  it("renders without throwing with empty/null data", () => {
+  qaTest("smoke.analytics.01", () => {
     expect(() =>
       render(
         <AnalyticsTab
@@ -74,7 +75,7 @@ describe("AnalyticsTab smoke tests", () => {
     ).not.toThrow();
   });
 
-  it("renders a loading indicator when loading=true", () => {
+  qaTest("smoke.analytics.02", () => {
     const { container } = render(
       <AnalyticsTab
         dashboardStats={[]}

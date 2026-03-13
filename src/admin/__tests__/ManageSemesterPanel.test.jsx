@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ManageSemesterPanel from "../ManageSemesterPanel";
+import { qaTest } from "../../test/qaTest.js";
 
 function renderPanel(overrides = {}) {
   const props = {
@@ -27,7 +28,7 @@ function renderPanel(overrides = {}) {
 // ── Semester sort order ───────────────────────────────────────────────────────
 
 describe("ManageSemesterPanel — sort order", () => {
-  it("sorts newer year before older year", () => {
+  qaTest("semester.sort.01", () => {
     const { container } = renderPanel({
       semesters: [
         { id: "s1", name: "2024 Fall", poster_date: "2024-11-15", updated_at: "2024-11-20T10:00:00.000Z" },
@@ -43,7 +44,7 @@ describe("ManageSemesterPanel — sort order", () => {
     expect(titles[1]).toBe("2024 Fall");
   });
 
-  it("sorts Fall before Spring within the same year", () => {
+  qaTest("semester.sort.02", () => {
     const { container } = renderPanel({
       semesters: [
         { id: "s1", name: "2025 Spring", poster_date: "2025-05-15", updated_at: "2025-05-20T10:00:00.000Z" },
@@ -59,7 +60,7 @@ describe("ManageSemesterPanel — sort order", () => {
     expect(titles[1]).toBe("2025 Spring");
   });
 
-  it("sorts Fall > Summer > Spring > Winter within the same year", () => {
+  qaTest("semester.sort.03", () => {
     const { container } = renderPanel({
       semesters: [
         { id: "s1", name: "2025 Winter", poster_date: "2025-01-15", updated_at: "2025-01-20T10:00:00.000Z" },
@@ -79,7 +80,7 @@ describe("ManageSemesterPanel — sort order", () => {
     expect(titles[3]).toBe("2025 Winter");
   });
 
-  it("puts semester with no year at the end", () => {
+  qaTest("semester.sort.04", () => {
     const { container } = renderPanel({
       semesters: [
         { id: "s1", name: "Pilot",     poster_date: "",           updated_at: "2024-01-01T00:00:00.000Z" },
@@ -99,19 +100,19 @@ describe("ManageSemesterPanel — sort order", () => {
 // ── Set active + delete guard ─────────────────────────────────────────────────
 
 describe("ManageSemesterPanel — set active + delete guard", () => {
-  it("calls onSetActive with the selected semester id when dropdown changes", () => {
+  qaTest("semester.active.01", () => {
     const onSetActive = vi.fn();
     renderPanel({ onSetActive });
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "s2" } });
     expect(onSetActive).toHaveBeenCalledWith("s2");
   });
 
-  it("disables delete button for the active semester", () => {
+  qaTest("semester.active.02", () => {
     renderPanel();
     expect(screen.getByLabelText("Delete 2025 Fall")).toBeDisabled();
   });
 
-  it("enables delete button for a non-active semester", () => {
+  qaTest("semester.active.03", () => {
     renderPanel();
     expect(screen.getByLabelText("Delete 2026 Spring")).not.toBeDisabled();
   });
@@ -124,7 +125,7 @@ describe("ManageSemesterPanel smoke tests", () => {
     localStorage.clear();
   });
 
-  it("creates semester with valid input", async () => {
+  qaTest("semester.crud.01", async () => {
     const { props } = renderPanel();
 
     fireEvent.click(screen.getByRole("button", { name: "Semester" }));
@@ -143,7 +144,7 @@ describe("ManageSemesterPanel smoke tests", () => {
     });
   });
 
-  it("calls delete callback for non-active semester", () => {
+  qaTest("semester.crud.02", () => {
     const { props } = renderPanel();
 
     fireEvent.click(screen.getByLabelText("Delete 2026 Spring"));
@@ -153,7 +154,7 @@ describe("ManageSemesterPanel smoke tests", () => {
     );
   });
 
-  it("does not submit duplicate semester name", async () => {
+  qaTest("semester.crud.03", async () => {
     const { props } = renderPanel();
 
     fireEvent.click(screen.getByRole("button", { name: "Semester" }));
@@ -170,7 +171,7 @@ describe("ManageSemesterPanel smoke tests", () => {
     expect(props.onCreateSemester).not.toHaveBeenCalled();
   });
 
-  it("shows create field error from API response", async () => {
+  qaTest("semester.crud.04", async () => {
     const { props } = renderPanel({
       onCreateSemester: vi.fn().mockResolvedValue({
         fieldErrors: { name: "Semester name already exists." },

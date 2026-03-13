@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 import ManagePermissionsPanel from "../ManagePermissionsPanel";
+import { qaTest } from "../../test/qaTest.js";
 
 const mkJuror = (overrides = {}) => ({
   juror_id: "j1",
@@ -30,7 +31,7 @@ const DEFAULT_PROPS = {
 describe("ManagePermissionsPanel — canEnableEdit gate", () => {
   beforeEach(() => localStorage.clear());
 
-  it("shows Unlock Editing button for a completed, non-editing juror", () => {
+  qaTest("perms.gate.01", () => {
     const juror = mkJuror({
       finalSubmittedAt: "2026-03-13T10:00:00Z",
       editEnabled: false,
@@ -40,7 +41,7 @@ describe("ManagePermissionsPanel — canEnableEdit gate", () => {
     expect(screen.getByLabelText("Unlock editing")).toBeInTheDocument();
   });
 
-  it("does not show Unlock Editing when evalLockActive is true", () => {
+  qaTest("perms.gate.02", () => {
     const juror = mkJuror({
       finalSubmittedAt: "2026-03-13T10:00:00Z",
       editEnabled: false,
@@ -57,7 +58,7 @@ describe("ManagePermissionsPanel — canEnableEdit gate", () => {
     expect(screen.queryByLabelText("Unlock editing")).toBeNull();
   });
 
-  it("does not show Unlock Editing when juror has not submitted (not completed)", () => {
+  qaTest("perms.gate.03", () => {
     const juror = mkJuror({ finalSubmittedAt: null, editEnabled: false });
     render(<ManagePermissionsPanel {...DEFAULT_PROPS} jurors={[juror]} />);
     expect(screen.queryByLabelText("Unlock editing")).toBeNull();
@@ -65,14 +66,14 @@ describe("ManagePermissionsPanel — canEnableEdit gate", () => {
 });
 
 describe("ManagePermissionsPanel — lock eval toggle", () => {
-  it("checkbox is checked when evalLockActive=true", () => {
+  qaTest("perms.lock.01", () => {
     render(
       <ManagePermissionsPanel {...DEFAULT_PROPS} settings={{ evalLockActive: true }} />
     );
     expect(screen.getByRole("checkbox")).toBeChecked();
   });
 
-  it("calls onRequestEvalLockChange(true) when unchecked checkbox is clicked", () => {
+  qaTest("perms.lock.02", () => {
     const onRequestEvalLockChange = vi.fn().mockResolvedValue({});
     render(
       <ManagePermissionsPanel
@@ -86,7 +87,7 @@ describe("ManagePermissionsPanel — lock eval toggle", () => {
 });
 
 describe("ManagePermissionsPanel — Lock Editing (force close)", () => {
-  it("shows Lock Editing button when juror is in edit mode", () => {
+  qaTest("perms.forceclose.01", () => {
     const juror = mkJuror({
       editEnabled: true,
       finalSubmittedAt: "2026-03-13T10:00:00Z",
@@ -95,7 +96,7 @@ describe("ManagePermissionsPanel — Lock Editing (force close)", () => {
     expect(screen.getByLabelText("Lock editing")).toBeInTheDocument();
   });
 
-  it("calls onForceCloseEdit with jurorId when Lock Editing is clicked", async () => {
+  qaTest("perms.forceclose.02", async () => {
     const onForceCloseEdit = vi.fn().mockResolvedValue({});
     const juror = mkJuror({
       juror_id: "j1",
@@ -117,7 +118,7 @@ describe("ManagePermissionsPanel — Lock Editing (force close)", () => {
 describe("ManagePermissionsPanel — search", () => {
   beforeEach(() => localStorage.clear());
 
-  it("shows juror matching name substring", () => {
+  qaTest("perms.search.01", () => {
     const juror = mkJuror({ juror_name: "Alice" });
     render(<ManagePermissionsPanel {...DEFAULT_PROPS} jurors={[juror]} />);
     fireEvent.change(screen.getByLabelText("Search jurors"), {
@@ -126,7 +127,7 @@ describe("ManagePermissionsPanel — search", () => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
-  it('"lock editing" query matches only jurors in edit mode', () => {
+  qaTest("perms.search.02", () => {
     const editing = mkJuror({
       juror_id: "j1",
       juror_name: "Alice",
@@ -149,7 +150,7 @@ describe("ManagePermissionsPanel — search", () => {
     expect(screen.queryByText("Bob")).toBeNull();
   });
 
-  it('"unlock editing" query matches only completed jurors not in edit mode', () => {
+  qaTest("perms.search.03", () => {
     const editing = mkJuror({
       juror_id: "j1",
       juror_name: "Alice",

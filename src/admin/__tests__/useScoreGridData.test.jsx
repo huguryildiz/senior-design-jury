@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect } from "vitest";
 import { useScoreGridData } from "../useScoreGridData";
+import { qaTest } from "../../test/qaTest.js";
 
 const BASE_GROUPS = [
   { id: "g1", groupNo: 1, label: "Group 1" },
@@ -8,7 +9,7 @@ const BASE_GROUPS = [
 ];
 
 describe("useScoreGridData", () => {
-  it("builds lookup map and averages from completed jurors only", () => {
+  qaTest("griddata.01", () => {
     const groups = [
       { id: "g1", groupNo: 1, label: "Group 1" },
       { id: "g2", groupNo: 2, label: "Group 2" },
@@ -93,7 +94,7 @@ describe("useScoreGridData — groupAverages edge cases", () => {
     status: "completed", editingFlag: "", finalSubmittedAt: "01.01.2026 10:00",
   });
 
-  it("excludes juror with editEnabled=true from average", () => {
+  qaTest("griddata.02", () => {
     const jurors = [
       { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: true },
     ];
@@ -103,7 +104,7 @@ describe("useScoreGridData — groupAverages edge cases", () => {
     expect(result.current.groupAverages[0]).toBeNull();
   });
 
-  it("includes juror with finalSubmitted=true and no finalSubmittedAt [Fix 2 regression]", () => {
+  qaTest("griddata.03", () => {
     const jurors = [
       { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false, finalSubmittedAt: undefined },
     ];
@@ -117,7 +118,7 @@ describe("useScoreGridData — groupAverages edge cases", () => {
     expect(result.current.groupAverages[0]).toBe("80.00");
   });
 
-  it("returns null averages when all jurors are in editing mode", () => {
+  qaTest("griddata.04", () => {
     const jurors = [
       { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: true },
       { key: "j2", name: "Bob",   dept: "CS", finalSubmitted: true, editEnabled: true },
@@ -131,7 +132,7 @@ describe("useScoreGridData — groupAverages edge cases", () => {
     expect(result.current.groupAverages[1]).toBeNull();
   });
 
-  it("excludes partial-state entries from average (no total)", () => {
+  qaTest("griddata.05", () => {
     const jurors = [
       { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false },
     ];
@@ -145,7 +146,7 @@ describe("useScoreGridData — groupAverages edge cases", () => {
     expect(result.current.groupAverages[0]).toBeNull();
   });
 
-  it("includes zero-score entry in average (total=0 is scored) [zero regression]", () => {
+  qaTest("griddata.06", () => {
     const jurors = [
       { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false },
     ];
@@ -154,7 +155,7 @@ describe("useScoreGridData — groupAverages edge cases", () => {
     expect(result.current.groupAverages[0]).toBe("0.00");
   });
 
-  it("computes correct numeric average across multiple jurors", () => {
+  qaTest("griddata.07", () => {
     const jurors = [
       { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false },
       { key: "j2", name: "Bob",   dept: "CS", finalSubmitted: true, editEnabled: false },

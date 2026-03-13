@@ -1,13 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import RankingsTab from "../RankingsTab";
+import { qaTest } from "../../test/qaTest.js";
 
 describe("RankingsTab", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it("applies dense ranking with ties and excludes non-finalized groups", () => {
+  qaTest("rank.01", () => {
     const ranked = [
       { id: "p2", groupNo: 2, name: "B", students: "", totalAvg: 95, avg: {} },
       { id: "p1", groupNo: 1, name: "A", students: "", totalAvg: 95, avg: {} },
@@ -29,7 +30,7 @@ describe("RankingsTab", () => {
     expect(groupLabels[1]).toContain("Group 1");
   });
 
-  it("rankMap is stable when search filters the visible list [Fix 1 regression]", () => {
+  qaTest("rank.02", () => {
     // 4 groups: Delta has rank 4 — after search filters out top-3, Delta's rank must remain 4
     const ranked = [
       { id: "p1", groupNo: 1, name: "Alpha", students: "", totalAvg: 80, avg: {} }, // rank 2
@@ -51,7 +52,7 @@ describe("RankingsTab", () => {
     expect(deltaBadge.textContent?.trim()).toBe("4");
   });
 
-  it("exports currently filtered/sorted list", async () => {
+  qaTest("rank.03", async () => {
     const exportSpy = vi.spyOn(await import("../utils"), "exportRankingsXLSX").mockResolvedValue();
     const ranked = [
       { id: "p1", groupNo: 1, name: "Alpha", students: "", totalAvg: 88, avg: {} },

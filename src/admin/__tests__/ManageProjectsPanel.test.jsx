@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 import ManageProjectsPanel from "../ManageProjectsPanel";
+import { qaTest } from "../../test/qaTest.js";
 
 const DEFAULT_PROPS = {
   projects: [],
@@ -36,7 +37,7 @@ function makeCSV(...lines) {
 describe("ManageProjectsPanel — CSV import validation", () => {
   beforeEach(() => localStorage.clear());
 
-  it("shows error when file exceeds 2MB [Fix 6 regression]", async () => {
+  qaTest("groups.csv.01", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     const content = "a".repeat(3 * 1024 * 1024);
     const bigFile = new File([content], "big.csv", { type: "text/csv" });
@@ -46,7 +47,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when required header columns are missing", async () => {
+  qaTest("groups.csv.02", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("no,project,students", "1,Project A,Alice");
     const file = new File([csv], "groups.csv", { type: "text/csv" });
@@ -56,7 +57,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when group_no is zero", async () => {
+  qaTest("groups.csv.03", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("group_no,project_title,group_students", "0,Project A,Alice");
     const file = new File([csv], "groups.csv", { type: "text/csv" });
@@ -66,7 +67,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when group_no is negative", async () => {
+  qaTest("groups.csv.04", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("group_no,project_title,group_students", "-1,Project A,Alice");
     const file = new File([csv], "groups.csv", { type: "text/csv" });
@@ -76,7 +77,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error when group_no is non-numeric", async () => {
+  qaTest("groups.csv.05", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV("group_no,project_title,group_students", "abc,Project A,Alice");
     const file = new File([csv], "groups.csv", { type: "text/csv" });
@@ -86,7 +87,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("warns about invalid separator when students are comma-separated in CSV field", async () => {
+  qaTest("groups.csv.06", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     // Quoted field with comma inside — parseCsv treats it as one field but contains comma
     const csv = `group_no,project_title,group_students\n1,Project A,"Alice, Bob"\n`;
@@ -97,7 +98,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("shows error for duplicate group_no within the same CSV", async () => {
+  qaTest("groups.csv.07", async () => {
     const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
     const csv = makeCSV(
       "group_no,project_title,group_students",
@@ -111,7 +112,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
     });
   });
 
-  it("accepts valid semicolon-separated students (quoted CSV field)", async () => {
+  qaTest("groups.csv.08", async () => {
     const onImport = vi.fn().mockResolvedValue({});
     const { container } = render(
       <ManageProjectsPanel {...DEFAULT_PROPS} onImport={onImport} />
@@ -130,7 +131,7 @@ describe("ManageProjectsPanel — CSV import validation", () => {
 describe("ManageProjectsPanel — CRUD smoke tests", () => {
   beforeEach(() => localStorage.clear());
 
-  it("calls onDeleteProject when delete is clicked", () => {
+  qaTest("groups.crud.01", () => {
     const project = { id: "p1", group_no: 1, project_title: "Project A", group_students: "Alice" };
     const onDeleteProject = vi.fn();
     render(

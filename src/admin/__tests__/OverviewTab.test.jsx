@@ -1,13 +1,14 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, vi } from "vitest";
 import OverviewTab from "../OverviewTab";
+import { qaTest } from "../../test/qaTest.js";
 
 vi.mock("../JurorActivity", () => ({
   default: () => <div data-testid="juror-activity" />,
 }));
 
 describe("OverviewTab", () => {
-  it("renders placeholders and hides rings when there is no data", () => {
+  qaTest("overview.01", () => {
     render(<OverviewTab jurorStats={[]} groups={[]} metrics={{ totalJurors: 0, totalEvaluations: 0 }} />);
 
     const completedCard = screen.getByText("Completed Jurors").closest(".stat-card");
@@ -21,7 +22,7 @@ describe("OverviewTab", () => {
     expect(scoredCard.querySelector(".stat-ring")).toBeNull();
   });
 
-  it("clamps ring percentage to 100%", () => {
+  qaTest("overview.02", () => {
     render(
       <OverviewTab
         jurorStats={[]}

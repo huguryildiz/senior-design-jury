@@ -1,6 +1,7 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ScoreDetails from "../ScoreDetails";
+import { qaTest } from "../../test/qaTest.js";
 
 function setDesktopViewport() {
   Object.defineProperty(window, "innerWidth", { value: 1440, writable: true });
@@ -114,7 +115,7 @@ describe("ScoreDetails filters", () => {
     setDesktopViewport();
   });
 
-  it("filters rows by score status", async () => {
+  qaTest("details.01", async () => {
     renderDetails();
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
@@ -131,7 +132,7 @@ describe("ScoreDetails filters", () => {
     });
   });
 
-  it("filters rows by juror status", async () => {
+  qaTest("details.02", async () => {
     renderDetails();
     fireEvent.click(screen.getByRole("button", { name: "Filter by Juror Status" }));
     fireEvent.click(screen.getByLabelText("All Statuses"));
@@ -144,7 +145,7 @@ describe("ScoreDetails filters", () => {
     });
   });
 
-  it("filters rows by updated date range (from)", async () => {
+  qaTest("details.03", async () => {
     renderDetails();
     fireEvent.click(screen.getByRole("button", { name: "Filter by Updated At" }));
     const popover = document.querySelector(".col-filter-popover-timestamp");
@@ -160,7 +161,7 @@ describe("ScoreDetails filters", () => {
     });
   });
 
-  it("does not apply updated date filter when range is invalid", async () => {
+  qaTest("details.04", async () => {
     renderDetails();
     fireEvent.click(screen.getByRole("button", { name: "Filter by Updated At" }));
     const popover = document.querySelector(".col-filter-popover-timestamp");

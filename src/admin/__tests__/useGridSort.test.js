@@ -1,6 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 import { useGridSort } from "../useGridSort";
+import { qaTest } from "../../test/qaTest.js";
 
 vi.mock("../persist", () => ({
   readSection: () => ({}),
@@ -31,19 +32,19 @@ describe("useGridSort", () => {
   // ── Score range filter ────────────────────────────────────────
 
   describe("score range filter", () => {
-    it("shows all jurors when no filters are active", () => {
+    qaTest("grid.filter.01", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       expect(result.current.visibleJurors).toHaveLength(2);
     });
 
-    it("keeps juror that passes a single group score filter", () => {
+    qaTest("grid.filter.02", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.setGroupScoreFilter("g1", 60, 100));
       // Alice=80 ✓, Bob=50 ✗
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j1"]);
     });
 
-    it("hides juror failing one of two active filters (AND logic)", () => {
+    qaTest("grid.filter.03", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.setGroupScoreFilter("g1", 60, 100)); // Alice=80✓ Bob=50✗
       act(() => result.current.setGroupScoreFilter("g2", 55, 100)); // Alice=60✓ Bob=70✓
@@ -51,13 +52,13 @@ describe("useGridSort", () => {
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j1"]);
     });
 
-    it("does not apply a filter when min > max (invalid range)", () => {
+    qaTest("grid.filter.04", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.setGroupScoreFilter("g1", 90, 10)); // invalid
       expect(result.current.visibleJurors).toHaveLength(2);
     });
 
-    it("includes score=0 entry (boundary min value)", () => {
+    qaTest("grid.filter.05", () => {
       const lookup = {
         j1: { g1: scored(0),   g2: scored(0)   },
         j2: { g1: scored(100), g2: scored(100) },
@@ -68,7 +69,7 @@ describe("useGridSort", () => {
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j1"]);
     });
 
-    it("includes score=TOTAL_MAX entry (boundary max value)", () => {
+    qaTest("grid.filter.06", () => {
       const lookup = {
         j1: { g1: scored(100), g2: scored(100) },
         j2: { g1: scored(50),  g2: scored(50)  },
@@ -79,7 +80,7 @@ describe("useGridSort", () => {
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j1"]);
     });
 
-    it("excludes juror whose target group entry is unscored (null total)", () => {
+    qaTest("grid.filter.07", () => {
       const lookup = {
         j1: { g1: scored(80), g2: empty() }, // g2 is unscored
         j2: { g1: scored(80), g2: scored(70) },
@@ -94,7 +95,7 @@ describe("useGridSort", () => {
   // ── Sort toggle cycle ─────────────────────────────────────────
 
   describe("sort toggle cycle", () => {
-    it("first click on a column → sortMode=group, dir=desc", () => {
+    qaTest("grid.sort.01", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.toggleGroupSort("g1"));
       expect(result.current.sortMode).toBe("group");
@@ -102,7 +103,7 @@ describe("useGridSort", () => {
       expect(result.current.sortGroupDir).toBe("desc");
     });
 
-    it("second click on the same column → dir flips to asc", () => {
+    qaTest("grid.sort.02", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.toggleGroupSort("g1"));
       act(() => result.current.toggleGroupSort("g1"));
@@ -110,7 +111,7 @@ describe("useGridSort", () => {
       expect(result.current.sortMode).toBe("group");
     });
 
-    it("third click on the same column → sort resets (sortMode=none)", () => {
+    qaTest("grid.sort.03", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.toggleGroupSort("g1"));
       act(() => result.current.toggleGroupSort("g1"));
@@ -119,7 +120,7 @@ describe("useGridSort", () => {
       expect(result.current.sortGroupId).toBeNull();
     });
 
-    it("clicking a different column resets cycle to desc on new column", () => {
+    qaTest("grid.sort.04", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.toggleGroupSort("g1"));
       act(() => result.current.toggleGroupSort("g1")); // now asc on g1
@@ -128,7 +129,7 @@ describe("useGridSort", () => {
       expect(result.current.sortGroupDir).toBe("desc");
     });
 
-    it("desc sort orders higher scores first", () => {
+    qaTest("grid.sort.05", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       // g1: Alice=80, Bob=50 — desc → Alice first
       act(() => result.current.toggleGroupSort("g1"));
@@ -136,7 +137,7 @@ describe("useGridSort", () => {
       expect(result.current.visibleJurors[1].key).toBe("j2");
     });
 
-    it("asc sort orders lower scores first", () => {
+    qaTest("grid.sort.06", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       // g1: Alice=80, Bob=50 — asc → Bob first
       act(() => result.current.toggleGroupSort("g1"));
@@ -149,19 +150,19 @@ describe("useGridSort", () => {
   // ── Juror text filter ─────────────────────────────────────────
 
   describe("juror text filter", () => {
-    it("matches on juror name (case insensitive)", () => {
+    qaTest("grid.jurorfilter.01", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.setJurorFilter("ALICE"));
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j1"]);
     });
 
-    it("matches on juror dept", () => {
+    qaTest("grid.jurorfilter.02", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.setJurorFilter("cs"));
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j2"]);
     });
 
-    it("OR logic — matches jurors whose name OR dept contains the query", () => {
+    qaTest("grid.jurorfilter.03", () => {
       const jurors = [
         { key: "j1", name: "Alice", dept: "EE" },
         { key: "j2", name: "Bob",   dept: "EE" },
@@ -173,7 +174,7 @@ describe("useGridSort", () => {
       expect(result.current.visibleJurors.map((j) => j.key)).toEqual(["j1", "j2"]);
     });
 
-    it("no match → empty visible list", () => {
+    qaTest("grid.jurorfilter.04", () => {
       const { result } = renderHook(() => useGridSort(JURORS, GROUPS, LOOKUP));
       act(() => result.current.setJurorFilter("zzznomatch"));
       expect(result.current.visibleJurors).toHaveLength(0);

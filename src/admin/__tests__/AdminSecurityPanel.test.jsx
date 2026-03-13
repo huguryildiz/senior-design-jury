@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, vi } from "vitest";
+import { qaTest } from "../../test/qaTest.js";
 import AdminSecurityPanel from "../../components/admin/AdminSecurityPanel";
 import { ToastProvider } from "../../components/toast/useToast";
 
@@ -41,7 +42,7 @@ function getPasswordInputs(container) {
 }
 
 describe("AdminSecurityPanel — password strength validation (Admin tab)", () => {
-  it("shows error when new password is shorter than 10 characters", async () => {
+  qaTest("security.validation.01", async () => {
     const { container } = renderPanel();
     await waitFor(() => {}); // let useEffect + adminSecurityState settle
 
@@ -57,7 +58,7 @@ describe("AdminSecurityPanel — password strength validation (Admin tab)", () =
     });
   });
 
-  it("shows error when new password has no uppercase letter", async () => {
+  qaTest("security.validation.02", async () => {
     const { container } = renderPanel();
     await waitFor(() => {});
 
@@ -73,7 +74,7 @@ describe("AdminSecurityPanel — password strength validation (Admin tab)", () =
     });
   });
 
-  it("shows error when new password has no digit", async () => {
+  qaTest("security.validation.03", async () => {
     const { container } = renderPanel();
     await waitFor(() => {});
 
@@ -89,7 +90,7 @@ describe("AdminSecurityPanel — password strength validation (Admin tab)", () =
     });
   });
 
-  it("shows error when new password has no symbol", async () => {
+  qaTest("security.validation.04", async () => {
     const { container } = renderPanel();
     await waitFor(() => {});
 
@@ -105,7 +106,7 @@ describe("AdminSecurityPanel — password strength validation (Admin tab)", () =
     });
   });
 
-  it("shows error when new and confirm passwords do not match", async () => {
+  qaTest("security.validation.05", async () => {
     const { container } = renderPanel();
     await waitFor(() => {});
 
@@ -123,7 +124,7 @@ describe("AdminSecurityPanel — password strength validation (Admin tab)", () =
 });
 
 describe("AdminSecurityPanel — successful admin password change", () => {
-  it("calls onPasswordChanged after valid form submission", async () => {
+  qaTest("security.success.01", async () => {
     const { adminChangePassword } = await vi.importMock("../../shared/api");
     adminChangePassword.mockResolvedValue({});
 

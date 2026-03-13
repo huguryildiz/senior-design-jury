@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/generate-test-report.cjs
-// Reads vitest JSON output → produces a styled Excel report.
+// Reads vitest JSON output → produces a styled Excel report with QA metadata.
 // Usage: node scripts/generate-test-report.cjs
 // Input:  test-results/results.json
 // Output: test-results/test-report.xlsx
@@ -13,25 +13,61 @@ const XlsxStyle = require("xlsx-js-style");
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const INPUT  = path.resolve(__dirname, "../test-results/results.json");
-const OUTPUT = path.resolve(__dirname, "../test-results/test-report.xlsx");
+const INPUT   = path.resolve(__dirname, "../test-results/results.json");
+const OUTPUT  = path.resolve(__dirname, "../test-results/test-report.xlsx");
+const CATALOG = path.resolve(__dirname, "../src/test/qa-catalog.json");
 
-// Map filename (without .test.jsx) → friendly module name
+// Fallback module name derived from file path (used when catalog has no entry).
 const MODULE_MAP = {
-  ManageSemesterPanel:    "Semester Management",
-  ManageProjectsPanel:    "Group Management",
-  ManageJurorsPanel:      "Juror Management",
-  ManagePermissionsPanel: "Permissions Management",
-  AdminSecurityPanel:     "Admin Security",
-  RankingsTab:            "Rankings",
-  ScoreDetails:           "Score Details",
-  useGridSort:            "Grid Sort (Hook)",
-  useScoreGridData:       "Grid Data (Hook)",
-  OverviewTab:            "Overview",
-  smoke:                  "Smoke Tests",
-  scoreHelpers:           "Score Helpers",
-  utils:                  "Utilities",
+  ManageSemesterPanel:    "Settings / Semesters",
+  ManageProjectsPanel:    "Settings / Groups",
+  ManageJurorsPanel:      "Settings / Jurors",
+  ManagePermissionsPanel: "Settings / Permissions",
+  AdminSecurityPanel:     "Settings / Security",
+  RankingsTab:            "Scores / Rankings",
+  ScoreDetails:           "Scores / Details",
+  useGridSort:            "Scores / Grid",
+  useScoreGridData:       "Scores / Grid",
+  OverviewTab:            "Overview Dashboard",
+  smoke:                  "Overview Dashboard",
+  scoreHelpers:           "Core Logic",
+  utils:                  "Core Logic",
 };
+
+// ── Load QA Catalog ───────────────────────────────────────────────────────────
+
+let catalog = [];
+try {
+  catalog = JSON.parse(readFileSync(CATALOG, "utf8"));
+} catch {
+  console.warn("⚠️  qa-catalog.json not found — QA metadata columns will be empty.");
+}
+
+// Primary index: scenario title → meta entry
+// When two entries share the same scenario, describeGroup disambiguates.
+const metaByScenario = {};
+const metaByDescribeAndScenario = {};
+
+for (const m of catalog) {
+  if (!metaByScenario[m.scenario]) metaByScenario[m.scenario] = m;
+  if (m.describeGroup) {
+    metaByDescribeAndScenario[`${m.describeGroup}||${m.scenario}`] = m;
+  }
+}
+
+/**
+ * Find the best-matching catalog entry for a test result row.
+ * Tries the composite (describeGroup + title) key first, then falls
+ * back to title-only.
+ */
+function findMeta(title, ancestorTitles) {
+  const describe0 = (ancestorTitles || [])[0] || "";
+  return (
+    metaByDescribeAndScenario[`${describe0}||${title}`] ||
+    metaByScenario[title] ||
+    null
+  );
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +75,15 @@ const S = {
   header: {
     font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
     fill: { fgColor: { rgb: "1F4E79" } },
+    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    border: {
+      bottom: { style: "thin", color: { rgb: "FFFFFF" } },
+      right:  { style: "thin", color: { rgb: "FFFFFF" } },
+    },
+  },
+  headerAlt: {
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+    fill: { fgColor: { rgb: "375623" } },
     alignment: { horizontal: "center", vertical: "center", wrapText: true },
     border: {
       bottom: { style: "thin", color: { rgb: "FFFFFF" } },
@@ -54,6 +99,21 @@ const S = {
     font: { bold: true, color: { rgb: "7B1818" } },
     fill: { fgColor: { rgb: "F4CCCC" } },
     alignment: { horizontal: "center" },
+  },
+  critical: {
+    font: { bold: true, color: { rgb: "7B1818" } },
+    fill: { fgColor: { rgb: "FDE9D9" } },
+    alignment: { horizontal: "center" },
+  },
+  normal: {
+    alignment: { horizontal: "center" },
+  },
+  minor: {
+    font: { color: { rgb: "595959" } },
+    alignment: { horizontal: "center" },
+  },
+  wrap: {
+    alignment: { wrapText: true, vertical: "top" },
   },
   summaryKey: {
     font: { bold: true, sz: 11 },
@@ -72,6 +132,18 @@ const S = {
     font: { bold: true, color: { rgb: "7B1818" }, sz: 12 },
     fill: { fgColor: { rgb: "F4CCCC" } },
   },
+  coverageStrong: {
+    font: { bold: true, color: { rgb: "1B6B3A" } },
+    alignment: { horizontal: "center" },
+  },
+  coverageMedium: {
+    font: { color: { rgb: "7D4E00" } },
+    alignment: { horizontal: "center" },
+  },
+  coverageLow: {
+    font: { color: { rgb: "595959" } },
+    alignment: { horizontal: "center" },
+  },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,12 +154,31 @@ function moduleFromPath(filePath) {
 }
 
 function cell(value, style) {
-  return style ? { v: value, s: style } : value;
+  return style ? { v: value ?? "", s: style } : (value ?? "");
+}
+
+function wrapCell(value) {
+  return cell(value ?? "", S.wrap);
+}
+
+function severityStyle(sev) {
+  if (sev === "critical" || sev === "blocker") return S.critical;
+  if (sev === "minor" || sev === "trivial")   return S.minor;
+  return S.normal;
+}
+
+function coverageStyle(strength) {
+  if (strength === "Strong") return S.coverageStrong;
+  if (strength === "Medium") return S.coverageMedium;
+  return S.coverageLow;
 }
 
 function totalDurationSec(testResults) {
   return (
-    testResults.reduce((acc, r) => acc + Math.max(0, (r.endTime || 0) - (r.startTime || 0)), 0) / 1000
+    testResults.reduce(
+      (acc, r) => acc + Math.max(0, (r.endTime || 0) - (r.startTime || 0)),
+      0
+    ) / 1000
   ).toFixed(2);
 }
 
@@ -105,12 +196,15 @@ mkdirSync(path.dirname(OUTPUT), { recursive: true });
 
 // ── Sheet 1: Summary ──────────────────────────────────────────────────────────
 
-const now = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+const now        = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
 const durationSec = totalDurationSec(report.testResults || []);
 const overallPass = report.success !== false && (report.numFailedTests || 0) === 0;
 
 const summaryRows = [
-  [cell("TEDU Capstone Portal — Test Report", { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "1F4E79" } }, font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } } }), ""],
+  [cell("TEDU Capstone Portal — Test Report", {
+    font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+    fill: { fgColor: { rgb: "1F4E79" } },
+  }), ""],
   ["", ""],
   [cell("Field", S.header), cell("Value", S.header)],
   [cell("Report Generated",  S.summaryKey), cell(now,                              S.summaryVal)],
@@ -119,73 +213,90 @@ const summaryRows = [
   [cell("Passed",            S.summaryKey), cell(report.numPassedTests     ?? "—", S.summaryVal)],
   [cell("Failed",            S.summaryKey), cell(report.numFailedTests     ?? "—", S.summaryVal)],
   [cell("Duration (s)",      S.summaryKey), cell(durationSec,                      S.summaryVal)],
+  [cell("QA Annotated Tests",S.summaryKey), cell(catalog.length,                   S.summaryVal)],
   [cell("Overall Status",    S.summaryKey), cell(
     overallPass ? "✅ ALL PASSED" : "❌ FAILURES DETECTED",
-    overallPass ? S.summaryStatusPass : S.summaryStatusFail
+    overallPass ? S.summaryStatusPass : S.summaryStatusFail,
   )],
 ];
 
 const summarySheet = XlsxStyle.utils.aoa_to_sheet(summaryRows);
-summarySheet["!cols"] = [{ wch: 22 }, { wch: 36 }];
+summarySheet["!cols"]   = [{ wch: 24 }, { wch: 36 }];
 summarySheet["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
 
-// ── Sheet 2: Test Results ─────────────────────────────────────────────────────
+// ── Sheet 2: All Tests (with QA metadata) ─────────────────────────────────────
 
-const headerRow = [
-  cell("#",               S.header),
-  cell("File",            S.header),
-  cell("Module",          S.header),
-  cell("Suite",           S.header),
-  cell("Test Name",       S.header),
-  cell("Status",          S.header),
-  cell("Duration (ms)",   S.header),
-  cell("Failure Message", S.header),
+const allTestsHeader = [
+  cell("#",                S.header),
+  cell("Module",           S.header),
+  cell("Area",             S.header),
+  cell("Story",            S.header),
+  cell("Test Scenario",    S.header),
+  cell("Status",           S.header),
+  cell("Severity",         S.header),
+  cell("Coverage",         S.header),
+  cell("Why It Matters",   S.header),
+  cell("Risk",             S.header),
+  cell("Duration (ms)",    S.header),
+  cell("Suite",            S.header),
+  cell("File",             S.header),
 ];
 
-const dataRows = [];
+const allTestsRows = [];
 let idx = 0;
 
 for (const suite of (report.testResults || [])) {
-  const file   = path.basename(suite.testFilePath || "");
-  const module = moduleFromPath(suite.testFilePath || "");
+  const file          = path.basename(suite.testFilePath || "");
+  const fallbackModule = moduleFromPath(suite.testFilePath || "");
 
   for (const t of (suite.assertionResults || [])) {
     idx++;
     const isPassed = t.status === "passed";
-    const failMsg  = (t.failureMessages || []).join(" | ").replace(/\n/g, " ").slice(0, 500);
+    const meta     = findMeta(t.title, t.ancestorTitles);
 
-    dataRows.push([
+    allTestsRows.push([
       idx,
-      file,
-      module,
-      (t.ancestorTitles || []).join(" › "),
-      t.title || "",
+      meta?.module           || fallbackModule,
+      meta?.area             || "",
+      meta?.story            || "",
+      t.title                || "",
       cell(isPassed ? "PASS" : "FAIL", isPassed ? S.pass : S.fail),
+      cell(meta?.severity    || "",    meta ? severityStyle(meta.severity) : {}),
+      cell(meta?.coverageStrength || "", meta ? coverageStyle(meta.coverageStrength) : {}),
+      wrapCell(meta?.whyItMatters || ""),
+      wrapCell(meta?.risk         || ""),
       t.duration ?? 0,
-      failMsg,
+      (t.ancestorTitles || []).join(" › "),
+      file,
     ]);
   }
 }
 
-const testSheet = XlsxStyle.utils.aoa_to_sheet([headerRow, ...dataRows]);
-testSheet["!cols"] = [
+const allTestsSheet = XlsxStyle.utils.aoa_to_sheet([allTestsHeader, ...allTestsRows]);
+allTestsSheet["!cols"] = [
   { wch: 5  }, // #
-  { wch: 42 }, // File
-  { wch: 26 }, // Module
-  { wch: 46 }, // Suite
-  { wch: 62 }, // Test Name
+  { wch: 22 }, // Module
+  { wch: 28 }, // Area
+  { wch: 36 }, // Story
+  { wch: 58 }, // Test Scenario
   { wch: 8  }, // Status
+  { wch: 10 }, // Severity
+  { wch: 10 }, // Coverage
+  { wch: 52 }, // Why It Matters
+  { wch: 52 }, // Risk
   { wch: 13 }, // Duration
-  { wch: 50 }, // Failure Message
+  { wch: 42 }, // Suite
+  { wch: 38 }, // File
 ];
 
 // ── Sheet 3: Module Summary ───────────────────────────────────────────────────
 
 const moduleStats = {};
 for (const suite of (report.testResults || [])) {
-  const mod = moduleFromPath(suite.testFilePath || "");
-  if (!moduleStats[mod]) moduleStats[mod] = { total: 0, passed: 0, failed: 0 };
   for (const t of (suite.assertionResults || [])) {
+    const meta = findMeta(t.title, t.ancestorTitles);
+    const mod  = meta?.module || moduleFromPath(suite.testFilePath || "");
+    if (!moduleStats[mod]) moduleStats[mod] = { total: 0, passed: 0, failed: 0 };
     moduleStats[mod].total++;
     if (t.status === "passed") moduleStats[mod].passed++;
     else                       moduleStats[mod].failed++;
@@ -193,11 +304,11 @@ for (const suite of (report.testResults || [])) {
 }
 
 const moduleHeaderRow = [
-  cell("Module",          S.header),
-  cell("Total Tests",     S.header),
-  cell("Passed",          S.header),
-  cell("Failed",          S.header),
-  cell("Pass Rate",       S.header),
+  cell("Module",      S.header),
+  cell("Total Tests", S.header),
+  cell("Passed",      S.header),
+  cell("Failed",      S.header),
+  cell("Pass Rate",   S.header),
 ];
 
 const moduleDataRows = Object.entries(moduleStats)
@@ -216,14 +327,89 @@ const moduleDataRows = Object.entries(moduleStats)
 const moduleSheet = XlsxStyle.utils.aoa_to_sheet([moduleHeaderRow, ...moduleDataRows]);
 moduleSheet["!cols"] = [{ wch: 28 }, { wch: 13 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
 
+// ── Sheet 4: QA Coverage (annotated tests only, business-readable) ────────────
+
+const qaHeader = [
+  cell("ID",             S.headerAlt),
+  cell("Module",         S.headerAlt),
+  cell("Area",           S.headerAlt),
+  cell("Story",          S.headerAlt),
+  cell("Test Scenario",  S.headerAlt),
+  cell("Severity",       S.headerAlt),
+  cell("Coverage",       S.headerAlt),
+  cell("Why It Matters", S.headerAlt),
+  cell("Risk",           S.headerAlt),
+  cell("Result",         S.headerAlt),
+];
+
+// Build a map of scenario → pass/fail from the actual run
+const resultByScenario = {};
+const resultByDescribeAndScenario = {};
+for (const suite of (report.testResults || [])) {
+  for (const t of (suite.assertionResults || [])) {
+    const describe0 = (t.ancestorTitles || [])[0] || "";
+    resultByScenario[t.title] = t.status;
+    resultByDescribeAndScenario[`${describe0}||${t.title}`] = t.status;
+  }
+}
+
+function getResult(meta) {
+  const compositeKey = meta.describeGroup
+    ? `${meta.describeGroup}||${meta.scenario}`
+    : null;
+  const status =
+    (compositeKey && resultByDescribeAndScenario[compositeKey]) ||
+    resultByScenario[meta.scenario] ||
+    "unknown";
+  return status;
+}
+
+const qaRows = catalog.map((meta) => {
+  const status   = getResult(meta);
+  const isPassed = status === "passed";
+  return [
+    meta.id,
+    meta.module,
+    meta.area,
+    meta.story,
+    meta.scenario,
+    cell(meta.severity,         severityStyle(meta.severity)),
+    cell(meta.coverageStrength, coverageStyle(meta.coverageStrength)),
+    wrapCell(meta.whyItMatters),
+    wrapCell(meta.risk),
+    cell(
+      isPassed ? "PASS" : status === "unknown" ? "—" : "FAIL",
+      isPassed ? S.pass : status === "unknown" ? {} : S.fail,
+    ),
+  ];
+});
+
+const qaSheet = XlsxStyle.utils.aoa_to_sheet([qaHeader, ...qaRows]);
+qaSheet["!cols"] = [
+  { wch: 26 }, // ID
+  { wch: 22 }, // Module
+  { wch: 28 }, // Area
+  { wch: 36 }, // Story
+  { wch: 58 }, // Test Scenario
+  { wch: 10 }, // Severity
+  { wch: 10 }, // Coverage
+  { wch: 52 }, // Why It Matters
+  { wch: 52 }, // Risk
+  { wch: 8  }, // Result
+];
+
 // ── Write Workbook ────────────────────────────────────────────────────────────
 
 const wb = XlsxStyle.utils.book_new();
-XlsxStyle.utils.book_append_sheet(wb, summarySheet,  "Summary");
-XlsxStyle.utils.book_append_sheet(wb, moduleSheet,   "By Module");
-XlsxStyle.utils.book_append_sheet(wb, testSheet,     "All Tests");
+XlsxStyle.utils.book_append_sheet(wb, summarySheet, "Summary");
+XlsxStyle.utils.book_append_sheet(wb, moduleSheet,  "By Module");
+XlsxStyle.utils.book_append_sheet(wb, allTestsSheet,"All Tests");
+XlsxStyle.utils.book_append_sheet(wb, qaSheet,      "QA Coverage");
 
 XlsxStyle.writeFile(wb, OUTPUT);
 
 console.log(`✅ Excel report → ${OUTPUT}`);
-console.log(`   ${idx} tests | ${report.numPassedTests ?? "?"} passed | ${report.numFailedTests ?? "?"} failed`);
+console.log(
+  `   ${idx} tests | ${report.numPassedTests ?? "?"} passed | ` +
+  `${report.numFailedTests ?? "?"} failed | ${catalog.length} QA-annotated`
+);
