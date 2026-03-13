@@ -33,16 +33,169 @@ function formatScore(val, digits = 2) {
   return Number(val).toFixed(digits);
 }
 
-function formatTotal(val) {
-  if (!Number.isFinite(val)) return "—";
-  return Number.isInteger(val) ? String(val) : Number(val).toFixed(2);
-}
-
 function buildSearchText(p) {
   const group = `group ${p?.groupNo ?? ""}`;
   const title = p?.name ?? "";
   const students = p?.students ?? "";
   return `${group} ${p?.groupNo ?? ""} ${title} ${students}`.toLowerCase();
+}
+
+// ── Sub-components (module level — stable identity across renders) ─────────
+
+function RankCard({ p, index, rankMap, expandedGroups, onToggleGroup }) {
+  const rankKey = getRankKey(p, index);
+  const dr = rankMap.get(rankKey) ?? null;
+  const groupLabel = `Group ${p.groupNo}`;
+  const projectTitle = (p.name || "").trim();
+  const showTitle = !!projectTitle && projectTitle !== groupLabel;
+  const studentList = p.students
+    ? p.students.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  const hasDetails = showTitle || (APP_CONFIG.showStudents && studentList.length > 0);
+  const groupKey = `summary-${p.id ?? index}`;
+  const isExpanded = expandedGroups.has(groupKey);
+  const hasScores = Number.isFinite(p.totalAvg);
+  const isTop3 = hasScores && dr !== null && dr <= 3;
+  const rankClass = isTop3 ? `rank-top${dr}` : "rank-rest";
+  const panelId = `summary-group-panel-${groupKey}`;
+  return (
+    <div
+      key={p.id ?? index}
+      className={`rank-card ${rankClass}${isTop3 ? ` rank-${dr}` : ""}`}
+    >
+      {isTop3 && (
+        <span className={`rank-accent rank-${dr}`} aria-hidden="true" />
+      )}
+      {isTop3 ? (
+        <div className={`rank-badge rank-medal-wrap rank-${dr}`} aria-hidden="true">
+          <span className="rank-medal-ring" aria-hidden="true" />
+          <img className="rank-medal" src={MEDALS[dr - 1]} alt={`${dr} place medal`} />
+        </div>
+      ) : (
+        <div className="rank-badge rank-num">{dr ?? "—"}</div>
+      )}
+
+      <div className="rank-info">
+        <div className="group-card-wrap">
+          <div className="group-card-header">
+            <div className="group-card-left">
+              <button
+                className="group-card-toggle group-accordion-header"
+                tabIndex={hasDetails ? 0 : -1}
+                aria-expanded={hasDetails ? isExpanded : undefined}
+                aria-controls={hasDetails ? panelId : undefined}
+                type="button"
+                onClick={() => { if (hasDetails) onToggleGroup(groupKey); }}
+                onKeyDown={(e) => {
+                  if ((e.key === "Enter" || e.key === " ") && hasDetails) {
+                    e.preventDefault();
+                    onToggleGroup(groupKey);
+                  }
+                }}
+                style={{ cursor: hasDetails ? "pointer" : "default" }}
+              >
+                <span className="group-card-name">
+                  <GroupLabel text={groupLabel} shortText={`Grp. ${p.groupNo}`} />
+                </span>
+                {hasDetails && (
+                  <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
+                    <ChevronDownIcon />
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="group-card-score">
+              <small className="group-card-score-label">Avg /{TOTAL_MAX}</small>
+              <span className="group-card-score-value avg-score">
+                {hasScores ? formatScore(p.totalAvg) : "—"}
+              </span>
+            </div>
+          </div>
+
+          {!hasScores && (
+            <div className="rank-meta">
+              <span className="rank-empty-badge">No finalized evaluations</span>
+            </div>
+          )}
+
+          <div
+            id={panelId}
+            className={`group-accordion-panel${isExpanded ? " open" : ""}`}
+          >
+            <div className="group-accordion-panel-inner group-card-accordion-inner">
+              {showTitle && (
+                <div className="group-card-full-title">
+                  <ProjectTitle text={projectTitle} />
+                </div>
+              )}
+              {APP_CONFIG.showStudents && studentList.length > 0 && (
+                <div className="group-card-students">
+                  <StudentNames names={studentList} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="rank-bars">
+          {CRITERIA_LIST.map((c) => {
+            const val = p.avg?.[c.id];
+            const hasVal = Number.isFinite(val) && c.max > 0;
+            const pct = hasVal ? Math.min((val / c.max) * 100, 100) : 0;
+            return (
+              <div key={c.id} className="mini-bar-row">
+                <span className="mini-label">{c.shortLabel || c.label}</span>
+                <div className="mini-bar-track">
+                  <div
+                    className="mini-bar-fill"
+                    style={{ width: `${pct}%`, background: c.color || "#3b82f6" }}
+                  />
+                </div>
+                <span className="mini-val">
+                  {hasVal ? `${formatScore(val)} / ${c.max}` : "—"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function Row({ index, style, data }) {
+  const { items, onMeasure, rankMap, expandedGroups, onToggleGroup } = data;
+  const rowRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!rowRef.current) return;
+    onMeasure(index, rowRef.current.getBoundingClientRect().height);
+  }, [index, onMeasure]);
+
+  useLayoutEffect(() => {
+    if (!rowRef.current || typeof ResizeObserver === "undefined") return;
+    const el = rowRef.current;
+    const ro = new ResizeObserver(() => {
+      onMeasure(index, el.getBoundingClientRect().height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [index, onMeasure]);
+
+  return (
+    <div style={{ ...style, width: "100%", paddingBottom: 14 }}>
+      <div ref={rowRef}>
+        <RankCard
+          p={items[index]}
+          index={index}
+          rankMap={rankMap}
+          expandedGroups={expandedGroups}
+          onToggleGroup={onToggleGroup}
+        />
+      </div>
+    </div>
+  );
 }
 
 // ── Main component ────────────────────────────────────────
@@ -135,7 +288,7 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   const useVirtual = sorted.length >= VIRTUAL_THRESHOLD;
 
   const rankMap = useMemo(() => {
-    const scored = [...filtered].sort((a, b) => {
+    const scored = [...finalized].sort((a, b) => {
       const aVal = Number.isFinite(a?.totalAvg) ? a.totalAvg : -Infinity;
       const bVal = Number.isFinite(b?.totalAvg) ? b.totalAvg : -Infinity;
       return bVal - aVal;
@@ -158,7 +311,7 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
       map.set(key, lastRank);
     });
     return map;
-  }, [filtered]);
+  }, [finalized]);
 
   const setSize = useCallback((index, size) => {
     if (sizeMapRef.current[index] !== size) {
@@ -214,156 +367,6 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   if (!finalized.length) {
     return <div className="empty-msg">No finalized evaluations yet.</div>;
   }
-
-  const RankCard = ({ p, index }) => {
-    const rankKey = getRankKey(p, index);
-    const dr = rankMap.get(rankKey) ?? null;
-    const groupLabel = `Group ${p.groupNo}`;
-    const projectTitle = (p.name || "").trim();
-    const showTitle = !!projectTitle && projectTitle !== groupLabel;
-    const studentList = p.students
-      ? p.students.split(",").map((s) => s.trim()).filter(Boolean)
-      : [];
-    const hasDetails = showTitle || (APP_CONFIG.showStudents && studentList.length > 0);
-    const groupKey = `summary-${p.id ?? index}`;
-    const isExpanded = expandedGroups.has(groupKey);
-    const hasScores = Number.isFinite(p.totalAvg);
-    const isTop3 = hasScores && dr !== null && dr <= 3;
-    const rankClass = isTop3 ? `rank-top${dr}` : "rank-rest";
-    const panelId = `summary-group-panel-${groupKey}`;
-    return (
-      <div
-        key={p.id ?? index}
-        className={`rank-card ${rankClass}${isTop3 ? ` rank-${dr}` : ""}`}
-      >
-        {isTop3 && (
-          <span className={`rank-accent rank-${dr}`} aria-hidden="true" />
-        )}
-        {isTop3 ? (
-          <div className={`rank-badge rank-medal-wrap rank-${dr}`} aria-hidden="true">
-            <span className="rank-medal-ring" aria-hidden="true" />
-            <img className="rank-medal" src={MEDALS[dr - 1]} alt={`${dr} place medal`} />
-          </div>
-        ) : (
-          <div className="rank-badge rank-num">{dr ?? "—"}</div>
-        )}
-
-        <div className="rank-info">
-          <div className="group-card-wrap">
-            <div className="group-card-header">
-              <div className="group-card-left">
-                <button
-                  className="group-card-toggle group-accordion-header"
-                  tabIndex={hasDetails ? 0 : -1}
-                  aria-expanded={hasDetails ? isExpanded : undefined}
-                  aria-controls={hasDetails ? panelId : undefined}
-                  type="button"
-                  onClick={() => { if (hasDetails) toggleGroup(groupKey); }}
-                  onKeyDown={(e) => {
-                    if ((e.key === "Enter" || e.key === " ") && hasDetails) {
-                      e.preventDefault();
-                      toggleGroup(groupKey);
-                    }
-                  }}
-                  style={{ cursor: hasDetails ? "pointer" : "default" }}
-                >
-                  <span className="group-card-name">
-                    <GroupLabel text={groupLabel} shortText={`Grp. ${p.groupNo}`} />
-                  </span>
-                  {hasDetails && (
-                    <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
-                      <ChevronDownIcon />
-                    </span>
-                  )}
-                </button>
-              </div>
-              <div className="group-card-score">
-                <small className="group-card-score-label">Avg /{TOTAL_MAX}</small>
-                <span className="group-card-score-value avg-score">
-                  {hasScores ? formatScore(p.totalAvg) : "—"}
-                </span>
-              </div>
-            </div>
-
-            {!hasScores && (
-              <div className="rank-meta">
-                <span className="rank-empty-badge">No finalized evaluations</span>
-              </div>
-            )}
-
-            <div
-              id={panelId}
-              className={`group-accordion-panel${isExpanded ? " open" : ""}`}
-            >
-              <div className="group-accordion-panel-inner group-card-accordion-inner">
-                {showTitle && (
-                  <div className="group-card-full-title">
-                    <ProjectTitle text={projectTitle} />
-                  </div>
-                )}
-                {APP_CONFIG.showStudents && studentList.length > 0 && (
-                  <div className="group-card-students">
-                    <StudentNames names={studentList} />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="rank-bars">
-            {CRITERIA_LIST.map((c) => {
-              const val = p.avg?.[c.id];
-              const hasVal = Number.isFinite(val) && c.max > 0;
-              const pct = hasVal ? Math.min((val / c.max) * 100, 100) : 0;
-              return (
-                <div key={c.id} className="mini-bar-row">
-                  <span className="mini-label">{c.shortLabel || c.label}</span>
-                  <div className="mini-bar-track">
-                    <div
-                      className="mini-bar-fill"
-                      style={{ width: `${pct}%`, background: c.color || "#3b82f6" }}
-                    />
-                  </div>
-                  <span className="mini-val">
-                    {hasVal ? `${formatScore(val)} / ${c.max}` : "—"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
-      </div>
-    );
-  };
-
-  const Row = ({ index, style, data }) => {
-    const { items, onMeasure } = data;
-    const rowRef = useRef(null);
-
-    useLayoutEffect(() => {
-      if (!rowRef.current) return;
-      onMeasure(index, rowRef.current.getBoundingClientRect().height);
-    }, [index, onMeasure]);
-
-    useLayoutEffect(() => {
-      if (!rowRef.current || typeof ResizeObserver === "undefined") return;
-      const el = rowRef.current;
-      const ro = new ResizeObserver(() => {
-        onMeasure(index, el.getBoundingClientRect().height);
-      });
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, [index, onMeasure]);
-
-    return (
-      <div style={{ ...style, width: "100%", paddingBottom: 14 }}>
-        <div ref={rowRef}>
-          <RankCard p={items[index]} index={index} />
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="rankings-page">
@@ -455,7 +458,7 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
                   width={width}
                   itemCount={sorted.length}
                   itemSize={getSize}
-                  itemData={{ items: sorted, onMeasure: setSize }}
+                  itemData={{ items: sorted, onMeasure: setSize, rankMap, expandedGroups, onToggleGroup: toggleGroup }}
                 >
                   {Row}
                 </List>
@@ -463,7 +466,7 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
             </AutoSizer>
           </div>
         ) : (
-          sorted.map((p, i) => <RankCard key={p.id ?? i} p={p} index={i} />)
+          sorted.map((p, i) => <RankCard key={p.id ?? i} p={p} index={i} rankMap={rankMap} expandedGroups={expandedGroups} onToggleGroup={toggleGroup} />)
         )}
       </div>
     </div>

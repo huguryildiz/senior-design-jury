@@ -956,15 +956,17 @@ DECLARE
   v_ok boolean;
 BEGIN
   v_ok := public._verify_admin_password(p_password);
-  PERFORM public._audit_log(
-    'system',
-    null::uuid,
-    CASE WHEN v_ok THEN 'admin_login_success' ELSE 'admin_login_failed' END,
-    'settings',
-    null::uuid,
-    CASE WHEN v_ok THEN 'Admin login succeeded.' ELSE 'Admin login failed.' END,
-    null
-  );
+  IF NOT v_ok THEN
+    PERFORM public._audit_log(
+      'system',
+      null::uuid,
+      'admin_login_failed',
+      'settings',
+      null::uuid,
+      'Admin login failed.',
+      null
+    );
+  END IF;
   RETURN v_ok;
 END;
 $$;

@@ -25,7 +25,7 @@ function getOverallStatus(stat, groupCount) {
   );
 }
 
-export default function JurorActivity({ jurorStats, groups = [] }) {
+export default function JurorActivity({ jurorStats = [], groups = [] }) {
   const [searchTerm, setSearchTerm] = useState(() => {
     const s = readSection("jurors");
     return typeof s.searchTerm === "string" ? s.searchTerm : "";
@@ -107,7 +107,6 @@ export default function JurorActivity({ jurorStats, groups = [] }) {
           const overallStatus = getOverallStatus(stat, groups.length);
           const isEditing = !!editEnabled;
           const totalGroups = groups.length;
-          const scoredCount = (rows || []).filter((d) => d.total !== null && d.total !== undefined).length;
           const pct = adminCompletionPct(rows, totalGroups);
           const isExpanded = expandedJurors.has(key);
           const safeKey = String(key).replace(/[^a-z0-9_-]/gi, "_");

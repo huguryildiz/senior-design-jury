@@ -584,7 +584,7 @@ export function OutcomeTrendChart({
       label: outcomeByKey.technical?.label || "Technical",
       code: outcomeByKey.technical?.code || "1.2/2/3.1/3.2",
       color: outcomeByKey.technical?.color || "#f59e0b",
-      max: outcomeByKey.technical?.max || 1,
+      max: outcomeByKey.technical?.max ?? 0,
       field: "avgTechnical",
     },
     {
@@ -592,7 +592,7 @@ export function OutcomeTrendChart({
       label: outcomeByKey.design?.label || "Written",
       code: outcomeByKey.design?.code || "9.2",
       color: outcomeByKey.design?.color || "#22c55e",
-      max: outcomeByKey.design?.max || 1,
+      max: outcomeByKey.design?.max ?? 0,
       field: "avgWritten",
     },
     {
@@ -600,7 +600,7 @@ export function OutcomeTrendChart({
       label: outcomeByKey.delivery?.label || "Oral",
       code: outcomeByKey.delivery?.code || "9.1",
       color: outcomeByKey.delivery?.color || "#3b82f6",
-      max: outcomeByKey.delivery?.max || 1,
+      max: outcomeByKey.delivery?.max ?? 0,
       field: "avgOral",
     },
     {
@@ -608,7 +608,7 @@ export function OutcomeTrendChart({
       label: outcomeByKey.teamwork?.label || "Teamwork",
       code: outcomeByKey.teamwork?.code || "8.1/8.2",
       color: outcomeByKey.teamwork?.color || "#ef4444",
-      max: outcomeByKey.teamwork?.max || 1,
+      max: outcomeByKey.teamwork?.max ?? 0,
       field: "avgTeamwork",
     },
   ];
@@ -616,7 +616,7 @@ export function OutcomeTrendChart({
   const orderedSemesters = useMemo(() => {
     const orderIndex = new Map((semesters || []).map((s, i) => [s.id, i]));
     const selected = (semesters || []).filter((s) => (selectedIds || []).includes(s.id));
-    return selected.sort((a, b) => (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0));
+    return selected.sort((a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0));
   }, [semesters, selectedIds]);
 
   const dataMap = useMemo(
@@ -1871,7 +1871,7 @@ export function OutcomeTrendChartPrint({ data = [], semesters = [], selectedIds 
   const orderIndex = new Map((semesters || []).map((s, i) => [s.id, i]));
   const ordered = (semesters || [])
     .filter((s) => (selectedIds || []).includes(s.id))
-    .sort((a, b) => (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0));
+    .sort((a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0));
   const dataMap = new Map((data || []).map((row) => [row.semesterId, row]));
 
   const points = ordered.map((s) => {

@@ -9,11 +9,12 @@ import { useEffect, useMemo, useReducer } from "react";
 import { readSection, writeSection } from "./persist";
 import { getCellState } from "./scoreHelpers";
 import { cmp } from "./utils";
+import { TOTAL_MAX } from "../config";
 
 const SECTION = "grid";
 const LEGACY  = "matrix"; // old key name, kept for backwards compat
 const SCORE_FILTER_MIN = 0;
-const SCORE_FILTER_MAX = 100;
+const SCORE_FILTER_MAX = TOTAL_MAX;
 
 function normalizeScoreFilterValue(value) {
   if (value === null || value === undefined || value === "") return "";

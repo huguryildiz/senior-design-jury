@@ -3,7 +3,7 @@
 // - Column-based sorting (click group header: desc → asc → reset)
 // - Sticky header + frozen first column
 // - Juror column text filter with Escape-to-close
-// - Group score column numeric range filters (0–100, auto-apply)
+// - Group score column numeric range filters (0–TOTAL_MAX, auto-apply)
 // - Scored-only averages (fully scored cells only)
 
 import { useState, useRef, useCallback, memo, Component, useEffect } from "react";
@@ -20,7 +20,7 @@ import {
   SearchIcon,
   XIcon,
 } from "../shared/Icons";
-import { CRITERIA } from "../config";
+import { CRITERIA, TOTAL_MAX } from "../config";
 import { useGridSort } from "./useGridSort";
 import { useScoreGridData } from "./useScoreGridData";
 import { useScrollSync } from "./useScrollSync";
@@ -160,7 +160,7 @@ function toFiniteNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-function clampRangeInput(raw, min = 0, max = 100) {
+function clampRangeInput(raw, min = 0, max = TOTAL_MAX) {
   if (raw === "") return "";
   const n = toFiniteNumber(raw);
   if (n === null) return raw;
@@ -634,7 +634,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
             type="number"
             inputMode="decimal"
             min={0}
-            max={100}
+            max={TOTAL_MAX}
             value={draftMin}
             className="filter-input-active"
             onChange={(e) => {

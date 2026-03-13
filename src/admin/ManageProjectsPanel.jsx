@@ -7,48 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CalendarClockIcon, ChevronDownIcon, FileTextIcon, MonitorCogIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, FileUpIcon, CloudUploadIcon, FolderPlusIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import LastActivity from "./LastActivity";
-import { buildTimestampSearchText } from "./utils";
-
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (ch === '"') {
-      if (inQuotes && next === '"') {
-        cur += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-    if (ch === "," && !inQuotes) {
-      row.push(cur.trim());
-      cur = "";
-      continue;
-    }
-    if ((ch === '\n' || ch === '\r') && !inQuotes) {
-      if (cur.length || row.length) {
-        row.push(cur.trim());
-        rows.push(row);
-      }
-      row = [];
-      cur = "";
-      if (ch === '\r' && next === '\n') i++;
-      continue;
-    }
-    cur += ch;
-  }
-  if (cur.length || row.length) {
-    row.push(cur.trim());
-    rows.push(row);
-  }
-  return rows.filter((r) => r.some((c) => c !== ""));
-}
+import { buildTimestampSearchText, parseCsv } from "./utils";
 
 function splitStudents(text) {
   if (!text) return [];
@@ -409,11 +368,17 @@ export default function ManageProjectsPanel({
     );
   };
 
+  const MAX_CSV_BYTES = 2 * 1024 * 1024; // 2MB
+
   const handleFile = async (file) => {
     if (!file) return;
     setImportSuccess("");
     setImportError("");
     setImportWarning("");
+    if (file.size > MAX_CSV_BYTES) {
+      setImportError("File is too large. Maximum allowed size is 2MB.");
+      return;
+    }
     const fileName = String(file.name || "").toLowerCase();
     if (!fileName.endsWith(".csv")) {
       setImportError("Only .csv files are supported.");

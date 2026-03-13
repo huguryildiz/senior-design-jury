@@ -54,7 +54,6 @@ export function useScoreGridData({ data, jurors, groups }) {
       const vals = completedJurors
         .map((j) => {
           const entry = lookup[j.key]?.[g.id];
-          if (!entry?.finalSubmittedAt) return null;
           return getCellState(entry) === "scored" ? Number(entry.total) : null;
         })
         .filter((v) => Number.isFinite(v));

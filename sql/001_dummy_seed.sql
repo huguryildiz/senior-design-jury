@@ -720,17 +720,6 @@ INSERT INTO public.audit_logs
 SELECT
   (p.poster_date::timestamptz - interval '9 days') + (random() * interval '2 hours')
     + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
-  'system', null, 'admin_login_success', 'settings', null,
-  'Admin login succeeded.',
-  null
-FROM tmp_semester_phase p
-LIMIT 2;
-
-INSERT INTO public.audit_logs
-  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
-SELECT
-  (p.poster_date::timestamptz - interval '9 days') + (random() * interval '2 hours')
-    + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
   'system', null, 'admin_login_failed', 'settings', null,
   'Admin login failed.',
   null

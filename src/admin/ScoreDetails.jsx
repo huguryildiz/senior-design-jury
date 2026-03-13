@@ -4,6 +4,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CRITERIA, TOTAL_MAX } from "../config";
 import { cmp, exportXLSX, formatTs, tsToMillis, rowKey } from "./utils";
 import { readSection, writeSection } from "./persist";
 import {
@@ -30,20 +31,14 @@ function displayScore(val) {
 }
 
 const SCORE_COLS = [
-  { key: "technical", label: "Technical /30" },
-  { key: "design",    label: "Written /30"   },
-  { key: "delivery",  label: "Oral /30"      },
-  { key: "teamwork",  label: "Teamwork /10"  },
-  { key: "total",     label: "Total"         },
+  ...CRITERIA.map((c) => ({ key: c.id, label: `${c.shortLabel || c.label} /${c.max}` })),
+  { key: "total", label: "Total" },
 ];
 const SCORE_FILTER_MIN = 0;
-const SCORE_FILTER_MAX = 100;
+const SCORE_FILTER_MAX = TOTAL_MAX;
 const SCORE_MAX_BY_KEY = {
-  technical: 30,
-  design: 30,
-  delivery: 30,
-  teamwork: 10,
-  total: 100,
+  ...Object.fromEntries(CRITERIA.map((c) => [c.id, c.max])),
+  total: TOTAL_MAX,
 };
 const STATUS_OPTIONS = [
   { value: "scored",      label: "Scored"       },
@@ -964,7 +959,7 @@ export default function ScoreDetails({
     }
     const activeScoreFilters = SCORE_KEYS.filter((key) => {
       const filter = scoreFilters[key];
-      return !!(filter?.min || filter?.max);
+      return (filter?.min ?? "") !== "" || (filter?.max ?? "") !== "";
     });
     if (activeScoreFilters.length > 0) {
       list = list.filter((r) => {
@@ -1335,10 +1330,10 @@ export default function ScoreDetails({
       if (f.type === "numberRange") {
         const minRaw = f.value?.min ?? "";
         const maxRaw = f.value?.max ?? "";
-        if (!minRaw && !maxRaw) return;
+        if (minRaw === "" && maxRaw === "") return;
         if (isInvalidNumberRange(minRaw, maxRaw)) return;
-        if (minRaw && maxRaw) value = `${minRaw}–${maxRaw}`;
-        else if (minRaw) value = `≥ ${minRaw}`;
+        if (minRaw !== "" && maxRaw !== "") value = `${minRaw}–${maxRaw}`;
+        else if (minRaw !== "") value = `≥ ${minRaw}`;
         else value = `≤ ${maxRaw}`;
       }
       chips.push({ id: col.id, label: col.label, value, onClear: f.clear });

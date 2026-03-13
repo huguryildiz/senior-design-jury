@@ -7,6 +7,50 @@
 import { CRITERIA } from "../config";
 import { getCellState } from "./scoreHelpers";
 
+// ── CSV parser ────────────────────────────────────────────────
+// RFC 4180 compliant. Supports both comma and semicolon as delimiters.
+// Returns array of rows, each row is array of trimmed cell strings.
+export function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if ((ch === "," || ch === ";") && !inQuotes) {
+      row.push(cur.trim());
+      cur = "";
+      continue;
+    }
+    if ((ch === "\n" || ch === "\r") && !inQuotes) {
+      if (cur.length || row.length) {
+        row.push(cur.trim());
+        rows.push(row);
+      }
+      row = [];
+      cur = "";
+      if (ch === "\r" && next === "\n") i++;
+      continue;
+    }
+    cur += ch;
+  }
+  if (cur.length || row.length) {
+    row.push(cur.trim());
+    rows.push(row);
+  }
+  return rows.filter((r) => r.some((c) => c !== ""));
+}
+
 // ── Numeric coercion ──────────────────────────────────────────
 // Strips surrounding quotes (Sheets sometimes wraps numbers in
 // quotes) and converts to a finite number, defaulting to 0.
@@ -299,10 +343,7 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
           groupNo: p.groupNo ?? p.group_no ?? null,
           projectName: String(p.name ?? p.project_title ?? "").trim(),
           students: p.students ?? p.group_students ?? "",
-          technical: null,
-          design: null,
-          delivery: null,
-          teamwork: null,
+          ...Object.fromEntries(CRITERIA.map((c) => [c.id, null])),
           total: null,
           comments: "",
           updatedAt: "",
@@ -318,6 +359,7 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
 
   const allRows = includeEmptyRows ? [...baseRows, ...generated] : baseRows;
 
+  const criteriaHeaders = CRITERIA.map((c) => `${c.shortLabel || c.label} /${c.max}`);
   const headers = [
     "Semester",
     "Group No",
@@ -327,10 +369,7 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
     "Institution / Department",
     "Score Status",
     "Juror Status",
-    "Technical /30",
-    "Written /30",
-    "Oral /30",
-    "Teamwork /10",
+    ...criteriaHeaders,
     "Total",
     "Updated At",
     "Completed At",
@@ -412,10 +451,7 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
     r.juryDept    ?? "",
     cellStatus ?? "",
     jurorStatus ?? "",
-    exportScoreValue(r.technical),
-    exportScoreValue(r.design),    // written in DB
-    exportScoreValue(r.delivery),  // oral in DB
-    exportScoreValue(r.teamwork),
+    ...CRITERIA.map((c) => exportScoreValue(r[c.id])),
     exportScoreValue(r.total),
     formatExportTimestamp(r.updatedAt), // updated_at
     formatExportTimestamp(r.finalSubmittedAt), // final_submitted_at
@@ -424,11 +460,11 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
   });
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  // Semester(A), Group No(B), Project Title(C), Students(D),
-  // Juror(E), Institution / Department(F), Score Status(G), Juror Status(H),
-  // Technical /30(I), Written /30(J), Oral /30(K), Teamwork /10(L), Total(M),
-  // Updated At(N), Completed At(O), Comment(P)
-  ws["!cols"] = [18, 8, 32, 42, 24, 26, 12, 14, 11, 9, 7, 11, 8, 24, 24, 32]
+  // Fixed widths: Semester, Group No, Project Title, Students, Juror, Inst/Dept, Score Status, Juror Status
+  // Criteria widths: derived from CRITERIA count (10 chars each)
+  // Trailing widths: Total, Updated At, Completed At, Comment
+  const criteriaWidths = CRITERIA.map(() => 10);
+  ws["!cols"] = [18, 8, 32, 42, 24, 26, 12, 14, ...criteriaWidths, 8, 24, 24, 32]
     .map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Jury Evaluations");
@@ -466,7 +502,10 @@ export async function exportGridXLSX(exportRows, groups, { semesterName = "" } =
 // r[c.id] > 0 matches admin field names (technical/design/delivery/teamwork)
 // which equal CRITERIA ids. 0 == not filled (toNum default).
 const countAdminFilledCriteria = (rows) =>
-  rows.reduce((t, r) => t + CRITERIA.filter((c) => r[c.id] > 0).length, 0);
+  rows.reduce(
+    (t, r) => t + CRITERIA.filter((c) => r[c.id] !== null && r[c.id] !== undefined).length,
+    0
+  );
 
 export const adminCompletionPct = (rows, totalProjects) => {
   const total = (totalProjects || 0) * CRITERIA.length;
@@ -475,10 +514,8 @@ export const adminCompletionPct = (rows, totalProjects) => {
 
 // ── Row deduplication ─────────────────────────────────────────
 // Keeps the single best row per (juror + dept + group) composite key.
-// "Best" = latest activity (updated_at preferred), with status priority as tiebreaker.
+// "Best" = latest activity timestamp (updated_at preferred); ties broken by insertion order.
 export function dedupeAndSort(rows) {
-  const priority = { all_submitted: 3, group_submitted: 2, in_progress: 1 };
-
   const cleaned = (rows || [])
     .filter((r) => r?.juryName || r?.projectName || (r?.total ?? 0) > 0)
     .map((r) => ({
@@ -506,13 +543,6 @@ export function dedupeAndSort(rows) {
 
     // Prefer newer timestamp.
     if ((r.tsMs || 0) > (prev.tsMs || 0)) { byKey.set(key, r); continue; }
-    // Same timestamp: prefer higher-priority status.
-    if (
-      (r.tsMs || 0) === (prev.tsMs || 0) &&
-      (priority[r.status] || 0) > (priority[prev.status] || 0)
-    ) {
-      byKey.set(key, r);
-    }
   }
 
   return [...byKey.values()].sort((a, b) => (b.tsMs || 0) - (a.tsMs || 0));

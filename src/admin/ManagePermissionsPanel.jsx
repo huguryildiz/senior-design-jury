@@ -57,8 +57,13 @@ export default function ManagePermissionsPanel({
     if (!activeSemesterId || evalLockPending) return;
     const start = Date.now();
     setEvalLockPending(true);
+    // Optimistic update — flip the toggle immediately
+    setLocal((prev) => ({ ...prev, evalLockActive: checked }));
     try {
       await Promise.resolve(onRequestEvalLockChange?.(checked));
+    } catch {
+      // Revert optimistic update on error — settings useEffect will also correct it
+      setLocal((prev) => ({ ...prev, evalLockActive: !checked }));
     } finally {
       const elapsed = Date.now() - start;
       const remaining = Math.max(0, 1200 - elapsed);
@@ -145,6 +150,7 @@ export default function ManagePermissionsPanel({
         const isCompleted = Boolean(finalSubmittedAt);
         const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
         const isReadyToSubmit = safeTotal > 0 && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+        // Search haystack: English + Turkish aliases so admins can search in either language.
         const actionTokens = editEnabled
           ? "lock editing cancel edit close edit"
           : (isCompleted ? "unlock editing enable edit open edit" : "");
@@ -294,6 +300,11 @@ export default function ManagePermissionsPanel({
             </div>
             {isMobile && (
               <div className="manage-hint manage-hint-inline">Swipe horizontally on text to view full content.</div>
+            )}
+            {!hasAssignedFlag && orderedJurors.length > 0 && (
+              <div className="manage-hint manage-hint-warn">
+                All jurors are shown because assignment data is unavailable. Assign jurors to groups first.
+              </div>
             )}
             {visibleJurors.map((j) => {
               const jurorId = j.jurorId || j.juror_id;

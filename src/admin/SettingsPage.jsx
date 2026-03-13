@@ -288,30 +288,15 @@ function useMediaQuery(query) {
 export default function SettingsPage({ adminPass, onAdminPasswordChange, selectedSemesterId = "" }) {
   const isMobile = useMediaQuery("(max-width: 900px)");
   const supportsInfiniteScroll = typeof window !== "undefined" && "IntersectionObserver" in window;
-  const [openPanels, setOpenPanels] = useState(() => {
-    const mobileInit = typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches;
-    if (mobileInit) {
-      return {
-        semester: true,
-        projects: true,
-        jurors: true,
-        permissions: true,
-        security: true,
-        audit: true,
-        export: true,
-        dbbackup: true,
-      };
-    }
-    return {
-      semester: true,
-      projects: true,
-      jurors: true,
-      permissions: true,
-      security: true,
-      audit: true,
-      export: true,
-      dbbackup: true,
-    };
+  const [openPanels, setOpenPanels] = useState({
+    semester: true,
+    projects: true,
+    jurors: true,
+    permissions: true,
+    security: true,
+    audit: true,
+    export: true,
+    dbbackup: true,
   });
 
   const [semesterList, setSemesterList] = useState([]);
@@ -502,15 +487,16 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     }
     try {
       const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, auditSearch);
-      const rows = await adminListAuditLogs(params, adminPass);
+      const rawRows = await adminListAuditLogs(params, adminPass);
+      const rows = (rawRows || []).filter((row) => row?.action !== "admin_login_success");
       if (mode === "append") {
         setAuditLogs((prev) => [...prev, ...(rows || [])]);
       } else {
         setAuditLogs(rows || []);
       }
-      setAuditHasMore((rows || []).length >= (params.limit || AUDIT_PAGE_SIZE));
-      if (rows && rows.length > 0) {
-        const last = rows[rows.length - 1];
+      setAuditHasMore((rawRows || []).length >= (params.limit || AUDIT_PAGE_SIZE));
+      if (rawRows && rawRows.length > 0) {
+        const last = rawRows[rawRows.length - 1];
         setAuditCursor({ beforeAt: last.created_at, beforeId: last.id });
       }
     } catch (e) {
@@ -1923,7 +1909,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
               onUpdateSemester={handleUpdateSemester}
               onDeleteSemester={(s) =>
                 (s?.id === activeSemesterId
-                  ? setPanelError("semester", "Active semester cannot be deleted. Select another semester first.")
+                  ? setPanelError("semester", "Current semester cannot be deleted. Select another semester first.")
                   : handleRequestDelete({
                       type: "semester",
                       id: s?.id,

@@ -100,10 +100,14 @@ export default function ManageSemesterPanel({
   };
   const formatDate = (value) => {
     if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
+    // Parse as local date by splitting — new Date("YYYY-MM-DD") is UTC midnight
+    // which shows the previous day in timezones east of UTC.
+    const parts = String(value).slice(0, 10).split("-");
+    if (parts.length !== 3) return value;
+    const [y, m, d] = parts.map(Number);
+    if (!y || !m || !d) return value;
     const pad = (v) => String(v).padStart(2, "0");
-    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+    return `${pad(d)}.${pad(m)}.${y}`;
   };
   const orderedSemesters = sortSemesters(uniqueSemesters);
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -273,8 +277,11 @@ export default function ManageSemesterPanel({
                   </button>
                   <DangerIconButton
                     ariaLabel={`Delete ${s.name}`}
-                    title="Delete semester"
+                    title={s.id === activeSemesterId
+                      ? "Cannot delete the current semester"
+                      : "Delete semester"}
                     showLabel={false}
+                    disabled={s.id === activeSemesterId}
                     onClick={() => onDeleteSemester?.(s)}
                   />
                 </div>
@@ -346,8 +353,16 @@ export default function ManageSemesterPanel({
                     type="button"
                     disabled={!createMeta.canSubmit}
                     onClick={async () => {
+                      const trimmedName = createForm.name.trim();
+                      const duplicate = uniqueSemesters.some(
+                        (s) => (s.name || "").trim().toLowerCase() === trimmedName.toLowerCase()
+                      );
+                      if (duplicate) {
+                        setCreateError(`A semester named "${trimmedName}" already exists.`);
+                        return;
+                      }
                       const res = await onCreateSemester({
-                        name: createForm.name.trim(),
+                        name: trimmedName,
                         poster_date: createForm.poster_date,
                       });
                       if (res?.fieldErrors) {
