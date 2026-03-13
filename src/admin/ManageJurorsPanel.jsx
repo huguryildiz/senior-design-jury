@@ -80,7 +80,6 @@ function renderImportMessage(text) {
 
 export default function ManageJurorsPanel({
   jurors,
-  activeSemesterName,
   panelError = "",
   isMobile,
   isOpen,
@@ -686,6 +685,9 @@ export default function ManageJurorsPanel({
                   </span>
                   <div className="edit-dialog__title">Import CSV</div>
                 </div>
+                <div className="manage-import-context-line">
+                  Jurors will be added to the global juror pool.
+                </div>
                 <div className="manage-modal-body">
                   <input
                     ref={fileRef}
@@ -740,7 +742,10 @@ export default function ManageJurorsPanel({
                     </div>
                   )}
                   <details className="manage-collapsible">
-                    <summary className="manage-collapsible-summary">CSV example</summary>
+                    <summary className="manage-collapsible-summary">
+                      <span>CSV example</span>
+                      <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
+                    </summary>
                     <div className="manage-collapsible-content">
                       <div className="manage-code">juror_name,juror_inst</div>
                       <div className="manage-code">Ava Johnson,Harvard University / Applied Physics</div>
@@ -749,7 +754,10 @@ export default function ManageJurorsPanel({
                     </div>
                   </details>
                   <details className="manage-collapsible">
-                    <summary className="manage-collapsible-summary">Rules</summary>
+                    <summary className="manage-collapsible-summary">
+                      <span>Rules</span>
+                      <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
+                    </summary>
                     <div className="manage-collapsible-content">
                       <ul className="manage-hint-list manage-rules-list">
                         <li>Header row is required with exact field names: <span className="manage-code-inline">juror_name</span>, <span className="manage-code-inline">juror_inst</span>.</li>
