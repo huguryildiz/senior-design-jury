@@ -16,6 +16,10 @@ export default defineConfig({
     reporters: [
       "verbose",
       new AllureReporter({ resultsDir: "allure-results" }),
+      "json",
     ],
+    outputFile: {
+      json: "test-results/results.json",
+    },
   },
 });

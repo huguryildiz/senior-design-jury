@@ -26,16 +26,28 @@ jobs:
       - name: Run tests
         run: |
           mkdir -p test-results
-          npm test -- --run --reporter=verbose --reporter=json --outputFile=test-results/results.json
+          npm run test:report
 
       - name: Generate Excel report
         if: always()
         run: node scripts/generate-test-report.cjs
 
-      - name: Upload test report
+      - name: Generate Allure HTML report
+        if: always()
+        run: npm run allure:generate
+
+      - name: Upload Excel report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-${{ github.run_number }}
+          name: test-report-excel-${{ github.run_number }}
           path: test-results/test-report.xlsx
+          retention-days: 30
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-allure-${{ github.run_number }}
+          path: allure-report/
           retention-days: 30
