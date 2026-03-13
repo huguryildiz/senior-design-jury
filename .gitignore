@@ -1,11 +1,11 @@
 node_modules/
 dist/
 test-results/
+allure-results/
+allure-report/
 .DS_Store
 .env.local
-.env.local.example
 CLAUDE.md
-dummy_data.csv
 misc/
 .claude/worktrees/condescending-chatterjee/
 AGENTS.md
