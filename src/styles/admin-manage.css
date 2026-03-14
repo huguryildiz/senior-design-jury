@@ -2136,6 +2136,13 @@
   height: 18px;
 }
 
+.manage-alert.warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left: 5px solid #f59e0b;
+  color: #92400e;
+}
+
 .manage-export {
   background: var(--surface-bg, var(--card-bg));
   border: 1px solid var(--surface-border, var(--gray-200));
@@ -3021,6 +3028,17 @@ textarea.manage-input--create {
 .manage-modal-card--delete .manage-delete-impact {
   color: #d92d20;
   animation: none;
+}
+
+.manage-delete-impact--warning {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #ea580c;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #9a3412;
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 @keyframes deleteImpactBlink {

@@ -124,6 +124,7 @@ export default function ManageProjectsPanel({
   isMobile,
   isOpen,
   onToggle,
+  onDirtyChange,
   onImport,
   onAddGroup,
   onEditGroup,
@@ -148,7 +149,23 @@ export default function ManageProjectsPanel({
   const [importSuccess, setImportSuccess] = useState("");
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const isDirty =
+    (showAdd && (form.group_no.trim() !== "" || form.project_title.trim() !== "" || form.group_students.some((s) => s.trim() !== ""))) ||
+    showEdit;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleToggle = () => {
+    if (isOpen && isDirty) {
+      if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+    }
+    onToggle();
+  };
 
   const updateScrollState = (el) => {
     if (!el) return;
@@ -527,7 +544,13 @@ export default function ManageProjectsPanel({
       return;
     }
 
-    const res = await onImport(toImport);
+    setIsImporting(true);
+    let res;
+    try {
+      res = await onImport(toImport);
+    } finally {
+      setIsImporting(false);
+    }
     if (res?.formError) {
       setImportSuccess("");
       setImportError(res.formError);
@@ -555,7 +578,7 @@ export default function ManageProjectsPanel({
       <button
         type="button"
         className="manage-card-header"
-        onClick={onToggle}
+        onClick={handleToggle}
         aria-expanded={isOpen}
       >
         <div className="manage-card-title">
@@ -1064,8 +1087,8 @@ export default function ManageProjectsPanel({
                   </details>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn manage-btn--import-cancel" type="button" onClick={() => setShowImport(false)}>
-                    Cancel
+                  <button className="manage-btn manage-btn--import-cancel" type="button" onClick={() => setShowImport(false)} disabled={isImporting}>
+                    {isImporting ? "Importing…" : "Cancel"}
                   </button>
                 </div>
               </div>

@@ -201,6 +201,7 @@ function Row({ index, style, data }) {
 // ── Main component ────────────────────────────────────────
 
 export default function RankingsTab({ ranked, semesterName = "" }) {
+  const [isExporting, setIsExporting] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [search, setSearch] = useState(() => {
     const s = readSection("rankings");
@@ -359,8 +360,14 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
     });
   }
 
-  function handleExport() {
-    void exportRankingsXLSX(sorted, CRITERIA_LIST, { semesterName });
+  async function handleExport() {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportRankingsXLSX(sorted, CRITERIA_LIST, { semesterName });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   // Guard: ranked may be undefined during initial render
@@ -378,9 +385,9 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
           </span>
         </div>
         <div className="admin-section-actions">
-          <button className="xlsx-export-btn" onClick={handleExport}>
+          <button className="xlsx-export-btn" onClick={handleExport} disabled={isExporting}>
             <DownloadIcon />
-            <span>Excel</span>
+            <span>{isExporting ? "Exporting…" : "Excel"}</span>
           </button>
         </div>
       </div>

@@ -325,7 +325,19 @@ export default function EvalStep({
         {lockActive && (
           <div className="group-done-banner lock-readonly-banner">
             <LockIcon />
-            Evaluations are locked for this semester. You can view scores, but edits and submission are disabled.
+            Your evaluations are locked. Contact the administrator to request changes.
+          </div>
+        )}
+        {saveStatus === "error" && (
+          <div className="group-done-banner save-error-banner">
+            <TriangleAlertIcon />
+            Could not save. Check your connection.
+            <button
+              className="retry-btn"
+              onClick={() => handleCommentBlur(pid)}
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -340,7 +352,12 @@ export default function EvalStep({
             <div key={crit.id} className={`crit-card${showMissing ? " invalid" : ""}${openRubric === crit.id ? " rubric-open" : ""}`}>
               <div className="crit-header">
                 <div className="crit-title-row">
-                  <div className="crit-label">{crit.label}</div>
+                  <div className="crit-label">
+                    {crit.label}
+                    {crit.mudek && crit.mudek.length > 0 && (
+                      <span className="mudek-code-badge">MÜDEK {crit.mudek.join(", ")}</span>
+                    )}
+                  </div>
                   <button
                     className={`rubric-btn${openRubric === crit.id ? " is-open" : ""}`}
                     onClick={() => setOpenRubric(openRubric === crit.id ? null : crit.id)}

@@ -720,7 +720,13 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
       </div>
       <div className="matrix-scroll-wrap">
         <div className="matrix-scroll" ref={tableScrollRef} onWheel={handleMatrixWheel}>
-          <table className="matrix-table" style={tableStyle}>
+          <table
+            className="matrix-table"
+            style={tableStyle}
+            role="grid"
+            aria-rowcount={visibleJurors.length + 1}
+            aria-colcount={groups.length + 1}
+          >
             <thead>
               <tr>
                 {/* Juror column — sort + text filter */}
@@ -805,6 +811,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                       return (
                         <td
                           key={g.id}
+                          role="gridcell"
                           className={cellClassName(state, isFinal)}
                           aria-label={tooltip}
                           tabIndex={tooltip ? 0 : undefined}

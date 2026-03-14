@@ -50,6 +50,7 @@ body::-webkit-scrollbar-thumb:hover,
 :root {
   --font-ui:     'DM Sans', sans-serif;
   --font-mono:   'DM Mono', monospace;
+
   --navy-900:   #0F1B4C;
   --navy-800:   #162A66;
   --brand-600:  #2F56D6;
@@ -180,6 +181,7 @@ body {
   gap: 14px;
   animation: premiumCardIn 200ms ease;
 }
+
 .premium-header {
   display: flex;
   flex-direction: column;

@@ -153,7 +153,7 @@ describe("EvalStep — lock state", () => {
     renderEval({ lockActive: true });
 
     // Lock banner must be visible
-    expect(screen.getByText(/evaluations are locked for this semester/i)).toBeInTheDocument();
+    expect(screen.getByText(/evaluations are locked/i)).toBeInTheDocument();
 
     // All score inputs must be disabled
     const inputs = screen.getAllByRole("textbox");

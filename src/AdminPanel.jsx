@@ -264,7 +264,14 @@ function ScoresDropdown({
         onClick={() => setOpen((v) => !v)}
       >
         <ListChecksIcon />
-        <span>Scores</span>
+        <span>
+          Scores
+          {isActive && activeView && (
+            <span className="tab-sub-label" aria-hidden="true">
+              {" · "}{EVALUATION_VIEWS.find((v) => v.id === activeView)?.label}
+            </span>
+          )}
+        </span>
         <span className="semester-dropdown-chevron" aria-hidden="true"><ChevronDownIcon /></span>
       </button>
       {open && createPortal(
@@ -364,6 +371,43 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     setScoresView(id);
     writeSection("scores", { view: id });
   }
+
+  // ── URL sync: read on mount ────────────────────────────────
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const tabParam = sp.get("tab");
+    const viewParam = sp.get("view");
+    if (tabParam) {
+      const normalized = normalizeTab(tabParam);
+      if (VALID_TABS.has(normalized)) setAdminTab(normalized);
+    }
+    if (viewParam) {
+      const normalized = normalizeScoresView(viewParam);
+      if (VALID_EVALUATION_VIEWS.has(normalized)) setScoresView(normalized);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── URL sync: push on tab/view change ─────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("tab", adminTab);
+    if (adminTab === "scores" && scoresView) params.set("view", scoresView);
+    window.history.pushState(null, "", "?" + params.toString());
+  }, [adminTab, scoresView]);
+
+  // ── URL sync: handle browser back/forward ─────────────────
+  useEffect(() => {
+    function handlePopState() {
+      const sp = new URLSearchParams(window.location.search);
+      const tab = sp.get("tab");
+      const view = sp.get("view");
+      if (tab && VALID_TABS.has(normalizeTab(tab))) setAdminTab(normalizeTab(tab));
+      if (view && VALID_EVALUATION_VIEWS.has(normalizeScoresView(view))) setScoresView(normalizeScoresView(view));
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (semesterOpen) setScoreMenuOpen(false);
   }, [semesterOpen]);
@@ -371,6 +415,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     if (scoreMenuOpen) setSemesterOpen(false);
   }, [scoreMenuOpen]);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const settingsDirtyRef = useRef(false);
   const [tabOverflow, setTabOverflow] = useState(false);
   const [tabHintLeft, setTabHintLeft] = useState(false);
   const [tabHintRight, setTabHintRight] = useState(false);
@@ -828,7 +873,9 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const sortedSemesters = useMemo(() => {
     return sortSemestersByPosterDateDesc(semesterList);
   }, [semesterList]);
-  const selectedSemesterName = sortedSemesters.find((s) => s.id === selectedSemesterId)?.name ?? "—";
+  const selectedSemester = sortedSemesters.find((s) => s.id === selectedSemesterId) ?? null;
+  const selectedSemesterName = selectedSemester?.name ?? "—";
+  const selectedSemesterLocked = !!(selectedSemester?.is_locked);
 
   // Details view: load scores + project summary for all semesters
   const detailsKey = useMemo(
@@ -1024,7 +1071,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
                     <button
                       key={t.id}
                       className={`tab ${adminTab === t.id ? "active" : ""}`}
-                      onClick={() => { setAdminTab(t.id); writeSection("tab", { adminTab: t.id }); }}
+                      onClick={() => {
+                        if (adminTab === "settings" && settingsDirtyRef.current) {
+                          if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+                        }
+                        setAdminTab(t.id);
+                        writeSection("tab", { adminTab: t.id });
+                      }}
                     >
                       <t.icon />
                       {t.label}
@@ -1049,6 +1102,12 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       {/* Tab content */}
       {!loading && (
         <div className="admin-body">
+          {selectedSemesterLocked && adminTab !== "settings" && (
+            <div className="manage-alert warn with-icon admin-lock-banner" role="status">
+              <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+              <span>Evaluations are locked for this semester. Jurors cannot submit or edit scores.</span>
+            </div>
+          )}
           {(authError || loadError) && (
             <div className="manage-alert error with-icon" role="alert">
               <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
@@ -1060,6 +1119,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               jurorStats={jurorStats}
               groups={groups}
               metrics={overviewMetrics}
+              onGoToSettings={() => setAdminTab("settings")}
             />
           )}
           {adminTab === "scores" && (
@@ -1094,6 +1154,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               adminPass={adminPassState || getAdminPass()}
               onAdminPasswordChange={handleAdminPasswordChange}
               selectedSemesterId={selectedSemesterId}
+              onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
             />
           )}
         </div>

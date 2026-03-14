@@ -1,6 +1,6 @@
 // src/admin/ManageSemesterPanel.jsx
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2Icon, ChevronDownIcon, PencilIcon, SearchIcon, CirclePlusIcon, CalendarPlusIcon } from "../shared/Icons";
 import LastActivity from "./LastActivity";
 import DangerIconButton from "../components/admin/DangerIconButton";
@@ -22,6 +22,7 @@ export default function ManageSemesterPanel({
   isMobile,
   isOpen,
   onToggle,
+  onDirtyChange,
   onSetActive,
   onCreateSemester,
   onUpdateSemester,
@@ -35,6 +36,21 @@ export default function ManageSemesterPanel({
   const [editForm, setEditForm] = useState({ id: "", name: "", poster_date: "" });
   const [createError, setCreateError] = useState("");
   const [editError, setEditError] = useState("");
+
+  const isDirty =
+    (showCreate && (createForm.name.trim() !== "" || createForm.poster_date !== "")) ||
+    showEdit;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleToggle = () => {
+    if (isOpen && isDirty) {
+      if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+    }
+    onToggle();
+  };
 
   const minYear = APP_DATE_MIN_YEAR;
   const maxYear = APP_DATE_MAX_YEAR;
@@ -116,7 +132,7 @@ export default function ManageSemesterPanel({
       <button
         type="button"
         className="manage-card-header"
-        onClick={onToggle}
+        onClick={handleToggle}
         aria-expanded={isOpen}
       >
         <div className="manage-card-title">
