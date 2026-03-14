@@ -3,9 +3,10 @@ dist/
 test-results/
 allure-results/
 allure-report/
+playwright-report/
 .DS_Store
 .env.local
 CLAUDE.md
 misc-docs/
-.claude/worktrees/condescending-chatterjee/
+.claude/
 AGENTS.md

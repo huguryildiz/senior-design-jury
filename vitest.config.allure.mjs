@@ -11,6 +11,7 @@ export default defineConfig({
   base: "/",
   test: {
     environment: "jsdom",
+    exclude: ["**/node_modules/**", "**/e2e/**"],
     // allure-vitest/setup must come first so the runtime is ready for every test
     setupFiles: ["allure-vitest/setup", "./src/test/setup.js"],
     reporters: [

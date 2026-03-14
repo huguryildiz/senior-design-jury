@@ -1269,5 +1269,170 @@
     "risk": "Displaying the wrong chip would mislead jurors about their current evaluation state.",
     "coverageStrength": "Medium",
     "severity": "normal"
+  },
+  {
+    "id": "jury.eval.01",
+    "module": "Jury Flow",
+    "area": "Eval Step",
+    "story": "Smoke Render",
+    "scenario": "EvalStep renders without throwing with minimal props",
+    "whyItMatters": "A crash on the scoring screen would block all evaluations for all jurors.",
+    "risk": "Any prop-shape change or missing dependency silently breaks the scoring UI.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.eval.02",
+    "module": "Jury Flow",
+    "area": "Eval Step",
+    "story": "Navigation — First Group",
+    "scenario": "Prev button is disabled when current group is the first",
+    "whyItMatters": "Navigating before the first group would result in an out-of-bounds project index.",
+    "risk": "An enabled Prev button on group 0 could cause the UI to render undefined project data.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.eval.03",
+    "module": "Jury Flow",
+    "area": "Eval Step",
+    "story": "Navigation — Last Group",
+    "scenario": "Next button is disabled when current group is the last",
+    "whyItMatters": "Navigating past the last group would result in an out-of-bounds project index.",
+    "risk": "An enabled Next button on the final group could crash the scoring form.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.eval.04",
+    "module": "Jury Flow",
+    "area": "Eval Step",
+    "story": "Submit Button Visibility",
+    "scenario": "Submit All button is shown when allComplete is true and editMode is false",
+    "whyItMatters": "Jurors must be able to submit only after scoring all groups — early submission risks incomplete data.",
+    "risk": "Button appearing prematurely could allow partial submissions; missing button blocks completion.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.eval.05",
+    "module": "Jury Flow",
+    "area": "Eval Step",
+    "story": "Lock State",
+    "scenario": "Score inputs are disabled and lock banner is shown when lockActive is true",
+    "whyItMatters": "After the semester is locked, jurors must not be able to modify submitted scores.",
+    "risk": "An enabled input in locked state could silently accept edits that are then rejected by the backend.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.eval.06",
+    "module": "Jury Flow",
+    "area": "Eval Step",
+    "story": "Group Synced Banner",
+    "scenario": "All scores saved banner is shown when groupSynced is true and editMode is false",
+    "whyItMatters": "Jurors need visual confirmation that their scores were persisted before navigating away.",
+    "risk": "Missing the banner could leave jurors uncertain whether their data was saved.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.done.01",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Thank You Title",
+    "scenario": "Thank You title includes the juror name after submission",
+    "whyItMatters": "Personalised confirmation reassures the juror that their submission was accepted.",
+    "risk": "A missing or broken title could be confused with an error state.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.done.02",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Edit Mode Title",
+    "scenario": "Edit mode title is shown when onEditScores prop is provided",
+    "whyItMatters": "Jurors re-entering the scoring screen must immediately know they are in edit mode.",
+    "risk": "Showing the Thank You title in edit mode could confuse the juror into thinking they already submitted.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.done.03",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Edit Button Visibility",
+    "scenario": "Edit My Scores button is shown when onEditScores prop is provided and hidden otherwise",
+    "whyItMatters": "Edit access is controlled by the admin — the button must only appear when the admin has enabled it.",
+    "risk": "A visible edit button when editing is disabled could confuse or mislead jurors.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.done.04",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Total Score Display",
+    "scenario": "Total score is shown correctly for a fully scored project",
+    "whyItMatters": "Jurors review their submitted totals on the done screen to verify accuracy.",
+    "risk": "An incorrect total could erode trust in the system or cause disputes.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.info.01",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Submit Guard — Empty Fields",
+    "scenario": "Start button is disabled when name or dept is empty",
+    "whyItMatters": "Submitting without identity data would create anonymous juror records that can't be traced.",
+    "risk": "An enabled button on empty input could create ghost juror rows in the database.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.info.02",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Submit Guard — Both Fields Filled",
+    "scenario": "Start button is enabled when both name and dept have content",
+    "whyItMatters": "Jurors must be able to proceed once they have entered valid identity information.",
+    "risk": "A permanently disabled button would block all evaluations.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.info.03",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Error Banner",
+    "scenario": "Error banner is shown when error prop is non-empty",
+    "whyItMatters": "API errors (e.g. semester not active) must be communicated clearly so jurors know what to do.",
+    "risk": "A silent failure would leave jurors stuck on the identity screen with no explanation.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.info.04",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Project Count Label — Singular",
+    "scenario": "Project count label shows singular form when activeProjectCount is 1",
+    "whyItMatters": "Grammatically correct labels build trust and polish; plural/singular matters in professional contexts.",
+    "risk": "Showing '1 Project Groups' looks broken and reduces confidence in the system.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.info.05",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Enter Key Submission",
+    "scenario": "Pressing Enter on the dept field triggers onStart when both fields are filled",
+    "whyItMatters": "Keyboard-only users expect Enter to submit forms; missing this blocks accessibility.",
+    "risk": "Jurors used to keyboard navigation would be unable to submit without a mouse.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
   }
 ]

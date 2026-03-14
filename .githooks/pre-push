@@ -1,0 +1,11 @@
+#!/bin/sh
+# .githooks/pre-push
+# Runs E2E tests locally before push. Requires .env.local with E2E Supabase credentials.
+# Install: git config core.hooksPath .githooks
+
+set -e
+
+echo "▶ Running E2E tests before push..."
+npm run e2e
+
+echo "✓ E2E passed — pushing."
