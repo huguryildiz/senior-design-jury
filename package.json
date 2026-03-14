@@ -9,7 +9,9 @@
     "test": "vitest",
     "test:report": "vitest run --config vitest.config.allure.mjs",
     "allure:generate": "allure generate allure-results -o allure-report --clean",
-    "allure:open": "allure open allure-report"
+    "allure:open": "allure open allure-report",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -25,6 +27,7 @@
     "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
     "@vitejs/plugin-react": "^4.2.0",

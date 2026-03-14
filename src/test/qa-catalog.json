@@ -1379,5 +1379,60 @@
     "risk": "An incorrect total could erode trust in the system or cause disputes.",
     "coverageStrength": "Strong",
     "severity": "normal"
+  },
+  {
+    "id": "jury.info.01",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Submit Guard — Empty Fields",
+    "scenario": "Start button is disabled when name or dept is empty",
+    "whyItMatters": "Submitting without identity data would create anonymous juror records that can't be traced.",
+    "risk": "An enabled button on empty input could create ghost juror rows in the database.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.info.02",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Submit Guard — Both Fields Filled",
+    "scenario": "Start button is enabled when both name and dept have content",
+    "whyItMatters": "Jurors must be able to proceed once they have entered valid identity information.",
+    "risk": "A permanently disabled button would block all evaluations.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.info.03",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Error Banner",
+    "scenario": "Error banner is shown when error prop is non-empty",
+    "whyItMatters": "API errors (e.g. semester not active) must be communicated clearly so jurors know what to do.",
+    "risk": "A silent failure would leave jurors stuck on the identity screen with no explanation.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.info.04",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Project Count Label — Singular",
+    "scenario": "Project count label shows singular form when activeProjectCount is 1",
+    "whyItMatters": "Grammatically correct labels build trust and polish; plural/singular matters in professional contexts.",
+    "risk": "Showing '1 Project Groups' looks broken and reduces confidence in the system.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.info.05",
+    "module": "Jury Flow",
+    "area": "Identity Form",
+    "story": "Enter Key Submission",
+    "scenario": "Pressing Enter on the dept field triggers onStart when both fields are filled",
+    "whyItMatters": "Keyboard-only users expect Enter to submit forms; missing this blocks accessibility.",
+    "risk": "Jurors used to keyboard navigation would be unable to submit without a mouse.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
   }
 ]
