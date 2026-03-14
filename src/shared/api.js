@@ -13,6 +13,7 @@
 
 import { supabase } from "../lib/supabaseClient";
 import { CRITERIA } from "../config";
+import { sortSemestersByPosterDateDesc } from "./semesterSort";
 
 // ── calcRowTotal (kept — used in EvalStep / DoneStep) ─────────
 export function calcRowTotal(scores, pid) {
@@ -27,7 +28,7 @@ export function calcRowTotal(scores, pid) {
 export async function listSemesters() {
   const { data, error } = await supabase.rpc("rpc_list_semesters");
   if (error) throw error;
-  return data || [];
+  return sortSemestersByPosterDateDesc(data || []);
 }
 
 export async function getActiveSemester() {

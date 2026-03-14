@@ -61,6 +61,7 @@ export default function ScoresTab({
           assignedJurors={matrixJurors || jurors}
           groups={groups}
           semesterName={semesterName}
+          semesterOptions={semesterOptions}
           summaryData={detailsSummary && detailsSummary.length ? detailsSummary : summaryData}
           loading={detailsLoading}
         />

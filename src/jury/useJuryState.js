@@ -193,6 +193,10 @@ export default function useJuryState() {
   // ── Refs ──────────────────────────────────────────────────
   const doneFiredRef     = useRef(false);
   const submitPendingRef = useRef(false);
+  // justLoadedRef: set to true after _loadSemester seeds state from DB.
+  // Consumed (cleared) on the first auto-done check so we don't immediately
+  // fire a submit confirmation when a fully-scored juror resumes evaluation.
+  const justLoadedRef    = useRef(false);
 
   // stateRef: always-fresh snapshot for async callbacks
   const stateRef = useRef({});
@@ -344,6 +348,9 @@ export default function useJuryState() {
     if (step !== "eval" || doneFiredRef.current || editMode) return;
     if (submitPendingRef.current) return;
     if (projects.length === 0) return;
+    // Skip the first render after _loadSemester seeds state so a fully-scored
+    // juror who resumes isn't immediately thrown into the submit confirmation.
+    if (justLoadedRef.current) { justLoadedRef.current = false; return; }
     if (!projects.every((p) => groupSynced[p.project_id])) return;
 
     handleRequestSubmit();
@@ -597,8 +604,7 @@ export default function useJuryState() {
         const lockedDate = lockedUntil ? new Date(lockedUntil) : null;
         const isLocked =
           res?.error_code === "locked"
-          || (lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date())
-          || (failedAttempts !== null && failedAttempts >= MAX_PIN_ATTEMPTS);
+          || (lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date());
         if (res?.error_code === "semester_inactive") {
           setPinErrorCode("semester_inactive");
           setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
@@ -734,10 +740,21 @@ export default function useJuryState() {
           return hasScore || hasComment;
         })
         .map((p) => {
-          const scores = p.scores || {};
+          const scores = seedScores[p.project_id] || p.scores || {};
           const hasScore = Object.values(scores).some(isScoreFilled);
           const hasComment = String(p.comment || "").trim() !== "";
           const hasAny = hasScore || hasComment;
+          const hasTotal = p.total !== null && p.total !== undefined;
+          const allFilled = CRITERIA.every((c) => isScoreFilled(scores[c.id]));
+          const computedPartialTotal = hasScore
+            ? CRITERIA.reduce((sum, c) => {
+                const raw = scores[c.id];
+                if (!isScoreFilled(raw)) return sum;
+                const n = Number(raw);
+                return Number.isFinite(n) ? sum + n : sum;
+              }, 0)
+            : null;
+          const scoreStatus = (hasTotal || allFilled) ? "scored" : (hasScore ? "partial" : "empty");
           const status = isFinalSubmitted
             ? "group_submitted"
             : (hasAny ? "in_progress" : "not_started");
@@ -747,14 +764,19 @@ export default function useJuryState() {
           return ({
             projectId: p.project_id,
             status,
-            total: p.total ?? null,
+            scoreStatus,
+            total: hasTotal ? p.total : computedPartialTotal,
+            partialTotal: computedPartialTotal,
             timestamp,
           });
         });
       const hasProgress = progressRows.length > 0;
       const filledCount = projectList.filter((p) => isAllFilled(seedScores, p.project_id)).length;
       const totalCount = projectList.length;
+      const criteriaFilledCount = countFilled(seedScores, projectList);
+      const criteriaTotalCount = totalCount * CRITERIA.length;
       const allSubmitted = isFinalSubmitted;
+      justLoadedRef.current = true;
       if (isFinalSubmitted) {
         setDoneScores({ ...seedScores });
         setDoneComments({ ...seedComments });
@@ -769,6 +791,8 @@ export default function useJuryState() {
             rows: progressRows,
             filledCount,
             totalCount,
+            criteriaFilledCount,
+            criteriaTotalCount,
             allSubmitted,
             editAllowed: canEdit,
             nextStep: "eval",
@@ -780,7 +804,7 @@ export default function useJuryState() {
       }
     } catch (_) {
       setLoadingState(null);
-      setPinError("Could not load projects. Please try again.");
+      setAuthError("Could not load projects. Please try again.");
       setStep("identity");
     }
   };
@@ -908,6 +932,7 @@ export default function useJuryState() {
     semesterSelectLockRef.current = false;
     doneFiredRef.current       = false;
     submitPendingRef.current   = false;
+    justLoadedRef.current      = false;
   }, []);
 
   // ─────────────────────────────────────────────────────────

@@ -120,6 +120,45 @@ export default function ManagePermissionsPanel({
   };
   const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
   const formatProgressLabel = (label, completed, total) => `${label} (${completed}/${total})`;
+  const getProgressMeta = (j) => {
+    const safeTotal = Math.max(
+      0,
+      Number(j.overviewTotalProjects ?? j.totalProjects ?? j.total_projects ?? 0) || 0
+    );
+    const scoredProjectsRaw = Number(
+      j.overviewScoredProjects ?? j.completedProjects ?? j.completed_projects ?? 0
+    ) || 0;
+    const startedProjectsRaw = Number(
+      j.overviewStartedProjects ?? scoredProjectsRaw
+    ) || 0;
+    const displayCompleted = safeTotal > 0
+      ? Math.min(Math.max(scoredProjectsRaw, 0), safeTotal)
+      : Math.max(scoredProjectsRaw, 0);
+    const startedProjects = Math.max(startedProjectsRaw, displayCompleted);
+    const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
+    const isCompleted = Boolean(j.finalSubmittedAt ?? j.final_submitted_at);
+    const hasGroups = safeTotal > 0;
+    const hasStartedAny = startedProjects > 0;
+    const isReadyToSubmit = hasGroups && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+    const statusKey = j.overviewStatus
+      || (editEnabled
+        ? "editing"
+        : (isCompleted
+          ? "completed"
+          : (isReadyToSubmit
+            ? "ready_to_submit"
+            : (hasStartedAny ? "in_progress" : "not_started"))));
+    return {
+      safeTotal,
+      displayCompleted,
+      editEnabled,
+      isCompleted,
+      hasGroups,
+      hasStartedAny,
+      isReadyToSubmit,
+      statusKey,
+    };
+  };
   const evalLockActive = toBool(local?.evalLockActive ?? settings?.evalLockActive);
   const hasActiveSemester = !!activeSemesterId;
   const orderedJurors = Array.isArray(jurors)
@@ -141,15 +180,14 @@ export default function ManagePermissionsPanel({
     ? permissionJurors.filter((j) => {
         const name = j.juryName || j.juror_name || "";
         const inst = j.juryDept || j.juror_inst || "";
-        const totalProjects = Number(j.totalProjects ?? j.total_projects ?? 0);
-        const completedProjects = Number(j.completedProjects ?? j.completed_projects ?? 0);
-        const safeTotal = Math.max(totalProjects, 0);
-        const safeCompleted = Math.max(completedProjects, 0);
-        const displayCompleted = safeTotal > 0 ? Math.min(safeCompleted, safeTotal) : safeCompleted;
-        const finalSubmittedAt = j.finalSubmittedAt ?? j.final_submitted_at ?? null;
-        const isCompleted = Boolean(finalSubmittedAt);
-        const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
-        const isReadyToSubmit = safeTotal > 0 && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+        const {
+          safeTotal,
+          displayCompleted,
+          editEnabled,
+          isCompleted,
+          hasStartedAny,
+          statusKey,
+        } = getProgressMeta(j);
         // Search haystack: English + Turkish aliases so admins can search in either language.
         const actionTokens = editEnabled
           ? "lock editing cancel edit close edit"
@@ -157,9 +195,6 @@ export default function ManagePermissionsPanel({
         const editStatusLabel = editEnabled
           ? "edit mode open on enabled editing true acik açık"
           : "edit mode closed off disabled false kapali kapalı";
-        const statusKey = editEnabled
-          ? "editing"
-          : (isCompleted ? "completed" : (isReadyToSubmit ? "ready_to_submit" : (displayCompleted > 0 ? "in_progress" : "not_started")));
         const statusTokens = statusKey === "completed"
           ? "juror status state durum completed tamamlandi tamamlandı"
           : statusKey === "ready_to_submit"
@@ -170,13 +205,13 @@ export default function ManagePermissionsPanel({
                 ? "juror status state durum editing edit mode"
                 : "juror status state durum not started not_started baslamadi başlamadı";
         const progressLabel = safeTotal > 0
-          ? (statusKey === "editing"
+            ? (statusKey === "editing"
             ? formatProgressLabel("Editing", displayCompleted, safeTotal)
             : statusKey === "ready_to_submit"
               ? formatProgressLabel("Ready to submit", displayCompleted, safeTotal)
             : isCompleted
               ? formatProgressLabel("Completed", displayCompleted, safeTotal)
-              : (displayCompleted > 0
+              : (hasStartedAny
                 ? formatProgressLabel("In progress", displayCompleted, safeTotal)
                 : formatProgressLabel("Not started", displayCompleted, safeTotal)))
           : "No groups assigned";
@@ -308,17 +343,15 @@ export default function ManagePermissionsPanel({
             )}
             {visibleJurors.map((j) => {
               const jurorId = j.jurorId || j.juror_id;
-              const totalProjects = Number(j.totalProjects ?? j.total_projects ?? 0);
-              const completedProjects = Number(j.completedProjects ?? j.completed_projects ?? 0);
-              const safeTotal = Math.max(totalProjects, 0);
-              const safeCompleted = Math.max(completedProjects, 0);
-              const displayCompleted = safeTotal > 0 ? Math.min(safeCompleted, safeTotal) : safeCompleted;
-              const finalSubmittedAt = j.finalSubmittedAt ?? j.final_submitted_at ?? null;
-              const isCompleted = Boolean(finalSubmittedAt);
-              const hasGroups = safeTotal > 0;
-              const hasStartedAny = displayCompleted > 0;
-              const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
-              const isReadyToSubmit = hasGroups && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
+              const {
+                safeTotal,
+                displayCompleted,
+                isCompleted,
+                hasGroups,
+                hasStartedAny,
+                editEnabled,
+                statusKey,
+              } = getProgressMeta(j);
               const lastActivityAt =
                 j.lastActivityAt
                 || j.last_activity_at
@@ -343,9 +376,7 @@ export default function ManagePermissionsPanel({
               const enableEditTitle = canEnableEdit
                 ? "Allow juror to reopen and resubmit the evaluation."
                 : (lockHint || "Edit mode can be enabled only after completion.");
-              const completionStatusKey = hasGroups
-                ? (editEnabled ? "editing" : (isCompleted ? "completed" : (isReadyToSubmit ? "ready_to_submit" : (hasStartedAny ? "in_progress" : "not_started"))))
-                : "not_started";
+              const completionStatusKey = hasGroups ? statusKey : "not_started";
               const completionStatusMeta = jurorStatusMeta[completionStatusKey] || jurorStatusMeta.not_started;
               const CompletionIcon = completionStatusMeta.icon;
               const completionClassName = [

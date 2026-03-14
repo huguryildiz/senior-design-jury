@@ -9,6 +9,7 @@ import {
   CalendarCheckIcon,
   LandmarkIcon,
   UserCheckIcon,
+  LockIcon,
   UserPlusIcon,
   KeyRoundIcon,
   PencilIcon,
@@ -385,7 +386,7 @@ export default function ManageJurorsPanel({
               return (
                 <div
                   key={jurorId}
-                  className={`manage-item manage-item--juror${isLocked ? " is-locked" : ""}`}
+                  className={`manage-item manage-item--juror${isLocked ? " is-pin-locked" : ""}`}
                 >
                   <div className="manage-item-main--juror">
                     <div className="manage-item-title">
@@ -442,6 +443,14 @@ export default function ManageJurorsPanel({
                       </div>
                     </div>
                   </div>
+                  {isLocked && (
+                    <span className="manage-pin-lock-chip" aria-label="PIN Locked">
+                      <span className="manage-pin-lock-chip-icon" aria-hidden="true">
+                        <LockIcon />
+                      </span>
+                      <span className="manage-pin-lock-chip-text">PIN Locked</span>
+                    </span>
+                  )}
                   <div className="manage-item-footer manage-item-footer--juror">
                     {lastActivityAt ? (
                       <div className="manage-item-sub manage-meta-line manage-meta-line--juror-last">
@@ -452,9 +461,9 @@ export default function ManageJurorsPanel({
                     )}
                     <div className="manage-item-actions-row manage-item-actions-row--juror-actions">
                       <button
-                        className={`manage-icon-btn${isLocked ? " danger" : ""}`}
+                        className={`manage-icon-btn${isLocked ? " is-warning" : ""}`}
                         type="button"
-                        title="Reset PIN"
+                        title={isLocked ? "Reset PIN" : "Set or reset PIN"}
                         aria-label={`Reset PIN for ${j.juryName || j.juror_name}`}
                         onClick={() => {
                           onResetPin?.({

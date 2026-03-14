@@ -7,7 +7,8 @@
 
 import { useState } from "react";
 import { CRITERIA } from "../config";
-import { HomeIcon, ChevronDownIcon, CheckIcon, PencilIcon, ClockIcon } from "../shared/Icons";
+import { HomeIcon, ChevronDownIcon, PencilIcon, HistoryIcon } from "../shared/Icons";
+import { getCellState, getPartialTotal, jurorStatusMeta } from "../admin/scoreHelpers";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 import { formatTs as formatShortTs } from "../admin/utils";
 
@@ -29,9 +30,9 @@ export default function DoneStep({
   onBack,
   onEditScores,
 }) {
-  const displayScores = doneScores || scores;
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const isEditMode = Boolean(onEditScores);
+  const displayScores = isEditMode ? (scores || {}) : (doneScores || scores || {});
   const titleText = isEditMode
     ? "Edit mode is enabled"
     : `Thank You${juryName ? `, ${juryName}` : ""}!`;
@@ -85,7 +86,25 @@ export default function DoneStep({
             const pid        = p.project_id;
             const isExpanded = expandedGroups.has(pid);
             const panelId    = `done-group-panel-${pid}`;
+            const criteriaValues = displayScores[pid] || {};
+            const allFilled = CRITERIA.every((c) => {
+              const v = criteriaValues[c.id];
+              return v !== null && v !== undefined && String(v).trim() !== "";
+            });
             const totalScore = groupTotal(displayScores, pid);
+            const rowEntry = {
+              ...criteriaValues,
+              total: allFilled ? totalScore : null,
+            };
+            const scoreState = getCellState(rowEntry);
+            const stateMeta = jurorStatusMeta[scoreState] ?? jurorStatusMeta.empty;
+            const StatusIcon = stateMeta.icon;
+            const shownScore =
+              scoreState === "scored"
+                ? totalScore
+                : scoreState === "partial"
+                  ? getPartialTotal(rowEntry)
+                  : "—";
             const timestamp = groupTimestamp(p);
             const studentList = p.group_students
               ? p.group_students.split(",").map((s) => s.trim()).filter(Boolean)
@@ -106,7 +125,7 @@ export default function DoneStep({
                     <div className="spd-row-header-line">
                       <span className="spd-row-name">
                         <span className="spd-row-name-text swipe-x">
-                          <GroupLabel text={`Group ${p.group_no}`} shortText={`Grp. ${p.group_no}`} />
+                          <GroupLabel text={`Group ${p.group_no}`} shortText={`Group ${p.group_no}`} />
                         </span>
                         {hasDetails && (
                           <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>
@@ -116,19 +135,15 @@ export default function DoneStep({
                       </span>
                     </div>
                   </button>
-                  <div className="spd-row-right">
-                    <span className="spd-row-ts" title={timestamp}>
-                      <span className="spd-row-ts-icon" aria-hidden="true"><ClockIcon /></span>
-                      <span className="swipe-x">{timestamp}</span>
-                    </span>
-                    <span className="spd-row-right-meta">
-                      <span className="status-badge submitted">
-                        <CheckIcon />
-                        Submitted
-                      </span>
-                      <span className="spd-row-score">{String(totalScore)}</span>
-                    </span>
-                  </div>
+                  <span className="spd-row-ts" title={timestamp}>
+                    <span className="spd-row-ts-icon" aria-hidden="true"><HistoryIcon /></span>
+                    <span className="spd-row-ts-text">{timestamp}</span>
+                  </span>
+                  <span className={`status-badge ${stateMeta.colorClass} spd-row-pill`}>
+                    <StatusIcon />
+                    {stateMeta.label}
+                  </span>
+                  <span className={`spd-row-score ${scoreState}`}>{String(shownScore)}</span>
                 </div>
 
                 {hasDetails && (

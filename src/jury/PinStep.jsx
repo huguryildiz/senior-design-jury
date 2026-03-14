@@ -20,7 +20,7 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   const PIN_LEN = 4;
   const [digits, setDigits] = useState(Array.from({ length: PIN_LEN }, () => ""));
   const inputId = useId();
-  const inputRefs = Array.from({ length: PIN_LEN }, () => useRef(null));
+  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
   // Reset boxes whenever an error is shown so the user can retry cleanly.
   useEffect(() => {
@@ -64,6 +64,14 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
 
   function handlePaste(e) {
     e.preventDefault();
+    if (disabled) return;
+    const text = e.clipboardData?.getData("text") || "";
+    const stripped = text.replace(/\D/g, "").slice(0, PIN_LEN);
+    if (!stripped) return;
+    const next = Array.from({ length: PIN_LEN }, (_, i) => stripped[i] || "");
+    setDigits(next);
+    const focusIdx = Math.min(stripped.length, PIN_LEN - 1);
+    inputRefs[focusIdx].current?.focus();
   }
 
   function handleOk() {

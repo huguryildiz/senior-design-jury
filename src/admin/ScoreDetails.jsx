@@ -446,6 +446,7 @@ export default function ScoreDetails({
   assignedJurors = null,
   groups = [],
   semesterName = "",
+  semesterOptions: semesterCatalog = [],
   summaryData = [],
   loading = false,
 }) {
@@ -557,17 +558,20 @@ export default function ScoreDetails({
   );
   const semesterOptions = useMemo(() => {
     const map = new Map();
+    (semesterCatalog || []).forEach((s) => {
+      const label = String(s?.name ?? "").trim();
+      if (!label) return;
+      map.set(label.toLowerCase(), label);
+    });
     const add = (val) => {
       const label = String(val ?? "").trim();
       if (!label) return;
-      map.set(label.toLowerCase(), label);
+      if (!map.has(label.toLowerCase())) map.set(label.toLowerCase(), label);
     };
     data.forEach((row) => add(row?.semester));
     add(semesterName);
-    return Array.from(map.entries())
-      .sort((a, b) => a[1].localeCompare(b[1], "tr"))
-      .map(([, label]) => label);
-  }, [data, semesterName]);
+    return Array.from(map.values());
+  }, [semesterCatalog, data, semesterName]);
   const groupNoOptions = useMemo(() => {
     const map = new Map();
     data.forEach((row) => {
@@ -1366,7 +1370,7 @@ export default function ScoreDetails({
         <div className="col-filter-search-wrap">
           <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
           <input
-            autoFocus
+            autoFocus={!useSheetFilters}
             placeholder={placeholder}
             aria-label={placeholder}
             value={value}
@@ -1413,7 +1417,7 @@ export default function ScoreDetails({
           <div className="range-field">
             <label>Min</label>
             <input
-              autoFocus
+              autoFocus={!useSheetFilters}
               type="number"
               inputMode="decimal"
               min={SCORE_FILTER_MIN}
@@ -1466,7 +1470,7 @@ export default function ScoreDetails({
     content: (
       <>
         <select
-          autoFocus
+          autoFocus={!useSheetFilters}
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
@@ -1521,7 +1525,7 @@ export default function ScoreDetails({
       <div className="col-filter-search-wrap multi-filter-search-wrap">
         <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
         <input
-          autoFocus
+          autoFocus={!useSheetFilters}
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -1672,7 +1676,7 @@ export default function ScoreDetails({
             <div className="timestamp-field">
               <label>From</label>
               <input
-                autoFocus
+                autoFocus={!useSheetFilters}
                 type="datetime-local"
                 step="60"
                 placeholder="YYYY-MM-DDThh:mm"

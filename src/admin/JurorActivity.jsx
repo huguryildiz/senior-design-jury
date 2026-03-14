@@ -151,7 +151,7 @@ export default function JurorActivity({ jurorStats = [], groups = [] }) {
             return {
               id: g.id,
               label: g.label || `Group ${g.groupNo}`,
-              shortLabel: `Grp. ${g.groupNo}`,
+              shortLabel: `Group ${g.groupNo}`,
               projectTitle,
               students: studentsList,
               updatedAt,

@@ -293,12 +293,12 @@ export default function App() {
             <div className="premium-header">
               <div className="premium-icon-square" aria-hidden="true"><ShieldUserIcon /></div>
               <div className="premium-title">Admin Panel</div>
-              <div className="premium-subtitle">Enter the admin password to access evaluations and settings.</div>
+              <div className="premium-subtitle">Enter admin password to continue.</div>
             </div>
             <div className="premium-input-wrap">
               <input
                 type={adminShowPass ? "text" : "password"}
-                placeholder="Admin password"
+                placeholder="Enter password"
                 value={adminInput}
                 onChange={(e) => {
                   setAdminInput(e.target.value);
@@ -398,11 +398,6 @@ export default function App() {
             <span className="home-btn-icon" aria-hidden="true"><ShieldUserIcon /></span>
             Admin Panel
           </button>
-        </div>
-
-        <div className="home-info">
-          <span className="home-info-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>Please score each project group using the evaluation form.</span>
         </div>
 
         <div className="home-footer">

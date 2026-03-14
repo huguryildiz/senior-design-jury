@@ -25,6 +25,7 @@ import { supabase } from "./lib/supabaseClient";
 import { cmp, rowKey } from "./admin/utils";
 import { readSection, writeSection } from "./admin/persist";
 import { getCellState } from "./admin/scoreHelpers";
+import { sortSemestersByPosterDateDesc } from "./shared/semesterSort";
 import { HomeIcon, RefreshIcon } from "./admin/components";
 import {
   ListChecksIcon,
@@ -823,31 +824,9 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       }).format(lastRefresh)
     : "";
 
-  // Semester list sorted descending: year DESC, then Fall > Summer > Spring
+  // Semester list sorted descending by poster date (latest evaluation first)
   const sortedSemesters = useMemo(() => {
-    const TERM_RANK = { fall: 3, summer: 2, spring: 1, winter: 0 };
-    const getYear = (sem) => {
-      const label = String(sem?.name || "");
-      const match = label.match(/\d{4}/);
-      if (match) return Number(match[0]) || 0;
-      if (sem?.poster_date) return Number(String(sem.poster_date).slice(0, 4)) || 0;
-      return 0;
-    };
-    const getTermRank = (sem) => {
-      const t = String(sem?.name || "").toLowerCase();
-      if (t.includes("fall")) return TERM_RANK.fall;
-      if (t.includes("summer")) return TERM_RANK.summer;
-      if (t.includes("spring")) return TERM_RANK.spring;
-      if (t.includes("winter")) return TERM_RANK.winter;
-      return -1;
-    };
-    return semesterList.slice().sort((a, b) => {
-      const yearDiff = getYear(b) - getYear(a);
-      if (yearDiff !== 0) return yearDiff;
-      const termDiff = getTermRank(b) - getTermRank(a);
-      if (termDiff !== 0) return termDiff;
-      return String(a?.name || "").localeCompare(String(b?.name || ""));
-    });
+    return sortSemestersByPosterDateDesc(semesterList);
   }, [semesterList]);
   const selectedSemesterName = sortedSemesters.find((s) => s.id === selectedSemesterId)?.name ?? "—";
 
@@ -856,6 +835,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     () => sortedSemesters.map((s) => s.id).join("|"),
     [sortedSemesters]
   );
+  useEffect(() => {
+    detailsKeyRef.current = "";
+  }, [rawScores]);
+
   useEffect(() => {
     if (scoresView !== "details") return;
     if (!sortedSemesters.length) return;
@@ -895,7 +878,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       }
     })();
     return () => { cancelled = true; };
-  }, [scoresView, detailsKey, sortedSemesters, detailsScores.length]);
+  }, [scoresView, detailsKey, sortedSemesters, detailsScores.length, rawScores]);
 
   useEffect(() => {
     if (trendInitRef.current) return;
