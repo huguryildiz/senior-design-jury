@@ -12,10 +12,6 @@ import { getCellState, getPartialTotal, jurorStatusMeta } from "../admin/scoreHe
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 import { formatTs as formatShortTs } from "../admin/utils";
 
-function groupTotal(scores, pid) {
-  return CRITERIA.reduce((s, c) => s + (parseInt(scores[pid]?.[c.id], 10) || 0), 0);
-}
-
 function groupTimestamp(project) {
   const ts = project?.updated_at || "";
   if (!ts) return "—";
@@ -91,7 +87,7 @@ export default function DoneStep({
               const v = criteriaValues[c.id];
               return v !== null && v !== undefined && String(v).trim() !== "";
             });
-            const totalScore = groupTotal(displayScores, pid);
+            const totalScore = getPartialTotal(displayScores[pid] || {});
             const rowEntry = {
               ...criteriaValues,
               total: allFilled ? totalScore : null,

@@ -40,7 +40,6 @@ export default function InfoStep({
     typeof activeProjectCount === "number"
       ? `${activeProjectCount} Project Group${activeProjectCount === 1 ? "" : "s"}`
       : "-";
-  const showInfoBlock = true;
   const calendarIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar-days-icon lucide-calendar-days">
       <path d="M8 2v4" />
@@ -84,23 +83,21 @@ export default function InfoStep({
           <div className="premium-icon-square" aria-hidden="true"><UserRoundCheckIcon /></div>
           <div className="premium-title">Jury Information</div>
           <div className="premium-subtitle">EE 492 — Senior Project II</div>
-          {showInfoBlock && (
-            <div className="premium-info-block" aria-label="Jury schedule summary">
-              <div className="premium-info-line">
-                {infoSegments.map((segment, index) => (
-                  <span key={segment.key} className="premium-info-item">
-                    {index > 0 && <span className="premium-info-sep" aria-hidden="true">·</span>}
-                    {segment.icon && (
-                      <span className="premium-info-icon" aria-hidden="true">
-                        {segment.icon}
-                      </span>
-                    )}
-                    {segment.label}
-                  </span>
-                ))}
-              </div>
+          <div className="premium-info-block" aria-label="Jury schedule summary">
+            <div className="premium-info-line">
+              {infoSegments.map((segment, index) => (
+                <span key={segment.key} className="premium-info-item">
+                  {index > 0 && <span className="premium-info-sep" aria-hidden="true">·</span>}
+                  {segment.icon && (
+                    <span className="premium-info-icon" aria-hidden="true">
+                      {segment.icon}
+                    </span>
+                  )}
+                  {segment.label}
+                </span>
+              ))}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="premium-info-strip">

@@ -745,8 +745,8 @@ export default function useJuryState() {
           const hasComment = String(p.comment || "").trim() !== "";
           const hasAny = hasScore || hasComment;
           const hasTotal = p.total !== null && p.total !== undefined;
-          const allFilled = CRITERIA.every((c) => isScoreFilled(scores[c.id]));
-          const computedPartialTotal = hasScore
+          const allFilled = !hasTotal && CRITERIA.every((c) => isScoreFilled(scores[c.id]));
+          const computedPartialTotal = (!hasTotal && hasScore)
             ? CRITERIA.reduce((sum, c) => {
                 const raw = scores[c.id];
                 if (!isScoreFilled(raw)) return sum;
@@ -771,9 +771,18 @@ export default function useJuryState() {
           });
         });
       const hasProgress = progressRows.length > 0;
-      const filledCount = projectList.filter((p) => isAllFilled(seedScores, p.project_id)).length;
       const totalCount = projectList.length;
-      const criteriaFilledCount = countFilled(seedScores, projectList);
+      const { filledCount, criteriaFilledCount } = projectList.reduce(
+        (acc, p) => {
+          const allFilled = CRITERIA.every((c) => isScoreFilled(seedScores[p.project_id]?.[c.id]));
+          const filled    = CRITERIA.filter((c) => isScoreFilled(seedScores[p.project_id]?.[c.id])).length;
+          return {
+            filledCount:         acc.filledCount + (allFilled ? 1 : 0),
+            criteriaFilledCount: acc.criteriaFilledCount + filled,
+          };
+        },
+        { filledCount: 0, criteriaFilledCount: 0 }
+      );
       const criteriaTotalCount = totalCount * CRITERIA.length;
       const allSubmitted = isFinalSubmitted;
       justLoadedRef.current = true;

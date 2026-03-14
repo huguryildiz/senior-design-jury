@@ -21,7 +21,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CRITERIA, APP_CONFIG } from "../config";
-import { countFilled, isScoreFilled } from "./useJuryState";
+import { isScoreFilled } from "./useJuryState";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -30,9 +30,6 @@ import {
   LandmarkIcon,
   UserCheckIcon,
   CheckCircle2Icon,
-  CheckIcon,
-  HourglassIcon,
-  CircleIcon,
   PencilIcon,
   TriangleAlertIcon,
   LoaderIcon,

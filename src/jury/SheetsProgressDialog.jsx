@@ -29,6 +29,12 @@ import MinimalLoaderOverlay from "../shared/MinimalLoaderOverlay";
 import { formatTs as formatShortTs } from "../admin/utils";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 
+function statusToChip(key, fallback = "empty") {
+  const meta = jurorStatusMeta[key] ?? jurorStatusMeta[fallback];
+  const Icon = meta.icon;
+  return { label: meta.label, tone: key, colorClass: meta.colorClass, icon: <Icon /> };
+}
+
 // Status label + colour for each row returned by myscores.
 function rowStatusChip(status) {
   const key =
@@ -38,9 +44,7 @@ function rowStatusChip(status) {
     status === "submitted"
       ? "scored"
       : (status === "partial" || status === "in_progress" ? "partial" : "empty");
-  const meta = jurorStatusMeta[key] ?? jurorStatusMeta.empty;
-  const Icon = meta.icon;
-  return { label: meta.label, tone: key, colorClass: meta.colorClass, icon: <Icon /> };
+  return statusToChip(key, "empty");
 }
 
 function jurorStatusChip({ isEditing, allSubmitted, filledCount, totalCount, hasData }) {
@@ -53,9 +57,7 @@ function jurorStatusChip({ isEditing, allSubmitted, filledCount, totalCount, has
         : hasData
           ? "in_progress"
           : "not_started";
-  const meta = jurorStatusMeta[key] ?? jurorStatusMeta.not_started;
-  const Icon = meta.icon;
-  return { label: meta.label, tone: key, colorClass: meta.colorClass, icon: <Icon /> };
+  return statusToChip(key, "not_started");
 }
 
 export default function SheetsProgressDialog({ progress, projects, onConfirm, onFresh }) {
@@ -101,7 +103,7 @@ export default function SheetsProgressDialog({ progress, projects, onConfirm, on
 
   useEffect(() => {
     overlayRef.current?.scrollTo?.(0, 0);
-  }, [showLoader, progress?.loading, hasData]);
+  }, [progress?.loading, hasData]);
 
   useEffect(() => {
     const root = listRef.current;
@@ -128,6 +130,7 @@ export default function SheetsProgressDialog({ progress, projects, onConfirm, on
     const rafId = requestAnimationFrame(() => {
       targets.forEach(updateHint);
     });
+    // 220 ms: wait for dialog entrance animation to settle before measuring overflow
     const timerId = setTimeout(() => {
       targets.forEach(updateHint);
     }, 220);
