@@ -55,7 +55,8 @@ test.describe("Jury PIN flow", () => {
     await page.getByLabel(/institution \/ department/i).fill(TEST_JUROR_DEPT);
     await page.getByRole("button", { name: /start evaluation/i }).click();
 
-    // After identity submit with a known juror, PIN step should appear
-    await expect(page.getByText(/enter your access pin/i)).toBeVisible({ timeout: 10_000 });
+    // After identity submit with a known juror, a PIN step should appear
+    // (either PinStep "Enter your access PIN" or PinRevealStep "Your Access PIN")
+    await expect(page.getByText(/your access pin/i)).toBeVisible({ timeout: 10_000 });
   });
 });
