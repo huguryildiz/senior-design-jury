@@ -8,6 +8,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
+    exclude: ['**/node_modules/**', '**/e2e/**'],
+    watchExclude: ['**/e2e/**'],
   },
   build: {
     rollupOptions: {
