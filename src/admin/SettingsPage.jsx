@@ -32,6 +32,7 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, FileUpIcon, KeyRoundIcon, LockIcon, CircleXLucideIcon, SearchIcon, TriangleAlertIcon } from "../shared/Icons";
 import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
+import { getCellState } from "./scoreHelpers";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
 import JurorSettingsPanel from "./ManageJurorsPanel";
@@ -48,6 +49,7 @@ import {
   isValidDateParts,
   isIsoDateWithinBounds,
 } from "../shared/dateBounds";
+import { sortSemestersByPosterDateDesc } from "../shared/semesterSort";
 
 const defaultSettings = {
   evalLockActive: false,
@@ -338,6 +340,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
   const [auditCursor, setAuditCursor] = useState(null);
   const [auditExporting, setAuditExporting] = useState(false);
   const [showAllAuditLogs, setShowAllAuditLogs] = useState(false);
+  const auditSearchRef = useRef("");
   const jurorTimerRef = useRef(null);  // debounce for loadJurors-only refetch
   const auditTimerRef = useRef(null);  // debounce for loadAuditLogs refetch
   const pinCopyTimerRef = useRef(null);
@@ -466,14 +469,63 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
 
   const loadJurors = useCallback(async () => {
     if (!adminPass) return;
-    const rows = await adminListJurors(viewSemesterId, adminPass);
-    setJurors(rows || []);
+    const [rows, scoreRows] = await Promise.all([
+      adminListJurors(viewSemesterId, adminPass),
+      adminGetScores(viewSemesterId, adminPass),
+    ]);
+    const scoredByJuror = new Map();
+    const startedByJuror = new Map();
+    (scoreRows || []).forEach((r) => {
+      const jurorId = String(r?.jurorId || "").trim();
+      if (!jurorId) return;
+      const cellState = getCellState(r);
+      if (cellState === "scored") {
+        scoredByJuror.set(jurorId, (scoredByJuror.get(jurorId) || 0) + 1);
+      }
+      if (cellState !== "empty") {
+        startedByJuror.set(jurorId, (startedByJuror.get(jurorId) || 0) + 1);
+      }
+    });
+    const mapped = (rows || []).map((j) => {
+      const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
+      const jurorId = String(j?.jurorId || j?.juror_id || "").trim();
+      const totalProjects = Math.max(
+        0,
+        Number(j?.totalProjects ?? j?.total_projects ?? 0) || 0
+      );
+      const scoredProjects = scoredByJuror.get(jurorId) || 0;
+      const startedProjects = startedByJuror.get(jurorId) || 0;
+      const editEnabled = toBool(j?.editEnabled ?? j?.edit_enabled);
+      const isCompleted = Boolean(j?.finalSubmittedAt || j?.final_submitted_at);
+      const overviewStatus = editEnabled
+        ? "editing"
+        : isCompleted
+          ? "completed"
+          : (totalProjects > 0 && scoredProjects >= totalProjects)
+            ? "ready_to_submit"
+            : startedProjects > 0
+              ? "in_progress"
+              : "not_started";
+      return {
+        ...j,
+        overviewStatus,
+        overviewTotalProjects: totalProjects,
+        overviewScoredProjects: scoredProjects,
+        overviewStartedProjects: startedProjects,
+      };
+    });
+    setJurors(mapped);
   }, [adminPass, viewSemesterId]);
+
+  useEffect(() => {
+    auditSearchRef.current = auditSearch;
+  }, [auditSearch]);
 
   const loadAuditLogs = useCallback(async (filters, options = {}) => {
     if (!adminPass) return;
     const mode = options.mode || "replace";
     const cursor = options.cursor || null;
+    const searchTerm = options.search ?? auditSearchRef.current;
     setAuditLoading(true);
     setAuditError("");
     const rangeError = getAuditDateRangeError(filters || defaultAuditFilters);
@@ -486,7 +538,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
       return;
     }
     try {
-      const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, auditSearch);
+      const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, searchTerm);
       const rawRows = await adminListAuditLogs(params, adminPass);
       const rows = (rawRows || []).filter((row) => row?.action !== "admin_login_success");
       if (mode === "append") {
@@ -504,7 +556,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     } finally {
       setAuditLoading(false);
     }
-  }, [adminPass, auditSearch]);
+  }, [adminPass]);
 
   const applySemesterPatch = useCallback((patch) => {
     if (!patch?.id) return;
@@ -523,7 +575,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
           updated_at: patch.updated_at || new Date().toISOString(),
         });
       }
-      return next;
+      return sortSemestersByPosterDateDesc(next);
     });
   }, []);
 
@@ -627,6 +679,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     || auditFilters.startDate
     || auditFilters.endDate
   );
+  const showAuditLoadingHint = auditLoading && auditLogs.length === 0;
 
   useEffect(() => {
     if (!hasAuditToggle && showAllAuditLogs) {
@@ -2077,7 +2130,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                     {auditError && !auditRangeError && (
                       <div className="manage-hint manage-hint-error">{auditError}</div>
                     )}
-                    {auditLoading && <div className="manage-hint">Loading audit logs…</div>}
+                    {showAuditLoadingHint && <div className="manage-hint">Loading audit logs…</div>}
                     {auditExporting && <div className="manage-hint">Preparing export…</div>}
                   </div>
 
@@ -2333,7 +2386,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                     )}
                     {dbBackupMode === "import" && (
                       <>
-                        <details className="manage-collapsible" open>
+                        <details className="manage-collapsible">
                           <summary className="manage-collapsible-summary">
                             <span>JSON example</span>
                             <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
@@ -2342,7 +2395,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
                             <pre className="manage-code" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{SAMPLE_DB_BACKUP_JSON}</pre>
                           </div>
                         </details>
-                        <details className="manage-collapsible" open>
+                        <details className="manage-collapsible">
                           <summary className="manage-collapsible-summary">
                             <span>Rules</span>
                             <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />

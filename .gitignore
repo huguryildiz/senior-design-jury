@@ -6,6 +6,6 @@ allure-report/
 .DS_Store
 .env.local
 CLAUDE.md
-misc/
+misc-docs/
 .claude/worktrees/condescending-chatterjee/
 AGENTS.md

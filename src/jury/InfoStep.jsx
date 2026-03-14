@@ -11,7 +11,7 @@
 // and delegates everything else downstream.
 // ============================================================
 
-import { InfoIcon, LandmarkIcon, UserRoundCheckIcon, AlertCircleIcon } from "../shared/Icons";
+import { InfoIcon, UserRoundCheckIcon, AlertCircleIcon } from "../shared/Icons";
 
 export default function InfoStep({
   juryName, setJuryName,
@@ -23,32 +23,24 @@ export default function InfoStep({
   error,
 }) {
   const canStart = juryName.trim().length > 0 && juryDept.trim().length > 0;
-  const formatDate = (value) => {
-    if (!value) return "—";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    const pad = (v) => String(v).padStart(2, "0");
-    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
-  };
   const formatLongDate = (value) => {
     if (!value) return "—";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return value;
     return d.toLocaleDateString("en-GB", {
       day: "2-digit",
-      month: "long",
+      month: "short",
       year: "numeric",
     });
   };
-  const semesterLabel = activeSemester?.name || "";
-  const hasSemesterMeta = Boolean(semesterLabel);
+  const semesterLabel = activeSemester?.name || "-";
   const infoDate = activeSemester?.poster_date;
-  const infoDateLabel = formatLongDate(infoDate);
+  const infoDateLabel = infoDate ? formatLongDate(infoDate) : "-";
   const projectCountLabel =
     typeof activeProjectCount === "number"
-      ? `${activeProjectCount} Project${activeProjectCount === 1 ? "" : "s"}`
-      : "— Projects";
-  const showInfoBlock = hasSemesterMeta || activeProjectCount !== null;
+      ? `${activeProjectCount} Project Group${activeProjectCount === 1 ? "" : "s"}`
+      : "-";
+  const showInfoBlock = true;
   const calendarIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar-days-icon lucide-calendar-days">
       <path d="M8 2v4" />
@@ -113,7 +105,7 @@ export default function InfoStep({
 
         <div className="premium-info-strip">
           <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>Your name and Institution / Department cannot be changed once the evaluation starts.</span>
+          <span>Name and institution cannot be changed once evaluation starts.</span>
         </div>
 
         {error && (
@@ -128,12 +120,12 @@ export default function InfoStep({
 
         <div className="info-form">
           <div className="field">
-            <label htmlFor="jury-name">Full Name <span className="req">*</span></label>
+            <label htmlFor="jury-name">Full Name</label>
             <input
               id="jury-name"
               value={juryName}
               onChange={(e) => setJuryName(e.target.value)}
-              placeholder="e.g. Prof. Dr. Jane Smith"
+              placeholder="e.g. Jane Smith"
               autoComplete="name"
               autoFocus
               className="premium-input"
@@ -142,14 +134,13 @@ export default function InfoStep({
 
           <div className="field">
             <label htmlFor="jury-dept">
-              <span className="label-icon" aria-hidden="true"><LandmarkIcon /></span>
-              Institution / Department <span className="req">*</span>
+              Institution / Department
             </label>
             <input
               id="jury-dept"
               value={juryDept}
               onChange={(e) => setJuryDept(e.target.value)}
-              placeholder="e.g. EEE Dept. / TED University"
+              placeholder="e.g. TED University / EE"
               onKeyDown={(e) => { if (e.key === "Enter" && canStart) onStart(); }}
               className="premium-input"
             />

@@ -912,6 +912,16 @@ th .sort-icon svg { vertical-align: middle; }
   padding: 6px 34px 6px 9px;
   font-size: 12.5px;
 }
+
+/* iOS Safari: prevent focus auto-zoom on small form controls in filter sheets */
+@supports (-webkit-touch-callout: none) {
+  .filter-sheet-panel .col-filter-popover input,
+  .filter-sheet-panel .col-filter-popover select,
+  .filter-sheet-panel .col-filter-popover input.col-filter-search-input,
+  .filter-sheet-panel .col-filter-popover-timestamp .timestamp-date-input {
+    font-size: 16px;
+  }
+}
 .filter-sheet-panel .col-filter-popover-status .status-option,
 .filter-sheet-panel .col-filter-popover-multi .status-option {
   min-height: 37px;

@@ -95,7 +95,7 @@ function RankCard({ p, index, rankMap, expandedGroups, onToggleGroup }) {
                 style={{ cursor: hasDetails ? "pointer" : "default" }}
               >
                 <span className="group-card-name">
-                  <GroupLabel text={groupLabel} shortText={`Grp. ${p.groupNo}`} />
+                  <GroupLabel text={groupLabel} shortText={`Group ${p.groupNo}`} />
                 </span>
                 {hasDetails && (
                   <span className={`group-accordion-chevron${isExpanded ? " open" : ""}`}>

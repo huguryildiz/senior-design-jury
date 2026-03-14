@@ -35,6 +35,8 @@ import {
   CircleIcon,
   PencilIcon,
   TriangleAlertIcon,
+  LoaderIcon,
+  LockIcon,
 } from "../shared/Icons";
 import LevelPill from "../shared/LevelPill";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
@@ -45,6 +47,21 @@ function progressGradient(pct) {
   if (pct <= 66)   return "#eab308";
   if (pct < 100)   return "#84cc16";
   return "#22c55e";
+}
+
+function parseScoreInput(raw, max) {
+  if (raw === "" || raw === null || raw === undefined) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+  if (n < 0 || n > max) return null;
+  return n;
+}
+
+function getRubricRangeBounds(rubricRow) {
+  const min = Number(rubricRow?.min);
+  const max = Number(rubricRow?.max);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  return { min, max };
 }
 
 function SaveIndicator({ saveStatus }) {
@@ -198,7 +215,13 @@ export default function EvalStep({
             <span className="eval-identity-sep" aria-hidden="true">·</span>
             <button
               className="eval-home-btn-icon"
-              onClick={() => setShowBackMenu(true)}
+              onClick={() => {
+                if (lockActive) {
+                  onGoHome();
+                  return;
+                }
+                setShowBackMenu(true);
+              }}
               aria-label="Home"
             >
               <HomeIcon />
@@ -273,6 +296,9 @@ export default function EvalStep({
 
         {/* Row 4: Progress bar */}
         <div className="eval-progress-row">
+          <span className="eval-progress-icon" aria-hidden="true">
+            <LoaderIcon />
+          </span>
           <div className="eval-progress-bar-bg">
             <div
               className="eval-progress-bar-fill"
@@ -300,8 +326,8 @@ export default function EvalStep({
           </div>
         )}
         {lockActive && (
-          <div className="group-done-banner">
-            <TriangleAlertIcon />
+          <div className="group-done-banner lock-readonly-banner">
+            <LockIcon />
             Evaluations are locked for this semester. You can view scores, but edits and submission are disabled.
           </div>
         )}
@@ -311,17 +337,24 @@ export default function EvalStep({
           const val         = scores[pid]?.[crit.id] ?? "";
           const showMissing = touched[pid]?.[crit.id] && (val === "" || val == null);
           const barPct      = ((parseInt(val, 10) || 0) / crit.max) * 100;
+          const numericScore = parseScoreInput(val, crit.max);
 
           return (
-            <div key={crit.id} className={`crit-card${showMissing ? " invalid" : ""}`}>
+            <div key={crit.id} className={`crit-card${showMissing ? " invalid" : ""}${openRubric === crit.id ? " rubric-open" : ""}`}>
               <div className="crit-header">
                 <div className="crit-title-row">
                   <div className="crit-label">{crit.label}</div>
                   <button
-                    className="rubric-btn"
+                    className={`rubric-btn${openRubric === crit.id ? " is-open" : ""}`}
                     onClick={() => setOpenRubric(openRubric === crit.id ? null : crit.id)}
                   >
-                    Rubric
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" className="rubric-btn-icon">
+                      <path d="M16 5H3" />
+                      <path d="M16 12H3" />
+                      <path d="M11 19H3" />
+                      <path d="m15 18 2 2 4-4" />
+                    </svg>
+                    View Rubric
                     <span className={`rubric-chevron${openRubric === crit.id ? " open" : ""}`}>
                       <ChevronDownIcon />
                     </span>
@@ -343,22 +376,36 @@ export default function EvalStep({
 
               {openRubric === crit.id && (
                 <div className="rubric-table">
-                  {crit.rubric.map((r) => (
-                    <div key={r.range} className="rubric-row">
-                      <div className="rubric-range">{r.range}</div>
-                      <LevelPill variant={r.level}>{r.level}</LevelPill>
-                      <div className="rubric-desc">{r.desc}</div>
-                    </div>
-                  ))}
+                  {crit.rubric.map((r) => {
+                    const bounds = getRubricRangeBounds(r);
+                    const isActive = Boolean(
+                      bounds &&
+                      numericScore !== null &&
+                      numericScore >= bounds.min &&
+                      numericScore <= bounds.max
+                    );
+
+                    return (
+                      <div
+                        key={r.range}
+                        className={`rubric-row${isActive ? " active" : ""}`}
+                        data-min={bounds?.min}
+                        data-max={bounds?.max}
+                      >
+                        <div className="rubric-range">{r.range}</div>
+                        <LevelPill variant={r.level}>{r.level}</LevelPill>
+                        <div className="rubric-desc">{r.desc}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
               <div className="score-input-row">
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
-                  min="0"
-                  max={crit.max}
+                  pattern="[0-9]*"
                   value={val}
                   onChange={(e) => handleScore(pid, crit.id, e.target.value)}
                   onBlur={()   => handleScoreBlur(pid, crit.id)}
@@ -391,7 +438,7 @@ export default function EvalStep({
             value={comments[pid] || ""}
             onChange={(e) => handleCommentChange(pid, e.target.value)}
             onBlur={()    => handleCommentBlur(pid)}
-            placeholder="Optional feedback about the project, presentation, or teamwork…"
+            placeholder="Optional feedback on the project, presentation, or teamwork."
             rows={3}
             disabled={lockActive}
           />
@@ -430,7 +477,7 @@ export default function EvalStep({
             className={`premium-btn-primary eval-submit-btn ${allComplete ? "eval-submit-green" : "eval-submit-amber"}`}
             style={{ width: "100%", marginTop: 8 }}
             onClick={handleFinalSubmit}
-            disabled={lockActive}
+            disabled={lockActive || !allComplete}
           >
             {allComplete ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-icon lucide-send" aria-hidden="true">
@@ -459,22 +506,28 @@ export default function EvalStep({
       {/* ── Home confirmation overlay ── */}
       {showBackMenu && (
         <div className="back-menu-overlay" onClick={() => setShowBackMenu(false)}>
-          <div className="back-menu" onClick={(e) => e.stopPropagation()}>
-            <p className="back-menu-title">Leave this evaluation?</p>
+          <div
+            className="back-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="back-menu-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="back-menu-title" id="back-menu-title">Leave this evaluation?</p>
             <p className="back-menu-sub">Your progress is saved. You can continue later.</p>
             <button
               className="back-menu-btn primary"
-              onClick={() => { setShowBackMenu(false); onGoHome(); }}
-            >
-              <HomeIcon />
-              Return Home
-            </button>
-            <button
-              className="back-menu-btn secondary"
               onClick={() => setShowBackMenu(false)}
             >
               <PencilIcon />
               Continue Editing
+            </button>
+            <button
+              className="back-menu-btn secondary"
+              onClick={() => { setShowBackMenu(false); onGoHome(); }}
+            >
+              <HomeIcon />
+              Return Home
             </button>
           </div>
         </div>

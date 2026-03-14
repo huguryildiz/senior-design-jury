@@ -630,7 +630,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
         <div className="range-field">
           <label>Min</label>
           <input
-            autoFocus
+            autoFocus={!useSheetFilters}
             type="number"
             inputMode="decimal"
             min={0}
@@ -863,7 +863,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
           <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
           <input
             id="juror-filter-input"
-            autoFocus
+            autoFocus={!useSheetFilters}
             placeholder="Search juror or Institution / Department"
             aria-label="Filter jurors by name or Institution / Department"
             value={jurorFilter}

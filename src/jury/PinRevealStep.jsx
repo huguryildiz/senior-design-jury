@@ -12,13 +12,48 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
   const digits = Array.from({ length: 4 }, (_, idx) => normalizedPin[idx] || "");
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(pin);
+    const valueToCopy = normalizedPin;
+    if (!valueToCopy) {
+      setCopied(false);
+      return;
+    }
+
+    const markCopied = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    };
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(valueToCopy);
+        markCopied();
+        return;
+      }
     } catch {
-      setCopied(false);
+      // Fallback to execCommand below.
     }
+
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = valueToCopy;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-1000px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (success) {
+        markCopied();
+        return;
+      }
+    } catch {
+      // ignore
+    }
+
+    setCopied(false);
   };
 
   return (
@@ -27,7 +62,7 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
         <div className="premium-header">
           <div className="premium-icon-square" aria-hidden="true"><KeyRoundIcon /></div>
           <div className="premium-title">Your Access PIN</div>
-          <div className="premium-subtitle">This PIN will be shown only once. Please save it.</div>
+          <div className="premium-subtitle">This PIN will be shown only once. Save it.</div>
         </div>
 
         <div className="pin-display pin-display--reveal" aria-label="One-time PIN">
@@ -38,17 +73,25 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
 
         <div className="pin-reveal-actions">
           <button type="button" className="premium-btn-secondary pin-reveal-copy" onClick={handleCopy}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy-icon lucide-copy" aria-hidden="true">
-              <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-            </svg>
+            {copied ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy-check-icon lucide-copy-check" aria-hidden="true">
+                <path d="m12 15 2 2 4-4" />
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy-icon lucide-copy" aria-hidden="true">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+              </svg>
+            )}
             {copied ? "Copied" : "Copy PIN"}
           </button>
         </div>
 
         <div className="premium-info-strip warn">
           <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>You will need this PIN to resume your evaluation later or from another device.</span>
+          <span>Use this PIN to resume your evaluation later or on another device.</span>
         </div>
 
         <button className="premium-btn-primary" onClick={onContinue}>

@@ -1144,8 +1144,25 @@
   overflow: visible;
 }
 
+.manage-item.manage-item--juror.is-pin-locked {
+  border-color: #92400e;
+  border-width: 2px;
+  animation: manage-pin-locked-border-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes manage-pin-locked-border-blink {
+  0%, 100% {
+    border-color: rgba(146, 64, 14, 0.35);
+    box-shadow: none;
+  }
+  50% {
+    border-color: #92400e;
+    box-shadow: none;
+  }
+}
+
 .manage-item.manage-item--juror .manage-item-main--juror {
-  grid-column: 1 / -1;
+  grid-column: 1 / 2;
   grid-row: 1;
   min-width: 0;
   padding-right: 0;
@@ -1376,9 +1393,9 @@
 }
 
 .manage-item-helper.manage-item-helper--editing-wait {
-  color: #c2410c;
-  border-color: #fbbf24;
-  background: #fff7ed;
+  color: #b45309;
+  border-color: #f59e0b;
+  background: #fef3c7;
   font-weight: 700;
   animation: manage-pulse-red 1.2s ease-in-out infinite;
 }
@@ -1512,6 +1529,12 @@
   background: #fff5f5;
 }
 
+.manage-icon-btn.is-warning {
+  color: #92400e;
+  border-color: #fcd34d;
+  background: #fef3c7;
+}
+
 .manage-icon-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   border-color: #cbd5e1;
@@ -1531,8 +1554,16 @@
   box-shadow: 0 8px 16px rgba(220, 38, 38, 0.14), 0 0 0 3px rgba(220, 38, 38, 0.08);
 }
 
+.manage-icon-btn.is-warning:hover:not(:disabled) {
+  box-shadow: 0 8px 16px rgba(180, 83, 9, 0.16), 0 0 0 3px rgba(252, 211, 77, 0.24);
+}
+
 .manage-icon-btn.danger:focus-visible:not(:disabled) {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 3px rgba(220, 38, 38, 0.22);
+}
+
+.manage-icon-btn.is-warning:focus-visible:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 3px rgba(252, 211, 77, 0.32);
 }
 
 @media (max-width: 720px) {
@@ -2290,6 +2321,37 @@ textarea.manage-input--create {
   font-weight: 600;
   color: #0f172a;
 }
+
+.manage-pin-lock-chip {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid #fcd34d;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.manage-pin-lock-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manage-pin-lock-chip-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
 .manage-item-juror-inst {
   display: flex;
   align-items: flex-start;

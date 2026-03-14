@@ -12,6 +12,7 @@ import {
   APP_DATE_MAX_DATE,
   isIsoDateWithinBounds,
 } from "../shared/dateBounds";
+import { sortSemestersByPosterDateDesc } from "../shared/semesterSort";
 
 export default function ManageSemesterPanel({
   semesters,
@@ -51,32 +52,6 @@ export default function ManageSemesterPanel({
   const createMeta = getFormMeta(createForm);
   const editMeta = getFormMeta(editForm);
 
-  const sortSemesters = (list) => {
-    const termOrder = { fall: 3, summer: 2, spring: 1, winter: 0 };
-    const getYear = (sem) => {
-      const label = String(sem?.name || "");
-      const match = label.match(/\d{4}/);
-      if (match) return Number(match[0]) || 0;
-      if (sem?.poster_date) return Number(String(sem.poster_date).slice(0, 4)) || 0;
-      return 0;
-    };
-    const getTermRank = (sem) => {
-      const t = String(sem?.name || "").toLowerCase();
-      if (t.includes("fall")) return termOrder.fall;
-      if (t.includes("summer")) return termOrder.summer;
-      if (t.includes("spring")) return termOrder.spring;
-      if (t.includes("winter")) return termOrder.winter;
-      return -1;
-    };
-    return [...list].sort((a, b) => {
-      const yearDiff = getYear(b) - getYear(a);
-      if (yearDiff !== 0) return yearDiff;
-      const termDiff = getTermRank(b) - getTermRank(a);
-      if (termDiff !== 0) return termDiff;
-      return String(a?.name || "").localeCompare(String(b?.name || ""));
-    });
-  };
-
   const uniqueSemesters = useMemo(() => {
     const byId = new Map();
     (semesters || []).forEach((s) => {
@@ -109,7 +84,7 @@ export default function ManageSemesterPanel({
     const pad = (v) => String(v).padStart(2, "0");
     return `${pad(d)}.${pad(m)}.${y}`;
   };
-  const orderedSemesters = sortSemesters(uniqueSemesters);
+  const orderedSemesters = sortSemestersByPosterDateDesc(uniqueSemesters);
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredSemesters = normalizedSearch
     ? orderedSemesters.filter((s) => {
