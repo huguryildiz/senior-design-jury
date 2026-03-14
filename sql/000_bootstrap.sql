@@ -1173,7 +1173,21 @@ BEGIN
     'jurors',          COALESCE((SELECT jsonb_agg(row_to_json(j)) FROM jurors j),              '[]'::jsonb),
     'projects',        COALESCE((SELECT jsonb_agg(row_to_json(p)) FROM projects p),            '[]'::jsonb),
     'scores',          COALESCE((SELECT jsonb_agg(row_to_json(sc)) FROM scores sc),            '[]'::jsonb),
-    'juror_semester_auth', COALESCE((SELECT jsonb_agg(row_to_json(a)) FROM juror_semester_auth a), '[]'::jsonb)
+    'juror_semester_auth', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'id',                  a.id,
+        'juror_id',            a.juror_id,
+        'semester_id',         a.semester_id,
+        'created_at',          a.created_at,
+        'last_seen_at',        a.last_seen_at,
+        'failed_attempts',     a.failed_attempts,
+        'locked_until',        a.locked_until,
+        'edit_enabled',        a.edit_enabled,
+        'pin_reveal_pending',  a.pin_reveal_pending
+        -- pin_hash and pin_plain_once intentionally excluded
+      ))
+      FROM juror_semester_auth a
+    ), '[]'::jsonb)
   );
 
   PERFORM public._audit_log(
@@ -2135,7 +2149,7 @@ BEGIN
   LIMIT 1;
 
   IF v_active_semester IS NOT NULL THEN
-    v_pin := lpad((floor(random() * 10000))::text, 4, '0');
+    v_pin := lpad((('x' || encode(gen_random_bytes(2), 'hex'))::bit(16)::int % 10000)::text, 4, '0');
     v_hash := crypt(v_pin, gen_salt('bf'));
 
     INSERT INTO juror_semester_auth (juror_id, semester_id, pin_hash)
@@ -2332,7 +2346,7 @@ BEGIN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
-  v_pin := lpad((floor(random() * 10000))::text, 4, '0');
+  v_pin := lpad((('x' || encode(gen_random_bytes(2), 'hex'))::bit(16)::int % 10000)::text, 4, '0');
   v_hash := crypt(v_pin, gen_salt('bf'));
   SELECT decrypted_secret INTO v_secret
   FROM vault.decrypted_secrets
@@ -3112,7 +3126,19 @@ BEGIN
         );
       END IF;
       IF v_pin_plain_once IS NULL THEN
-        v_pin := lpad((floor(random() * 10000))::text, 4, '0');
+        -- pin_plain_once is missing despite pin_reveal_pending=true (data corruption).
+        -- Generate a new PIN silently and log the recovery for admin forensics.
+        PERFORM public._audit_log(
+          'system', null::uuid, 'pin_recovery_regen',
+          'juror_semester_auth', v_juror_id,
+          format('pin_plain_once missing on reveal for juror %s — new PIN generated', v_juror_id),
+          jsonb_build_object(
+            'juror_id', v_juror_id,
+            'semester_id', p_semester_id,
+            'reason', 'pin_plain_once_null_on_reveal'
+          )
+        );
+        v_pin := lpad((('x' || encode(gen_random_bytes(2), 'hex'))::bit(16)::int % 10000)::text, 4, '0');
         v_pin_hash := crypt(v_pin, gen_salt('bf'::text));
         v_pin_plain_once := v_pin;
         UPDATE juror_semester_auth
@@ -3143,7 +3169,7 @@ BEGIN
     RETURN;
   END IF;
 
-  v_pin := lpad((floor(random() * 10000))::text, 4, '0');
+  v_pin := lpad((('x' || encode(gen_random_bytes(2), 'hex'))::bit(16)::int % 10000)::text, 4, '0');
   v_pin_hash := crypt(v_pin, gen_salt('bf'::text));
 
   INSERT INTO juror_semester_auth (juror_id, semester_id, pin_hash)
@@ -3240,6 +3266,16 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Lock window expired: reset attempts so the next failure starts from 1 again.
+  IF v_auth.locked_until IS NOT NULL AND v_auth.locked_until <= v_now THEN
+    UPDATE juror_semester_auth
+    SET failed_attempts = 0,
+        locked_until = null
+    WHERE id = v_auth.id;
+    v_auth.failed_attempts := 0;
+    v_auth.locked_until := null;
+  END IF;
+
   IF crypt(v_pin, v_auth.pin_hash) = v_auth.pin_hash THEN
     v_pin_plain_once := null::text;
     IF v_auth.pin_reveal_pending AND v_auth.pin_plain_once IS NOT NULL THEN
@@ -3282,28 +3318,31 @@ BEGIN
       locked_until = v_locked
   WHERE id = v_auth.id;
 
-  IF v_locked IS NOT NULL THEN
-    SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
-    PERFORM public._audit_log(
-      'juror',
-      v_juror_id,
-      'juror_pin_locked',
-      'juror',
-      v_juror_id,
-      format(
-        'Juror %s PIN locked after too many failed attempts.',
-        COALESCE(v_juror_name, v_juror_id::text)
-      ),
-      jsonb_build_object(
-        'juror_name', v_juror_name,
-        'juror_inst', v_juror_inst,
-        'semester_id', p_semester_id,
-        'semester_name', v_sem_name,
-        'failed_attempts', v_failed,
-        'locked_until', v_locked
-      )
-    );
-  END IF;
+  -- Log every failed attempt (not only lockout) for poster-day forensics.
+  SELECT name INTO v_sem_name FROM semesters WHERE id = p_semester_id;
+  PERFORM public._audit_log(
+    'juror',
+    v_juror_id,
+    CASE WHEN v_locked IS NOT NULL THEN 'juror_pin_locked' ELSE 'juror_pin_failed' END,
+    'juror',
+    v_juror_id,
+    format(
+      CASE WHEN v_locked IS NOT NULL
+        THEN 'Juror %s PIN locked after too many failed attempts.'
+        ELSE 'Juror %s failed PIN attempt %s/3.'
+      END,
+      COALESCE(v_juror_name, v_juror_id::text),
+      v_failed
+    ),
+    jsonb_build_object(
+      'juror_name', v_juror_name,
+      'juror_inst', v_juror_inst,
+      'semester_id', p_semester_id,
+      'semester_name', v_sem_name,
+      'failed_attempts', v_failed,
+      'locked_until', v_locked
+    )
+  );
 
   IF v_locked IS NOT NULL THEN
     RETURN QUERY SELECT false, v_juror_id, v_juror_name, v_juror_inst, 'locked', v_locked, v_failed, null::text;
@@ -3353,3 +3392,4 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text) TO anon, aut
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_delete_password(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text) TO anon, authenticated;
