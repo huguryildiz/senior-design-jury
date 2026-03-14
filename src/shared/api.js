@@ -15,6 +15,8 @@ import { supabase } from "../lib/supabaseClient";
 import { CRITERIA } from "../config";
 import { sortSemestersByPosterDateDesc } from "./semesterSort";
 
+const RPC_SECRET = import.meta.env.VITE_RPC_SECRET ?? '';
+
 // ── Semester RPCs ──────────────────────────────────────────────
 
 export async function listSemesters() {
@@ -114,7 +116,8 @@ export async function upsertScore(semesterId, projectId, jurorId, scores, commen
 
 export async function adminLogin(password) {
   const { data, error } = await supabase.rpc("rpc_admin_login", {
-    p_password: password,
+    p_password:   password,
+    p_rpc_secret: RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -136,6 +139,7 @@ export async function adminGetScores(semesterId, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_get_scores", {
     p_semester_id:    semesterId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
@@ -206,6 +210,7 @@ export async function adminGetScores(semesterId, adminPassword) {
 export async function adminListJurors(semesterId, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_list_jurors", {
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
     p_semester_id:    semesterId,
   });
   if (error) {
@@ -243,6 +248,7 @@ export async function adminProjectSummary(semesterId, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_project_summary", {
     p_semester_id:    semesterId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
@@ -277,6 +283,7 @@ export async function adminGetOutcomeTrends(semesterIds, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_outcome_trends", {
     p_semester_ids:   semesterIds,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
@@ -304,6 +311,7 @@ export async function adminSetActiveSemester(semesterId, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_set_active_semester", {
     p_semester_id: semesterId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data;
@@ -314,6 +322,7 @@ export async function adminCreateSemester(payload, adminPassword) {
     p_name: payload.name,
     p_poster_date: payload.poster_date,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data?.[0] || null;
@@ -325,6 +334,7 @@ export async function adminUpdateSemester(payload, adminPassword) {
     p_name: payload.name,
     p_poster_date: payload.poster_date,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data?.[0] || null;
@@ -334,6 +344,7 @@ export async function adminListProjects(semesterId, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_list_projects", {
     p_semester_id: semesterId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data || [];
@@ -346,6 +357,7 @@ export async function adminCreateProject(payload, adminPassword) {
     p_project_title: payload.project_title,
     p_group_students: payload.group_students,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data?.[0] || null;
@@ -358,6 +370,7 @@ export async function adminUpsertProject(payload, adminPassword) {
     p_project_title: payload.project_title,
     p_group_students: payload.group_students,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data?.[0] || null;
@@ -368,6 +381,7 @@ export async function adminCreateJuror(payload, adminPassword) {
     p_juror_name: payload.juror_name,
     p_juror_inst: payload.juror_inst,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data?.[0] || null;
@@ -379,6 +393,7 @@ export async function adminUpdateJuror(payload, adminPassword) {
     p_juror_name: payload.juror_name,
     p_juror_inst: payload.juror_inst,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -389,6 +404,7 @@ export async function adminResetJurorPin(payload, adminPassword) {
     p_semester_id: payload.semesterId,
     p_juror_id: payload.jurorId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data?.[0] || null;
@@ -400,6 +416,7 @@ export async function adminSetJurorEditMode(payload, adminPassword) {
     p_juror_id: payload.jurorId,
     p_enabled: !!payload.enabled,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -410,6 +427,7 @@ export async function adminForceCloseJurorEditMode(payload, adminPassword) {
     p_semester_id: payload.semesterId,
     p_juror_id: payload.jurorId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -418,6 +436,7 @@ export async function adminForceCloseJurorEditMode(payload, adminPassword) {
 export async function adminGetSettings(adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_get_settings", {
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data || [];
@@ -426,6 +445,7 @@ export async function adminGetSettings(adminPassword) {
 export async function adminListAuditLogs(filters, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_list_audit_logs", {
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
     p_start_at: filters?.startAt || null,
     p_end_at: filters?.endAt || null,
     p_actor_types: filters?.actorTypes || null,
@@ -454,6 +474,7 @@ export async function adminSetSetting(key, value, adminPassword) {
     p_key: key,
     p_value: value,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data;
@@ -464,6 +485,7 @@ export async function adminSetSemesterEvalLock(semesterId, enabled, adminPasswor
     p_semester_id: semesterId,
     p_enabled: !!enabled,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -508,6 +530,7 @@ export async function adminBootstrapBackupPassword(newPassword, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_bootstrap_backup_password", {
     p_new_password: newPassword,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -517,6 +540,7 @@ export async function adminBootstrapDeletePassword(newPassword, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_bootstrap_delete_password", {
     p_new_password: newPassword,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -527,6 +551,7 @@ export async function adminChangeBackupPassword(currentPassword, newPassword, ad
     p_current_password: currentPassword,
     p_new_password: newPassword,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true;
@@ -536,6 +561,7 @@ export async function adminFullExport(backupPassword, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_full_export", {
     p_backup_password: backupPassword,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data;
@@ -545,6 +571,7 @@ export async function adminFullImport(backup, backupPassword, adminPassword) {
   const { data, error } = await supabase.rpc("rpc_admin_full_import", {
     p_backup_password: backupPassword,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
     p_data: backup,
   });
   if (error) throw error;
@@ -556,6 +583,7 @@ export async function adminChangeDeletePassword(currentPassword, newPassword, ad
     p_current_password: currentPassword,
     p_new_password: newPassword,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data === true || data?.[0] || null;
@@ -593,6 +621,7 @@ export async function adminDeleteCounts(targetType, targetId, adminPassword) {
     p_type: targetType,
     p_id: targetId,
     p_admin_password: adminPassword,
+    p_rpc_secret:     RPC_SECRET,
   });
   if (error) throw error;
   return data;

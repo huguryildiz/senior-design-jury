@@ -24,6 +24,25 @@ const SORT_OPTIONS = [
 const VIRTUAL_THRESHOLD = 40;
 const ESTIMATED_ROW_HEIGHT = 220;
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mql = window.matchMedia(query);
+    const handler = (e) => setMatches(e.matches);
+    if (mql.addEventListener) mql.addEventListener("change", handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", handler);
+      else mql.removeListener(handler);
+    };
+  }, [query]);
+  return matches;
+}
+
 function getRankKey(p, fallback) {
   return p?.id ?? p?.groupNo ?? p?.name ?? fallback;
 }
@@ -221,6 +240,8 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
     return typeof s.filtersOpen === "boolean" ? s.filtersOpen : true;
   });
 
+  const isSmallMobile = useMediaQuery("(max-width: 500px)");
+
   const listRef = useRef(null);
   const sizeMapRef = useRef({});
   const virtualWrapRef = useRef(null);
@@ -355,7 +376,12 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   function toggleGroup(groupKey) {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
+      const isOpening = !next.has(groupKey);
+      if (isOpening && isSmallMobile) {
+        return new Set([groupKey]);
+      }
+      if (isOpening) next.add(groupKey);
+      else next.delete(groupKey);
       return next;
     });
   }

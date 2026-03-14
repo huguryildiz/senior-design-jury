@@ -1,78 +1,75 @@
 # SQL Migration Files
 
-Bu klasör, Supabase veritabanı şemasını ve güvenlik yamalarını içerir.
+This directory contains the Supabase database schema and seed files.
 
-## Dosyalar ve Uygulama Sırası
+## Files and Application Order
 
 ```
-000_bootstrap.sql       ← Önce uygula (schema, tables, RPCs, RLS)
-001_security_fixes.sql  ← Sonra uygula (güvenlik yamaları)
-001_dummy_seed.sql      ← Opsiyonel: sadece test/staging ortamında
+000_bootstrap.sql   ← Apply first (schema, tables, RPCs, RLS)
+001_dummy_seed.sql  ← Optional: staging and local test environments only
 ```
 
 ### `000_bootstrap.sql`
-Boş bir Supabase projesini sıfırdan kurar. Şunları içerir:
+
+Sets up a fresh Supabase project from scratch. Includes:
+
 - Extensions (`pgcrypto`)
 - Tables: `semesters`, `projects`, `jurors`, `scores`, `audit_log`
-- Triggers, views
-- Public RPCs (jüri akışı için)
-- Admin RPCs (yönetim paneli için)
-- Grants ve RLS (Row Level Security) kuralları
+- Triggers and views
+- Public RPCs (jury evaluation flow)
+- Admin RPCs (admin dashboard)
+- Grants and RLS (Row Level Security) policies
 
-**Idempotent:** `CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION` — tekrar çalıştırılabilir.
+Incorporates all security fixes applied on 2026-03-14:
+- CSPRNG-based PIN generation (`gen_random_bytes` instead of `random()`)
+- Audit log entry on every failed PIN attempt
+- `pin_hash` / `pin_plain_once` fields excluded from `rpc_admin_full_export` payload
+- Missing GRANT added for `rpc_admin_full_export`
 
-### `001_security_fixes.sql`
-`2026-03-14` tarihinde uygulanan güvenlik yamaları:
-- CSPRNG tabanlı PIN üretimi (`gen_random_bytes` ile, `random()` yerine)
-- Her başarısız PIN denemesinde audit log kaydı
-- `rpc_admin_full_export`'ta `pin_hash` / `pin_plain_once` alanları gizlendi
-- `rpc_admin_full_export` için eksik GRANT eklendi
-
-**Idempotent:** Tüm fonksiyonlar `CREATE OR REPLACE` — tekrar çalıştırılabilir.
+**Idempotent:** Uses `CREATE TABLE IF NOT EXISTS` and `CREATE OR REPLACE FUNCTION` — safe to re-run.
 
 ### `001_dummy_seed.sql`
-Test verisi: örnek semester, projeler, jürörler.
 
-> **Production'a uygulanmaz.** Sadece staging veya local test ortamı için.
+Test data: a sample semester, projects, and jurors.
+
+> **Do not apply to production.** For staging or local test environments only.
 
 ---
 
-## Nasıl Uygulanır
+## How to Apply
 
-### Supabase Dashboard (önerilen)
+### Supabase Dashboard (recommended)
 
-1. [Supabase Dashboard](https://supabase.com/dashboard) → projeyi seç
-2. **SQL Editor** → **New query**
-3. `000_bootstrap.sql` içeriğini yapıştır → **Run**
-4. `001_security_fixes.sql` içeriğini yapıştır → **Run**
-5. (Opsiyonel) `001_dummy_seed.sql` → sadece staging'de
+1. Open [Supabase Dashboard](https://supabase.com/dashboard) and select your project
+2. Go to **SQL Editor** → **New query**
+3. Paste the contents of `000_bootstrap.sql` → click **Run**
+4. (Optional) Paste `001_dummy_seed.sql` → staging environments only
 
-### psql ile
+### psql
 
 ```bash
 psql "$DATABASE_URL" -f sql/000_bootstrap.sql
-psql "$DATABASE_URL" -f sql/001_security_fixes.sql
 ```
 
 `DATABASE_URL`: Supabase Dashboard → Settings → Database → Connection string (URI).
 
 ---
 
-## Yeni Değişiklik Eklerken
+## Adding a New Migration
 
-`002_<açıklama>.sql` formatında yeni dosya aç:
+Create a new file named `002_<description>.sql`:
 
 ```
 sql/002_add_group_feedback_column.sql
 ```
 
-Dosya başına şu header'ı ekle:
+Add this header at the top of the file:
 
 ```sql
 -- sql/002_add_group_feedback_column.sql
 -- Applied: YYYY-MM-DD
 -- Purpose: ...
--- Safe to re-run: yes/no
+-- Safe to re-run: yes / no
 ```
 
-Ardından bu README'ye yeni dosyayı ekle.
+Then add the new file to this README.

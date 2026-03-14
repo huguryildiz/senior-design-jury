@@ -25,6 +25,25 @@ function getOverallStatus(stat, groupCount) {
   );
 }
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mql = window.matchMedia(query);
+    const handler = (e) => setMatches(e.matches);
+    if (mql.addEventListener) mql.addEventListener("change", handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", handler);
+      else mql.removeListener(handler);
+    };
+  }, [query]);
+  return matches;
+}
+
 export default function JurorActivity({ jurorStats = [], groups = [] }) {
   const [searchTerm, setSearchTerm] = useState(() => {
     const s = readSection("jurors");
@@ -38,10 +57,18 @@ export default function JurorActivity({ jurorStats = [], groups = [] }) {
   const [expandedJurors, setExpandedJurors] = useState(new Set());
   const [expandedGroups, setExpandedGroups] = useState(new Set());
 
+  const isSmallMobile = useMediaQuery("(max-width: 500px)");
+
   function toggleJuror(jurorKey) {
     setExpandedJurors((prev) => {
       const next = new Set(prev);
-      next.has(jurorKey) ? next.delete(jurorKey) : next.add(jurorKey);
+      const isOpening = !next.has(jurorKey);
+      if (isOpening && isSmallMobile) {
+        setExpandedGroups(new Set());
+        return new Set([jurorKey]);
+      }
+      if (isOpening) next.add(jurorKey);
+      else next.delete(jurorKey);
       return next;
     });
   }
@@ -49,7 +76,12 @@ export default function JurorActivity({ jurorStats = [], groups = [] }) {
     const groupKey = `${jurorKey}-${groupId}`;
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
+      const isOpening = !next.has(groupKey);
+      if (isOpening && isSmallMobile) {
+        return new Set([groupKey]);
+      }
+      if (isOpening) next.add(groupKey);
+      else next.delete(groupKey);
       return next;
     });
   }

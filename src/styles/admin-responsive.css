@@ -87,8 +87,7 @@
     white-space: normal;
     overflow: visible;
     text-overflow: unset;
-    text-align: justify;
-    text-justify: inter-word;
+    text-align: left;
   }
 }
 
@@ -797,8 +796,8 @@
     vertical-align: top;
   }
   .print-appendix-table td {
-    text-align: justify;
-    text-justify: inter-word;
+    text-align: left;
+    text-align: left;
   }
   .print-appendix-table th {
     text-align: left;
@@ -815,7 +814,6 @@
   .print-mudek-table td.print-mudek-cell-code {
     width: 10%;
     text-align: center;
-    text-justify: auto;
   }
   .print-mudek-table td.print-mudek-cell-code {
     vertical-align: middle;
@@ -823,8 +821,7 @@
   .print-mudek-table td.print-mudek-cell-criteria { width: 14%; }
   .print-mudek-table td.print-mudek-cell-outcome {
     width: 76%;
-    text-align: justify;
-    text-justify: inter-word;
+    text-align: left;
     white-space: normal;
     word-break: break-word;
     overflow-wrap: anywhere;

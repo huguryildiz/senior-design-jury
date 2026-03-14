@@ -784,6 +784,10 @@
   background: rgba(254,242,242,0.7);
 }
 .crit-card.invalid .crit-label { color: #991b1b; }
+.crit-card.is-locked { opacity: 0.9; }
+.crit-card.is-locked .crit-label { color: #64748b; }
+.crit-card.is-locked .crit-max { color: #94a3b8; }
+.crit-card.is-locked .score-pct { color: #94a3b8; }
 
 .crit-header {
   display: flex;
@@ -811,17 +815,15 @@
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
   word-break: break-word;
-  hyphens: auto;
 }
 .crit-desc.swipe-x {
   overflow: visible;
   overflow-x: visible;
   overflow-y: visible;
   white-space: normal;
-  text-align: justify;
+  text-align: left;
 }
 .crit-desc.has-overflow::after { display: none; }
 
@@ -917,7 +919,7 @@
   background: #22c55e;
 }
 .rubric-range          { font-family: var(--font-mono); font-weight: 500; color: var(--blue); }
-.rubric-desc           { color: var(--gray-500); line-height: 1.4; min-width: 0; word-break: break-word; text-align: justify; text-justify: inter-word; }
+.rubric-desc           { color: var(--gray-500); line-height: 1.4; min-width: 0; word-break: break-word; }
 
 /* Score input + bar */
 .score-input-row { display: flex; align-items: center; gap: 12px; }
@@ -936,6 +938,13 @@
 }
 .score-input:focus   { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
 .score-input.invalid { border-color: rgba(220,38,38,0.75) !important; background: rgba(254,226,226,0.55); }
+.score-input:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  border-style: dashed;
+  border-color: #cbd5e1;
+}
 
 .score-bar-wrap { flex: 1; height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
 .score-bar      { display: block; height: 100%; background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%); border-radius: 99px; transition: width .3s ease; }
@@ -966,14 +975,20 @@
   margin-top: 10px;
   color: var(--gray-900);
   background: #fff;
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
 }
 .comment-card textarea::placeholder {
   color: #94a3b8;
 }
 .comment-card textarea:focus   { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
 .comment-card textarea.invalid { border-color: rgba(220,38,38,0.75) !important; background: rgba(254,226,226,0.55); }
+.comment-card textarea:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  border-style: dashed;
+  border-color: #cbd5e1;
+}
 
 /* Running total bar */
 .total-bar {
@@ -1032,8 +1047,6 @@
   white-space: normal;
   line-height: 1.3;
   word-break: break-word;
-  text-align: justify;
-  text-justify: inter-word;
   animation: editPulse 1.9s ease-in-out infinite;
   box-shadow:
     0 0 0 0 rgba(245, 158, 11, 0.35),
@@ -1091,10 +1104,8 @@
 }
 .submit-confirm-alert-icon { width: 18px; height: 18px; color: var(--brand-600); flex-shrink: 0; }
 .submit-confirm-text {
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
   display: block;
-  hyphens: auto;
 }
 .submit-confirm-actions {
   display: flex;

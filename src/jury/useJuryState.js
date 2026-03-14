@@ -513,6 +513,19 @@ export default function useJuryState() {
     };
   }, [step, jurorId, semesterId]);
 
+  // ── Visibility Autosave (Mobile/Desktop) ──────────────────
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && step === "eval") {
+        const { current: cur, projects: projs } = stateRef.current;
+        const pid = projs[cur]?.project_id;
+        if (pid) writeGroup(pid);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [step, writeGroup]);
+
   // ── Edit-mode from DoneStep ───────────────────────────────
   const handleEditScores = useCallback(() => {
     if (!editAllowed) return;

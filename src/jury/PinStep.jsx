@@ -86,7 +86,7 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
 
   return (
     <div className={`pin-input-group${shake ? " pin-input-group--shake" : ""}`}>
-      <div className="pin-boxes-row">
+      <div className="pin-boxes-row" role="group" aria-label="4-digit PIN">
         {digits.map((d, i) => (
           <input
             key={i}
@@ -95,6 +95,7 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
             inputMode="numeric"
             maxLength={1}
             value={d}
+            aria-label={`Digit ${i + 1} of 4`}
             name={`${inputId}-pin-${i}`}
             autoFocus={i === 0}
             autoComplete="new-password"

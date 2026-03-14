@@ -513,13 +513,10 @@ export default function ManageProjectsPanel({
     );
     const skippedExisting = data.filter((r) => existingGroupNos.has(r.group_no));
     const toImport = data.filter((r) => !existingGroupNos.has(r.group_no));
-    const addedGroupNos = Array.from(new Set(toImport.map((r) => r.group_no)));
-
-    const successParts = [];
-    if (addedGroupNos.length) {
-      successParts.push(`• Added group_no: ${addedGroupNos.join(", ")}.`);
-    }
-    setImportSuccess(successParts.join("\n"));
+    const successMsg = toImport.length > 0
+      ? `• Import complete: ${toImport.length} added, ${skippedExisting.length} skipped.`
+      : "";
+    setImportSuccess(successMsg);
 
     const warningParts = [];
     if (skippedExisting.length) {

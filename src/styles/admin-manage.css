@@ -7,9 +7,7 @@
   max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  text-align: justify;
-  text-justify: inter-word;
-  hyphens: auto;
+  text-align: left;
 }
 
 .manage-page button,
@@ -2127,9 +2125,6 @@
   border-color: #fecaca;
   border-left: 5px solid #ef4444;
   color: #b91c1c;
-  text-align: justify;
-  text-justify: inter-word;
-  hyphens: auto;
 }
 .manage-alert.error .manage-alert-icon svg {
   width: 18px;
@@ -2196,8 +2191,7 @@
 .manage-modal .manage-modal-intro-list,
 .manage-modal .manage-field-error,
 .manage-modal .manage-dropzone-sub {
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .manage-modal-card--create {
@@ -3039,6 +3033,28 @@ textarea.manage-input--create {
   color: #9a3412;
   font-size: 0.85rem;
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  hyphens: none;
+}
+.manage-delete-warning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 2px;
+  color: #ea580c;
+  flex-shrink: 0;
+}
+.manage-delete-warning-text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.manage-delete-warning-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 @keyframes deleteImpactBlink {

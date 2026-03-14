@@ -1690,6 +1690,7 @@ export default function ScoreDetails({
                     setFrom(fmt(mon));
                     setTo(fmt(sun));
                     setDateError(null);
+                    closePopover();
                   },
                 },
                 {
@@ -1703,11 +1704,12 @@ export default function ScoreDetails({
                     setFrom(`${y}-${pad(m)}-01`);
                     setTo(`${y}-${pad(m)}-${pad(lastDay)}`);
                     setDateError(null);
+                    closePopover();
                   },
                 },
                 {
                   label: "All Time",
-                  onClick: () => { setFrom(""); setTo(""); setDateError(null); },
+                  onClick: () => { setFrom(""); setTo(""); setDateError(null); closePopover(); },
                 },
               ].map(({ label, onClick }) => (
                 <button

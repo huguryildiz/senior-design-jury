@@ -475,8 +475,6 @@
   min-width: 0;
   flex: 1;
   white-space: normal;
-  text-align: justify;
-  text-justify: inter-word;
 }
 .matrix-info-note {
   font-size: 12px;
@@ -492,8 +490,6 @@
   white-space: normal;
   flex-wrap: wrap;
   overflow: visible;
-  text-align: justify;
-  text-justify: inter-word;
   scrollbar-width: none;
 }
 .summary-note::-webkit-scrollbar,

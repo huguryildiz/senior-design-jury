@@ -272,16 +272,10 @@ export default function ManageJurorsPanel({
     const skippedExisting = data.filter((r) => existingKeys.has(r._key));
     const toImport = data.filter((r) => !existingKeys.has(r._key));
 
-    const successParts = [];
-    if (toImport.length) {
-      const preview = toImport
-        .slice(0, 4)
-        .map((r) => `${r.juror_name} / ${r.juror_inst}`)
-        .join("; ");
-      const more = toImport.length > 4 ? ` (+${toImport.length - 4} more)` : "";
-      successParts.push(`• Added jurors: ${preview}${more}.`);
-    }
-    setImportSuccess(successParts.join("\n"));
+    const successMsg = toImport.length > 0
+      ? `• Import complete: ${toImport.length} added, ${skippedExisting.length} skipped.`
+      : "";
+    setImportSuccess(successMsg);
 
     const warningParts = [];
     if (skippedExisting.length) {

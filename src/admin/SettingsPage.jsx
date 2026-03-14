@@ -289,16 +289,21 @@ function useMediaQuery(query) {
 
 export default function SettingsPage({ adminPass, onAdminPasswordChange, selectedSemesterId = "", onDirtyChange }) {
   const isMobile = useMediaQuery("(max-width: 900px)");
+  const isSmallMobile = useMediaQuery("(max-width: 500px)");
   const supportsInfiniteScroll = typeof window !== "undefined" && "IntersectionObserver" in window;
-  const [openPanels, setOpenPanels] = useState({
-    semester: true,
-    projects: true,
-    jurors: true,
-    permissions: true,
-    security: true,
-    audit: true,
-    export: true,
-    dbbackup: true,
+  const [openPanels, setOpenPanels] = useState(() => {
+    // On small mobile, start with only one panel open (or all closed)
+    const isSM = typeof window !== "undefined" && window.innerWidth <= 500;
+    return {
+      semester: !isSM,
+      projects: !isSM,
+      jurors: !isSM,
+      permissions: !isSM,
+      security: !isSM,
+      audit: !isSM,
+      export: !isSM,
+      dbbackup: !isSM,
+    };
   });
 
   const [panelDirty, setPanelDirty] = useState({ semester: false, projects: false, jurors: false });
@@ -1907,7 +1912,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
         }}
       />
 
-      {isMobile && (
+      {isMobile && !isSmallMobile && (
         <div className="manage-card-actions manage-card-actions--left manage-card-actions--tight">
           <button
             className="manage-btn ghost manage-expand-toggle"

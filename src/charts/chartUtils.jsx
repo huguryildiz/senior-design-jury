@@ -11,10 +11,10 @@ export const CHART_OUTCOMES = ["9.1", "9.2", "1.2", "2", "3.1", "3.2", "8.1", "8
 // ── Derive outcome list from CRITERIA (keeps charts in sync with config) ─
 // Order: delivery (9.1 Oral) · design (9.2 Written) · technical · teamwork
 export const OUTCOMES = CRITERIA.map((c) => ({
-  key:   c.id,
-  code:  c.mudek.join("/"),
+  key: c.id,
+  code: c.mudek.join("/"),
   label: c.shortLabel,
-  max:   c.max,
+  max: c.max,
   color: c.color,
 }));
 
@@ -141,10 +141,15 @@ export function ChartEmpty({ msg }) {
 }
 
 // ── Shared accessible data table for charts ───────────────────
-export function ChartDataTable({ caption, headers, rows }) {
+export function ChartDataTable({ caption, headers, rows, defaultOpen }) {
   if (!rows || rows.length === 0) return null;
+  const reducedMotion =
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false;
+  const shouldOpen = defaultOpen ?? reducedMotion;
   return (
-    <details className="chart-data-table-details">
+    <details className="chart-data-table-details" open={shouldOpen}>
       <summary className="chart-data-table-summary">Show data table</summary>
       <div className="chart-data-table-scroll">
         <table className="chart-data-table">
