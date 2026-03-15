@@ -1,6 +1,6 @@
 -- ============================================================
 -- 001_dummy_seed.sql
--- Seed realistic dummy data for Jury Portal (run AFTER 000_bootstrap.sql)
+-- Seed realistic dummy data for VERA (run AFTER 000_bootstrap.sql)
 -- Includes:
 --   - No default admin password (first-time setup required in-app)
 --   - 6 semesters with poster_date (2025 Fall active)
@@ -644,6 +644,20 @@ SELECT
 FROM public.semesters s;
 
 -- Phase 1 — Admin preparation
+
+-- juror_create: one entry per juror, ~30 days before earliest semester
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  (SELECT MIN(poster_date)::timestamptz FROM public.semesters)
+    - interval '30 days'
+    + (random() * interval '10 days')
+    + (row_number() over (ORDER BY j.id) * interval '2 seconds'),
+  'admin', null, 'juror_create', 'juror', j.id,
+  format('Admin created juror %s.', j.juror_name),
+  null
+FROM public.jurors j;
+
 INSERT INTO public.audit_logs
   (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
 SELECT
@@ -651,7 +665,7 @@ SELECT
     + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
   'admin', null, 'semester_create', 'semester', p.semester_id,
   format('Admin created semester %s.', p.semester_name),
-  jsonb_build_object('semester_id', p.semester_id, 'semester_name', p.semester_name, 'poster_date', p.poster_date)
+  jsonb_build_object('poster_date', p.poster_date)
 FROM tmp_semester_phase p;
 
 INSERT INTO public.audit_logs
@@ -676,6 +690,19 @@ FROM tmp_semester_phase p
 WHERE p.semester_id IN (SELECT id FROM public.semesters WHERE is_active = true)
 LIMIT 1;
 
+-- project_create: all projects (at ~14 days before poster_date)
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  (p.poster_date::timestamptz - interval '14 days') + (random() * interval '4 days')
+    + (row_number() over (PARTITION BY pr.semester_id ORDER BY pr.group_no) * interval '3 seconds'),
+  'admin', null, 'project_create', 'project', pr.id,
+  format('Admin created project Group %s — %s (%s).', pr.group_no, pr.project_title, p.semester_name),
+  jsonb_build_object('semester_id', pr.semester_id, 'semester_name', p.semester_name, 'group_no', pr.group_no)
+FROM public.projects pr
+JOIN tmp_semester_phase p ON p.semester_id = pr.semester_id;
+
+-- project_update: 2 random projects per semester (at ~7 days before poster_date)
 INSERT INTO public.audit_logs
   (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
 SELECT
@@ -704,8 +731,8 @@ SELECT
   (x.poster_date::timestamptz - interval '4 days') + (random() * interval '5 hours')
     + (row_number() over (PARTITION BY x.semester_id ORDER BY x.juror_id) * interval '1 second'),
   'admin', null, 'juror_pin_reset', 'juror', x.juror_id,
-  format('Admin reset PIN for juror %s (%s).', x.juror_name, x.semester_name),
-  jsonb_build_object('semester_id', x.semester_id, 'semester_name', x.semester_name)
+  format('Admin reset PIN for juror %s.', x.juror_name),
+  jsonb_build_object('semester_id', x.semester_id)
 FROM (
   SELECT a.semester_id, a.juror_id, j.juror_name, p.semester_name, p.poster_date,
          row_number() OVER (PARTITION BY a.semester_id ORDER BY random()) AS rn
@@ -721,7 +748,7 @@ SELECT
   (p.poster_date::timestamptz - interval '9 days') + (random() * interval '2 hours')
     + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
   'system', null, 'admin_login_failed', 'settings', null,
-  'Admin login failed.',
+  'Admin login failed. Attempt 1.',
   null
 FROM tmp_semester_phase p
 LIMIT 1;
@@ -731,10 +758,11 @@ INSERT INTO public.audit_logs
 SELECT
   (p.poster_date::timestamptz - interval '8 days') + (random() * interval '3 hours')
     + (row_number() over (ORDER BY p.semester_id) * interval '1 second'),
-  'admin', null, 'setting_change', 'settings', null,
-  'Admin changed setting eval_edit_lock.',
-  jsonb_build_object('key', 'eval_edit_lock')
+  'admin', null, 'eval_lock_toggle', 'semester', p.semester_id,
+  format('Admin turned evaluation lock ON (%s).', p.semester_name),
+  jsonb_build_object('semester_id', p.semester_id, 'semester_name', p.semester_name, 'enabled', true)
 FROM tmp_semester_phase p
+WHERE p.semester_id IN (SELECT id FROM public.semesters WHERE is_active = true)
 LIMIT 1;
 
 INSERT INTO public.audit_logs
@@ -786,7 +814,29 @@ JOIN public.semesters s ON s.id = sc.semester_id
 WHERE sc.technical IS NOT NULL AND sc.written IS NOT NULL
   AND sc.oral IS NOT NULL AND sc.teamwork IS NOT NULL;
 
--- Phase 3 — Final submissions (poster_date evening)
+-- Phase 3 — All projects completed per juror (fires before finalize)
+INSERT INTO public.audit_logs
+  (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
+SELECT
+  MAX(sc.updated_at) + (row_number() over (ORDER BY sc.semester_id, sc.juror_id) * interval '1 second'),
+  'juror', sc.juror_id, 'juror_all_completed', 'semester', sc.semester_id,
+  format('Juror %s completed all project evaluations (%s).', j.juror_name, s.name),
+  jsonb_build_object('semester_id', sc.semester_id, 'semester_name', s.name)
+FROM public.scores sc
+JOIN public.jurors j ON j.id = sc.juror_id
+JOIN public.semesters s ON s.id = sc.semester_id
+JOIN (
+  SELECT semester_id, juror_id,
+         COUNT(*) AS total_projects,
+         COUNT(*) FILTER (WHERE technical IS NOT NULL AND written IS NOT NULL
+                            AND oral IS NOT NULL AND teamwork IS NOT NULL) AS scored_projects
+  FROM public.scores
+  GROUP BY semester_id, juror_id
+) pj ON pj.semester_id = sc.semester_id AND pj.juror_id = sc.juror_id
+WHERE pj.scored_projects = pj.total_projects
+GROUP BY sc.semester_id, sc.juror_id, j.juror_name, s.name;
+
+-- Phase 4 — Final submissions (poster_date evening)
 INSERT INTO public.audit_logs
   (created_at, actor_type, actor_id, action, entity_type, entity_id, message, metadata)
 SELECT
