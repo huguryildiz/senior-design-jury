@@ -33,6 +33,9 @@ import "./styles/home.css";
 
 import teduLogo from "./assets/tedu-logo.png";
 
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
+const DEMO_PASS = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";
+
 export default function App() {
   const ADMIN_PASS_KEY = "ee492_admin_pass";
   const [page,           setPage]          = useState(() => {
@@ -133,7 +136,33 @@ export default function App() {
       });
     return () => { active = false; };
   }, [page, adminUnlocked]);
-  
+
+  useEffect(() => {
+    if (!DEMO_MODE || !DEMO_PASS) return;
+    if (page !== "admin" || adminUnlocked) return;
+    setAdminPasswordSet(true);
+    setAdminChecking(true);
+    let active = true;
+    adminLogin(DEMO_PASS)
+      .then((valid) => {
+        if (!active) return;
+        if (valid) {
+          adminPassRef.current = DEMO_PASS;
+          setAdminUnlocked(true);
+          setAdminAuthError("");
+        } else {
+          setAdminAuthError("Demo login failed.");
+          setAdminChecking(false);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setAdminAuthError("Demo connection error.");
+        setAdminChecking(false);
+      });
+    return () => { active = false; };
+  }, [page, adminUnlocked]);
+
   async function handleAdminLogin() {
     const pass = adminInput.trim();
     if (!pass) { setAdminAuthError("Please enter the admin password."); return; }
@@ -371,6 +400,7 @@ export default function App() {
           )}
           <AdminPanel
             adminPass={adminPassRef.current}
+            isDemoMode={DEMO_MODE}
             onAuthError={handleAuthFail}
             onInitialLoadDone={() => setAdminChecking(false)}
             onBack={() => {

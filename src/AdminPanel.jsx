@@ -309,7 +309,7 @@ function ScoresDropdown({
   );
 }
 
-export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLoadDone }) {
+export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError, onInitialLoadDone }) {
   // Raw score rows — normalized by api.js to match old GAS field names
   const [rawScores, setRawScores] = useState([]);
   // Details view — scores across all semesters
@@ -988,7 +988,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
           <div className="tab-bar-row">
             <div className="tab-bar-shell" ref={tabBarRef} onScroll={updateTabHints}>
               <div className="tab-bar" role="tablist" aria-label="Admin panel sections">
-                {TABS.map((t) => {
+                {TABS.filter((t) => !(isDemoMode && t.id === "settings")).map((t) => {
                   if (t.id === "scores") {
                     return (
                       <ScoresDropdown
@@ -1088,7 +1088,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               trendError={trendError}
             />
           )}
-          {adminTab === "settings" && (
+          {adminTab === "settings" && !isDemoMode && (
             <SettingsPage
               adminPass={adminPassState || getAdminPass()}
               onAdminPasswordChange={handleAdminPasswordChange}
