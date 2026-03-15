@@ -209,6 +209,10 @@ export default function useJuryState() {
   const pendingCommentsRef = useRef(comments);
   const lastWrittenRef     = useRef({});
   const semesterSelectLockRef = useRef(false);
+  // loadAbortRef: AbortController for the active data-load sequence.
+  // Aborted (and replaced) whenever a new _loadSemester or listSemesters
+  // call starts, cancelling any stale in-flight Supabase RPC fetch.
+  const loadAbortRef = useRef(null);
 
   // ── Derived ───────────────────────────────────────────────
   const project     = projects[current] || null;
@@ -558,9 +562,12 @@ export default function useJuryState() {
       return;
     }
     setAuthError("");
+    loadAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    loadAbortRef.current = ctrl;
     setLoadingState({ stage: "loading", message: "Loading semesters…" });
     try {
-      const semesterList = await listSemesters();
+      const semesterList = await listSemesters(ctrl.signal);
       const active = (semesterList || []).filter((s) => s.is_active);
       setSemesters(active);
       if (active.length === 1) {
@@ -569,36 +576,44 @@ export default function useJuryState() {
       }
       setLoadingState(null);
       setStep("semester");
-    } catch (_) {
+    } catch (e) {
+      if (e?.name === "AbortError") return;
       setLoadingState(null);
       setAuthError("Could not load semesters. Please try again.");
     }
+  // _loadSemester is intentionally omitted from deps: it is a plain async function
+  // defined inline (not wrapped in useCallback) so its identity changes on every
+  // render. Including it would trigger unnecessary re-runs. The ref-based stateRef
+  // pattern keeps all calls safe regardless of the stale closure.
   }, [juryName, juryDept]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let alive = true;
+    const ctrl = new AbortController();
     const run = async () => {
       try {
-        const res = await getActiveSemester();
+        const res = await getActiveSemester(ctrl.signal);
         if (!alive) return;
         setActiveSemesterInfo(res || null);
         if (res?.id) {
           try {
-            const projectList = await listProjects(res.id, null);
+            const projectList = await listProjects(res.id, null, ctrl.signal);
             if (!alive) return;
             setActiveProjectCount(projectList.length);
-          } catch {
+          } catch (e) {
+            if (e?.name === "AbortError") return;
             if (alive) setActiveProjectCount(null);
           }
         } else {
           setActiveProjectCount(null);
         }
-      } catch {
+      } catch (e) {
+        if (e?.name === "AbortError") return;
         if (alive) setActiveProjectCount(null);
       }
     };
     run();
-    return () => { alive = false; };
+    return () => { alive = false; ctrl.abort(); };
   }, []);
 
   // ── PIN submit (resume) ───────────────────────────────────
@@ -677,20 +692,32 @@ export default function useJuryState() {
       setPinLockedUntil("");
       setPinError("Connection error. Please try again.");
     }
+  // _loadSemester is intentionally omitted: it is an async function defined inline
+  // and would cause an infinite loop if included. The semesterId/Name deps already
+  // capture the meaningful state changes that should re-trigger this effect.
   }, [semesterId, semesterName, juryName, juryDept]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Internal: load semester + projects ───────────────────
   // Shared by handlePinSubmit (auto-advance) and handleSemesterSelect.
   const _loadSemester = async (semester, overrideJurorId, identityOverride, options = {}) => {
     const jid = overrideJurorId || stateRef.current.jurorId;
-      const { showProgressCheck = false, showEmptyProgress = false } = options;
+    const { showProgressCheck = false, showEmptyProgress = false } = options;
+
+    // Cancel any previous in-flight load and issue a fresh signal.
+    loadAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    loadAbortRef.current = ctrl;
+    const { signal } = ctrl;
+
     setLoadingState({ stage: "loading", message: "Loading projects…" });
     try {
-      const projectList = await listProjects(semester.id, jid);
+      const projectList = await listProjects(semester.id, jid, signal);
       let editState = null;
       try {
-        editState = await getJurorEditState(semester.id, jid);
-      } catch {}
+        editState = await getJurorEditState(semester.id, jid, signal);
+      } catch (e) {
+        if (e?.name === "AbortError") throw e; // propagate abort
+      }
 
       setSemesterId(semester.id);
       setSemesterName(semester.name);
@@ -747,21 +774,21 @@ export default function useJuryState() {
       const progressRows = projectList
         .filter((p) => {
           if (isFinalSubmitted) return true;
-          const scores = p.scores || {};
-          const hasScore = Object.values(scores).some(isScoreFilled);
+          const projectScores = p.scores || {};
+          const hasScore = Object.values(projectScores).some(isScoreFilled);
           const hasComment = String(p.comment || "").trim() !== "";
           return hasScore || hasComment;
         })
         .map((p) => {
-          const scores = seedScores[p.project_id] || p.scores || {};
-          const hasScore = Object.values(scores).some(isScoreFilled);
+          const projectScores = seedScores[p.project_id] || p.scores || {};
+          const hasScore = Object.values(projectScores).some(isScoreFilled);
           const hasComment = String(p.comment || "").trim() !== "";
           const hasAny = hasScore || hasComment;
           const hasTotal = p.total !== null && p.total !== undefined;
-          const allFilled = !hasTotal && CRITERIA.every((c) => isScoreFilled(scores[c.id]));
+          const allFilled = !hasTotal && CRITERIA.every((c) => isScoreFilled(projectScores[c.id]));
           const computedPartialTotal = (!hasTotal && hasScore)
             ? CRITERIA.reduce((sum, c) => {
-                const raw = scores[c.id];
+                const raw = projectScores[c.id];
                 if (!isScoreFilled(raw)) return sum;
                 const n = Number(raw);
                 return Number.isFinite(n) ? sum + n : sum;
@@ -824,7 +851,8 @@ export default function useJuryState() {
           setStep("eval");
         }
       }
-    } catch (_) {
+    } catch (e) {
+      if (e?.name === "AbortError") return; // superseded by a newer load — ignore
       setLoadingState(null);
       setAuthError("Could not load projects. Please try again.");
       setStep("identity");
@@ -834,6 +862,11 @@ export default function useJuryState() {
   // ── Semester selection (from SemesterStep) ────────────────
   const handleSemesterSelect = useCallback(
     async (semester) => {
+      // semesterSelectLockRef prevents concurrent selections (e.g., double-tap).
+      // Intentionally NOT reset on success: once the juror advances to the PIN/eval
+      // step they cannot navigate back to semester selection, so the lock is
+      // permanently held for the lifetime of the session. It is only reset on error
+      // (to allow retry) or on resetAll() when the flow starts over.
       if (semesterSelectLockRef.current) return;
       if (!semester?.is_active) {
         setAuthError("Only the active semester can be evaluated.");

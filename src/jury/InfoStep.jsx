@@ -102,7 +102,9 @@ export default function InfoStep({
 
         <div className="premium-info-strip">
           <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>Name and institution cannot be changed once evaluation starts.</span>
+          <span className="premium-info-strip-text">
+            Name and institution cannot be changed once evaluation starts.
+          </span>
         </div>
 
         {error && (

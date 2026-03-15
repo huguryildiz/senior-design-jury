@@ -110,7 +110,7 @@ export default function EvalStep({
               editMode={editMode}
               lockActive={lockActive}
               saveStatus={saveStatus}
-              handleCommentBlur={handleCommentBlur}
+              onRetry={handleCommentBlur}
             />
             <ScoringGrid
               pid={pid}

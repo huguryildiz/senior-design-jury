@@ -118,6 +118,9 @@ function handleInlineTouchEnd(e) {
       inner.style.transform  = `translateX(${target}px)`;
       el.dataset.currentTranslate = String(target);
       inner.addEventListener("transitionend", function onEnd() {
+        // Guard: if the component unmounted while the transition was running,
+        // el is detached. Bail early to avoid stale-closure DOM access.
+        if (!el.isConnected) return;
         inner.style.transition = "";
         inner.removeEventListener("transitionend", onEnd);
         if (Number(el.dataset.currentTranslate ?? "0") >= 0) {
