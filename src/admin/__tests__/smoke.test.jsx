@@ -1,7 +1,8 @@
 // Smoke tests: components render without throwing with minimal/empty props
-import { beforeEach, describe, expect } from "vitest";
+import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { qaTest } from "../../test/qaTest.js";
 import { render, screen } from "@testing-library/react";
+import { ChartDataTable } from "../../charts/chartUtils";
 import CompletionStrip from "../CompletionStrip";
 import JurorActivity from "../JurorActivity";
 import AnalyticsTab from "../AnalyticsTab";
@@ -89,5 +90,37 @@ describe("AnalyticsTab smoke tests", () => {
     );
     // Just verify it renders without crashing
     expect(container).toBeDefined();
+  });
+});
+
+describe("ChartDataTable — reduced motion", () => {
+  afterEach(() => {
+    // Restore matchMedia after each test so we don't pollute other suites
+    vi.restoreAllMocks();
+  });
+
+  qaTest("analytics.motion.01", () => {
+    // Simulate prefers-reduced-motion: reduce being active
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media:   query,
+      addEventListener:    vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener:         vi.fn(),
+      removeListener:      vi.fn(),
+    }));
+
+    const { container } = render(
+      <ChartDataTable
+        caption="Test"
+        headers={["Group", "Score"]}
+        rows={[["Group 1", "85"]]}
+      />
+    );
+
+    // The <details> element must be open when reduced motion is active
+    const details = container.querySelector("details");
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(true);
   });
 });

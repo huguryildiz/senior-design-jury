@@ -36,20 +36,12 @@ jobs:
         if: always()
         run: npm run allure:generate
 
-      - name: Upload Excel report
+      - name: Upload test-results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-excel-${{ github.run_number }}
-          path: test-results/test-report.xlsx
-          retention-days: 30
-
-      - name: Upload Allure HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report-allure-${{ github.run_number }}
-          path: allure-report/
+          name: test-results-${{ github.run_number }}
+          path: test-results/
           retention-days: 30
 
   e2e:

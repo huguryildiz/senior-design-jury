@@ -15,8 +15,8 @@
 // ============================================================
 
 import { useEffect, useRef, useState } from "react";
-import JuryForm      from "./JuryForm";
-import AdminPanel    from "./AdminPanel";
+import JuryForm from "./JuryForm";
+import AdminPanel from "./AdminPanel";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import {
   ClipboardIcon,
@@ -37,20 +37,20 @@ const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 const DEMO_PASS = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";
 
 export default function App() {
-  const ADMIN_PASS_KEY = "ee492_admin_pass";
-  const [page,           setPage]          = useState(() => {
+  const ADMIN_PASS_KEY = "v_sec_ap";
+  const [page, setPage] = useState(() => {
     try {
       const saved = localStorage.getItem("tedu_portal_page");
       if (saved === "home" || saved === "jury" || saved === "admin") return saved;
-    } catch {}
+    } catch { }
     return "home";
   });
-  const adminPassRef     = useRef("");
-  const [adminUnlocked,  setAdminUnlocked]  = useState(false);
-  const [adminChecking,  setAdminChecking]  = useState(false);
-  const [adminInput,     setAdminInput]     = useState("");
+  const adminPassRef = useRef("");
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminChecking, setAdminChecking] = useState(false);
+  const [adminInput, setAdminInput] = useState("");
   const [adminAuthError, setAdminAuthError] = useState("");
-  const [adminShowPass,  setAdminShowPass]  = useState(false);
+  const [adminShowPass, setAdminShowPass] = useState(false);
   const [adminSetupPass, setAdminSetupPass] = useState("");
   const [adminSetupConfirm, setAdminSetupConfirm] = useState("");
   const [adminSetupError, setAdminSetupError] = useState("");
@@ -75,7 +75,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem("tedu_portal_page", page);
-    } catch {}
+    } catch { }
   }, [page]);
 
   useEffect(() => initScrollIndicators(), []);
@@ -110,7 +110,7 @@ export default function App() {
     let didLogin = false;
     autoLoginCancelRef.current = () => { active = false; };
     let saved = "";
-    try { saved = sessionStorage.getItem(ADMIN_PASS_KEY) || ""; } catch {}
+    try { saved = sessionStorage.getItem(ADMIN_PASS_KEY) || ""; } catch { }
     if (!saved) return;
     adminLogin(saved)
       .then((valid) => {
@@ -123,7 +123,7 @@ export default function App() {
           setAdminAuthError("");
           setAdminInput("");
         } else {
-          try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+          try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch { }
         }
       })
       .catch((e) => {
@@ -177,7 +177,7 @@ export default function App() {
         return;
       }
       adminPassRef.current = pass;
-      try { sessionStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
+      try { sessionStorage.setItem(ADMIN_PASS_KEY, pass); } catch { }
       setAdminInput("");
       setAdminUnlocked(true);
     } catch (e) {
@@ -213,7 +213,7 @@ export default function App() {
     try {
       await adminBootstrapPassword(pass);
       adminPassRef.current = pass;
-      try { sessionStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
+      try { sessionStorage.setItem(ADMIN_PASS_KEY, pass); } catch { }
       setAdminSetupPass("");
       setAdminSetupConfirm("");
       setAdminPasswordSet(true);
@@ -236,11 +236,11 @@ export default function App() {
     setAdminUnlocked(false);
     setAdminChecking(false);
     adminPassRef.current = "";
-    try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+    try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch { }
     setAdminAuthError(msg || "Authentication failed.");
   }
 
-  
+
 
   // ── Jury form ─────────────────────────────────────────────
   if (page === "jury") {
@@ -386,7 +386,7 @@ export default function App() {
             <button className="premium-btn-link" onClick={() => { setPage("home"); setAdminAuthError(""); }}>
               ← Return Home
             </button>
-          
+
           </div>
         </div>
       );
@@ -410,7 +410,7 @@ export default function App() {
               setAdminChecking(false);
               setAdminAuthError("");
               adminPassRef.current = "";
-              try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+              try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch { }
             }}
           />
         </div>
@@ -425,13 +425,16 @@ export default function App() {
       <div className="home-card">
 
         <div className="home-logo-wrap">
-          <img className="home-logo" src={teduLogo} alt="TED University" loading="eager" />
+          <img className="home-logo" src="/src/assets/tedu-logo.png" alt="VERA" loading="eager" />
         </div>
 
-        <h1>VERA</h1>
+        <h1>TEDU VERA</h1>
 
         <p className="home-sub">
-          TEDU VERA <br/> Verdict &amp; Evaluation Ranking Assistant
+          Verdict &amp; Evaluation Ranking Assistant
+        </p>
+        <p className="home-dept">
+          TED University <br />Dept. of Electrical and Electronics Engineering
         </p>
 
         <div className="home-buttons">

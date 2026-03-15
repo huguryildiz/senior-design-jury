@@ -16,7 +16,7 @@ export default defineConfig({
     setupFiles: ["allure-vitest/setup", "./src/test/setup.js"],
     reporters: [
       "verbose",
-      new AllureReporter({ resultsDir: "allure-results" }),
+      new AllureReporter({ resultsDir: "test-results/allure-results" }),
       "json",
     ],
     outputFile: {

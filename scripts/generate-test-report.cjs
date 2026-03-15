@@ -13,8 +13,10 @@ const XlsxStyle = require("xlsx-js-style");
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
+const _now    = new Date();
+const ts      = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,"0")}-${String(_now.getDate()).padStart(2,"0")}_${String(_now.getHours()).padStart(2,"0")}-${String(_now.getMinutes()).padStart(2,"0")}`;
 const INPUT   = path.resolve(__dirname, "../test-results/results.json");
-const OUTPUT  = path.resolve(__dirname, "../test-results/test-report.xlsx");
+const OUTPUT  = path.resolve(__dirname, `../test-results/test-report-${ts}.xlsx`);
 const CATALOG = path.resolve(__dirname, "../src/test/qa-catalog.json");
 
 // Fallback module name derived from file path (used when catalog has no entry).

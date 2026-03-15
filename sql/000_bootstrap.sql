@@ -667,7 +667,6 @@ AS $$
   FROM projects p
   JOIN semesters sem
     ON sem.id = p.semester_id
-   AND sem.is_active = true
   LEFT JOIN scores s
     ON  s.project_id  = p.id
     AND s.semester_id = p_semester_id
@@ -714,9 +713,10 @@ DECLARE
   v_new_oral integer;
   v_new_team integer;
   v_sem_locked boolean := false;
+  v_sem_active boolean := false;
 BEGIN
-  SELECT COALESCE(s.is_locked, false)
-    INTO v_sem_locked
+  SELECT COALESCE(s.is_locked, false), COALESCE(s.is_active, false)
+    INTO v_sem_locked, v_sem_active
   FROM semesters s
   WHERE s.id = p_semester_id;
 
@@ -724,7 +724,7 @@ BEGIN
     RAISE EXCEPTION 'semester_not_found';
   END IF;
 
-  IF v_sem_locked THEN
+  IF v_sem_locked OR NOT v_sem_active THEN
     RAISE EXCEPTION 'semester_locked';
   END IF;
 
@@ -2947,8 +2947,9 @@ BEGIN
     RETURN;
   END IF;
 
+  -- If semester is inactive, signal a lock to the frontend
   IF NOT v_sem_active THEN
-    RETURN QUERY SELECT false, false, v_lock;
+    RETURN QUERY SELECT false, false, true;
     RETURN;
   END IF;
 

@@ -419,7 +419,16 @@ export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError,
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+ 
+  // ── Diagnostic logging for demo environment ───────────────
+  useEffect(() => {
+    if (isDemoMode) {
+      console.log("[AdminPanel] Demo mode active. Database: tedu-vera-demo");
+      console.log("[AdminPanel] Registered Tabs:", Array.from(VALID_TABS));
+      console.log("[AdminPanel] Current adminTab:", adminTab);
+    }
+  }, [isDemoMode, adminTab]);
+ 
   useEffect(() => {
     if (semesterOpen) setScoreMenuOpen(false);
   }, [semesterOpen]);
@@ -440,7 +449,7 @@ export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError,
     try {
       return (
         adminPass
-        || sessionStorage.getItem("ee492_admin_pass")
+        || sessionStorage.getItem("v_sec_ap")
         || ""
       );
     } catch {
@@ -460,7 +469,7 @@ export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError,
     setAdminPassState(nextPass);
     passRef.current = nextPass;
     try {
-      sessionStorage.setItem("ee492_admin_pass", nextPass);
+      sessionStorage.setItem("v_sec_ap", nextPass);
     } catch { }
   };
 
@@ -482,19 +491,9 @@ export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError,
         return;
       }
 
-      // Verify credentials first
-      const valid = await adminLogin(pass);
-      if (!valid) {
-        setRawScores([]);
-        setSummaryData([]);
-        if (onAuthError) { onAuthError("Invalid password"); return; }
-        setAuthError("Incorrect password.");
-        return;
-      }
-
       // Cache password for the duration of this session
       try {
-        sessionStorage.setItem("ee492_admin_pass", pass);
+        sessionStorage.setItem("v_sec_ap", pass);
       } catch { }
 
       // Always refresh semesters (IDs change after reseed)
@@ -988,7 +987,8 @@ export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError,
           <div className="tab-bar-row">
             <div className="tab-bar-shell" ref={tabBarRef} onScroll={updateTabHints}>
               <div className="tab-bar" role="tablist" aria-label="Admin panel sections">
-                {TABS.filter((t) => !(isDemoMode && t.id === "settings")).map((t) => {
+                {/* Ensure Settings is always available and visible */}
+                {TABS.map((t) => {
                   if (t.id === "scores") {
                     return (
                       <ScoresDropdown
@@ -1088,7 +1088,7 @@ export default function AdminPanel({ adminPass, isDemoMode, onBack, onAuthError,
               trendError={trendError}
             />
           )}
-          {adminTab === "settings" && !isDemoMode && (
+          {adminTab === "settings" && (
             <SettingsPage
               adminPass={adminPassState || getAdminPass()}
               onAdminPasswordChange={handleAdminPasswordChange}

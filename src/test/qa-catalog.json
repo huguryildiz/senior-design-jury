@@ -1643,5 +1643,126 @@
     "risk": "Negative counts in StatCard would confuse admins into thinking there is a data error.",
     "coverageStrength": "Medium",
     "severity": "minor"
+  },
+  {
+    "id": "pin.reset.01",
+    "module": "Admin / Settings",
+    "area": "PIN Reset Dialog — Confirmation Step",
+    "story": "PIN Reset Confirmation Shows Juror Name",
+    "scenario": "confirmation step renders juror name when pinResetTarget is provided",
+    "whyItMatters": "Admins must be able to see which juror they are resetting before confirming — wrong-juror resets are irreversible.",
+    "risk": "Missing juror name would make it impossible to verify the right juror is selected before confirming.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "pin.reset.02",
+    "module": "Admin / Settings",
+    "area": "PIN Reset Dialog — Confirmation Step",
+    "story": "PIN Reset Confirmation Shows Semester Context",
+    "scenario": "confirmation step renders the viewSemesterLabel so admin knows which semester the reset applies to",
+    "whyItMatters": "Resetting a PIN in the wrong semester would confuse the juror during evaluation day.",
+    "risk": "Without semester context, an admin could reset a PIN believing they are targeting semester A while the view is scoped to semester B.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "pin.reset.03",
+    "module": "Admin / Settings",
+    "area": "PIN Reset Dialog — Confirmation Step",
+    "story": "PIN Reset Confirmation Buttons Present",
+    "scenario": "Cancel and Reset PIN buttons are both rendered in the confirmation step",
+    "whyItMatters": "If Cancel is missing, admins cannot back out of an accidental reset trigger.",
+    "risk": "A broken Cancel button forces admins to either close the modal with the X or reset unintentionally.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "pin.reset.04",
+    "module": "Admin / Settings",
+    "area": "PIN Reset Dialog — Result Step",
+    "story": "PIN Reset Result Shows New PIN",
+    "scenario": "result step displays the 4-digit PIN from resetPinInfo.pin_plain_once",
+    "whyItMatters": "The admin must see the generated PIN to share it securely with the juror.",
+    "risk": "A missing or garbled PIN display forces the admin to contact the dev team instead of proceeding.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "pin.reset.05",
+    "module": "Admin / Settings",
+    "area": "PIN Reset Dialog — Result Step",
+    "story": "PIN Reset Result Shows Juror Name for Context",
+    "scenario": "result step renders the juror name so admin knows whose PIN was just generated",
+    "whyItMatters": "When multiple resets happen in sequence, the admin needs to confirm they are looking at the right juror's new PIN before sharing it.",
+    "risk": "Sharing the wrong juror's PIN because the result step lacked context would block the wrong juror.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "groups.csv.summary.01",
+    "module": "Admin / Settings",
+    "area": "Projects CSV Import — Summary Message",
+    "story": "CSV Import Summary Shows Added and Skipped Counts",
+    "scenario": "after a successful import, a summary message shows how many groups were added and how many were skipped",
+    "whyItMatters": "Admins need to know whether any groups from the CSV were silently skipped due to duplicate group numbers.",
+    "risk": "Without a summary, an admin would not notice that half the import was skipped, leading to missing groups on evaluation day.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "analytics.motion.01",
+    "module": "Admin / Analytics",
+    "area": "AnalyticsTab — Reduced Motion Accessibility",
+    "story": "Reduced Motion Preference Opens Data Table by Default",
+    "scenario": "when prefers-reduced-motion is active, the ChartDataTable section is open by default instead of requiring user expansion",
+    "whyItMatters": "Users with reduced-motion enabled cannot benefit from animated chart transitions; the data table provides an accessible alternative.",
+    "risk": "If data table stays closed under reduced-motion, users who cannot use animated charts have no accessible fallback.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "scoregrid.aria.01",
+    "module": "Scores / Grid",
+    "area": "ScoreGrid — ARIA Roles",
+    "story": "ScoreGrid Table Has role=grid",
+    "scenario": "the score matrix table element carries role='grid' so screen readers announce it as an interactive grid",
+    "whyItMatters": "Without role=grid, screen readers treat the table as a static data table and navigation shortcuts expected by keyboard users do not work.",
+    "risk": "Regression during a refactor could silently drop the role attribute, breaking screen-reader grid navigation.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "scoregrid.aria.02",
+    "module": "Scores / Grid",
+    "area": "ScoreGrid — ARIA Roles",
+    "story": "ScoreGrid Juror Cells Have role=rowheader",
+    "scenario": "each juror name cell in the score matrix carries role='rowheader' so screen readers associate scores in that row with the juror",
+    "whyItMatters": "role=rowheader is required for screen readers to announce 'Alice: Group 1 — 85' instead of just '85', providing essential context.",
+    "risk": "Dropping rowheader roles makes the grid unnavigable for screen-reader users who rely on row/column header associations.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.eval.07",
+    "module": "Jury / Evaluation",
+    "area": "EvalStep — Submit Button Visibility",
+    "story": "Submit Button Hidden When Evaluation Incomplete",
+    "scenario": "Submit All Evaluations button is not rendered when allComplete is false",
+    "whyItMatters": "Premature submission before all groups are scored would leave some groups with no evaluation data.",
+    "risk": "If Submit is visible before completion, a juror could accidentally submit partial scores.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.eval.08",
+    "module": "Jury / Evaluation",
+    "area": "EvalStep — Group Synced Banner",
+    "story": "Group Synced Banner Hidden in Edit Mode",
+    "scenario": "the 'all scores saved' banner is not shown when editMode is true",
+    "whyItMatters": "In edit mode, scores are being changed; showing the synced banner would falsely imply the in-progress edits are already saved.",
+    "risk": "A juror could trust the synced banner and navigate away without triggering the final save of their edits.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
   }
 ]

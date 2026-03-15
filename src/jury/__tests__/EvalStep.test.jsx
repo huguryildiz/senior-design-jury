@@ -4,7 +4,7 @@
 // ============================================================
 
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, vi } from "vitest";
 import { qaTest } from "../../test/qaTest.js";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ describe("EvalStep — submit button visibility", () => {
     expect(screen.getByRole("button", { name: /submit all evaluations/i })).toBeInTheDocument();
   });
 
-  it("Submit All button is hidden when allComplete is false", () => {
+  qaTest("jury.eval.07", () => {
     renderEval({ allComplete: false, editMode: false });
     expect(screen.queryByRole("button", { name: /submit all evaluations/i })).not.toBeInTheDocument();
   });
@@ -172,7 +172,7 @@ describe("EvalStep — group synced banner", () => {
     expect(screen.getByText(/all scores saved for this group/i)).toBeInTheDocument();
   });
 
-  it("Group synced banner is hidden in edit mode", () => {
+  qaTest("jury.eval.08", () => {
     renderEval({
       scores:      FULL_SCORES,
       groupSynced: { "p-1": true },

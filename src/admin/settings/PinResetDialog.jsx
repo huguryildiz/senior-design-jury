@@ -25,6 +25,12 @@ export default function PinResetDialog({
         <div className="delete-dialog__body delete-dialog__body--pin-flow">
           {resetPinInfo?.pin_plain_once ? (
             <div className="pin-reset-step pin-reset-step--result">
+              <div className="delete-dialog__line pin-reset-detail-line">
+                <span className="pin-reset-detail-label">Juror:</span>
+                <span className="pin-reset-target-highlight">
+                  {pinResetTarget?.juror_name || pinResetTarget?.juryName || "this juror"}
+                </span>
+              </div>
               <div className="delete-dialog__line">New PIN generated. Share it securely with the juror.</div>
               <div className="pin-code">
                 {String(resetPinInfo.pin_plain_once || "").padStart(4, "0").slice(0, 4)}

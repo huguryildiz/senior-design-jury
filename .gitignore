@@ -4,7 +4,6 @@ dist/
 .vite/
 
 # Docs
-
 docs/
 
 # Test output

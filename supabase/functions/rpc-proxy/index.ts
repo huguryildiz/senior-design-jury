@@ -9,16 +9,24 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+const getCorsHeaders = (origin: string | null) => {
+  const allowedOrigins = Deno.env.get("ALLOWED_ORIGINS")?.split(",").map((o: string) => o.trim()) || [];
+  const isAllowed = !origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*");
+  
+  return {
+    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowedOrigins[0] || "*"),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
 };
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
+  const origin = req.headers.get("origin");
+  const headers = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers });
   }
 
   try {
@@ -27,7 +35,7 @@ Deno.serve(async (req) => {
     if (!fn || typeof fn !== "string") {
       return new Response(
         JSON.stringify({ error: "Missing or invalid 'fn' parameter." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -38,7 +46,7 @@ Deno.serve(async (req) => {
     if (!fn.startsWith(ALLOWED_PREFIX) && !ALLOWED_EXTRAS.includes(fn)) {
       return new Response(
         JSON.stringify({ error: `Function '${fn}' is not allowed through proxy.` }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: { ...headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -59,18 +67,18 @@ Deno.serve(async (req) => {
     if (error) {
       return new Response(
         JSON.stringify({ error: error.message, code: error.code }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
       JSON.stringify({ data }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...headers, "Content-Type": "application/json" } }
     );
   } catch (e) {
     return new Response(
-      JSON.stringify({ error: e.message || "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: (e as Error).message || "Internal server error" }),
+      { status: 500, headers: { ...headers, "Content-Type": "application/json" } }
     );
   }
 });

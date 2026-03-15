@@ -8,8 +8,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:report": "vitest run --config vitest.config.allure.mjs",
-    "allure:generate": "allure generate allure-results -o allure-report --clean",
-    "allure:open": "allure open allure-report",
+    "allure:generate": "allure generate test-results/allure-results -o test-results/allure-report --clean",
+    "allure:open": "allure open test-results/allure-report",
     "e2e": "playwright test",
     "e2e:report": "playwright show-report"
   },
