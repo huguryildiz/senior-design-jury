@@ -82,6 +82,7 @@ export default function App() {
 
   useEffect(() => {
     if (page !== "admin" || adminUnlocked) return;
+    if (DEMO_MODE) return;
     let active = true;
     setAdminSecurityLoading(true);
     adminSecurityState()
