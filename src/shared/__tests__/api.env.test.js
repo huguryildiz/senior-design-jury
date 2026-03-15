@@ -7,6 +7,11 @@
 import { describe, expect, vi, beforeEach, afterEach } from "vitest";
 import { qaTest } from "../../test/qaTest.js";
 
+// Prevent supabaseClient from requiring VITE_SUPABASE_URL at module load time.
+// The factory persists across vi.resetModules() calls so each dynamic import
+// of api.js still gets a safe stub instead of the real Supabase client.
+vi.mock("../../lib/supabaseClient", () => ({ supabase: {} }));
+
 // api.js executes the console.warn at module load time,
 // so we must re-import the module fresh for each test.
 // Use vi.resetModules() + dynamic import() to achieve this.
