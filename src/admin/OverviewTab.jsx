@@ -97,7 +97,7 @@ export default function OverviewTab({ jurorStats, groups, metrics, onGoToSetting
         <StatCard
           value={completedValue}
           label="Completed Jurors"
-          tooltip="Jurors who have submitted all evaluations"
+          tooltip="Jurors who have completed scoring for all assigned groups and submitted their evaluations."
           metaLines={completedMetaLines}
           ring={completedHasData ? { pct: completedPct, color: ringColor(completedPct) } : null}
         />

@@ -3,6 +3,10 @@ node_modules/
 dist/
 .vite/
 
+# Docs
+
+docs/
+
 # Test output
 test-results/
 allure-results/

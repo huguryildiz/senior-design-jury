@@ -13,7 +13,7 @@
 // ============================================================
 
 import { useState, useRef, useEffect, useId } from "react";
-import { KeyRoundIcon, AlertCircleIcon, LockIcon } from "../shared/Icons";
+import { KeyRoundIcon, TriangleAlertIcon, LockIcon } from "../shared/Icons";
 
 // ── 4-box PIN input with explicit OK button ───────────────────
 function PinBoxes({ onSubmit, pinError, shake, disabled }) {
@@ -208,14 +208,16 @@ export default function PinStep({
             </div>
 
             <div className="premium-info-strip">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
-              </svg>
-              <div>
+              <span className="info-strip-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+              </span>
+              <div className="premium-info-strip-justify">
                 {lockedUntilText
                   ? `You can try again after ${lockedUntilText}, or contact the administrator to reset your PIN.`
                   : "Please try again later."}
@@ -247,11 +249,11 @@ export default function PinStep({
           </div>
 
           {(pinError || pinErrorCode) && (
-            <div className="premium-error-banner">
-              <AlertCircleIcon />
-              <div>
+            <div className="premium-error-banner pin-error-banner">
+              <TriangleAlertIcon />
+              <div className="pin-error-copy">
                 <div className="premium-error-title">{errorTitle}</div>
-                <div className="premium-error-detail">{errorDetail}</div>
+                {errorDetail ? <div className="premium-error-detail">{errorDetail}</div> : null}
               </div>
             </div>
           )}

@@ -6,6 +6,24 @@
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
+/* ── Skip navigation link (keyboard / screen reader users) ─── */
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  z-index: 9999;
+  background: var(--navy-800, #1e2a4a);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 12px;
+  left: 12px;
+}
+
 /* ── Reset ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -401,7 +419,23 @@ body {
   color: var(--text-600);
   display: flex;
   gap: 10px;
-  align-items: flex-start;
+  align-items: center;
+  text-align: left;
+}
+.premium-info-strip > :not(.info-strip-icon) {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+.premium-info-strip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+.premium-info-strip-justify {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
 }
 .premium-error-banner {
   background: #fff1f2;
@@ -615,6 +649,23 @@ body {
   .premium-card { padding: 28px 22px; }
   .premium-title { font-size: 24px; }
   .premium-subtitle { font-size: 14px; }
+}
+
+@media (orientation: portrait) {
+  .premium-info-block {
+    font-size: 12px;
+  }
+  .premium-info-line {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .premium-info-item {
+    gap: 4px;
+  }
+  .premium-info-icon svg {
+    width: 12px;
+    height: 12px;
+  }
 }
 
 /* ── Buttons ───────────────────────────────────────────────── */

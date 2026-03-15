@@ -21,37 +21,39 @@ import {
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 
 // ── Save indicator ─────────────────────────────────────────────
-function SaveIndicator({ saveStatus }) {
-  if (saveStatus === "saving") {
-    return (
-      <span className="autosave-dot saving">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-          <g className="autosave-arrow">
-            <path d="M12 13v8"/>
-            <path d="m8 17 4-4 4 4"/>
-          </g>
-        </svg>
-        Saving…
-      </span>
-    );
-  }
-  if (saveStatus === "saved") {
-    return (
-      <span className="autosave-dot saved">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m17 15-5.5 5.5L9 18"/>
-          <path d="M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327"/>
-        </svg>
-        Saved
-      </span>
-    );
-  }
+// The outer span is a stable live region so screen readers announce state changes.
+// Without a stable container, replacing the entire element prevents aria-live from firing.
+export function SaveIndicator({ saveStatus }) {
   return (
-    <span className="autosave-dot idle">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
-      </svg>
+    <span role="status" aria-live="polite" aria-atomic="true">
+      {saveStatus === "saving" && (
+        <span className="autosave-dot saving">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+            <g className="autosave-arrow">
+              <path d="M12 13v8"/>
+              <path d="m8 17 4-4 4 4"/>
+            </g>
+          </svg>
+          Saving…
+        </span>
+      )}
+      {saveStatus === "saved" && (
+        <span className="autosave-dot saved">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m17 15-5.5 5.5L9 18"/>
+            <path d="M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327"/>
+          </svg>
+          Saved
+        </span>
+      )}
+      {saveStatus !== "saving" && saveStatus !== "saved" && (
+        <span className="autosave-dot idle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          </svg>
+        </span>
+      )}
     </span>
   );
 }

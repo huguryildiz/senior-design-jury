@@ -9,9 +9,10 @@ import { qaTest } from "../../test/qaTest.js";
 import PinStep from "../PinStep";
 
 vi.mock("../../shared/Icons", () => ({
-  KeyRoundIcon:   "span",
-  AlertCircleIcon: "span",
-  LockIcon:       "span",
+  KeyRoundIcon:      "span",
+  AlertCircleIcon:   "span",
+  LockIcon:          "span",
+  TriangleAlertIcon: "span",
 }));
 
 const DEFAULT_PROPS = {
@@ -45,6 +46,25 @@ describe("PinStep — attempt counter", () => {
     });
     // Singular form: "1 attempt remaining" (no "s")
     expect(screen.getByText(/1 attempt remaining/i)).toBeInTheDocument();
+  });
+});
+
+describe("PinStep — navigator.vibrate safety", () => {
+  qaTest("jury.pin.04", () => {
+    // Confirms PinStep renders without errors when navigator.vibrate is
+    // undefined (e.g., Firefox, JSDOM). Covers the optional-chaining guard.
+    const originalVibrate = navigator.vibrate;
+    Object.defineProperty(navigator, "vibrate", {
+      value: undefined,
+      configurable: true,
+    });
+
+    expect(() => renderPin()).not.toThrow();
+
+    Object.defineProperty(navigator, "vibrate", {
+      value: originalVibrate,
+      configurable: true,
+    });
   });
 });
 
