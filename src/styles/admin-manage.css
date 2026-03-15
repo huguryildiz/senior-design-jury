@@ -2560,6 +2560,24 @@ textarea.manage-input--create {
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+.pin-reset-detail-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.pin-reset-detail-label {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.pin-reset-target-highlight--semester {
+  color: #1d4ed8;
+  font-weight: 600;
+  animation: none;
+}
 .pin-reset-target-prefix {
   color: #0f172a;
   font-weight: 400;
@@ -3491,7 +3509,8 @@ textarea.manage-input--create {
 
 .manage-audit-scroll {
   flex: 1;
-  min-height: 0;
+  /* Reserve space so the panel never collapses during loading */
+  min-height: 148px;
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-gutter: stable;
@@ -3534,6 +3553,45 @@ textarea.manage-input--create {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Stale list: dimmed while a replace-fetch is in flight */
+.manage-audit-list--stale {
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+/* Skeleton rows shown on initial load */
+@keyframes manage-audit-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.manage-audit-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.manage-audit-skeleton-row {
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
+  );
+  background-size: 200% 100%;
+  animation: manage-audit-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manage-audit-skeleton-row {
+    animation: none;
+    background: #f1f5f9;
+  }
 }
 
 .manage-audit-row {

@@ -30,7 +30,10 @@ import {
   adminFullImport,
 } from "../shared/api";
 import { supabase } from "../lib/supabaseClient";
-import { ChevronDownIcon, CloudUploadIcon, DatabaseBackupIcon, DownloadIcon, FileDownIcon, HistoryIcon, UploadIcon, FileUpIcon, KeyRoundIcon, LockIcon, CircleXLucideIcon, SearchIcon, TriangleAlertIcon } from "../shared/Icons";
+import PinResetDialog from "./settings/PinResetDialog";
+import EvalLockConfirmDialog from "./settings/EvalLockConfirmDialog";
+import AuditLogCard from "./settings/AuditLogCard";
+import ExportBackupPanel from "./settings/ExportBackupPanel";
 import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
 import { getCellState } from "./scoreHelpers";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
@@ -44,8 +47,6 @@ import {
   APP_DATE_MAX_YEAR,
   APP_DATE_MIN_DATE,
   APP_DATE_MAX_DATE,
-  APP_DATE_MIN_DATETIME,
-  APP_DATE_MAX_DATETIME,
   isValidDateParts,
   isIsoDateWithinBounds,
 } from "../shared/dateBounds";
@@ -58,14 +59,6 @@ const defaultSettings = {
 const AUDIT_PAGE_SIZE = 120;
 const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const MIN_BACKUP_DELAY = 1200;
-const SAMPLE_DB_BACKUP_JSON = `{
-  "schema_version": 1,
-  "semesters": [{ "...": "..." }],
-  "jurors": [{ "...": "..." }],
-  "projects": [{ "...": "..." }],
-  "scores": [{ "...": "..." }],
-  "juror_semester_auth": [{ "...": "..." }]
-}`;
 
 const defaultAuditFilters = {
   startDate: "",
@@ -86,8 +79,6 @@ const formatAuditTimestamp = (value) => {
 
 const AUDIT_MIN_YEAR = APP_DATE_MIN_YEAR;
 const AUDIT_MAX_YEAR = APP_DATE_MAX_YEAR;
-const AUDIT_MIN_DATETIME = APP_DATE_MIN_DATETIME;
-const AUDIT_MAX_DATETIME = APP_DATE_MAX_DATETIME;
 const SEMESTER_MIN_DATE = APP_DATE_MIN_DATE;
 const SEMESTER_MAX_DATE = APP_DATE_MAX_DATE;
 
@@ -287,7 +278,7 @@ function useMediaQuery(query) {
   return matches;
 }
 
-export default function SettingsPage({ adminPass, onAdminPasswordChange, selectedSemesterId = "", onDirtyChange }) {
+export default function SettingsPage({ adminPass, onAdminPasswordChange, selectedSemesterId = "", onDirtyChange, onActiveSemesterChange }) {
   const isMobile = useMediaQuery("(max-width: 900px)");
   const isSmallMobile = useMediaQuery("(max-width: 500px)");
   const supportsInfiniteScroll = typeof window !== "undefined" && "IntersectionObserver" in window;
@@ -681,19 +672,9 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     loadAuditLogs(auditFilters, { mode: "replace", cursor: null });
   }, [adminPass, auditFilters, loadAuditLogs]);
 
-  // Background refresh (no full-page reload).
-  useEffect(() => {
-    if (!adminPass) return;
-    const interval = setInterval(() => {
-      if (!viewSemesterId) return;
-      Promise.all([
-        loadProjects(viewSemesterId),
-        loadJurors(),
-      ]).catch(() => {});
-      refreshSemesters().catch(() => {});
-    }, 5_000);
-    return () => clearInterval(interval);
-  }, [adminPass, viewSemesterId, loadProjects, loadJurors, refreshSemesters]);
+  // Background refresh removed — Supabase Realtime subscription (below)
+  // handles live updates via postgres_changes events, eliminating the
+  // need for periodic polling.
 
   const AUDIT_COMPACT_COUNT = isMobile ? 3 : 4;
   const hasAuditToggle = auditHasMore || auditLogs.length > AUDIT_COMPACT_COUNT;
@@ -706,7 +687,10 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     || auditFilters.startDate
     || auditFilters.endDate
   );
-  const showAuditLoadingHint = auditLoading && auditLogs.length === 0;
+  // Show skeleton rows on initial load (no existing data yet)
+  const showAuditSkeleton = auditLoading && auditLogs.length === 0;
+  // Dim stale rows while a replace-fetch is in flight (existing data present)
+  const isAuditStaleRefresh = auditLoading && auditLogs.length > 0;
 
   useEffect(() => {
     if (!hasAuditToggle && showAllAuditLogs) {
@@ -856,6 +840,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
         prev.map((s) => ({ ...s, is_active: s.id === semesterId }))
       );
       setActiveSemesterId(semesterId);
+      onActiveSemesterChange?.(semesterId);
       setMessage(nextSemesterName ? `Current semester set to ${nextSemesterName}.` : "Current semester set.");
       return { ok: true };
     } catch (e) {
@@ -1243,7 +1228,9 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
         last_seen_at: null,
       });
       const jurorDisplayName = String(jurorName || res?.juror_name || "").trim();
-      setMessage(jurorDisplayName ? `PIN reset for ${jurorDisplayName}` : "PIN reset");
+      const semesterLabel = viewSemesterLabel || "";
+      const toastJuror = jurorDisplayName || "juror";
+      setMessage(semesterLabel ? `PIN reset for ${toastJuror} — ${semesterLabel}` : `PIN reset for ${toastJuror}`);
       return { ok: true, data: res };
     } catch (e) {
       const msg = String(e?.message || "");
@@ -1793,105 +1780,29 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
           </div>
         </div>
       )}
-      {pinResetTarget && (
-        <div className="manage-modal" role="dialog" aria-modal="true">
-          <div className="manage-modal-card manage-modal-card--danger manage-modal-card--pin-flow">
-            <div className="delete-dialog__header">
-              <span className="delete-dialog__icon delete-dialog__icon--pin-reset" aria-hidden="true"><KeyRoundIcon /></span>
-              <div className="delete-dialog__title">
-                {resetPinInfo?.pin_plain_once ? "New Juror PIN" : "Reset Juror PIN"}
-              </div>
-            </div>
-            <div className="delete-dialog__body delete-dialog__body--pin-flow">
-              {resetPinInfo?.pin_plain_once ? (
-                <div className="pin-reset-step pin-reset-step--result">
-                  <div className="delete-dialog__line">New PIN generated. Share it securely with the juror.</div>
-                  <div className="pin-code">
-                    {String(resetPinInfo.pin_plain_once || "").padStart(4, "0").slice(0, 4)}
-                  </div>
-                </div>
-              ) : (
-                <div className="pin-reset-step pin-reset-step--confirm">
-                  <div className="pin-reset-copy">
-                    <div className="delete-dialog__line pin-reset-target-inline">
-                      <span className="pin-reset-target-prefix">Will generate a new PIN for </span>
-                      <span className="pin-reset-target-highlight">
-                        {pinResetTarget.juror_name || pinResetTarget.juryName || "this juror"}
-                      </span>
-                      {(pinResetTarget.juror_inst || pinResetTarget.juryDept)
-                        ? (
-                          <span className="pin-reset-target-highlight pin-reset-target-highlight--inst">
-                            {" ("}
-                            {pinResetTarget.juror_inst || pinResetTarget.juryDept}
-                            {")"}
-                          </span>
-                        )
-                        : ""}
-                      <span className="pin-reset-target-prefix">. Are you sure?</span>
-                    </div>
-                  </div>
-                  <div className="manage-delete-warning manage-delete-warning--caution">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertIcon /></span>
-                    <span className="manage-delete-warning-text">This will immediately deactivate the current PIN.</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="manage-modal-actions manage-modal-actions--pin-flow">
-              {resetPinInfo?.pin_plain_once ? (
-                <>
-                  <button
-                    className="manage-btn primary"
-                    type="button"
-                    onClick={async () => {
-                      const pinValue = resetPinInfo.pin_plain_once;
-                      if (!pinValue) return;
-                      const ok = await copyPinToClipboard(pinValue);
-                      if (ok) {
-                        setPinCopied(true);
-                        if (pinCopyTimerRef.current) {
-                          clearTimeout(pinCopyTimerRef.current);
-                        }
-                        pinCopyTimerRef.current = setTimeout(() => {
-                          setPinCopied(false);
-                        }, 2000);
-                      }
-                    }}
-                  >
-                    {pinCopied ? "Copied!" : "Copy PIN"}
-                  </button>
-                  <button
-                    className="manage-btn"
-                    type="button"
-                    onClick={closeResetPinDialog}
-                  >
-                    Close
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="manage-btn manage-btn--delete-cancel"
-                    type="button"
-                    disabled={pinResetLoading}
-                    onClick={closeResetPinDialog}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="manage-btn manage-btn--delete-confirm"
-                    type="button"
-                    disabled={pinResetLoading}
-                    onClick={confirmResetPin}
-                  >
-                    {pinResetLoading ? "Resetting…" : "Reset PIN"}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <PinResetDialog
+        pinResetTarget={pinResetTarget}
+        resetPinInfo={resetPinInfo}
+        pinResetLoading={pinResetLoading}
+        pinCopied={pinCopied}
+        viewSemesterLabel={viewSemesterLabel}
+        onCopyPin={async () => {
+          const pinValue = resetPinInfo?.pin_plain_once;
+          if (!pinValue) return;
+          const ok = await copyPinToClipboard(pinValue);
+          if (ok) {
+            setPinCopied(true);
+            if (pinCopyTimerRef.current) {
+              clearTimeout(pinCopyTimerRef.current);
+            }
+            pinCopyTimerRef.current = setTimeout(() => {
+              setPinCopied(false);
+            }, 2000);
+          }
+        }}
+        onClose={closeResetPinDialog}
+        onConfirmReset={confirmResetPin}
+      />
       <DeleteConfirmDialog
         open={!!deleteTarget}
         targetType={deleteTarget?.type}
@@ -2076,517 +1987,111 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
               adminPass={adminPass}
               innerRef={adminSecurityRef}
             />
-            <div
-              className={`manage-card manage-card-audit${isMobile ? " is-collapsible" : ""}`}
-              ref={auditCardRef}
-            >
-              <div className="manage-card-header-row">
-                <button
-                  type="button"
-                  className="manage-card-header"
-                  onClick={() => togglePanel("audit")}
-                  aria-expanded={openPanels.audit}
-                >
-                  <div className="manage-card-title">
-                    <span className="manage-card-icon" aria-hidden="true"><HistoryIcon /></span>
-                    <span className="section-label">Audit Log</span>
-                  </div>
-                  {isMobile && <ChevronDownIcon className={`settings-chevron${openPanels.audit ? " open" : ""}`} />}
-                </button>
-              </div>
-
-              {(!isMobile || openPanels.audit) && (
-                <div className="manage-card-body manage-audit-body">
-                  <div className="manage-audit-header">
-                    <div className="manage-card-desc">Audit trail of administrative actions and security events.</div>
-                    <div className="manage-audit-filters">
-                      <div className="manage-field">
-                        <label className="manage-label" htmlFor="auditStartDate">From</label>
-                        <input
-                          id="auditStartDate"
-                          type="datetime-local"
-                          step="60"
-                          placeholder="YYYY-MM-DDThh:mm"
-                          className={`manage-input manage-date${auditFilters.startDate ? "" : " is-empty"}${auditRangeError ? " is-error" : ""}`}
-                          value={auditFilters.startDate}
-                          min={AUDIT_MIN_DATETIME}
-                          max={AUDIT_MAX_DATETIME}
-                          onChange={(e) => setAuditFilters((prev) => ({ ...prev, startDate: e.target.value }))}
-                        />
-                      </div>
-                      <div className="manage-field">
-                        <label className="manage-label" htmlFor="auditEndDate">To</label>
-                        <input
-                          id="auditEndDate"
-                          type="datetime-local"
-                          step="60"
-                          placeholder="YYYY-MM-DDThh:mm"
-                          className={`manage-input manage-date${auditFilters.endDate ? "" : " is-empty"}${auditRangeError ? " is-error" : ""}`}
-                          value={auditFilters.endDate}
-                          min={AUDIT_MIN_DATETIME}
-                          max={AUDIT_MAX_DATETIME}
-                          onChange={(e) => setAuditFilters((prev) => ({ ...prev, endDate: e.target.value }))}
-                        />
-                      </div>
-                      <div className="manage-field">
-                        <label className="manage-label" htmlFor="auditSearch">Search</label>
-                        <div className="manage-search">
-                          <span className="manage-search-icon" aria-hidden="true"><SearchIcon /></span>
-                          <input
-                            id="auditSearch"
-                            type="text"
-                            className="manage-input manage-search-input"
-                            placeholder="Search message, action, entity, or metadata"
-                            value={auditSearch}
-                            onChange={(e) => setAuditSearch(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div className="manage-audit-export">
-                        <button
-                          type="button"
-                          className="manage-btn manage-btn-ghost-pill"
-                          onClick={handleAuditExport}
-                          disabled={auditExporting}
-                        >
-                          <DownloadIcon /> Export
-                        </button>
-                        <span className="manage-hint manage-hint-inline">
-                          Times shown in your local timezone ({localTimeZone}).
-                        </span>
-                      </div>
-                    </div>
-                    {auditRangeError && <div className="manage-hint manage-hint-error">{auditRangeError}</div>}
-                    {auditError && !auditRangeError && (
-                      <div className="manage-hint manage-hint-error">{auditError}</div>
-                    )}
-                    {showAuditLoadingHint && <div className="manage-hint">Loading audit logs…</div>}
-                    {auditExporting && <div className="manage-hint">Preparing export…</div>}
-                  </div>
-
-                  <div
-                    className={`manage-audit-scroll${showAllAuditLogs ? " is-expanded" : " is-compact"}`}
-                    ref={auditScrollRef}
-                    role="region"
-                    aria-label="Audit log list"
-                  >
-                    {!auditLoading && visibleAuditLogs.length === 0 && (
-                      <div className="manage-empty manage-empty-subtle">
-                        {hasAuditFilters ? "No results for the current filters." : "No audit entries yet."}
-                      </div>
-                    )}
-
-                    {visibleAuditLogs.length > 0 && (
-                      <div className="manage-audit-list">
-                        {visibleAuditLogs.map((log) => (
-                          <div key={log.id} className="manage-audit-row">
-                            <span className="manage-audit-time">{formatAuditTimestamp(log.created_at)}</span>
-                            <span className="manage-audit-sep" aria-hidden="true">—</span>
-                            <span className="manage-audit-message">{log.message}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {auditHasMore && (
-                      <div ref={auditSentinelRef} className="manage-audit-sentinel" aria-hidden="true" />
-                    )}
-
-                    {auditLoading && auditHasMore && (
-                      <div className="manage-audit-footer">
-                        <span className="manage-hint">Loading older events…</span>
-                      </div>
-                    )}
-                  </div>
-                  {hasAuditToggle && (
-                    <button
-                      className={`manage-btn ${isMobile ? "primary" : "ghost"}`}
-                      type="button"
-                      onClick={() => {
-                        setShowAllAuditLogs((prev) => {
-                          const next = !prev;
-                          if (!next && auditScrollRef.current) {
-                            auditScrollRef.current.scrollTop = 0;
-                          }
-                          return next;
-                        });
-                      }}
-                    >
-                      {showAllAuditLogs
-                        ? "Show fewer audit logs"
-                        : "Show all audit logs"}
-                    </button>
-                  )}
-                  {!supportsInfiniteScroll && !auditLoading && auditHasMore && (
-                    <div className="manage-audit-footer">
-                      <button
-                        className="manage-btn ghost"
-                        type="button"
-                        onClick={handleAuditLoadMore}
-                        disabled={auditLoading || !auditHasMore}
-                      >
-                        Load more
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <AuditLogCard
+              isMobile={isMobile}
+              isOpen={openPanels.audit}
+              onToggle={() => togglePanel("audit")}
+              auditCardRef={auditCardRef}
+              auditScrollRef={auditScrollRef}
+              auditSentinelRef={auditSentinelRef}
+              auditFilters={auditFilters}
+              auditSearch={auditSearch}
+              auditRangeError={auditRangeError}
+              auditError={auditError}
+              auditExporting={auditExporting}
+              auditLoading={auditLoading}
+              auditHasMore={auditHasMore}
+              visibleAuditLogs={visibleAuditLogs}
+              showAuditSkeleton={showAuditSkeleton}
+              isAuditStaleRefresh={isAuditStaleRefresh}
+              hasAuditFilters={hasAuditFilters}
+              hasAuditToggle={hasAuditToggle}
+              showAllAuditLogs={showAllAuditLogs}
+              localTimeZone={localTimeZone}
+              AUDIT_COMPACT_COUNT={AUDIT_COMPACT_COUNT}
+              supportsInfiniteScroll={supportsInfiniteScroll}
+              onSetAuditFilters={setAuditFilters}
+              onSetAuditSearch={setAuditSearch}
+              onAuditExport={handleAuditExport}
+              onToggleShowAll={() => {
+                setShowAllAuditLogs((prev) => {
+                  const next = !prev;
+                  if (!next && auditScrollRef.current) {
+                    auditScrollRef.current.scrollTop = 0;
+                  }
+                  return next;
+                });
+              }}
+              onAuditLoadMore={handleAuditLoadMore}
+              formatAuditTimestamp={formatAuditTimestamp}
+            />
           </div>
         </section>
 
         <section className="manage-section" style={{ gridColumn: "1 / -1" }}>
           <h3 className="manage-section-title">Data Operations</h3>
           <div className="manage-section-grid">
-            <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
-              <button
-                type="button"
-                className="manage-card-header"
-                onClick={() => togglePanel("export")}
-                aria-expanded={openPanels.export}
-              >
-                <div className="manage-card-title">
-                  <span className="manage-card-icon" aria-hidden="true"><FileDownIcon /></span>
-                  <span className="section-label">Export Tools</span>
-                </div>
-                {isMobile && <ChevronDownIcon className={`settings-chevron${openPanels.export ? " open" : ""}`} />}
-              </button>
-
-              {(!isMobile || openPanels.export) && (
-                <div className="manage-card-body">
-                  <div className="manage-card-desc">Download Excel exports for scores, jurors, and groups.</div>
-                  <div className="manage-export-actions">
-                    <button className="manage-btn" type="button" onClick={handleExportScores}>
-                      <DownloadIcon /> Scores
-                    </button>
-                    <button className="manage-btn" type="button" onClick={handleExportJurors}>
-                      <DownloadIcon /> Jurors
-                    </button>
-                    <button className="manage-btn" type="button" onClick={handleExportProjects}>
-                      <DownloadIcon /> Groups
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
-              <button
-                type="button"
-                className="manage-card-header"
-                onClick={() => togglePanel("dbbackup")}
-                aria-expanded={openPanels.dbbackup}
-              >
-                <div className="manage-card-title">
-                  <span className="manage-card-icon" aria-hidden="true"><DatabaseBackupIcon /></span>
-                  <span className="section-label">Database Backup</span>
-                </div>
-                {isMobile && <ChevronDownIcon className={`settings-chevron${openPanels.dbbackup ? " open" : ""}`} />}
-              </button>
-
-              {(!isMobile || openPanels.dbbackup) && (
-                <div className="manage-card-body">
-                  <div className="manage-card-desc">
-                    Export or restore the database. Requires the backup & restore password.
-                  </div>
-                  {!backupPasswordSet && (
-                    <div className="manage-delete-warning manage-delete-warning--caution" role="status">
-                      <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertIcon /></span>
-                      <span className="manage-delete-warning-text">
-                        Backup &amp; restore password is not set. Create one in Admin Security to enable export/import.
-                      </span>
-                    </div>
-                  )}
-                  <input
-                    ref={importFileRef}
-                    type="file"
-                    accept=".json"
-                    style={{ display: "none" }}
-                    onChange={handleDbImportFileSelect}
-                  />
-
-                  <div className="manage-export-actions">
-                    <button
-                      className="manage-btn"
-                      type="button"
-                      onClick={handleDbExportStart}
-                      disabled={!backupPasswordSet || dbBackupLoading}
-                    >
-                      <DownloadIcon /> Export JSON
-                    </button>
-                    <button
-                      className="manage-btn"
-                      type="button"
-                      onClick={handleDbImportStart}
-                      disabled={!backupPasswordSet || dbBackupLoading}
-                    >
-                      <UploadIcon /> Import / Restore
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {dbBackupMode && (
-              <div className="manage-modal" role="dialog" aria-modal="true">
-                <div className={`manage-modal-card${dbBackupMode === "import" ? " manage-modal-card--db-restore" : ""}`}>
-                  {dbBackupMode === "export" ? (
-                    <div className="edit-dialog__header">
-                      <span className="edit-dialog__icon" aria-hidden="true">
-                        <FileDownIcon />
-                      </span>
-                      <div className="edit-dialog__title">Export Database Backup</div>
-                    </div>
-                  ) : (
-                    <div className="edit-dialog__header">
-                      <span className="edit-dialog__icon" aria-hidden="true">
-                        <FileUpIcon />
-                      </span>
-                      <div className="edit-dialog__title">Import / Restore Database</div>
-                    </div>
-                  )}
-                  <div className="manage-modal-body">
-                    <div className="manage-hint">
-                      {dbBackupMode === "export"
-                        ? "Export a full backup of semesters, jurors, groups, and scores."
-                        : "Upload a backup JSON exported from this portal to restore all data."}
-                    </div>
-                    {dbBackupMode === "import" && (
-                      <div className="manage-field">
-                        <div
-                          className={`manage-dropzone${dbImportDragging ? " is-dragging" : ""}`}
-                          onDragEnter={(e) => { e.preventDefault(); setDbImportDragging(true); }}
-                          onDragOver={(e) => { e.preventDefault(); setDbImportDragging(true); }}
-                          onDragLeave={(e) => { e.preventDefault(); setDbImportDragging(false); }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            setDbImportDragging(false);
-                            const file = e.dataTransfer.files?.[0];
-                            handleDbImportFile(file);
-                          }}
-                          onClick={() => {
-                            if (dbBackupLoading) return;
-                            importFileRef.current?.click();
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          aria-disabled={dbBackupLoading}
-                          onKeyDown={(e) => {
-                            if (dbBackupLoading) return;
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              importFileRef.current?.click();
-                            }
-                          }}
-                        >
-                          <div className="manage-dropzone-icon" aria-hidden="true"><CloudUploadIcon /></div>
-                          <div className="manage-dropzone-title">Drag &amp; Drop your JSON here</div>
-                          <div className="manage-dropzone-sub">
-                            Only `.json` files exported from this portal.
-                          </div>
-                          <button className="manage-btn manage-btn--db-restore-select" type="button" tabIndex={-1}>
-                            Select Backup File
-                          </button>
-                          <div className="manage-dropzone-sub manage-dropzone-sub--muted">Max file size: 10 MB</div>
-                        </div>
-                        {dbImportFileName && (
-                          <div className="manage-hint" style={{ marginTop: "0.5rem" }}>
-                            Selected: {dbImportFileName} ({Math.ceil(dbImportFileSize / 1024)} KB)
-                          </div>
-                        )}
-                        {dbBackupMode === "import" && dbBackupError && (
-                          <div className="manage-alerts" style={{ marginTop: "0.5rem" }}>
-                            <span className="manage-alert error with-icon">
-                              <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
-                              <span>{dbBackupError}</span>
-                            </span>
-                          </div>
-                        )}
-                        {dbBackupMode === "import" && dbImportSuccess && !dbBackupError && (
-                          <div className="manage-import-feedback manage-import-feedback--success" role="status" style={{ marginTop: "0.5rem" }}>
-                            {dbImportSuccess}
-                          </div>
-                        )}
-                        {dbBackupMode === "import" && dbImportWarning && !dbBackupError && (
-                          <div className="manage-import-feedback manage-import-feedback--warn" role="status" style={{ marginTop: "0.5rem" }}>
-                            {dbImportWarning}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {dbBackupMode === "import" && (
-                      <>
-                        <details className="manage-collapsible">
-                          <summary className="manage-collapsible-summary">
-                            <span>JSON example</span>
-                            <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
-                          </summary>
-                          <div className="manage-collapsible-content">
-                            <pre className="manage-code" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{SAMPLE_DB_BACKUP_JSON}</pre>
-                          </div>
-                        </details>
-                        <details className="manage-collapsible">
-                          <summary className="manage-collapsible-summary">
-                            <span>Rules</span>
-                            <ChevronDownIcon className="manage-collapsible-chevron" aria-hidden="true" />
-                          </summary>
-                          <div className="manage-collapsible-content">
-                            <ul className="manage-hint-list manage-rules-list">
-                              <li>Only .json files exported from this portal are supported.</li>
-                              <li>Backup contains semesters, jurors, groups, scores, and assignments.</li>
-                              <li>Maximum file size: 10 MB.</li>
-                              <li>This operation overwrites existing data.</li>
-                              <li>Type RESTORE to confirm import.</li>
-                            </ul>
-                          </div>
-                        </details>
-                      </>
-                    )}
-                    <div className="manage-field">
-                      <label className="manage-label">Backup &amp; Restore Password</label>
-                      <input
-                        type="password"
-                        className="manage-input"
-                        value={dbBackupPassword}
-                        onChange={(e) => { setDbBackupPassword(e.target.value); setDbBackupError(""); }}
-                        disabled={dbBackupLoading}
-                        autoComplete="off"
-                      />
-                    </div>
-                    {dbBackupMode === "import" && (
-                      <div className="manage-field">
-                        <label className="manage-label">Type RESTORE to confirm</label>
-                        <input
-                          type="text"
-                          className="manage-input"
-                          value={dbBackupConfirmText}
-                          onChange={(e) => { setDbBackupConfirmText(e.target.value.toUpperCase()); setDbBackupError(""); }}
-                          disabled={dbBackupLoading}
-                          autoComplete="off"
-                        />
-                      </div>
-                    )}
-                    {dbBackupMode !== "import" && dbBackupError && (
-                      <div className="manage-alerts">
-                        <span className="manage-alert error with-icon">
-                          <span className="manage-alert-icon" aria-hidden="true"><CircleXLucideIcon /></span>
-                          <span>{dbBackupError}</span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="manage-modal-actions">
-                    <button
-                      className={`manage-btn${dbBackupMode === "import" ? " manage-btn--db-restore-cancel" : ""}`}
-                      type="button"
-                      disabled={dbBackupLoading}
-                      onClick={() => {
-                        setDbBackupMode(null);
-                        setDbBackupPassword("");
-                        setDbBackupConfirmText("");
-                        setDbImportData(null);
-                        setDbImportFileName("");
-                        setDbImportFileSize(0);
-                        setDbImportDragging(false);
-                        setDbBackupError("");
-                        setDbImportSuccess("");
-                        setDbImportWarning("");
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className={`manage-btn ${dbBackupMode === "import" ? "manage-btn--delete-confirm" : "primary"}`}
-                      type="button"
-                      disabled={
-                        dbBackupLoading
-                        || !dbBackupPassword
-                        || (dbBackupMode === "import" && (!dbImportData || dbBackupConfirmText.trim() !== "RESTORE"))
-                      }
-                      onClick={dbBackupMode === "export" ? handleDbExportConfirm : handleDbImportConfirm}
-                    >
-                      {dbBackupLoading
-                        ? (dbBackupMode === "export" ? "Exporting…" : "Restoring…")
-                        : (dbBackupMode === "export" ? "Download Backup" : "Restore Database")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <ExportBackupPanel
+              isMobile={isMobile}
+              openPanels={openPanels}
+              backupPasswordSet={backupPasswordSet}
+              dbBackupMode={dbBackupMode}
+              dbBackupLoading={dbBackupLoading}
+              dbBackupPassword={dbBackupPassword}
+              dbBackupConfirmText={dbBackupConfirmText}
+              dbBackupError={dbBackupError}
+              dbImportData={dbImportData}
+              dbImportFileName={dbImportFileName}
+              dbImportFileSize={dbImportFileSize}
+              dbImportDragging={dbImportDragging}
+              dbImportSuccess={dbImportSuccess}
+              dbImportWarning={dbImportWarning}
+              importFileRef={importFileRef}
+              onToggleExport={() => togglePanel("export")}
+              onToggleDbBackup={() => togglePanel("dbbackup")}
+              onExportScores={handleExportScores}
+              onExportJurors={handleExportJurors}
+              onExportProjects={handleExportProjects}
+              onDbExportStart={handleDbExportStart}
+              onDbImportStart={handleDbImportStart}
+              onDbImportFileSelect={handleDbImportFileSelect}
+              onSetDbImportDragging={setDbImportDragging}
+              onDbImportFile={handleDbImportFile}
+              onSetDbBackupPassword={setDbBackupPassword}
+              onSetDbBackupError={setDbBackupError}
+              onSetDbBackupConfirmText={setDbBackupConfirmText}
+              onCancelBackupDialog={() => {
+                setDbBackupMode(null);
+                setDbBackupPassword("");
+                setDbBackupConfirmText("");
+                setDbImportData(null);
+                setDbImportFileName("");
+                setDbImportFileSize(0);
+                setDbImportDragging(false);
+                setDbBackupError("");
+                setDbImportSuccess("");
+                setDbImportWarning("");
+              }}
+              onDbExportConfirm={handleDbExportConfirm}
+              onDbImportConfirm={handleDbImportConfirm}
+            />
           </div>
         </section>
       </div>
 
-      {evalLockConfirmOpen && (
-        <div className="manage-modal" role="dialog" aria-modal="true">
-          <div className="manage-modal-card manage-modal-card--danger manage-modal-card--pin-flow manage-modal-card--lock-flow">
-            <div className="delete-dialog__header">
-              <span className="delete-dialog__icon delete-dialog__icon--lock" aria-hidden="true"><LockIcon /></span>
-              <div className="delete-dialog__title">
-                {evalLockConfirmNext ? "Lock" : "Unlock"}
-              </div>
-            </div>
-            <div className="delete-dialog__body">
-              <div className="delete-dialog__line">
-                {evalLockConfirmNext
-                  ? (
-                    <>
-                      Jurors can no longer edit or submit scores for{" "}
-                      {viewSemesterLabel && viewSemesterLabel !== "—" ? (
-                        <>
-                          <span className="delete-dialog__semester-alert">{viewSemesterLabel}</span>{" "}
-                          <span>semester</span>
-                        </>
-                      ) : (
-                        <span>the selected semester</span>
-                      )}
-                      .
-                    </>
-                  )
-                  : (
-                    <>
-                      Jurors can edit and resubmit scores for{" "}
-                      {viewSemesterLabel && viewSemesterLabel !== "—" ? (
-                        <>
-                          <span className="delete-dialog__semester-alert">{viewSemesterLabel}</span>{" "}
-                          <span>semester</span>
-                        </>
-                      ) : (
-                        <span>the selected semester</span>
-                      )}
-                      .
-                    </>
-                  )}
-              </div>
-            </div>
-            <div className="manage-modal-actions">
-              <button
-                className="manage-btn"
-                type="button"
-                disabled={evalLockConfirmLoading}
-                onClick={() => setEvalLockConfirmOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="manage-btn primary"
-                type="button"
-                disabled={evalLockConfirmLoading}
-                onClick={async () => {
-                  setEvalLockConfirmLoading(true);
-                  await handleSaveSettings({ ...settings, evalLockActive: evalLockConfirmNext });
-                  setEvalLockConfirmLoading(false);
-                  setEvalLockConfirmOpen(false);
-                }}
-              >
-                {evalLockConfirmLoading
-                  ? (evalLockConfirmNext ? "Locking…" : "Unlocking…")
-                  : (evalLockConfirmNext ? "Lock" : "Unlock")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EvalLockConfirmDialog
+        evalLockConfirmOpen={evalLockConfirmOpen}
+        evalLockConfirmNext={evalLockConfirmNext}
+        evalLockConfirmLoading={evalLockConfirmLoading}
+        viewSemesterLabel={viewSemesterLabel}
+        onCancel={() => setEvalLockConfirmOpen(false)}
+        onConfirm={async () => {
+          setEvalLockConfirmLoading(true);
+          await handleSaveSettings({ ...settings, evalLockActive: evalLockConfirmNext });
+          setEvalLockConfirmLoading(false);
+          setEvalLockConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -1,7 +1,5 @@
 // src/charts/index.js
-// Re-exports everything from the charts sub-modules so that
-// consumers can import from "../charts" just like they previously
-// imported from "../Charts".
+// Re-exports everything from the charts sub-modules.
 
 export {
   CHART_OUTCOMES,

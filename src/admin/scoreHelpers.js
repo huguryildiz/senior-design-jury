@@ -16,6 +16,7 @@ import {
   PencilIcon,
 } from "../shared/Icons";
 import { CRITERIA } from "../config";
+import { rowKey } from "./utils";
 
 // ── Cell state ────────────────────────────────────────────────
 // entry: { total, ...criteriaFields } from lookup
@@ -117,3 +118,94 @@ export const jurorStatusMeta = {
     colorClass: "status-gray",
   },
 };
+
+// ── Overview dashboard metrics ─────────────────────────────────
+// Pure function: no React deps. Extracted from AdminPanel.jsx useMemo
+// so it can be unit-tested independently.
+//
+// @param {object[]} rawScores       - flat score rows from adminGetScores
+// @param {object[]} assignedJurors  - jurors assigned to the current semester
+// @param {number}   totalProjects   - total groups in the semester
+// @returns {object} counts for each dashboard metric
+export function computeOverviewMetrics(rawScores, assignedJurors, totalProjects) {
+  const safeScores  = rawScores      || [];
+  const safeJurors  = assignedJurors || [];
+  const safeProjCt  = totalProjects  || 0;
+
+  const assignedIds   = new Set(safeJurors.map((j) => j.jurorId));
+  const totalJurors   = safeJurors.length;
+  const scoredByJuror = new Map();
+  const startedByJuror = new Map();
+  let scoredEvaluations  = 0;
+  let partialEvaluations = 0;
+
+  safeScores.forEach((r) => {
+    if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
+    const cellState = getCellState(r);
+    if (cellState === "scored")  scoredEvaluations  += 1;
+    if (cellState === "partial") partialEvaluations += 1;
+    if (r.total === null || r.total === undefined) return;
+    const key = rowKey(r);
+    scoredByJuror.set(key, (scoredByJuror.get(key) || 0) + 1);
+  });
+
+  safeScores.forEach((r) => {
+    if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
+    if (getCellState(r) === "empty") return;
+    const key = rowKey(r);
+    startedByJuror.set(key, (startedByJuror.get(key) || 0) + 1);
+  });
+
+  const editingJurors = safeJurors.filter((j) =>
+    !!(j.editEnabled ?? j.edit_enabled)
+  ).length;
+
+  const completedJurors = safeJurors.filter((j) => {
+    const isEditing = !!(j.editEnabled ?? j.edit_enabled);
+    return !isEditing && !!(j.finalSubmitted ?? j.finalSubmittedAt);
+  }).length;
+
+  const totalEvaluations = totalJurors * safeProjCt;
+  const emptyEvaluations = Math.max(
+    totalEvaluations - scoredEvaluations - partialEvaluations,
+    0
+  );
+
+  const readyToSubmitJurors = safeJurors.filter((j) => {
+    const isEditing = !!(j.editEnabled ?? j.edit_enabled);
+    const isFinal   = !!(j.finalSubmitted ?? j.finalSubmittedAt);
+    if (isEditing || isFinal) return false;
+    return safeProjCt > 0 && (scoredByJuror.get(j.key) || 0) >= safeProjCt;
+  }).length;
+
+  const inProgressJurors = safeJurors.filter((j) => {
+    const isEditing = !!(j.editEnabled ?? j.edit_enabled);
+    const isFinal   = !!(j.finalSubmitted ?? j.finalSubmittedAt);
+    if (isEditing || isFinal) return false;
+    const started = startedByJuror.get(j.key) || 0;
+    const scored  = scoredByJuror.get(j.key)  || 0;
+    return started > 0 && scored < safeProjCt;
+  }).length;
+
+  const notStartedJurors = safeJurors.filter((j) => {
+    const isEditing = !!(j.editEnabled ?? j.edit_enabled);
+    if (isEditing) return false;
+    const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
+    if (isFinal) return false;
+    return (startedByJuror.get(j.key) || 0) === 0;
+  }).length;
+
+  return {
+    completedJurors,
+    readyToSubmitJurors,
+    totalJurors,
+    totalEvaluations,
+    totalProjects: safeProjCt,
+    scoredEvaluations,
+    partialEvaluations,
+    emptyEvaluations,
+    inProgressJurors,
+    editingJurors,
+    notStartedJurors,
+  };
+}

@@ -992,28 +992,109 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.rpc_admin_login(p_password text, p_rpc_secret text DEFAULT '')
-RETURNS boolean
+-- Rate-limited admin login (SEC-4).
+-- Return type: TABLE(ok, locked_until, failed_attempts).
+-- Policy: 5 consecutive failures → 15-minute lockout.
+-- State stored in settings table (admin_failed_attempts, admin_locked_until).
+-- DROP first so re-running bootstrap against an existing DB doesn't fail on
+-- the return-type change.
+DROP FUNCTION IF EXISTS public.rpc_admin_login(text, text);
+
+CREATE FUNCTION public.rpc_admin_login(
+  p_password   text,
+  p_rpc_secret text DEFAULT ''
+)
+RETURNS TABLE(ok boolean, locked_until timestamptz, failed_attempts integer)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
-  v_ok boolean;
+  v_attempts_str text;
+  v_locked_str   text;
+  v_attempts     integer;
+  v_locked       timestamptz;
+  v_new_locked   timestamptz;
+  v_now          timestamptz := now();
+  v_ok           boolean;
 BEGIN
-  v_ok := public._verify_admin_password(p_password, p_rpc_secret);
-  IF NOT v_ok THEN
-    PERFORM public._audit_log(
-      'system',
-      null::uuid,
-      'admin_login_failed',
-      'settings',
-      null::uuid,
-      'Admin login failed.',
-      null
-    );
+  -- Read current rate-limit state
+  SELECT value INTO v_attempts_str FROM settings WHERE key = 'admin_failed_attempts';
+  SELECT value INTO v_locked_str   FROM settings WHERE key = 'admin_locked_until';
+
+  v_attempts := COALESCE(v_attempts_str::integer, 0);
+  v_locked   := CASE
+                  WHEN v_locked_str IS NOT NULL AND v_locked_str <> ''
+                  THEN v_locked_str::timestamptz
+                  ELSE NULL
+                END;
+
+  -- Reject immediately if still locked
+  IF v_locked IS NOT NULL AND v_locked > v_now THEN
+    RETURN QUERY SELECT false, v_locked, v_attempts;
+    RETURN;
   END IF;
-  RETURN v_ok;
+
+  -- Lock window expired: reset counter
+  IF v_locked IS NOT NULL AND v_locked <= v_now THEN
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_failed_attempts', '0', now())
+      ON CONFLICT (key) DO UPDATE SET value = '0', updated_at = now();
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_locked_until', '', now())
+      ON CONFLICT (key) DO UPDATE SET value = '', updated_at = now();
+    v_attempts := 0;
+    v_locked   := NULL;
+  END IF;
+
+  -- Verify password
+  v_ok := public._verify_admin_password(p_password, p_rpc_secret);
+
+  IF v_ok THEN
+    -- Success: clear rate-limit state
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_failed_attempts', '0', now())
+      ON CONFLICT (key) DO UPDATE SET value = '0', updated_at = now();
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_locked_until', '', now())
+      ON CONFLICT (key) DO UPDATE SET value = '', updated_at = now();
+    RETURN QUERY SELECT true, null::timestamptz, 0;
+    RETURN;
+  END IF;
+
+  -- Failed: increment counter, maybe lock
+  v_attempts   := v_attempts + 1;
+  v_new_locked := NULL;
+
+  IF v_attempts >= 5 THEN
+    v_new_locked := v_now + interval '15 minutes';
+  END IF;
+
+  INSERT INTO settings (key, value, updated_at)
+    VALUES ('admin_failed_attempts', v_attempts::text, now())
+    ON CONFLICT (key) DO UPDATE SET value = v_attempts::text, updated_at = now();
+
+  IF v_new_locked IS NOT NULL THEN
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_locked_until', v_new_locked::text, now())
+      ON CONFLICT (key) DO UPDATE SET value = v_new_locked::text, updated_at = now();
+  END IF;
+
+  PERFORM public._audit_log(
+    'system',
+    null::uuid,
+    'admin_login_failed',
+    'settings',
+    null::uuid,
+    'Admin login failed. Attempt ' || v_attempts || '.' ||
+      CASE WHEN v_new_locked IS NOT NULL
+           THEN ' Account locked until ' || v_new_locked::text || '.'
+           ELSE ''
+      END,
+    null
+  );
+
+  RETURN QUERY SELECT false, v_new_locked, v_attempts;
 END;
 $$;
 
@@ -1920,9 +2001,11 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_delete_semester(uuid, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_delete_semester(uuid, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_semester(
   p_semester_id uuid,
-  p_delete_password text
+  p_delete_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1932,6 +2015,7 @@ AS $$
 DECLARE
   v_name text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
   PERFORM public._assert_delete_password(p_delete_password);
 
   SELECT name INTO v_name FROM semesters WHERE id = p_semester_id;
@@ -2110,9 +2194,11 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_delete_project(uuid, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_delete_project(uuid, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_project(
   p_project_id uuid,
-  p_delete_password text
+  p_delete_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2124,6 +2210,7 @@ DECLARE
   v_group integer;
   v_semester_id uuid;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
   PERFORM public._assert_delete_password(p_delete_password);
 
   SELECT project_title, group_no, semester_id
@@ -2288,9 +2375,11 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_delete_juror(uuid, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_delete_juror(uuid, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_juror(
   p_juror_id uuid,
-  p_delete_password text
+  p_delete_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2300,6 +2389,7 @@ AS $$
 DECLARE
   v_name text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
   PERFORM public._assert_delete_password(p_delete_password);
 
   SELECT juror_name INTO v_name FROM jurors WHERE id = p_juror_id;
@@ -2958,9 +3048,12 @@ $$;
 
 -- ── Admin password security ─────────────────────────────────
 
+DROP FUNCTION IF EXISTS public.rpc_admin_change_password(text, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_change_password(text, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_change_password(
   p_current_password text,
-  p_new_password text
+  p_new_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS TABLE (ok boolean)
 LANGUAGE plpgsql
@@ -2970,6 +3063,8 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
+
   SELECT value INTO v_hash
   FROM settings
   WHERE key = 'admin_password_hash';
@@ -3047,8 +3142,11 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.rpc_admin_bootstrap_password(text);
+DROP FUNCTION IF EXISTS public.rpc_admin_bootstrap_password(text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_bootstrap_password(
-  p_new_password text
+  p_new_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS TABLE (ok boolean)
 LANGUAGE plpgsql
@@ -3058,6 +3156,8 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
+
   SELECT value INTO v_hash
   FROM settings
   WHERE key = 'admin_password_hash';
@@ -3447,11 +3547,11 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_update_semester(uuid, text, date, tex
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_projects(uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_create_project(uuid, integer, text, text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_upsert_project(uuid, integer, text, text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_project(uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_project(uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_counts(text, uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_create_juror(text, text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_update_juror(uuid, text, text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_juror_pin(uuid, uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_settings(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_setting(text, text, text, text) TO anon, authenticated;
@@ -3460,9 +3560,9 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, ti
 GRANT EXECUTE ON FUNCTION public.rpc_admin_list_jurors(text, uuid, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_force_close_juror_edit_mode(uuid, uuid, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_delete_password(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text, text) TO anon, authenticated;

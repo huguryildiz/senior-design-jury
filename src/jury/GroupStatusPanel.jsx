@@ -16,7 +16,7 @@ const GroupStatusPanel = memo(function GroupStatusPanel({
   editMode,
   lockActive,
   saveStatus,
-  handleCommentBlur,
+  onRetry,
 }) {
   return (
     <>
@@ -42,7 +42,7 @@ const GroupStatusPanel = memo(function GroupStatusPanel({
         <div className="group-done-banner save-error-banner">
           <TriangleAlertIcon />
           Could not save. Check your connection.
-          <button className="retry-btn" onClick={() => handleCommentBlur(pid)}>
+          <button className="retry-btn" onClick={() => onRetry(pid)}>
             Retry
           </button>
         </div>

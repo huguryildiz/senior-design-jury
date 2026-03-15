@@ -37,4 +37,74 @@ describe("OverviewTab", () => {
     expect(ringLabel).not.toBeNull();
     expect(ringLabel.textContent).toBe("100%");
   });
+
+  qaTest("overview.03", () => {
+    render(
+      <OverviewTab
+        jurorStats={[]}
+        groups={[]}
+        metrics={{
+          totalJurors: 5,
+          completedJurors: 2,
+          inProgressJurors: 1,
+          readyToSubmitJurors: 0, // zero — must NOT appear
+          editingJurors: 0,       // zero — must NOT appear
+          totalEvaluations: 15,
+        }}
+      />
+    );
+
+    const completedCard = screen.getByText("Completed Jurors").closest(".stat-card");
+    expect(within(completedCard).getByText("1 in progress")).toBeInTheDocument();
+    expect(within(completedCard).queryByText(/0 ready/)).toBeNull();
+    expect(within(completedCard).queryByText(/0 editing/)).toBeNull();
+  });
+
+  qaTest("overview.04", () => {
+    // When scoredEvaluations < totalEvaluations, sub "N total" should appear
+    render(
+      <OverviewTab
+        jurorStats={[]}
+        groups={[]}
+        metrics={{
+          totalJurors: 2,
+          totalEvaluations: 10,
+          scoredEvaluations: 7,
+        }}
+      />
+    );
+    const scoredCard = screen.getByText("Scored Evaluations").closest(".stat-card");
+    expect(within(scoredCard).getByText("10 total")).toBeInTheDocument();
+
+    // When all are scored, sub should NOT appear
+    render(
+      <OverviewTab
+        jurorStats={[]}
+        groups={[]}
+        metrics={{
+          totalJurors: 2,
+          totalEvaluations: 10,
+          scoredEvaluations: 10,
+        }}
+      />
+    );
+    const cards = screen.getAllByText("Scored Evaluations");
+    const secondCard = cards[cards.length - 1].closest(".stat-card");
+    expect(within(secondCard).queryByText(/total/)).toBeNull();
+  });
+
+  qaTest("overview.05", () => {
+    const onGoToSettings = vi.fn();
+    render(
+      <OverviewTab
+        jurorStats={[]}
+        groups={[]}
+        metrics={{ totalJurors: 0, totalEvaluations: 0 }}
+        onGoToSettings={onGoToSettings}
+      />
+    );
+
+    const settingsBtn = screen.getByRole("button", { name: /settings/i });
+    expect(settingsBtn).toBeInTheDocument();
+  });
 });

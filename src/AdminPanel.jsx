@@ -24,7 +24,7 @@ import {
 import { supabase } from "./lib/supabaseClient";
 import { cmp, rowKey } from "./admin/utils";
 import { readSection, writeSection } from "./admin/persist";
-import { getCellState } from "./admin/scoreHelpers";
+import { getCellState, computeOverviewMetrics } from "./admin/scoreHelpers";
 import { sortSemestersByPosterDateDesc } from "./shared/semesterSort";
 import { HomeIcon, RefreshIcon } from "./admin/components";
 import {
@@ -441,7 +441,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       return (
         adminPass
         || sessionStorage.getItem("ee492_admin_pass")
-        || localStorage.getItem("ee492_admin_pass")
         || ""
       );
     } catch {
@@ -462,7 +461,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     passRef.current = nextPass;
     try {
       sessionStorage.setItem("ee492_admin_pass", nextPass);
-      localStorage.setItem("ee492_admin_pass", nextPass);
     } catch { }
   };
 
@@ -497,7 +495,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       // Cache password for the duration of this session
       try {
         sessionStorage.setItem("ee492_admin_pass", pass);
-        localStorage.setItem("ee492_admin_pass", pass);
       } catch { }
 
       // Always refresh semesters (IDs change after reseed)
@@ -784,83 +781,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   }, [assignedJurors, rawScores]);
 
   // overviewMetrics for dashboard cards
-  const overviewMetrics = useMemo(() => {
-    const assignedIds = new Set(assignedJurors.map((j) => j.jurorId));
-    const totalJurors = assignedJurors.length;
-
-    // Count fully-scored rows per juror (total !== null = all 4 criteria filled)
-    const scoredByJuror = new Map();
-    const startedByJuror = new Map();
-    let scoredEvaluations = 0;
-    let partialEvaluations = 0;
-    rawScores.forEach((r) => {
-      if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
-      const cellState = getCellState(r);
-      if (cellState === "scored") scoredEvaluations += 1;
-      if (cellState === "partial") partialEvaluations += 1;
-      if (r.total === null || r.total === undefined) return;
-      const key = rowKey(r);
-      scoredByJuror.set(key, (scoredByJuror.get(key) || 0) + 1);
-    });
-    rawScores.forEach((r) => {
-      if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
-      if (getCellState(r) === "empty") return;
-      const key = rowKey(r);
-      startedByJuror.set(key, (startedByJuror.get(key) || 0) + 1);
-    });
-
-    const editingJurors = assignedJurors.filter((j) =>
-      !!(j.editEnabled ?? j.edit_enabled)
-    ).length;
-
-    const completedJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      return !isEditing && !!(j.finalSubmitted ?? j.finalSubmittedAt);
-    }).length;
-    const totalEvaluations = totalJurors * totalProjects;
-    const emptyEvaluations = Math.max(
-      totalEvaluations - scoredEvaluations - partialEvaluations,
-      0
-    );
-
-    const readyToSubmitJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
-      if (isEditing || isFinal) return false;
-      return totalProjects > 0 && (scoredByJuror.get(j.key) || 0) >= totalProjects;
-    }).length;
-
-    const inProgressJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
-      if (isEditing || isFinal) return false;
-      const started = startedByJuror.get(j.key) || 0;
-      const scored = scoredByJuror.get(j.key) || 0;
-      return started > 0 && scored < totalProjects;
-    }).length;
-
-    const notStartedJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      if (isEditing) return false;
-      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
-      if (isFinal) return false;
-      return (startedByJuror.get(j.key) || 0) === 0;
-    }).length;
-
-    return {
-      completedJurors,
-      readyToSubmitJurors,
-      totalJurors,
-      totalEvaluations,
-      totalProjects,
-      scoredEvaluations,
-      partialEvaluations,
-      emptyEvaluations,
-      inProgressJurors,
-      editingJurors,
-      notStartedJurors,
-    };
-  }, [rawScores, assignedJurors, totalProjects]);
+  const overviewMetrics = useMemo(
+    () => computeOverviewMetrics(rawScores, assignedJurors, totalProjects),
+    [rawScores, assignedJurors, totalProjects]
+  );
 
   useEffect(() => {
     if (!lastRefresh) return;
@@ -1063,7 +987,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
         <div className="tab-bar-wrap">
           <div className="tab-bar-row">
             <div className="tab-bar-shell" ref={tabBarRef} onScroll={updateTabHints}>
-              <div className="tab-bar">
+              <div className="tab-bar" role="tablist" aria-label="Admin panel sections">
                 {TABS.map((t) => {
                   if (t.id === "scores") {
                     return (
@@ -1083,6 +1007,8 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
                   return (
                     <button
                       key={t.id}
+                      role="tab"
+                      aria-selected={adminTab === t.id}
                       className={`tab ${adminTab === t.id ? "active" : ""}`}
                       onClick={() => {
                         if (adminTab === "settings" && settingsDirtyRef.current) {
@@ -1114,7 +1040,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
       {/* Tab content */}
       {!loading && (
-        <div className="admin-body">
+        <div className="admin-body" role="tabpanel">
           {selectedSemesterLocked && adminTab !== "settings" && (
             <div className="manage-alert warn with-icon admin-lock-banner" role="status">
               <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
@@ -1168,6 +1094,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               onAdminPasswordChange={handleAdminPasswordChange}
               selectedSemesterId={selectedSemesterId}
               onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
+              onActiveSemesterChange={(semesterId) => {
+                setSelectedSemesterId(semesterId);
+                fetchData(semesterId);
+              }}
             />
           )}
         </div>

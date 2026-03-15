@@ -15,18 +15,111 @@ import { supabase } from "../lib/supabaseClient";
 import { CRITERIA } from "../config";
 import { sortSemestersByPosterDateDesc } from "./semesterSort";
 
-const RPC_SECRET = import.meta.env.VITE_RPC_SECRET ?? '';
+// ── Admin RPC proxy ────────────────────────────────────────────
+// In production, admin RPCs are routed through the rpc-proxy Edge Function
+// so that the RPC secret never appears in the client bundle.
+// In dev mode, falls back to direct Supabase RPC with VITE_RPC_SECRET.
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
+const RPC_PROXY_URL = `${SUPABASE_URL}/functions/v1/rpc-proxy`;
+const DEV_RPC_SECRET = import.meta.env.DEV ? (import.meta.env.VITE_RPC_SECRET ?? '') : '';
+const USE_PROXY = !import.meta.env.DEV;
+
+if (import.meta.env.DEV && !import.meta.env.VITE_RPC_SECRET) {
+  console.warn('[api.js] VITE_RPC_SECRET is not set — admin RPC calls will fail.');
+}
+
+/**
+ * Call an admin-only RPC function.
+ *
+ * Production: proxied through the rpc-proxy Edge Function (p_rpc_secret
+ * is injected server-side and never reaches the browser).
+ *
+ * Dev: falls back to direct Supabase RPC with VITE_RPC_SECRET.
+ *
+ * @param {string} fn   - RPC function name (e.g. "rpc_admin_login")
+ * @param {object} params - parameters WITHOUT p_rpc_secret
+ * @returns {Promise<any>} data from the RPC
+ */
+async function callAdminRpc(fn, params = {}) {
+  if (USE_PROXY) {
+    const res = await fetch(RPC_PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''}`,
+      },
+      body: JSON.stringify({ fn, params }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      const err = new Error(json.error || 'Admin RPC proxy error');
+      err.code = json.code;
+      throw err;
+    }
+    return json.data;
+  }
+  // Dev fallback: direct Supabase RPC with client-side secret
+  const { data, error } = await supabase.rpc(fn, {
+    ...params,
+    p_rpc_secret: DEV_RPC_SECRET,
+  });
+  if (error) throw error;
+  return data;
+}
+
+// ── Retry helper ───────────────────────────────────────────────
+// Retries on transient network errors only.
+// Handles both raw fetch TypeError and Supabase client network errors
+// (which surface as thrown PostgrestError with "Failed to fetch" message).
+// Never retries AbortError (intentional cancellation) or business errors.
+// Uses exponential backoff: delayMs * 2^(attempt-1).
+export async function withRetry(fn, { maxAttempts = 3, delayMs = 500 } = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      // AbortError = intentional cancel (AbortController) — never retry
+      if (e?.name === "AbortError") throw e;
+      // Network-level failures: native TypeError (raw fetch) or
+      // Supabase client "Failed to fetch" / "NetworkError" wrapped errors
+      const isNetworkError =
+        e instanceof TypeError ||
+        (e?.message && (
+          e.message.includes("Failed to fetch") ||
+          e.message.includes("NetworkError") ||
+          e.message.includes("network")
+        ));
+      if (isNetworkError) {
+        lastError = e;
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, delayMs * Math.pow(2, attempt - 1)));
+          continue;
+        }
+      }
+      // Supabase business errors, auth failures → propagate immediately
+      throw e;
+    }
+  }
+  throw lastError;
+}
 
 // ── Semester RPCs ──────────────────────────────────────────────
 
-export async function listSemesters() {
-  const { data, error } = await supabase.rpc("rpc_list_semesters");
+export async function listSemesters(signal) {
+  const q = supabase.rpc("rpc_list_semesters");
+  if (signal) q.abortSignal(signal);
+  const { data, error } = await q;
   if (error) throw error;
   return sortSemestersByPosterDateDesc(data || []);
 }
 
-export async function getActiveSemester() {
-  const { data, error } = await supabase.rpc("rpc_get_active_semester");
+export async function getActiveSemester(signal) {
+  const q = supabase.rpc("rpc_get_active_semester");
+  if (signal) q.abortSignal(signal);
+  const { data, error } = await q;
   if (error) throw error;
   return data?.[0] || null;
 }
@@ -66,31 +159,35 @@ export async function getJurorById(jurorId) {
 // ── Project listing ────────────────────────────────────────────
 // Returns projects for a semester with this juror's existing scores.
 // DB column names are normalized back to config.js criterion ids here.
-export async function listProjects(semesterId, jurorId = null) {
-  const { data, error } = await supabase.rpc("rpc_list_projects", {
-    p_semester_id: semesterId,
-    p_juror_id:    jurorId ?? null,
-  });
-  if (error) throw error;
+export async function listProjects(semesterId, jurorId = null, signal) {
+  return withRetry(async () => {
+    const q = supabase.rpc("rpc_list_projects", {
+      p_semester_id: semesterId,
+      p_juror_id:    jurorId ?? null,
+    });
+    if (signal) q.abortSignal(signal);
+    const { data, error } = await q;
+    if (error) throw error;
 
-  return (data || []).map((row) => ({
-    project_id:     row.project_id,
-    group_no:       row.group_no,
-    project_title:  row.project_title,
-    group_students: row.group_students || "",
-    poster_date:    row.poster_date || "",
-    updated_at:     row.updated_at,
-    final_submitted_at: row.final_submitted_at,
-    // Normalize DB column names → config.js criterion ids
-    scores: {
-      technical: row.technical ?? null,
-      design:    row.written   ?? null,   // written  → design
-      delivery:  row.oral      ?? null,   // oral     → delivery
-      teamwork:  row.teamwork  ?? null,
-    },
-    comment: row.comment || "",
-    total:   row.total   ?? null,
-  }));
+    return (data || []).map((row) => ({
+      project_id:     row.project_id,
+      group_no:       row.group_no,
+      project_title:  row.project_title,
+      group_students: row.group_students || "",
+      poster_date:    row.poster_date || "",
+      updated_at:     row.updated_at,
+      final_submitted_at: row.final_submitted_at,
+      // Normalize DB column names → config.js criterion ids
+      scores: {
+        technical: row.technical ?? null,
+        design:    row.written   ?? null,   // written  → design
+        delivery:  row.oral      ?? null,   // oral     → delivery
+        teamwork:  row.teamwork  ?? null,
+      },
+      comment: row.comment || "",
+      total:   row.total   ?? null,
+    }));
+  });
 }
 
 // ── Score upsert ───────────────────────────────────────────────
@@ -98,29 +195,36 @@ export async function listProjects(semesterId, jurorId = null) {
 // Maps design→p_written and delivery→p_oral before calling RPC.
 // Returns computed total integer (from DB trigger).
 export async function upsertScore(semesterId, projectId, jurorId, scores, comment) {
-  const { data, error } = await supabase.rpc("rpc_upsert_score", {
-    p_semester_id: semesterId,
-    p_project_id:  projectId,
-    p_juror_id:    jurorId,
-    p_technical:   scores.technical ?? null,
-    p_written:     scores.design    ?? null,   // design   → written
-    p_oral:        scores.delivery  ?? null,   // delivery → oral
-    p_teamwork:    scores.teamwork  ?? null,
-    p_comment:     comment || "",
+  return withRetry(async () => {
+    const { data, error } = await supabase.rpc("rpc_upsert_score", {
+      p_semester_id: semesterId,
+      p_project_id:  projectId,
+      p_juror_id:    jurorId,
+      p_technical:   scores.technical ?? null,
+      p_written:     scores.design    ?? null,   // design   → written
+      p_oral:        scores.delivery  ?? null,   // delivery → oral
+      p_teamwork:    scores.teamwork  ?? null,
+      p_comment:     comment || "",
+    });
+    if (error) throw error;
+    return data; // integer total
   });
-  if (error) throw error;
-  return data; // integer total
 }
 
 // ── Admin RPCs ─────────────────────────────────────────────────
 
 export async function adminLogin(password) {
-  const { data, error } = await supabase.rpc("rpc_admin_login", {
-    p_password:   password,
-    p_rpc_secret: RPC_SECRET,
+  const data = await callAdminRpc("rpc_admin_login", {
+    p_password: password,
   });
-  if (error) throw error;
-  return data === true;
+  const row = data?.[0] ?? {};
+  if (!row.ok && row.locked_until) {
+    const e = new Error("Too many failed attempts.");
+    e.adminLocked = true;
+    e.lockedUntil = row.locked_until;
+    throw e;
+  }
+  return !!row.ok;
 }
 
 export async function adminSecurityState() {
@@ -136,12 +240,13 @@ export async function adminSecurityState() {
 // Returns all score rows for a semester, normalized to the field
 // names that existing admin tab components expect.
 export async function adminGetScores(semesterId, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_get_scores", {
-    p_semester_id:    semesterId,
-    p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
-  });
-  if (error) {
+  let data;
+  try {
+    data = await callAdminRpc("rpc_admin_get_scores", {
+      p_semester_id:    semesterId,
+      p_admin_password: adminPassword,
+    });
+  } catch (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
       const e = new Error("unauthorized");
       e.unauthorized = true;
@@ -208,12 +313,13 @@ export async function adminGetScores(semesterId, adminPassword) {
 
 // Returns all jurors for the semester (including those who haven't scored yet).
 export async function adminListJurors(semesterId, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_list_jurors", {
-    p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
-    p_semester_id:    semesterId,
-  });
-  if (error) {
+  let data;
+  try {
+    data = await callAdminRpc("rpc_admin_list_jurors", {
+      p_admin_password: adminPassword,
+      p_semester_id:    semesterId,
+    });
+  } catch (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
       const e = new Error("unauthorized");
       e.unauthorized = true;
@@ -245,12 +351,13 @@ export async function adminListJurors(semesterId, adminPassword) {
 
 // Returns per-project summary aggregates, normalized for admin tabs.
 export async function adminProjectSummary(semesterId, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_project_summary", {
-    p_semester_id:    semesterId,
-    p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
-  });
-  if (error) {
+  let data;
+  try {
+    data = await callAdminRpc("rpc_admin_project_summary", {
+      p_semester_id:    semesterId,
+      p_admin_password: adminPassword,
+    });
+  } catch (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
       const e = new Error("unauthorized");
       e.unauthorized = true;
@@ -280,12 +387,13 @@ export async function adminProjectSummary(semesterId, adminPassword) {
 
 // Returns per-semester outcome averages for trend chart.
 export async function adminGetOutcomeTrends(semesterIds, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_outcome_trends", {
-    p_semester_ids:   semesterIds,
-    p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
-  });
-  if (error) {
+  let data;
+  try {
+    data = await callAdminRpc("rpc_admin_outcome_trends", {
+      p_semester_ids:   semesterIds,
+      p_admin_password: adminPassword,
+    });
+  } catch (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
       const e = new Error("unauthorized");
       e.unauthorized = true;
@@ -308,157 +416,134 @@ export async function adminGetOutcomeTrends(semesterIds, adminPassword) {
 // ── Admin manage RPCs ─────────────────────────────────────────
 
 export async function adminSetActiveSemester(semesterId, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_set_active_semester", {
+  const data = await callAdminRpc("rpc_admin_set_active_semester", {
     p_semester_id: semesterId,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data;
 }
 
 export async function adminCreateSemester(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_create_semester", {
+  const data = await callAdminRpc("rpc_admin_create_semester", {
     p_name: payload.name,
     p_poster_date: payload.poster_date,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminUpdateSemester(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_update_semester", {
+  const data = await callAdminRpc("rpc_admin_update_semester", {
     p_semester_id: payload.id,
     p_name: payload.name,
     p_poster_date: payload.poster_date,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminListProjects(semesterId, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_list_projects", {
+  const data = await callAdminRpc("rpc_admin_list_projects", {
     p_semester_id: semesterId,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data || [];
 }
 
 export async function adminCreateProject(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_create_project", {
+  const data = await callAdminRpc("rpc_admin_create_project", {
     p_semester_id: payload.semesterId,
     p_group_no: payload.group_no,
     p_project_title: payload.project_title,
     p_group_students: payload.group_students,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminUpsertProject(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_upsert_project", {
+  const data = await callAdminRpc("rpc_admin_upsert_project", {
     p_semester_id: payload.semesterId,
     p_group_no: payload.group_no,
     p_project_title: payload.project_title,
     p_group_students: payload.group_students,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminCreateJuror(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_create_juror", {
+  const data = await callAdminRpc("rpc_admin_create_juror", {
     p_juror_name: payload.juror_name,
     p_juror_inst: payload.juror_inst,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminUpdateJuror(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_update_juror", {
+  const data = await callAdminRpc("rpc_admin_update_juror", {
     p_juror_id: payload.jurorId,
     p_juror_name: payload.juror_name,
     p_juror_inst: payload.juror_inst,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminResetJurorPin(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_reset_juror_pin", {
+  const data = await callAdminRpc("rpc_admin_reset_juror_pin", {
     p_semester_id: payload.semesterId,
     p_juror_id: payload.jurorId,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminSetJurorEditMode(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_set_juror_edit_mode", {
+  const data = await callAdminRpc("rpc_admin_set_juror_edit_mode", {
     p_semester_id: payload.semesterId,
     p_juror_id: payload.jurorId,
     p_enabled: !!payload.enabled,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminForceCloseJurorEditMode(payload, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_force_close_juror_edit_mode", {
+  const data = await callAdminRpc("rpc_admin_force_close_juror_edit_mode", {
     p_semester_id: payload.semesterId,
     p_juror_id: payload.jurorId,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminGetSettings(adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_get_settings", {
+  const data = await callAdminRpc("rpc_admin_get_settings", {
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data || [];
 }
 
 export async function adminListAuditLogs(filters, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_list_audit_logs", {
-    p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
-    p_start_at: filters?.startAt || null,
-    p_end_at: filters?.endAt || null,
-    p_actor_types: filters?.actorTypes || null,
-    p_actions: filters?.actions || null,
-    p_search: filters?.search || null,
-    p_search_day: filters?.searchDay || null,
-    p_search_month: filters?.searchMonth || null,
-    p_search_year: filters?.searchYear || null,
-    p_limit: filters?.limit || 120,
-    p_before_at: filters?.beforeAt || null,
-    p_before_id: filters?.beforeId || null,
-  });
-  if (error) {
+  let data;
+  try {
+    data = await callAdminRpc("rpc_admin_list_audit_logs", {
+      p_admin_password: adminPassword,
+      p_start_at: filters?.startAt || null,
+      p_end_at: filters?.endAt || null,
+      p_actor_types: filters?.actorTypes || null,
+      p_actions: filters?.actions || null,
+      p_search: filters?.search || null,
+      p_search_day: filters?.searchDay || null,
+      p_search_month: filters?.searchMonth || null,
+      p_search_year: filters?.searchYear || null,
+      p_limit: filters?.limit || 120,
+      p_before_at: filters?.beforeAt || null,
+      p_before_id: filters?.beforeId || null,
+    });
+  } catch (error) {
     if (error.code === "P0401" || error.message?.includes("unauthorized")) {
       const e = new Error("unauthorized");
       e.unauthorized = true;
@@ -470,32 +555,30 @@ export async function adminListAuditLogs(filters, adminPassword) {
 }
 
 export async function adminSetSetting(key, value, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_set_setting", {
+  const data = await callAdminRpc("rpc_admin_set_setting", {
     p_key: key,
     p_value: value,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data;
 }
 
 export async function adminSetSemesterEvalLock(semesterId, enabled, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_set_semester_eval_lock", {
+  const data = await callAdminRpc("rpc_admin_set_semester_eval_lock", {
     p_semester_id: semesterId,
     p_enabled: !!enabled,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
-export async function getJurorEditState(semesterId, jurorId) {
-  const { data, error } = await supabase.rpc("rpc_get_juror_edit_state", {
+export async function getJurorEditState(semesterId, jurorId, signal) {
+  const q = supabase.rpc("rpc_get_juror_edit_state", {
     p_semester_id: semesterId,
     p_juror_id: jurorId,
   });
+  if (signal) q.abortSignal(signal);
+  const { data, error } = await q;
   if (error) throw error;
   return data?.[0] || null;
 }
@@ -510,120 +593,101 @@ export async function finalizeJurorSubmission(semesterId, jurorId) {
 }
 
 export async function adminChangePassword(currentPassword, newPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_change_password", {
+  const data = await callAdminRpc("rpc_admin_change_password", {
     p_current_password: currentPassword,
     p_new_password: newPassword,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminBootstrapPassword(newPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_bootstrap_password", {
+  const data = await callAdminRpc("rpc_admin_bootstrap_password", {
     p_new_password: newPassword,
   });
-  if (error) throw error;
   return data?.[0] || null;
 }
 
 export async function adminBootstrapBackupPassword(newPassword, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_bootstrap_backup_password", {
+  const data = await callAdminRpc("rpc_admin_bootstrap_backup_password", {
     p_new_password: newPassword,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminBootstrapDeletePassword(newPassword, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_bootstrap_delete_password", {
+  const data = await callAdminRpc("rpc_admin_bootstrap_delete_password", {
     p_new_password: newPassword,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminChangeBackupPassword(currentPassword, newPassword, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_change_backup_password", {
+  const data = await callAdminRpc("rpc_admin_change_backup_password", {
     p_current_password: currentPassword,
     p_new_password: newPassword,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminFullExport(backupPassword, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_full_export", {
+  const data = await callAdminRpc("rpc_admin_full_export", {
     p_backup_password: backupPassword,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data;
 }
 
 export async function adminFullImport(backup, backupPassword, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_full_import", {
+  const data = await callAdminRpc("rpc_admin_full_import", {
     p_backup_password: backupPassword,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
     p_data: backup,
   });
-  if (error) throw error;
   return data;
 }
 
 export async function adminChangeDeletePassword(currentPassword, newPassword, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_change_delete_password", {
+  const data = await callAdminRpc("rpc_admin_change_delete_password", {
     p_current_password: currentPassword,
     p_new_password: newPassword,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data === true || data?.[0] || null;
 }
 
 export async function adminDeleteSemester(semesterId, deletePassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_delete_semester", {
-    p_semester_id: semesterId,
+  const data = await callAdminRpc("rpc_admin_delete_semester", {
+    p_semester_id:     semesterId,
     p_delete_password: deletePassword,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminDeleteProject(projectId, deletePassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_delete_project", {
-    p_project_id: projectId,
+  const data = await callAdminRpc("rpc_admin_delete_project", {
+    p_project_id:      projectId,
     p_delete_password: deletePassword,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminDeleteJuror(jurorId, deletePassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_delete_juror", {
-    p_juror_id: jurorId,
+  const data = await callAdminRpc("rpc_admin_delete_juror", {
+    p_juror_id:        jurorId,
     p_delete_password: deletePassword,
   });
-  if (error) throw error;
   return data === true;
 }
 
 export async function adminDeleteCounts(targetType, targetId, adminPassword) {
-  const { data, error } = await supabase.rpc("rpc_admin_delete_counts", {
+  const data = await callAdminRpc("rpc_admin_delete_counts", {
     p_type: targetType,
     p_id: targetId,
     p_admin_password: adminPassword,
-    p_rpc_secret:     RPC_SECRET,
   });
-  if (error) throw error;
   return data;
 }
 

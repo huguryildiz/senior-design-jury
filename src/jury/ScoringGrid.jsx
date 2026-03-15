@@ -74,6 +74,7 @@ const ScoringGrid = memo(function ScoringGrid({
                 <button
                   className={`rubric-btn${openRubric === crit.id ? " is-open" : ""}`}
                   onClick={() => setOpenRubric(openRubric === crit.id ? null : crit.id)}
+                  aria-label={`View rubric for ${crit.label}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" className="rubric-btn-icon">
                     <path d="M16 5H3" />
@@ -138,6 +139,7 @@ const ScoringGrid = memo(function ScoringGrid({
                 placeholder="—"
                 className="score-input"
                 disabled={lockActive}
+                aria-label={`Score for ${crit.label}, max ${crit.max}`}
               />
               <span className="score-bar-wrap">
                 <span className="score-bar" style={{ width: `${barPct}%` }} />
@@ -167,6 +169,7 @@ const ScoringGrid = memo(function ScoringGrid({
           placeholder="Optional feedback on the project, presentation, or teamwork."
           rows={3}
           disabled={lockActive}
+          aria-label="Comments for this group"
         />
       </div>
 
