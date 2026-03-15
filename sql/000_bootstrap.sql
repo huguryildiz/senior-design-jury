@@ -3,6 +3,13 @@
 -- Single-shot bootstrap for a fresh DB.
 -- Safe to run on an empty project; mostly idempotent on re-run.
 --
+-- Incorporates all changes from 001_security_fixes.sql (2026-03-14):
+--   C1: GRANT for rpc_admin_full_export (was missing)
+--   C2: gen_random_bytes-based CSPRNG for PIN generation (4 locations)
+--   M1: Audit log on pin_plain_once IS NULL recovery path
+--   M3: Log every failed PIN attempt (not only lockout)
+--   L5: Strip pin_hash / pin_plain_once from rpc_admin_full_export payload
+--
 -- Includes:
 --   - Extensions
 --   - Tables + constraints + indexes
@@ -133,6 +140,9 @@ UPDATE public.settings
 SET value = NULL
 WHERE key IN ('admin_password_hash', 'delete_password_hash', 'backup_password_hash')
   AND (value IS NULL OR value = '');
+
+-- Remove rpc_secret from settings table — migrated to Supabase Vault.
+DELETE FROM public.settings WHERE key = 'rpc_secret';
 
 -- Enforce unique group numbers per semester (safety for concurrent inserts).
 DO $$
@@ -925,7 +935,41 @@ $$;
 
 -- ── Admin RPCs ──────────────────────────────────────────────
 
-CREATE OR REPLACE FUNCTION public._verify_admin_password(p_password text)
+-- RPC secret check (defence-in-depth, DB-side only).
+-- The secret is stored in Supabase Vault (name = 'rpc_secret').
+-- To enable: add a secret named 'rpc_secret' in Supabase Dashboard > Vault.
+-- Fail-open when not configured (NULL/empty) — safe gradual rollout.
+-- To disable: delete the 'rpc_secret' secret from Vault.
+CREATE OR REPLACE FUNCTION public._verify_rpc_secret(p_provided text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_expected text;
+BEGIN
+  SELECT decrypted_secret INTO v_expected
+  FROM vault.decrypted_secrets
+  WHERE name = 'rpc_secret'
+  LIMIT 1;
+  IF v_expected IS NULL OR v_expected = '' THEN
+    RETURN; -- Not configured → fail-open.
+  END IF;
+  IF p_provided IS DISTINCT FROM v_expected THEN
+    RAISE EXCEPTION 'unauthorized: rpc_secret mismatch'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public._verify_rpc_secret(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public._verify_rpc_secret(text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public._verify_admin_password(
+  p_password    text,
+  p_rpc_secret  text DEFAULT ''
+)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -934,6 +978,8 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
+
   SELECT value INTO v_hash
   FROM settings
   WHERE key = 'admin_password_hash';
@@ -946,28 +992,109 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.rpc_admin_login(p_password text)
-RETURNS boolean
+-- Rate-limited admin login (SEC-4).
+-- Return type: TABLE(ok, locked_until, failed_attempts).
+-- Policy: 5 consecutive failures → 15-minute lockout.
+-- State stored in settings table (admin_failed_attempts, admin_locked_until).
+-- DROP first so re-running bootstrap against an existing DB doesn't fail on
+-- the return-type change.
+DROP FUNCTION IF EXISTS public.rpc_admin_login(text, text);
+
+CREATE FUNCTION public.rpc_admin_login(
+  p_password   text,
+  p_rpc_secret text DEFAULT ''
+)
+RETURNS TABLE(ok boolean, locked_until timestamptz, failed_attempts integer)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
-  v_ok boolean;
+  v_attempts_str text;
+  v_locked_str   text;
+  v_attempts     integer;
+  v_locked       timestamptz;
+  v_new_locked   timestamptz;
+  v_now          timestamptz := now();
+  v_ok           boolean;
 BEGIN
-  v_ok := public._verify_admin_password(p_password);
-  IF NOT v_ok THEN
-    PERFORM public._audit_log(
-      'system',
-      null::uuid,
-      'admin_login_failed',
-      'settings',
-      null::uuid,
-      'Admin login failed.',
-      null
-    );
+  -- Read current rate-limit state
+  SELECT value INTO v_attempts_str FROM settings WHERE key = 'admin_failed_attempts';
+  SELECT value INTO v_locked_str   FROM settings WHERE key = 'admin_locked_until';
+
+  v_attempts := COALESCE(v_attempts_str::integer, 0);
+  v_locked   := CASE
+                  WHEN v_locked_str IS NOT NULL AND v_locked_str <> ''
+                  THEN v_locked_str::timestamptz
+                  ELSE NULL
+                END;
+
+  -- Reject immediately if still locked
+  IF v_locked IS NOT NULL AND v_locked > v_now THEN
+    RETURN QUERY SELECT false, v_locked, v_attempts;
+    RETURN;
   END IF;
-  RETURN v_ok;
+
+  -- Lock window expired: reset counter
+  IF v_locked IS NOT NULL AND v_locked <= v_now THEN
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_failed_attempts', '0', now())
+      ON CONFLICT (key) DO UPDATE SET value = '0', updated_at = now();
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_locked_until', '', now())
+      ON CONFLICT (key) DO UPDATE SET value = '', updated_at = now();
+    v_attempts := 0;
+    v_locked   := NULL;
+  END IF;
+
+  -- Verify password
+  v_ok := public._verify_admin_password(p_password, p_rpc_secret);
+
+  IF v_ok THEN
+    -- Success: clear rate-limit state
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_failed_attempts', '0', now())
+      ON CONFLICT (key) DO UPDATE SET value = '0', updated_at = now();
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_locked_until', '', now())
+      ON CONFLICT (key) DO UPDATE SET value = '', updated_at = now();
+    RETURN QUERY SELECT true, null::timestamptz, 0;
+    RETURN;
+  END IF;
+
+  -- Failed: increment counter, maybe lock
+  v_attempts   := v_attempts + 1;
+  v_new_locked := NULL;
+
+  IF v_attempts >= 5 THEN
+    v_new_locked := v_now + interval '15 minutes';
+  END IF;
+
+  INSERT INTO settings (key, value, updated_at)
+    VALUES ('admin_failed_attempts', v_attempts::text, now())
+    ON CONFLICT (key) DO UPDATE SET value = v_attempts::text, updated_at = now();
+
+  IF v_new_locked IS NOT NULL THEN
+    INSERT INTO settings (key, value, updated_at)
+      VALUES ('admin_locked_until', v_new_locked::text, now())
+      ON CONFLICT (key) DO UPDATE SET value = v_new_locked::text, updated_at = now();
+  END IF;
+
+  PERFORM public._audit_log(
+    'system',
+    null::uuid,
+    'admin_login_failed',
+    'settings',
+    null::uuid,
+    'Admin login failed. Attempt ' || v_attempts || '.' ||
+      CASE WHEN v_new_locked IS NOT NULL
+           THEN ' Account locked until ' || v_new_locked::text || '.'
+           ELSE ''
+      END,
+    null
+  );
+
+  RETURN QUERY SELECT false, v_new_locked, v_attempts;
 END;
 $$;
 
@@ -1052,7 +1179,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_admin_change_delete_password(
   p_current_password text,
   p_new_password text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1060,7 +1188,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1114,7 +1242,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_admin_change_backup_password(
   p_current_password text,
   p_new_password     text,
-  p_admin_password   text
+  p_admin_password   text,
+  p_rpc_secret       text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1122,7 +1251,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1150,7 +1279,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_full_export(
   p_backup_password text,
-  p_admin_password  text
+  p_admin_password  text,
+  p_rpc_secret      text DEFAULT ''
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1160,7 +1290,7 @@ AS $$
 DECLARE
   v_payload jsonb;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1207,7 +1337,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_admin_full_import(
   p_backup_password text,
   p_admin_password  text,
-  p_data            jsonb
+  p_data            jsonb,
+  p_rpc_secret      text DEFAULT ''
 )
 RETURNS text
 LANGUAGE plpgsql
@@ -1217,7 +1348,7 @@ AS $$
 DECLARE
   r jsonb;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1359,7 +1490,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_bootstrap_backup_password(
   p_new_password   text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1369,7 +1501,7 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1394,10 +1526,10 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public._assert_backup_password(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_backup_password(text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_change_backup_password(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_full_import(text, text, jsonb) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_backup_password(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_change_backup_password(text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_full_import(text, text, jsonb, text) TO anon, authenticated;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], integer);
 DROP FUNCTION IF EXISTS public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer);
@@ -1416,7 +1548,8 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_list_audit_logs(
   p_search_year    integer DEFAULT NULL,
   p_limit          integer DEFAULT 100,
   p_before_at      timestamptz DEFAULT NULL,
-  p_before_id      uuid DEFAULT NULL
+  p_before_id      uuid DEFAULT NULL,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   id          uuid,
@@ -1439,7 +1572,7 @@ DECLARE
   v_actions text[];
   v_search text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1503,7 +1636,8 @@ $$;
 DROP FUNCTION IF EXISTS public.rpc_admin_get_scores(uuid, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_get_scores(
   p_semester_id    uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   juror_id      uuid,
@@ -1528,7 +1662,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1590,7 +1724,8 @@ $$;
 DROP FUNCTION IF EXISTS public.rpc_admin_project_summary(uuid, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_project_summary(
   p_semester_id    uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   project_id     uuid,
@@ -1612,7 +1747,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1656,7 +1791,8 @@ $$;
 DROP FUNCTION IF EXISTS public.rpc_admin_outcome_trends(uuid[], text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_outcome_trends(
   p_semester_ids   uuid[],
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   semester_id   uuid,
@@ -1673,7 +1809,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1712,7 +1848,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_set_active_semester(
   p_semester_id uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1722,7 +1859,7 @@ AS $$
 DECLARE
   v_name text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1758,7 +1895,8 @@ DROP FUNCTION IF EXISTS public.rpc_admin_create_semester(text, date, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_create_semester(
   p_name        text,
   p_poster_date date,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   id          uuid,
@@ -1777,7 +1915,7 @@ DECLARE
   v_active      boolean;
   v_poster_date date;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1816,7 +1954,8 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_update_semester(
   p_semester_id    uuid,
   p_name           text,
   p_poster_date    date,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1826,7 +1965,7 @@ AS $$
 DECLARE
   v_name text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1862,9 +2001,11 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_delete_semester(uuid, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_delete_semester(uuid, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_semester(
   p_semester_id uuid,
-  p_delete_password text
+  p_delete_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -1874,6 +2015,7 @@ AS $$
 DECLARE
   v_name text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
   PERFORM public._assert_delete_password(p_delete_password);
 
   SELECT name INTO v_name FROM semesters WHERE id = p_semester_id;
@@ -1901,7 +2043,8 @@ $$;
 DROP FUNCTION IF EXISTS public.rpc_admin_list_projects(uuid, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_list_projects(
   p_semester_id uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   id uuid,
@@ -1917,7 +2060,7 @@ SET search_path = public, extensions
 AS $$
 #variable_conflict use_column
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1935,7 +2078,8 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_create_project(
   p_group_no integer,
   p_project_title text,
   p_group_students text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (project_id uuid)
 LANGUAGE plpgsql
@@ -1946,7 +2090,7 @@ DECLARE
   v_id       uuid;
   v_sem_name text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -1991,7 +2135,8 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_upsert_project(
   p_group_no integer,
   p_project_title text,
   p_group_students text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (project_id uuid)
 LANGUAGE plpgsql
@@ -2005,7 +2150,7 @@ DECLARE
   v_message  text;
   v_sem_name text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2049,9 +2194,11 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_delete_project(uuid, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_delete_project(uuid, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_project(
   p_project_id uuid,
-  p_delete_password text
+  p_delete_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2063,6 +2210,7 @@ DECLARE
   v_group integer;
   v_semester_id uuid;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
   PERFORM public._assert_delete_password(p_delete_password);
 
   SELECT project_title, group_no, semester_id
@@ -2100,7 +2248,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_admin_create_juror(
   p_juror_name text,
   p_juror_inst text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (juror_id uuid, juror_name text, juror_inst text)
 LANGUAGE plpgsql
@@ -2119,7 +2268,7 @@ DECLARE
   v_pin text;
   v_hash text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2189,7 +2338,8 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_update_juror(
   p_juror_id uuid,
   p_juror_name text,
   p_juror_inst text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2197,7 +2347,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2225,9 +2375,11 @@ END;
 $$;
 
 DROP FUNCTION IF EXISTS public.rpc_admin_delete_juror(uuid, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_delete_juror(uuid, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_juror(
   p_juror_id uuid,
-  p_delete_password text
+  p_delete_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2237,6 +2389,7 @@ AS $$
 DECLARE
   v_name text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
   PERFORM public._assert_delete_password(p_delete_password);
 
   SELECT juror_name INTO v_name FROM jurors WHERE id = p_juror_id;
@@ -2265,7 +2418,8 @@ DROP FUNCTION IF EXISTS public.rpc_admin_delete_counts(text, uuid, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_delete_counts(
   p_type text,
   p_id   uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -2278,7 +2432,7 @@ DECLARE
   v_juror_auths bigint := 0;
   v_semesters   bigint := 0;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2325,7 +2479,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_admin_reset_juror_pin(
   p_semester_id uuid,
   p_juror_id uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (juror_id uuid, pin_plain_once text, failed_attempts integer, locked_until timestamptz)
 LANGUAGE plpgsql
@@ -2342,7 +2497,7 @@ DECLARE
   v_secret text;
   v_pin_enc text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2399,7 +2554,8 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_get_settings(
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (key text, value text)
 LANGUAGE plpgsql
@@ -2408,7 +2564,7 @@ SET search_path = public, extensions
 AS $$
 #variable_conflict use_column
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2417,6 +2573,7 @@ BEGIN
     FROM settings s
     WHERE s.key NOT IN (
       'pin_secret',
+      'rpc_secret',
       'admin_password_hash',
       'delete_password_hash',
       'backup_password_hash'
@@ -2428,7 +2585,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.rpc_admin_set_setting(
   p_key text,
   p_value text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2437,7 +2595,7 @@ SET search_path = public, extensions
 AS $$
 #variable_conflict use_column
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2465,7 +2623,8 @@ DROP FUNCTION IF EXISTS public.rpc_admin_set_semester_eval_lock(uuid, boolean, t
 CREATE OR REPLACE FUNCTION public.rpc_admin_set_semester_eval_lock(
   p_semester_id uuid,
   p_enabled boolean,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2476,7 +2635,7 @@ DECLARE
   v_sem_name text;
   v_enabled boolean := COALESCE(p_enabled, false);
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2515,7 +2674,8 @@ $$;
 DROP FUNCTION IF EXISTS public.rpc_admin_list_jurors(text, uuid);
 CREATE OR REPLACE FUNCTION public.rpc_admin_list_jurors(
   p_admin_password text,
-  p_semester_id    uuid
+  p_semester_id    uuid,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (
   juror_id uuid,
@@ -2539,7 +2699,7 @@ SET search_path = public, extensions
 AS $$
 #variable_conflict use_column
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2622,7 +2782,8 @@ CREATE OR REPLACE FUNCTION public.rpc_admin_set_juror_edit_mode(
   p_semester_id uuid,
   p_juror_id uuid,
   p_enabled boolean,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2635,7 +2796,7 @@ DECLARE
   v_has_final_submission boolean := false;
   v_sem_locked boolean := false;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2703,7 +2864,8 @@ DROP FUNCTION IF EXISTS public.rpc_admin_force_close_juror_edit_mode(uuid, uuid,
 CREATE OR REPLACE FUNCTION public.rpc_admin_force_close_juror_edit_mode(
   p_semester_id uuid,
   p_juror_id uuid,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -2714,7 +2876,7 @@ DECLARE
   v_name text;
   v_sem_name text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2886,9 +3048,12 @@ $$;
 
 -- ── Admin password security ─────────────────────────────────
 
+DROP FUNCTION IF EXISTS public.rpc_admin_change_password(text, text);
+DROP FUNCTION IF EXISTS public.rpc_admin_change_password(text, text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_change_password(
   p_current_password text,
-  p_new_password text
+  p_new_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS TABLE (ok boolean)
 LANGUAGE plpgsql
@@ -2898,6 +3063,8 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
+
   SELECT value INTO v_hash
   FROM settings
   WHERE key = 'admin_password_hash';
@@ -2932,7 +3099,8 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_bootstrap_delete_password(
   p_new_password text,
-  p_admin_password text
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
 )
 RETURNS TABLE (ok boolean)
 LANGUAGE plpgsql
@@ -2942,7 +3110,7 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
-  IF NOT public._verify_admin_password(p_admin_password) THEN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
   END IF;
 
@@ -2974,8 +3142,11 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.rpc_admin_bootstrap_password(text);
+DROP FUNCTION IF EXISTS public.rpc_admin_bootstrap_password(text, text);
 CREATE OR REPLACE FUNCTION public.rpc_admin_bootstrap_password(
-  p_new_password text
+  p_new_password text,
+  p_rpc_secret text DEFAULT ''
 )
 RETURNS TABLE (ok boolean)
 LANGUAGE plpgsql
@@ -2985,6 +3156,8 @@ AS $$
 DECLARE
   v_hash text;
 BEGIN
+  PERFORM public._verify_rpc_secret(p_rpc_secret);
+
   SELECT value INTO v_hash
   FROM settings
   WHERE key = 'admin_password_hash';
@@ -3363,33 +3536,33 @@ GRANT EXECUTE ON FUNCTION public.rpc_verify_juror_pin(uuid, text, text, text) TO
 GRANT EXECUTE ON FUNCTION public.rpc_get_juror_edit_state(uuid, uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_finalize_juror_submission(uuid, uuid) TO anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.rpc_admin_login(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_login(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_security_state() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_get_scores(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_project_summary(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_outcome_trends(uuid[], text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_set_active_semester(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_create_semester(text, date, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_update_semester(uuid, text, date, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_list_projects(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_create_project(uuid, integer, text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_upsert_project(uuid, integer, text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_project(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_counts(text, uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_create_juror(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_update_juror(uuid, text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_juror_pin(uuid, uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_get_settings(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_set_setting(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_set_semester_eval_lock(uuid, boolean, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer, integer, integer, integer, timestamptz, uuid) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_list_jurors(text, uuid) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_force_close_juror_edit_mode(uuid, uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_delete_password(text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_get_scores(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_project_summary(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_outcome_trends(uuid[], text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_set_active_semester(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_create_semester(text, date, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_update_semester(uuid, text, date, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_list_projects(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_create_project(uuid, integer, text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_upsert_project(uuid, integer, text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_project(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_counts(text, uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_create_juror(text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_update_juror(uuid, text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_juror(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_juror_pin(uuid, uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_get_settings(text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_set_setting(text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_set_semester_eval_lock(uuid, boolean, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_list_audit_logs(text, timestamptz, timestamptz, text[], text[], text, integer, integer, integer, integer, timestamptz, uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_list_jurors(text, uuid, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_set_juror_edit_mode(uuid, uuid, boolean, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_force_close_juror_edit_mode(uuid, uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_change_password(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_password(text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_delete_password(text, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text, text) TO anon, authenticated;

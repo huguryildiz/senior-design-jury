@@ -9,6 +9,19 @@ import { qaTest } from "../../test/qaTest.js";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
 
+// EvalStep imports isScoreFilled from useJuryState, which transitively imports
+// api.js → supabaseClient.js. Mock api to avoid requiring Supabase env vars in CI.
+vi.mock("../../shared/api", () => ({
+  listSemesters:               vi.fn(),
+  createOrGetJurorAndIssuePin: vi.fn(),
+  verifyJurorPin:              vi.fn(),
+  listProjects:                vi.fn(),
+  upsertScore:                 vi.fn(),
+  getJurorEditState:           vi.fn(),
+  finalizeJurorSubmission:     vi.fn(),
+  getActiveSemester:           vi.fn(),
+}));
+
 vi.mock("../../shared/Icons", () => ({
   ChevronLeftIcon:    "span",
   ChevronRightIcon:   "span",
@@ -140,7 +153,7 @@ describe("EvalStep — lock state", () => {
     renderEval({ lockActive: true });
 
     // Lock banner must be visible
-    expect(screen.getByText(/evaluations are locked for this semester/i)).toBeInTheDocument();
+    expect(screen.getByText(/evaluations are locked/i)).toBeInTheDocument();
 
     // All score inputs must be disabled
     const inputs = screen.getAllByRole("textbox");

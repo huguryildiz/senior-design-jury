@@ -132,11 +132,18 @@ export default function DeleteConfirmDialog({
               </>
             )}
           </div>
-          {buildCountSummary(counts) && (
+          {isSemesterLabel ? (
+            <div className="delete-dialog__impact manage-delete-impact manage-delete-impact--warning">
+              <span className="manage-delete-warning-icon" aria-hidden="true"><TriangleAlertLucideIcon /></span>
+              <div className="manage-delete-warning-text">
+                This will permanently delete <strong>all jurors, groups, and scores</strong> associated with this semester. This action cannot be undone.
+              </div>
+            </div>
+          ) : buildCountSummary(counts) ? (
             <div className="delete-dialog__impact manage-delete-impact">
               {buildCountSummary(counts)}
             </div>
-          )}
+          ) : null}
           <div className="delete-dialog__line delete-dialog__sub">
             Enter the delete password to confirm.
           </div>

@@ -44,6 +44,7 @@ export default function ManageJurorsPanel({
   isMobile,
   isOpen,
   onToggle,
+  onDirtyChange,
   onImport,
   onAddJuror,
   onEditJuror,
@@ -65,9 +66,25 @@ export default function ManageJurorsPanel({
   const [importSuccess, setImportSuccess] = useState("");
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [openSemesterMenuId, setOpenSemesterMenuId] = useState(null);
   const PREVIEW_JUROR_COUNT = 4;
+
+  const isDirty =
+    (showAdd && (form.juror_name.trim() !== "" || form.juror_inst.trim() !== "")) ||
+    showEdit;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleToggle = () => {
+    if (isOpen && isDirty) {
+      if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+    }
+    onToggle();
+  };
 
   const updateScrollState = (el) => {
     if (!el) return;
@@ -100,33 +117,33 @@ export default function ManageJurorsPanel({
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredJurors = normalizedSearch
     ? orderedJurors.filter((j) => {
-        const name = j.juryName || j.juror_name || "";
-        const inst = j.juryDept || j.juror_inst || "";
-        const scoredSemesters = getScoredSemesters(j);
-        const semestersText = scoredSemesters.join(" ");
-        const semestersLabel = scoredSemesters.join(" · ");
-        const semestersSearch = scoredSemesters.map((s) => buildSemesterSearchText(s)).join(" ");
-        const lastActivity =
-          j.lastActivityAt
-          || j.last_activity_at
-          || j.lastSeenAt
-          || j.last_seen_at
-          || j.updatedAt
-          || j.updated_at
-          || "";
-        const lastActivitySearch = buildTimestampSearchText(lastActivity);
-        const haystack = [
-          name,
-          inst,
-          semestersText,
-          semestersLabel,
-          semestersSearch,
-          lastActivitySearch,
-        ]
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(normalizedSearch);
-      })
+      const name = j.juryName || j.juror_name || "";
+      const inst = j.juryDept || j.juror_inst || "";
+      const scoredSemesters = getScoredSemesters(j);
+      const semestersText = scoredSemesters.join(" ");
+      const semestersLabel = scoredSemesters.join(" · ");
+      const semestersSearch = scoredSemesters.map((s) => buildSemesterSearchText(s)).join(" ");
+      const lastActivity =
+        j.lastActivityAt
+        || j.last_activity_at
+        || j.lastSeenAt
+        || j.last_seen_at
+        || j.updatedAt
+        || j.updated_at
+        || "";
+      const lastActivitySearch = buildTimestampSearchText(lastActivity);
+      const haystack = [
+        name,
+        inst,
+        semestersText,
+        semestersLabel,
+        semestersSearch,
+        lastActivitySearch,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedSearch);
+    })
     : orderedJurors;
   const visibleJurors = normalizedSearch
     ? filteredJurors
@@ -255,16 +272,10 @@ export default function ManageJurorsPanel({
     const skippedExisting = data.filter((r) => existingKeys.has(r._key));
     const toImport = data.filter((r) => !existingKeys.has(r._key));
 
-    const successParts = [];
-    if (toImport.length) {
-      const preview = toImport
-        .slice(0, 4)
-        .map((r) => `${r.juror_name} / ${r.juror_inst}`)
-        .join("; ");
-      const more = toImport.length > 4 ? ` (+${toImport.length - 4} more)` : "";
-      successParts.push(`• Added jurors: ${preview}${more}.`);
-    }
-    setImportSuccess(successParts.join("\n"));
+    const successMsg = toImport.length > 0
+      ? `• Import complete: ${toImport.length} added, ${skippedExisting.length} skipped.`
+      : "";
+    setImportSuccess(successMsg);
 
     const warningParts = [];
     if (skippedExisting.length) {
@@ -282,7 +293,13 @@ export default function ManageJurorsPanel({
       return;
     }
 
-    const res = await onImport?.(toImport.map(({ juror_name, juror_inst }) => ({ juror_name, juror_inst })));
+    setIsImporting(true);
+    let res;
+    try {
+      res = await onImport?.(toImport.map(({ juror_name, juror_inst }) => ({ juror_name, juror_inst })));
+    } finally {
+      setIsImporting(false);
+    }
     if (res?.formError) {
       setImportSuccess("");
       setImportError(res.formError);
@@ -310,7 +327,7 @@ export default function ManageJurorsPanel({
       <button
         type="button"
         className="manage-card-header"
-        onClick={onToggle}
+        onClick={handleToggle}
         aria-expanded={isOpen}
       >
         <div className="manage-card-title">
@@ -353,10 +370,10 @@ export default function ManageJurorsPanel({
           </div>
 
           <div className="manage-list">
-          <div className="manage-search">
-            <span className="manage-search-icon" aria-hidden="true"><SearchIcon /></span>
-            <input
-              className="manage-input manage-search-input"
+            <div className="manage-search">
+              <span className="manage-search-icon" aria-hidden="true"><SearchIcon /></span>
+              <input
+                className="manage-input manage-search-input"
                 type="text"
                 placeholder="Search jurors"
                 aria-label="Search jurors"
@@ -569,7 +586,7 @@ export default function ManageJurorsPanel({
                       const inst = form.juror_inst.trim();
                       const key = normalizeKey(name, inst);
                       if (existingJurorKeys.has(key)) {
-                        setAddError("A juror with the same name and institution / department already exists.");
+                        setAddError("A juror with the same name and institution/department already exists.");
                         return;
                       }
                       const res = await onAddJuror({
@@ -743,8 +760,8 @@ export default function ManageJurorsPanel({
                   </details>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn manage-btn--import-juror-cancel" type="button" onClick={() => setShowImport(false)}>
-                    Cancel
+                  <button className="manage-btn manage-btn--import-juror-cancel" type="button" onClick={() => setShowImport(false)} disabled={isImporting}>
+                    {isImporting ? "Importing…" : "Cancel"}
                   </button>
                 </div>
               </div>

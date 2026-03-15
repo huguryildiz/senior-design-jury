@@ -1,5 +1,7 @@
 // src/shared/StatCard.jsx
 
+import { useId } from "react";
+
 /**
  * Generic stat card for admin dashboards.
  *
@@ -13,7 +15,9 @@
  *   - Progress ring. pct: 0–100. label defaults to "${pct}%"; pass "" to suppress.
  * @param {React.ReactNode} [icon]   - Icon shown in place of the ring when ring is absent.
  */
-export default function StatCard({ value, label, kicker, sub, meta, metaLines, ring, icon }) {
+export default function StatCard({ value, label, kicker, sub, meta, metaLines, ring, icon, tooltip }) {
+  const tooltipId = useId();
+
   const ringLabel = ring
     ? ring.label === undefined
       ? `${ring.pct}%`
@@ -25,7 +29,26 @@ export default function StatCard({ value, label, kicker, sub, meta, metaLines, r
       <div className="stat-card-body">
         <div className="stat-card-value">{value}</div>
         {kicker && <div className="stat-card-kicker">{kicker}</div>}
-        <div className="stat-card-label">{label}</div>
+        <div className="stat-card-label">
+          {label}
+          {tooltip && (
+            <span className="stat-card-tooltip-wrapper">
+              <span
+                className="stat-card-tooltip-icon"
+                tabIndex={0}
+                aria-label="More information"
+                aria-describedby={tooltipId}
+              >ⓘ</span>
+              <span
+                id={tooltipId}
+                role="tooltip"
+                className="stat-card-tooltip-text"
+              >
+                {tooltip}
+              </span>
+            </span>
+          )}
+        </div>
         {sub && <div className="stat-card-sub">{sub}</div>}
         {Array.isArray(metaLines) && metaLines.length > 0 ? (
           <div className="stat-card-meta">

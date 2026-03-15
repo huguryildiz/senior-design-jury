@@ -118,6 +118,9 @@ function handleInlineTouchEnd(e) {
       inner.style.transform  = `translateX(${target}px)`;
       el.dataset.currentTranslate = String(target);
       inner.addEventListener("transitionend", function onEnd() {
+        // Guard: if the component unmounted while the transition was running,
+        // el is detached. Bail early to avoid stale-closure DOM access.
+        if (!el.isConnected) return;
         inner.style.transition = "";
         inner.removeEventListener("transitionend", onEnd);
         if (Number(el.dataset.currentTranslate ?? "0") >= 0) {
@@ -720,7 +723,13 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
       </div>
       <div className="matrix-scroll-wrap">
         <div className="matrix-scroll" ref={tableScrollRef} onWheel={handleMatrixWheel}>
-          <table className="matrix-table" style={tableStyle}>
+          <table
+            className="matrix-table"
+            style={tableStyle}
+            role="grid"
+            aria-rowcount={visibleJurors.length + 1}
+            aria-colcount={groups.length + 1}
+          >
             <thead>
               <tr>
                 {/* Juror column — sort + text filter */}
@@ -761,7 +770,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                   const gFilter        = groupScoreFilters[g.id] || { min: "", max: "" };
                   const isFilterActive = hasActiveValidRange(gFilter) || activeFilterCol === g.id;
                   return (
-                    <th key={g.id}>
+                    <th key={g.id} scope="col">
                       <div className="matrix-group-th-inner">
                         <button
                           className={`matrix-col-sort${isSortActive ? " active" : ""}`}
@@ -791,7 +800,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                 const isFinal = jurorFinalMap.get(juror.key) && !juror.editEnabled;
                 return (
                   <tr key={juror.key}>
-                    <td className="matrix-juror">
+                    <td className="matrix-juror" role="rowheader" scope="row">
                       <JurorCell
                         juror={juror}
                         workflowState={jurorWorkflowMap.get(juror.key)}
@@ -805,6 +814,7 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "" }) {
                       return (
                         <td
                           key={g.id}
+                          role="gridcell"
                           className={cellClassName(state, isFinal)}
                           aria-label={tooltip}
                           tabIndex={tooltip ? 0 : undefined}

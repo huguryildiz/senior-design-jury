@@ -1673,6 +1673,56 @@ export default function ScoreDetails({
         ) : null,
         content: (
           <>
+            <div className="timestamp-shortcuts" style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+              {[
+                {
+                  label: "This Week",
+                  onClick: () => {
+                    const today = new Date();
+                    const day = today.getDay();
+                    const diffToMon = (day === 0 ? -6 : 1 - day);
+                    const mon = new Date(today);
+                    mon.setDate(today.getDate() + diffToMon);
+                    const sun = new Date(mon);
+                    sun.setDate(mon.getDate() + 6);
+                    const pad = (n) => String(n).padStart(2, "0");
+                    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                    setFrom(fmt(mon));
+                    setTo(fmt(sun));
+                    setDateError(null);
+                    closePopover();
+                  },
+                },
+                {
+                  label: "This Month",
+                  onClick: () => {
+                    const today = new Date();
+                    const pad = (n) => String(n).padStart(2, "0");
+                    const y = today.getFullYear();
+                    const m = today.getMonth() + 1;
+                    const lastDay = new Date(y, m, 0).getDate();
+                    setFrom(`${y}-${pad(m)}-01`);
+                    setTo(`${y}-${pad(m)}-${pad(lastDay)}`);
+                    setDateError(null);
+                    closePopover();
+                  },
+                },
+                {
+                  label: "All Time",
+                  onClick: () => { setFrom(""); setTo(""); setDateError(null); closePopover(); },
+                },
+              ].map(({ label, onClick }) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="col-filter-clear"
+                  style={{ fontSize: 11, padding: "2px 6px" }}
+                  onClick={onClick}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="timestamp-field">
               <label>From</label>
               <input
@@ -1735,7 +1785,7 @@ export default function ScoreDetails({
             }}
           >
             <DownloadIcon />
-            <span className="export-label">Excel</span>
+            <span className="export-label">Export XLSX ({rows.length} rows)</span>
           </button>
         </div>
       </div>
@@ -1860,6 +1910,7 @@ export default function ScoreDetails({
       <div className="details-scroll-hint">
         <span className="details-scroll-icon" aria-hidden="true"><InfoIcon /></span>
         <span>Swipe to view more columns. Long text scrolls on touch.</span>
+        <span title="Click a column header to sort. Use the filter inputs to narrow results." style={{cursor:'help', opacity:0.6, fontSize:12, marginLeft:6}}>ⓘ</span>
       </div>
 
       {/* Details table */}

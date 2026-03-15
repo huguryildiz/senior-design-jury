@@ -5,7 +5,7 @@
 // Receives `projects` as a prop (dynamic from DB).
 // ============================================================
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CRITERIA } from "../config";
 import { HomeIcon, ChevronDownIcon, PencilIcon, HistoryIcon } from "../shared/Icons";
 import { getCellState, getPartialTotal, jurorStatusMeta } from "../admin/scoreHelpers";
@@ -28,6 +28,10 @@ export default function DoneStep({
 }) {
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const isEditMode = Boolean(onEditScores);
+  const prefersReducedMotion = useMemo(
+    () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
   const displayScores = isEditMode ? (scores || {}) : (doneScores || scores || {});
   const titleText = isEditMode
     ? "Edit mode is enabled"
@@ -67,8 +71,8 @@ export default function DoneStep({
       <div className="premium-card done-card">
         <div className="premium-header">
           <div className={`premium-icon-square${isEditMode ? "" : " confetti-icon"}`} aria-hidden="true">
-            {!isEditMode && <span className="confetti-burst confetti-a" />}
-            {!isEditMode && <span className="confetti-burst confetti-b" />}
+            {!isEditMode && !prefersReducedMotion && <span className="confetti-burst confetti-a" />}
+            {!isEditMode && !prefersReducedMotion && <span className="confetti-burst confetti-b" />}
             {headerIcon}
           </div>
           <div className="premium-title">{titleText}</div>

@@ -465,6 +465,7 @@
   transition: all 150ms ease;
 }
 .pdf-export-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 18px rgba(239,68,68,0.18); }
+.pdf-export-btn:focus-visible { box-shadow: 0 0 0 3px rgba(239,68,68,0.3); outline: none; }
 .pdf-export-btn:disabled { opacity: 0.65; box-shadow: none; transform: none; }
 .pdf-hint { font-size: 11px; color: #94a3b8; font-style: italic; align-self: center; }
 .dashboard-toolbar .xlsx-export-btn {
@@ -485,6 +486,7 @@
   transition: all 150ms ease;
 }
 .dashboard-toolbar .xlsx-export-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 20px rgba(21,128,61,0.2); }
+.dashboard-toolbar .xlsx-export-btn:focus-visible { box-shadow: 0 0 0 3px rgba(21,128,61,0.3); outline: none; }
 .dashboard-toolbar .xlsx-export-btn:disabled { opacity: 0.65; box-shadow: none; transform: none; }
 
 /* Align MÜDEK dropdown to the left edge in the dashboard toolbar to avoid overflow */
@@ -822,6 +824,7 @@
   border-color: var(--brand-500);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 12%, transparent);
 }
+.chart-export-btn:focus-visible { box-shadow: var(--btn-focus-ring-brand, 0 0 0 3px rgba(47,86,214,0.3)); outline: none; }
 .chart-export-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -938,6 +941,7 @@
   white-space: nowrap;
 }
 .mudek-tab-btn:hover { color: #374151; }
+.mudek-tab-btn:focus-visible { box-shadow: var(--btn-focus-ring-brand, 0 0 0 3px rgba(47,86,214,0.3)); outline: none; }
 .mudek-tab-btn.active { color: #3B82F6; border-bottom-color: #3B82F6; background: #fff; }
 
 .mudek-dropdown-body {
@@ -1246,3 +1250,39 @@
 /* Print-only sections — hidden on screen */
 .print-header { display: none; }
 .print-report  { display: none; }
+
+/* ── Chart data table (2C accessibility) ─────────────────── */
+.chart-data-table-details {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.chart-data-table-summary {
+  cursor: pointer;
+  color: var(--color-muted, #6b7280);
+  padding: 4px 0;
+  user-select: none;
+  font-size: 11px;
+}
+.chart-data-table-summary:hover { color: var(--color-primary, #3b82f6); }
+.chart-data-table-scroll { overflow-x: auto; margin-top: 6px; }
+.chart-data-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 280px;
+  font-size: 11px;
+}
+.chart-data-table caption {
+  text-align: left;
+  font-size: 11px;
+  color: var(--color-muted, #6b7280);
+  margin-bottom: 4px;
+}
+.chart-data-table th,
+.chart-data-table td {
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  text-align: right;
+  white-space: nowrap;
+}
+.chart-data-table th { background: #f8fafc; font-weight: 600; text-align: center; }
+.chart-data-table td:first-child { text-align: left; }

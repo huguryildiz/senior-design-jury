@@ -7,9 +7,7 @@
   max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  text-align: justify;
-  text-justify: inter-word;
-  hyphens: auto;
+  text-align: left;
 }
 
 .manage-page button,
@@ -2127,13 +2125,17 @@
   border-color: #fecaca;
   border-left: 5px solid #ef4444;
   color: #b91c1c;
-  text-align: justify;
-  text-justify: inter-word;
-  hyphens: auto;
 }
 .manage-alert.error .manage-alert-icon svg {
   width: 18px;
   height: 18px;
+}
+
+.manage-alert.warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-left: 5px solid #f59e0b;
+  color: #92400e;
 }
 
 .manage-export {
@@ -2189,8 +2191,7 @@
 .manage-modal .manage-modal-intro-list,
 .manage-modal .manage-field-error,
 .manage-modal .manage-dropzone-sub {
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .manage-modal-card--create {
@@ -2558,6 +2559,24 @@ textarea.manage-input--create {
 .pin-reset-target-inline {
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+.pin-reset-detail-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.pin-reset-detail-label {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.pin-reset-target-highlight--semester {
+  color: #1d4ed8;
+  font-weight: 600;
+  animation: none;
 }
 .pin-reset-target-prefix {
   color: #0f172a;
@@ -3023,6 +3042,39 @@ textarea.manage-input--create {
   animation: none;
 }
 
+.manage-delete-impact--warning {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #ea580c;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #9a3412;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  hyphens: none;
+}
+.manage-delete-warning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 2px;
+  color: #ea580c;
+  flex-shrink: 0;
+}
+.manage-delete-warning-text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.manage-delete-warning-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
 @keyframes deleteImpactBlink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
@@ -3457,7 +3509,8 @@ textarea.manage-input--create {
 
 .manage-audit-scroll {
   flex: 1;
-  min-height: 0;
+  /* Reserve space so the panel never collapses during loading */
+  min-height: 148px;
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-gutter: stable;
@@ -3500,6 +3553,45 @@ textarea.manage-input--create {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Stale list: dimmed while a replace-fetch is in flight */
+.manage-audit-list--stale {
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+/* Skeleton rows shown on initial load */
+@keyframes manage-audit-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.manage-audit-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.manage-audit-skeleton-row {
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
+  );
+  background-size: 200% 100%;
+  animation: manage-audit-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manage-audit-skeleton-row {
+    animation: none;
+    background: #f1f5f9;
+  }
 }
 
 .manage-audit-row {

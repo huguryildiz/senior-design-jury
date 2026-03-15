@@ -16,7 +16,7 @@ function clampPct(value) {
   return Math.min(100, Math.max(0, value));
 }
 
-export default function OverviewTab({ jurorStats, groups, metrics }) {
+export default function OverviewTab({ jurorStats, groups, metrics, onGoToSettings }) {
   const {
     totalJurors = 0,
     completedJurors = 0,
@@ -64,8 +64,23 @@ export default function OverviewTab({ jurorStats, groups, metrics }) {
   const completedValue = completedHasData ? completedJurors : "—";
 
 
+  const isEmpty = totalJurors === 0 && totalGroups === 0;
+
   return (
     <div className="overview-tab">
+      {isEmpty && (
+        <div className="overview-empty-state" role="status">
+          <span>No data yet. Go to </span>
+          <button
+            type="button"
+            className="overview-empty-settings-link"
+            onClick={() => onGoToSettings?.()}
+          >
+            Settings
+          </button>
+          <span> to add jurors and groups.</span>
+        </div>
+      )}
       <div className="stat-card-cluster overview-stat-cards">
         <StatCard
           value={totalJurors}
@@ -82,12 +97,14 @@ export default function OverviewTab({ jurorStats, groups, metrics }) {
         <StatCard
           value={completedValue}
           label="Completed Jurors"
+          tooltip="Jurors who have completed scoring for all assigned groups and submitted their evaluations."
           metaLines={completedMetaLines}
           ring={completedHasData ? { pct: completedPct, color: ringColor(completedPct) } : null}
         />
         <StatCard
           value={scoredValue}
           label="Scored Evaluations"
+          tooltip="Total group×juror score rows with at least one criterion filled"
           sub={scoredSub}
           metaLines={scoredMetaLines}
           ring={scoredHasData ? { pct: scoredPct, color: ringColor(scoredPct) } : null}

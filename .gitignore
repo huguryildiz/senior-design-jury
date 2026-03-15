@@ -1,11 +1,30 @@
+# Dependencies & build
 node_modules/
 dist/
+.vite/
+
+# Docs
+
+docs/
+
+# Test output
 test-results/
 allure-results/
 allure-report/
-.DS_Store
+playwright-report/
+coverage/
+
+# Environment (never commit secrets)
 .env.local
+.env*.local
+
+# OS
+.DS_Store
+
+# AI / local dev guides (machine-specific, not for repo)
 CLAUDE.md
-misc-docs/
-.claude/worktrees/condescending-chatterjee/
 AGENTS.md
+.claude/
+
+# Raw/ephemeral docs (test CSVs, scratch notes)
+misc-docs/

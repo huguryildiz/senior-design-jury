@@ -24,7 +24,7 @@ import {
   JurorConsistencyHeatmapPrint,
   CriterionBoxPlotChartPrint,
   RubricAchievementChartPrint,
-} from "../Charts";
+} from "../charts";
 
 // ── Export helpers ───────────────────────────────────────────
 const OUTCOMES = CRITERIA.map((c) => ({

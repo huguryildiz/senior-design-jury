@@ -24,6 +24,25 @@ const SORT_OPTIONS = [
 const VIRTUAL_THRESHOLD = 40;
 const ESTIMATED_ROW_HEIGHT = 220;
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mql = window.matchMedia(query);
+    const handler = (e) => setMatches(e.matches);
+    if (mql.addEventListener) mql.addEventListener("change", handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", handler);
+      else mql.removeListener(handler);
+    };
+  }, [query]);
+  return matches;
+}
+
 function getRankKey(p, fallback) {
   return p?.id ?? p?.groupNo ?? p?.name ?? fallback;
 }
@@ -201,6 +220,7 @@ function Row({ index, style, data }) {
 // ── Main component ────────────────────────────────────────
 
 export default function RankingsTab({ ranked, semesterName = "" }) {
+  const [isExporting, setIsExporting] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [search, setSearch] = useState(() => {
     const s = readSection("rankings");
@@ -219,6 +239,8 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
     const s = readSection("rankings");
     return typeof s.filtersOpen === "boolean" ? s.filtersOpen : true;
   });
+
+  const isSmallMobile = useMediaQuery("(max-width: 500px)");
 
   const listRef = useRef(null);
   const sizeMapRef = useRef({});
@@ -354,13 +376,24 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
   function toggleGroup(groupKey) {
     setExpandedGroups((prev) => {
       const next = new Set(prev);
-      next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey);
+      const isOpening = !next.has(groupKey);
+      if (isOpening && isSmallMobile) {
+        return new Set([groupKey]);
+      }
+      if (isOpening) next.add(groupKey);
+      else next.delete(groupKey);
       return next;
     });
   }
 
-  function handleExport() {
-    void exportRankingsXLSX(sorted, CRITERIA_LIST, { semesterName });
+  async function handleExport() {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportRankingsXLSX(sorted, CRITERIA_LIST, { semesterName });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   // Guard: ranked may be undefined during initial render
@@ -378,9 +411,9 @@ export default function RankingsTab({ ranked, semesterName = "" }) {
           </span>
         </div>
         <div className="admin-section-actions">
-          <button className="xlsx-export-btn" onClick={handleExport}>
+          <button className="xlsx-export-btn" onClick={handleExport} disabled={isExporting}>
             <DownloadIcon />
-            <span>Excel</span>
+            <span>{isExporting ? "Exporting…" : "Excel"}</span>
           </button>
         </div>
       </div>

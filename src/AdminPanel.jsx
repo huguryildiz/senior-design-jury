@@ -24,7 +24,7 @@ import {
 import { supabase } from "./lib/supabaseClient";
 import { cmp, rowKey } from "./admin/utils";
 import { readSection, writeSection } from "./admin/persist";
-import { getCellState } from "./admin/scoreHelpers";
+import { getCellState, computeOverviewMetrics } from "./admin/scoreHelpers";
 import { sortSemestersByPosterDateDesc } from "./shared/semesterSort";
 import { HomeIcon, RefreshIcon } from "./admin/components";
 import {
@@ -58,16 +58,16 @@ const CRITERIA_LIST = CRITERIA.map((c) => ({
 }));
 
 const TABS = [
-  { id: "overview",    label: "Overview",    icon: LayoutDashboardIcon },
+  { id: "overview", label: "Overview", icon: LayoutDashboardIcon },
   { id: "scores", label: "Scores", icon: ListChecksIcon },
-  { id: "settings",    label: "Settings",    icon: SettingsIcon },
+  { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
 const EVALUATION_VIEWS = [
-  { id: "rankings",  label: "Rankings",  icon: MedalIcon },
+  { id: "rankings", label: "Rankings", icon: MedalIcon },
   { id: "analytics", label: "Analytics", icon: ChartIcon },
-  { id: "grid",      label: "Grid",      icon: Grid3x3Icon },
-  { id: "details",   label: "Details",   icon: TableIcon },
+  { id: "grid", label: "Grid", icon: Grid3x3Icon },
+  { id: "details", label: "Details", icon: TableIcon },
 ];
 
 function useAnchoredPopover(isOpen, deps = []) {
@@ -152,8 +152,8 @@ function SemesterDropdown({
     variant === "tab"
       ? "tab tab--dropdown semester-dropdown-trigger"
       : variant === "title"
-      ? "semester-dropdown-trigger semester-dropdown-trigger--title"
-      : "status-chip status-chip--semester semester-dropdown-trigger",
+        ? "semester-dropdown-trigger semester-dropdown-trigger--title"
+        : "status-chip status-chip--semester semester-dropdown-trigger",
     semesterOpen ? "open" : "",
   ].filter(Boolean).join(" ");
   const displayLabel = labelPrefix
@@ -264,7 +264,14 @@ function ScoresDropdown({
         onClick={() => setOpen((v) => !v)}
       >
         <ListChecksIcon />
-        <span>Scores</span>
+        <span>
+          Scores
+          {isActive && activeView && (
+            <span className="tab-sub-label" aria-hidden="true">
+              {" · "}{EVALUATION_VIEWS.find((v) => v.id === activeView)?.label}
+            </span>
+          )}
+        </span>
         <span className="semester-dropdown-chevron" aria-hidden="true"><ChevronDownIcon /></span>
       </button>
       {open && createPortal(
@@ -304,14 +311,14 @@ function ScoresDropdown({
 
 export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLoadDone }) {
   // Raw score rows — normalized by api.js to match old GAS field names
-  const [rawScores,  setRawScores]  = useState([]);
+  const [rawScores, setRawScores] = useState([]);
   // Details view — scores across all semesters
   const [detailsScores, setDetailsScores] = useState([]);
   const [detailsSummary, setDetailsSummary] = useState([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const detailsKeyRef = useRef("");
   // All jurors for semester (includes those with zero scores)
-  const [allJurors,  setAllJurors]  = useState([]);
+  const [allJurors, setAllJurors] = useState([]);
   // Per-project aggregates from rpc_admin_project_summary
   const [summaryData, setSummaryData] = useState([]);
   // Semester trend chart data
@@ -323,14 +330,14 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendError, setTrendError] = useState("");
   // Semester selector
-  const [semesterList,       setSemesterList]       = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
   const [selectedSemesterId, setSelectedSemesterId] = useState("");
-  const [semesterOpen,       setSemesterOpen]       = useState(false);
-  const [scoreMenuOpen,      setScoreMenuOpen]      = useState(false);
+  const [semesterOpen, setSemesterOpen] = useState(false);
+  const [scoreMenuOpen, setScoreMenuOpen] = useState(false);
 
-  const [loading,     setLoading]     = useState(true);
-  const [loadError,   setError]       = useState("");
-  const [authError,   setAuthError]   = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setError] = useState("");
+  const [authError, setAuthError] = useState("");
   const normalizeTab = (value) => {
     if (value === "results" || value === "analysis") return "scores";
     if (value === "manage") return "settings";
@@ -364,6 +371,55 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     setScoresView(id);
     writeSection("scores", { view: id });
   }
+
+  // ── URL sync: read on mount ────────────────────────────────
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const tabParam = sp.get("tab");
+    const viewParam = sp.get("view");
+    if (tabParam) {
+      const normalized = normalizeTab(tabParam);
+      if (VALID_TABS.has(normalized)) setAdminTab(normalized);
+    }
+    if (viewParam) {
+      const normalized = normalizeScoresView(viewParam);
+      if (VALID_EVALUATION_VIEWS.has(normalized)) setScoresView(normalized);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── URL sync: push on tab/view change ─────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentTab = params.get("tab");
+    const currentView = params.get("view");
+
+    // Only push if the URL actually needs updating (state change from UI click)
+    const normalizedCurrentView = currentTab === "scores" ? (currentView || "rankings") : null;
+    const normalizedTargetView = adminTab === "scores" ? (scoresView || "rankings") : null;
+
+    if (currentTab !== adminTab || normalizedCurrentView !== normalizedTargetView) {
+      const nextParams = new URLSearchParams();
+      nextParams.set("tab", adminTab);
+      if (adminTab === "scores") nextParams.set("view", scoresView || "rankings");
+      const method = hasInitialUrlPush.current ? "pushState" : "replaceState";
+      window.history[method](null, "", "?" + nextParams.toString());
+      hasInitialUrlPush.current = true;
+    }
+  }, [adminTab, scoresView]);
+
+  // ── URL sync: handle browser back/forward ─────────────────
+  useEffect(() => {
+    function handlePopState() {
+      const sp = new URLSearchParams(window.location.search);
+      const tab = sp.get("tab");
+      const view = sp.get("view");
+      if (tab && VALID_TABS.has(normalizeTab(tab))) setAdminTab(normalizeTab(tab));
+      if (view && VALID_EVALUATION_VIEWS.has(normalizeScoresView(view))) setScoresView(normalizeScoresView(view));
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (semesterOpen) setScoreMenuOpen(false);
   }, [semesterOpen]);
@@ -371,6 +427,8 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     if (scoreMenuOpen) setSemesterOpen(false);
   }, [scoreMenuOpen]);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const hasInitialUrlPush = useRef(false);
+  const settingsDirtyRef = useRef(false);
   const [tabOverflow, setTabOverflow] = useState(false);
   const [tabHintLeft, setTabHintLeft] = useState(false);
   const [tabHintRight, setTabHintRight] = useState(false);
@@ -383,7 +441,6 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       return (
         adminPass
         || sessionStorage.getItem("ee492_admin_pass")
-        || localStorage.getItem("ee492_admin_pass")
         || ""
       );
     } catch {
@@ -404,8 +461,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
     passRef.current = nextPass;
     try {
       sessionStorage.setItem("ee492_admin_pass", nextPass);
-      localStorage.setItem("ee492_admin_pass", nextPass);
-    } catch {}
+    } catch { }
   };
 
   // Track selected semester separately so refresh uses the latest selection
@@ -439,8 +495,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
       // Cache password for the duration of this session
       try {
         sessionStorage.setItem("ee492_admin_pass", pass);
-        localStorage.setItem("ee492_admin_pass", pass);
-      } catch {}
+      } catch { }
 
       // Always refresh semesters (IDs change after reseed)
       const sems = await listSemesters();
@@ -682,13 +737,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const dashboardStats = useMemo(
     () =>
       summaryData.map((p) => ({
-        id:       p.id,
-        name:     `Group ${p.groupNo}`,
-        groupNo:  p.groupNo,
+        id: p.id,
+        name: `Group ${p.groupNo}`,
+        groupNo: p.groupNo,
         projectTitle: p.name ?? "",
         students: p.students,
-        count:    p.count,
-        avg:      p.avg,
+        count: p.count,
+        avg: p.avg,
         totalAvg: p.totalAvg,
         totalMin: p.totalMin,
         totalMax: p.totalMax,
@@ -710,7 +765,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   const jurorStats = useMemo(() => {
     return assignedJurors.map((j) => {
       const { key, name, dept, jurorId, editEnabled, finalSubmitted, finalSubmittedAt } = j;
-      const rows     = rawScores.filter((d) => rowKey(d) === key);
+      const rows = rawScores.filter((d) => rowKey(d) === key);
       const latestTs = rows.reduce((mx, r) => (r.tsMs > mx ? r.tsMs : mx), 0);
       const latestRow = rows.find((r) => r.tsMs === latestTs) || rows[0] || null;
 
@@ -726,83 +781,10 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
   }, [assignedJurors, rawScores]);
 
   // overviewMetrics for dashboard cards
-  const overviewMetrics = useMemo(() => {
-    const assignedIds = new Set(assignedJurors.map((j) => j.jurorId));
-    const totalJurors = assignedJurors.length;
-
-    // Count fully-scored rows per juror (total !== null = all 4 criteria filled)
-    const scoredByJuror = new Map();
-    const startedByJuror = new Map();
-    let scoredEvaluations = 0;
-    let partialEvaluations = 0;
-    rawScores.forEach((r) => {
-      if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
-      const cellState = getCellState(r);
-      if (cellState === "scored") scoredEvaluations += 1;
-      if (cellState === "partial") partialEvaluations += 1;
-      if (r.total === null || r.total === undefined) return;
-      const key = rowKey(r);
-      scoredByJuror.set(key, (scoredByJuror.get(key) || 0) + 1);
-    });
-    rawScores.forEach((r) => {
-      if (assignedIds.size > 0 && !assignedIds.has(r.jurorId)) return;
-      if (getCellState(r) === "empty") return;
-      const key = rowKey(r);
-      startedByJuror.set(key, (startedByJuror.get(key) || 0) + 1);
-    });
-
-    const editingJurors = assignedJurors.filter((j) =>
-      !!(j.editEnabled ?? j.edit_enabled)
-    ).length;
-
-    const completedJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      return !isEditing && !!(j.finalSubmitted ?? j.finalSubmittedAt);
-    }).length;
-    const totalEvaluations = totalJurors * totalProjects;
-    const emptyEvaluations = Math.max(
-      totalEvaluations - scoredEvaluations - partialEvaluations,
-      0
-    );
-
-    const readyToSubmitJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
-      if (isEditing || isFinal) return false;
-      return totalProjects > 0 && (scoredByJuror.get(j.key) || 0) >= totalProjects;
-    }).length;
-
-    const inProgressJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
-      if (isEditing || isFinal) return false;
-      const started = startedByJuror.get(j.key) || 0;
-      const scored = scoredByJuror.get(j.key) || 0;
-      return started > 0 && scored < totalProjects;
-    }).length;
-
-    const notStartedJurors = assignedJurors.filter((j) => {
-      const isEditing = !!(j.editEnabled ?? j.edit_enabled);
-      if (isEditing) return false;
-      const isFinal = !!(j.finalSubmitted ?? j.finalSubmittedAt);
-      if (isFinal) return false;
-      return (startedByJuror.get(j.key) || 0) === 0;
-    }).length;
-
-    return {
-      completedJurors,
-      readyToSubmitJurors,
-      totalJurors,
-      totalEvaluations,
-      totalProjects,
-      scoredEvaluations,
-      partialEvaluations,
-      emptyEvaluations,
-      inProgressJurors,
-      editingJurors,
-      notStartedJurors,
-    };
-  }, [rawScores, assignedJurors, totalProjects]);
+  const overviewMetrics = useMemo(
+    () => computeOverviewMetrics(rawScores, assignedJurors, totalProjects),
+    [rawScores, assignedJurors, totalProjects]
+  );
 
   useEffect(() => {
     if (!lastRefresh) return;
@@ -815,20 +797,22 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
           lastUpdated: lastRefresh.toISOString(),
         })
       );
-    } catch {}
+    } catch { }
   }, [overviewMetrics.totalJurors, overviewMetrics.completedJurors, lastRefresh]);
 
   const lastRefreshTime = lastRefresh
     ? new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", hour12: false,
-      }).format(lastRefresh)
+      timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(lastRefresh)
     : "";
 
   // Semester list sorted descending by poster date (latest evaluation first)
   const sortedSemesters = useMemo(() => {
     return sortSemestersByPosterDateDesc(semesterList);
   }, [semesterList]);
-  const selectedSemesterName = sortedSemesters.find((s) => s.id === selectedSemesterId)?.name ?? "—";
+  const selectedSemester = sortedSemesters.find((s) => s.id === selectedSemesterId) ?? null;
+  const selectedSemesterName = selectedSemester?.name ?? "—";
+  const selectedSemesterLocked = !!(selectedSemester?.is_locked);
 
   // Details view: load scores + project summary for all semesters
   const detailsKey = useMemo(
@@ -1003,7 +987,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
         <div className="tab-bar-wrap">
           <div className="tab-bar-row">
             <div className="tab-bar-shell" ref={tabBarRef} onScroll={updateTabHints}>
-              <div className="tab-bar">
+              <div className="tab-bar" role="tablist" aria-label="Admin panel sections">
                 {TABS.map((t) => {
                   if (t.id === "scores") {
                     return (
@@ -1023,8 +1007,16 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
                   return (
                     <button
                       key={t.id}
+                      role="tab"
+                      aria-selected={adminTab === t.id}
                       className={`tab ${adminTab === t.id ? "active" : ""}`}
-                      onClick={() => { setAdminTab(t.id); writeSection("tab", { adminTab: t.id }); }}
+                      onClick={() => {
+                        if (adminTab === "settings" && settingsDirtyRef.current) {
+                          if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+                        }
+                        setAdminTab(t.id);
+                        writeSection("tab", { adminTab: t.id });
+                      }}
                     >
                       <t.icon />
                       {t.label}
@@ -1048,7 +1040,13 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
 
       {/* Tab content */}
       {!loading && (
-        <div className="admin-body">
+        <div className="admin-body" role="tabpanel">
+          {selectedSemesterLocked && adminTab !== "settings" && (
+            <div className="manage-alert warn with-icon admin-lock-banner" role="status">
+              <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
+              <span>Evaluations are locked for this semester. Jurors cannot submit or edit scores.</span>
+            </div>
+          )}
           {(authError || loadError) && (
             <div className="manage-alert error with-icon" role="alert">
               <span className="manage-alert-icon" aria-hidden="true"><TriangleAlertIcon /></span>
@@ -1060,6 +1058,7 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               jurorStats={jurorStats}
               groups={groups}
               metrics={overviewMetrics}
+              onGoToSettings={() => setAdminTab("settings")}
             />
           )}
           {adminTab === "scores" && (
@@ -1094,6 +1093,11 @@ export default function AdminPanel({ adminPass, onBack, onAuthError, onInitialLo
               adminPass={adminPassState || getAdminPass()}
               onAdminPasswordChange={handleAdminPasswordChange}
               selectedSemesterId={selectedSemesterId}
+              onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
+              onActiveSemesterChange={(semesterId) => {
+                setSelectedSemesterId(semesterId);
+                fetchData(semesterId);
+              }}
             />
           )}
         </div>

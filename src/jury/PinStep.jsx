@@ -13,12 +13,13 @@
 // ============================================================
 
 import { useState, useRef, useEffect, useId } from "react";
-import { KeyRoundIcon, AlertCircleIcon, LockIcon } from "../shared/Icons";
+import { KeyRoundIcon, TriangleAlertIcon, LockIcon } from "../shared/Icons";
 
 // ── 4-box PIN input with explicit OK button ───────────────────
 function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   const PIN_LEN = 4;
   const [digits, setDigits] = useState(Array.from({ length: PIN_LEN }, () => ""));
+  const [showPin, setShowPin] = useState(false);
   const inputId = useId();
   const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
@@ -85,15 +86,16 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
 
   return (
     <div className={`pin-input-group${shake ? " pin-input-group--shake" : ""}`}>
-      <div className="pin-boxes-row">
+      <div className="pin-boxes-row" role="group" aria-label="4-digit PIN">
         {digits.map((d, i) => (
           <input
             key={i}
             ref={inputRefs[i]}
-            type="password"
+            type={showPin ? "text" : "password"}
             inputMode="numeric"
             maxLength={1}
             value={d}
+            aria-label={`Digit ${i + 1} of 4`}
             name={`${inputId}-pin-${i}`}
             autoFocus={i === 0}
             autoComplete="new-password"
@@ -118,6 +120,15 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
         disabled={isDisabled}
       >
         Verify PIN →
+      </button>
+      <button
+        type="button"
+        className="pin-show-toggle"
+        onClick={() => setShowPin((v) => !v)}
+        aria-pressed={showPin}
+        tabIndex={-1}
+      >
+        {showPin ? "Hide" : "Show"} PIN
       </button>
     </div>
   );
@@ -197,14 +208,16 @@ export default function PinStep({
             </div>
 
             <div className="premium-info-strip">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
-              </svg>
-              <div>
+              <span className="info-strip-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+              </span>
+              <div className="premium-info-strip-justify">
                 {lockedUntilText
                   ? `You can try again after ${lockedUntilText}, or contact the administrator to reset your PIN.`
                   : "Please try again later."}
@@ -236,11 +249,11 @@ export default function PinStep({
           </div>
 
           {(pinError || pinErrorCode) && (
-            <div className="premium-error-banner">
-              <AlertCircleIcon />
-              <div>
+            <div className="premium-error-banner pin-error-banner">
+              <TriangleAlertIcon />
+              <div className="pin-error-copy">
                 <div className="premium-error-title">{errorTitle}</div>
-                <div className="premium-error-detail">{errorDetail}</div>
+                {errorDetail ? <div className="premium-error-detail">{errorDetail}</div> : null}
               </div>
             </div>
           )}

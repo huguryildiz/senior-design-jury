@@ -11,10 +11,10 @@
 // ============================================================
 
 export const APP_CONFIG = {
-  appTitle:    "Senior Project Jury Portal",
-  courseName:  "EE 491 / EE 492 — Senior Project",
-  department:  "Electrical & Electronics Engineering",
-  university:  "TED University",
+  appTitle: "Senior Project Jury Portal",
+  courseName: "EE 491 / EE 492 — Senior Project",
+  department: "Electrical & Electronics Engineering",
+  university: "TED University",
 
   showStudents: true,
 };
@@ -37,10 +37,10 @@ export const CRITERIA = [
     max: 30,
     blurb: "Evaluate the engineering depth of the project, clarity of the problem definition, and justification of technical decisions.",
     rubric: [
-      { range: "27–30", level: "Excellent",    min: 27, max: 30, desc: "Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident." },
-      { range: "21–26", level: "Good",         min: 21, max: 26, desc: "Design is mostly clear and technically justified. Engineering decisions are largely supported." },
-      { range: "13–20", level: "Developing",   min: 13, max: 20, desc: "Problem is stated but motivation or technical justification is insufficient." },
-      { range: "0–12",  level: "Insufficient", min: 0,  max: 12, desc: "Vague problem definition and unjustified decisions. Superficial technical content." },
+      { range: "27–30", level: "Excellent", min: 27, max: 30, desc: "Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident." },
+      { range: "21–26", level: "Good", min: 21, max: 26, desc: "Design is mostly clear and technically justified. Engineering decisions are largely supported." },
+      { range: "13–20", level: "Developing", min: 13, max: 20, desc: "Problem is stated but motivation or technical justification is insufficient." },
+      { range: "0–12", level: "Insufficient", min: 0, max: 12, desc: "Vague problem definition and unjustified decisions. Superficial technical content." },
     ],
   },
   {
@@ -52,10 +52,10 @@ export const CRITERIA = [
     max: 30,
     blurb: "Evaluate the clarity, structure, and visual effectiveness of the poster and written materials.",
     rubric: [
-      { range: "27–30", level: "Excellent",    min: 27, max: 30, desc: "Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is presented in a way that is accessible to both technical and non-technical readers." },
-      { range: "21–26", level: "Good",         min: 21, max: 26, desc: "Layout is mostly logical. Visuals are readable with minor gaps. Technical content is largely clear with small areas for improvement." },
-      { range: "13–20", level: "Developing",   min: 13, max: 20, desc: "Occasional gaps in information flow. Some visuals are missing labels or captions. Technical content is only partially communicated." },
-      { range: "0–12",  level: "Insufficient", min: 0,  max: 12, desc: "Confusing layout. Low-quality or unlabelled visuals. Technical content is unclear or missing." },
+      { range: "27–30", level: "Excellent", min: 27, max: 30, desc: "Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is presented in a way that is accessible to both technical and non-technical readers." },
+      { range: "21–26", level: "Good", min: 21, max: 26, desc: "Layout is mostly logical. Visuals are readable with minor gaps. Technical content is largely clear with small areas for improvement." },
+      { range: "13–20", level: "Developing", min: 13, max: 20, desc: "Occasional gaps in information flow. Some visuals are missing labels or captions. Technical content is only partially communicated." },
+      { range: "0–12", level: "Insufficient", min: 0, max: 12, desc: "Confusing layout. Low-quality or unlabelled visuals. Technical content is unclear or missing." },
     ],
   },
   {
@@ -67,10 +67,10 @@ export const CRITERIA = [
     max: 30,
     blurb: "Evaluate the clarity of the presentation, pacing, and the quality of answers during the Q&A.",
     rubric: [
-      { range: "27–30", level: "Excellent",    min: 27, max: 30, desc: "Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate." },
-      { range: "21–26", level: "Good",         min: 21, max: 26, desc: "Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident." },
-      { range: "13–20", level: "Developing",   min: 13, max: 20, desc: "Understandable but inconsistent. Limited audience adaptation. Time management or Q&A depth needs improvement." },
-      { range: "0–12",  level: "Insufficient", min: 0,  max: 12, desc: "Unclear or disorganised presentation. Most questions answered incorrectly or not at all." },
+      { range: "27–30", level: "Excellent", min: 27, max: 30, desc: "Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate." },
+      { range: "21–26", level: "Good", min: 21, max: 26, desc: "Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident." },
+      { range: "13–20", level: "Developing", min: 13, max: 20, desc: "Understandable but inconsistent. Limited audience adaptation. Time management or Q&A depth needs improvement." },
+      { range: "0–12", level: "Insufficient", min: 0, max: 12, desc: "Unclear or disorganised presentation. Most questions answered incorrectly or not at all." },
     ],
   },
   {
@@ -82,10 +82,10 @@ export const CRITERIA = [
     max: 10,
     blurb: "Evaluate how effectively team members collaborate and contribute to the project.",
     rubric: [
-      { range: "9–10", level: "Excellent",    min: 9, max: 10, desc: "All members participate actively and equally. Professional and ethical conduct observed throughout." },
-      { range: "7–8",  level: "Good",         min: 7, max: 8,  desc: "Most members contribute. Minor knowledge gaps. Professionalism mostly observed." },
-      { range: "4–6",  level: "Developing",   min: 4, max: 6,  desc: "Uneven participation. Some members are passive or unprepared." },
-      { range: "0–3",  level: "Insufficient", min: 0, max: 3,  desc: "Very low participation or dominated by one person. Lack of professionalism observed." },
+      { range: "9–10", level: "Excellent", min: 9, max: 10, desc: "All members participate actively and equally. Professional and ethical conduct observed throughout." },
+      { range: "7–8", level: "Good", min: 7, max: 8, desc: "Most members contribute. Minor knowledge gaps. Professionalism mostly observed." },
+      { range: "4–6", level: "Developing", min: 4, max: 6, desc: "Uneven participation. Some members are passive or unprepared." },
+      { range: "0–3", level: "Insufficient", min: 0, max: 3, desc: "Very low participation or dominated by one person. Lack of professionalism observed." },
     ],
   },
 ];
@@ -98,9 +98,9 @@ export const MUDEK_THRESHOLD = 70;
 
 // Achievement band colours — used by Chart 6 and the MÜDEK dropdown rubric tab.
 export const BAND_COLORS = {
-  Excellent:    { bg: "#DCFCE7", text: "#16A34A" },
-  Good:         { bg: "#F7FEE7", text: "#65A30D" },
-  Developing:   { bg: "#FEF9C3", text: "#CA8A04" },
+  Excellent: { bg: "#DCFCE7", text: "#16A34A" },
+  Good: { bg: "#F7FEE7", text: "#65A30D" },
+  Developing: { bg: "#FEF9C3", text: "#CA8A04" },
   Insufficient: { bg: "#FEE2E2", text: "#DC2626" },
 };
 
@@ -182,5 +182,5 @@ export const MUDEK_OUTCOMES = {
 };
 
 // ── Derived helpers ───────────────────────────────────────────
-export const TOTAL_MAX        = CRITERIA.reduce((s, c) => s + (Number(c.max) || 0), 0);
+export const TOTAL_MAX = CRITERIA.reduce((s, c) => s + (Number(c.max) || 0), 0);
 export const getCriterionById = (id) => CRITERIA.find((c) => c.id === id);

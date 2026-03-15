@@ -10,13 +10,14 @@
 //
 // Home "Resume" banner removed in v5 — draft continuity is now
 // handled inside the jury flow after PIN verification.
-// Note: localStorage is used only for same-device convenience
-// (juror_id + semester_id, and admin re-auth on the same device).
+// Note: sessionStorage is used for admin re-auth within the same tab.
+// localStorage is used only for non-sensitive UI state (page, juror_id).
 // ============================================================
 
 import { useEffect, useRef, useState } from "react";
-import JuryForm   from "./JuryForm";
-import AdminPanel from "./AdminPanel";
+import JuryForm      from "./JuryForm";
+import AdminPanel    from "./AdminPanel";
+import ErrorBoundary from "./shared/ErrorBoundary";
 import {
   ClipboardIcon,
   InfoIcon,
@@ -105,7 +106,7 @@ export default function App() {
     let didLogin = false;
     autoLoginCancelRef.current = () => { active = false; };
     let saved = "";
-    try { saved = localStorage.getItem(ADMIN_PASS_KEY) || ""; } catch {}
+    try { saved = sessionStorage.getItem(ADMIN_PASS_KEY) || ""; } catch {}
     if (!saved) return;
     adminLogin(saved)
       .then((valid) => {
@@ -118,11 +119,12 @@ export default function App() {
           setAdminAuthError("");
           setAdminInput("");
         } else {
-          try { localStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+          try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch {}
         }
       })
-      .catch(() => {
+      .catch((e) => {
         if (!active) return;
+        if (e?.adminLocked) return; // locked: let user try manually
         setAdminAuthError("Connection error — try again.");
       })
       .finally(() => {
@@ -145,11 +147,18 @@ export default function App() {
         return;
       }
       adminPassRef.current = pass;
-      try { localStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
+      try { sessionStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
       setAdminInput("");
       setAdminUnlocked(true);
-    } catch {
-      setAdminAuthError("Connection error — try again.");
+    } catch (e) {
+      if (e?.adminLocked) {
+        const t = e.lockedUntil
+          ? new Date(e.lockedUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "";
+        setAdminAuthError(`Too many failed attempts. Try again after ${t}.`);
+      } else {
+        setAdminAuthError("Connection error — try again.");
+      }
       setAdminChecking(false);
     }
   }
@@ -174,7 +183,7 @@ export default function App() {
     try {
       await adminBootstrapPassword(pass);
       adminPassRef.current = pass;
-      try { localStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
+      try { sessionStorage.setItem(ADMIN_PASS_KEY, pass); } catch {}
       setAdminSetupPass("");
       setAdminSetupConfirm("");
       setAdminPasswordSet(true);
@@ -197,7 +206,7 @@ export default function App() {
     setAdminUnlocked(false);
     setAdminChecking(false);
     adminPassRef.current = "";
-    try { localStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+    try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch {}
     setAdminAuthError(msg || "Authentication failed.");
   }
 
@@ -206,9 +215,13 @@ export default function App() {
   // ── Jury form ─────────────────────────────────────────────
   if (page === "jury") {
     return (
-      <JuryForm
-        onBack={() => setPage("home")}
-      />
+      <ErrorBoundary>
+        <div id="main-content">
+          <JuryForm
+            onBack={() => setPage("home")}
+          />
+        </div>
+      </ErrorBoundary>
     );
   }
 
@@ -235,6 +248,7 @@ export default function App() {
                     setAdminSetupPass(e.target.value);
                     if (adminSetupError) setAdminSetupError("");
                   }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAdminSetup(); }}
                   autoComplete="new-password"
                   autoFocus
                   className="premium-input"
@@ -250,6 +264,7 @@ export default function App() {
                     setAdminSetupConfirm(e.target.value);
                     if (adminSetupError) setAdminSetupError("");
                   }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAdminSetup(); }}
                   autoComplete="new-password"
                   className="premium-input"
                   disabled={adminSetupLoading || adminSecurityLoading}
@@ -348,31 +363,33 @@ export default function App() {
     }
 
     return (
-      <>
-        {/* Checking… overlay — shown while the first fetch is in flight */}
-        {adminChecking && (
-          <MinimalLoaderOverlay open={adminChecking} minDuration={400} />
-        )}
-        <AdminPanel
-          adminPass={adminPassRef.current}
-          onAuthError={handleAuthFail}
-          onInitialLoadDone={() => setAdminChecking(false)}
-          onBack={() => {
-            setPage("home");
-            setAdminUnlocked(false);
-            setAdminChecking(false);
-            setAdminAuthError("");
-            adminPassRef.current = "";
-            try { localStorage.removeItem(ADMIN_PASS_KEY); } catch {}
-          }}
-        />
-      </>
+      <ErrorBoundary>
+        <div id="main-content">
+          {/* Checking… overlay — shown while the first fetch is in flight */}
+          {adminChecking && (
+            <MinimalLoaderOverlay open={adminChecking} minDuration={400} />
+          )}
+          <AdminPanel
+            adminPass={adminPassRef.current}
+            onAuthError={handleAuthFail}
+            onInitialLoadDone={() => setAdminChecking(false)}
+            onBack={() => {
+              setPage("home");
+              setAdminUnlocked(false);
+              setAdminChecking(false);
+              setAdminAuthError("");
+              adminPassRef.current = "";
+              try { sessionStorage.removeItem(ADMIN_PASS_KEY); } catch {}
+            }}
+          />
+        </div>
+      </ErrorBoundary>
     );
   }
 
   // ── Home page ─────────────────────────────────────────────
   return (
-    <div className="home">
+    <div id="main-content" className="home">
       <div className="home-bg" />
       <div className="home-card">
 

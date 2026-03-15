@@ -8,6 +8,8 @@ import { KeyRoundIcon, InfoIcon } from "../shared/Icons";
 
 export default function PinRevealStep({ pin, onContinue, onBack }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const [pinSaved, setPinSaved] = useState(false);
   const normalizedPin = String(pin || "").replace(/\D/g, "").slice(0, 4);
   const digits = Array.from({ length: 4 }, (_, idx) => normalizedPin[idx] || "");
 
@@ -20,7 +22,13 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
 
     const markCopied = () => {
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 1500);
+    };
+
+    const markFailed = () => {
+      setCopied(false);
+      setCopyFailed(true);
     };
 
     try {
@@ -53,7 +61,7 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
       // ignore
     }
 
-    setCopied(false);
+    markFailed();
   };
 
   return (
@@ -62,7 +70,7 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
         <div className="premium-header">
           <div className="premium-icon-square" aria-hidden="true"><KeyRoundIcon /></div>
           <div className="premium-title">Your Access PIN</div>
-          <div className="premium-subtitle">This PIN will be shown only once. Save it.</div>
+          <div className="premium-subtitle">This PIN will be shown only once. Save it before continuing.</div>
         </div>
 
         <div className="pin-display pin-display--reveal" aria-label="One-time PIN">
@@ -89,12 +97,28 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
           </button>
         </div>
 
+        {copyFailed && (
+          <div className="pin-reveal-copy-error" role="alert">
+            Could not copy automatically. Please note your PIN manually.
+          </div>
+        )}
+
         <div className="premium-info-strip warn">
           <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
           <span>Use this PIN to resume your evaluation later or on another device.</span>
         </div>
 
-        <button className="premium-btn-primary" onClick={onContinue}>
+        <label className="pin-reveal-confirm-label">
+          <input
+            type="checkbox"
+            className="pin-reveal-confirm-checkbox"
+            checked={pinSaved}
+            onChange={(e) => setPinSaved(e.target.checked)}
+          />
+          I have noted / saved my PIN
+        </label>
+
+        <button className="premium-btn-primary" onClick={onContinue} disabled={!pinSaved}>
           Continue →
         </button>
         {onBack && (
