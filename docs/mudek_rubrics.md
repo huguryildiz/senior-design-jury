@@ -7,7 +7,10 @@
 
 ## Overview
 
-The poster day evaluation is designed to assess four competencies that directly map to MÜDEK (Mühendislik Eğitim Programları Değerlendirme ve Akreditasyon Derneği) programme outcomes. Each juror scores every project group independently across the four criteria below.
+The poster day evaluation is designed to assess four competencies that directly
+map to MÜDEK (Mühendislik Eğitim Programları Değerlendirme ve Akreditasyon
+Derneği) programme outcomes. Each juror scores every project group
+independently across the four criteria below.
 
 | # | Criterion | Max | MÜDEK Outcome |
 |---|-----------|-----|---------------|
@@ -24,7 +27,10 @@ The poster day evaluation is designed to assess four competencies that directly 
 
 > *"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda **yazılı** etkin iletişim kurma becerisi."*
 
-This criterion evaluates how effectively the team communicates their project in written and visual form on the poster — including layout, information hierarchy, figure quality, and the clarity of technical content for a mixed audience (engineers and non-engineers alike).
+This criterion evaluates how effectively the team communicates their project in
+written and visual form on the poster — including layout, information
+hierarchy, figure quality, and the clarity of technical content for a mixed
+audience (engineers and non-engineers alike).
 
 | Score | Level | Descriptor |
 |-------|-------|-----------|
@@ -46,7 +52,10 @@ This criterion evaluates how effectively the team communicates their project in 
 
 > *"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda **sözlü** etkin iletişim kurma becerisi."*
 
-This criterion evaluates the team's ability to present their work verbally and to respond to questions from jurors with varying technical backgrounds. A key factor is conscious audience adaptation — adjusting depth and vocabulary based on who is asking.
+This criterion evaluates the team's ability to present their work verbally and
+to respond to questions from jurors with varying technical backgrounds. A key
+factor is conscious audience adaptation — adjusting depth and vocabulary based
+on who is asking.
 
 | Score | Level | Descriptor |
 |-------|-------|-----------|
@@ -68,7 +77,10 @@ This criterion evaluates the team's ability to present their work verbally and t
 
 > *"Matematik, fen bilimleri ve mühendislik bilgilerini karmaşık mühendislik problemlerinin çözümünde kullanabilme becerisi (1.2); karmaşık mühendislik problemlerini tanımlama, formüle etme ve analiz becerisi (2); karmaşık mühendislik problemlerine yaratıcı, gerçekçi kısıtları gözeten çözümler tasarlama becerisi (3)."*
 
-This criterion evaluates the depth, correctness, and originality of the engineering work itself — independent of how well it is communicated. It assesses whether the team has applied appropriate engineering knowledge, justified their design decisions, and demonstrated real technical mastery.
+This criterion evaluates the depth, correctness, and originality of the
+engineering work itself — independent of how well it is communicated. It
+assesses whether the team has applied appropriate engineering knowledge,
+justified their design decisions, and demonstrated real technical mastery.
 
 | Score | Level | Descriptor |
 |-------|-------|-----------|
@@ -90,7 +102,9 @@ This criterion evaluates the depth, correctness, and originality of the engineer
 
 > *"Bireysel olarak disiplin içi ve çok disiplinli takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi (8.1 / 8.2)."*
 
-This criterion evaluates visible evidence of equal and effective team participation during the poster session, as well as the group's professional and ethical conduct in interacting with jurors.
+This criterion evaluates visible evidence of equal and effective team
+participation during the poster session, as well as the group's professional
+and ethical conduct in interacting with jurors.
 
 | Score | Level | Descriptor |
 |-------|-------|-----------|

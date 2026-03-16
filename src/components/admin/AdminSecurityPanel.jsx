@@ -303,9 +303,9 @@ export default function AdminSecurityPanel({
                       <span>{adminFormError}</span>
                     </div>
                   )}
-                  <div className="manage-delete-warning manage-delete-warning--info">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                    <span className="manage-delete-warning-text">
+                  <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
                       This password secures admin login and controls access to Settings, Scores, and Analytics.
                     </span>
                   </div>
@@ -355,9 +355,9 @@ export default function AdminSecurityPanel({
                     </div>
                   )}
 
-                  <div className="manage-delete-warning manage-delete-warning--info">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                    <span className="manage-delete-warning-text">
+                  <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
                       If no admin password is set, you will be prompted to create one.
                     </span>
                   </div>
@@ -390,19 +390,19 @@ export default function AdminSecurityPanel({
                       Admin session required. Re-login to update the delete password.
                     </div>
                   )}
-                  <div className="manage-delete-warning manage-delete-warning--info">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                    <span className="manage-delete-warning-text">
+                  <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
                       This password is required to confirm destructive actions such as deleting semesters, groups, and jurors.
                     </span>
                   </div>
                   {deleteMissingHash && (
-                    <div className="manage-delete-warning manage-delete-warning--info">
-                      <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                      <span className="manage-delete-warning-text">
-                        Optional. Required before destructive actions can be performed.
-                      </span>
-                    </div>
+                    <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
+                      Optional. Required before destructive actions can be performed.
+                    </span>
+                  </div>
                   )}
                   <div className="manage-field">
                     <label className="manage-label">Current Delete Password</label>
@@ -451,9 +451,9 @@ export default function AdminSecurityPanel({
                     </div>
                   )}
 
-                  <div className="manage-delete-warning manage-delete-warning--info">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                    <span className="manage-delete-warning-text">
+                  <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
                       If no delete password is set, you will be prompted to create one.
                     </span>
                   </div>
@@ -486,19 +486,19 @@ export default function AdminSecurityPanel({
                       Admin session required. Re-login to update the backup &amp; restore password.
                     </div>
                   )}
-                  <div className="manage-delete-warning manage-delete-warning--info">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                    <span className="manage-delete-warning-text">
+                  <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
                       This password protects full data export/import and restore operations.
                     </span>
                   </div>
                   {backupMissingHash && (
-                    <div className="manage-delete-warning manage-delete-warning--info">
-                      <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                      <span className="manage-delete-warning-text">
-                        Optional. Required before export, import, or restore operations.
-                      </span>
-                    </div>
+                    <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
+                      Optional. Required before export, import, or restore operations.
+                    </span>
+                  </div>
                   )}
                   <div className="manage-field">
                     <label className="manage-label">Current Backup & Restore Password</label>
@@ -546,9 +546,9 @@ export default function AdminSecurityPanel({
                     </div>
                   )}
 
-                  <div className="manage-delete-warning manage-delete-warning--info">
-                    <span className="manage-delete-warning-icon" aria-hidden="true"><InfoIcon /></span>
-                    <span className="manage-delete-warning-text">
+                  <div className="manage-alert with-icon">
+                    <span className="manage-alert-icon" aria-hidden="true"><InfoIcon /></span>
+                    <span>
                       If no backup &amp; restore password is set, you will be prompted to create one.
                     </span>
                   </div>

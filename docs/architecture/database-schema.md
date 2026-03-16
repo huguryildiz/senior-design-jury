@@ -1,6 +1,8 @@
 # Database Schema — TEDU VERA
 
-Supabase Postgres. RLS is enabled on all tables with a default-deny policy. No direct table access from the frontend — all reads and writes go through SECURITY DEFINER RPC functions.
+Supabase Postgres. RLS is enabled on all tables with a default-deny policy. No
+direct table access from the frontend — all reads and writes go through
+SECURITY DEFINER RPC functions.
 
 ---
 
@@ -107,7 +109,9 @@ Admin-only notes, one per project per semester. Jurors cannot read or write thes
 
 ## UI Field Name Mapping
 
-The frontend uses different names for two score criteria. The mapping is applied **only in `src/shared/api.js`** and must never be applied in components or hooks.
+The frontend uses different names for two score criteria. The mapping is applied
+**only in `src/shared/api.js`** and must never be applied in components or
+hooks.
 
 | UI name (frontend / `config.js`) | DB column |
 | --- | --- |
@@ -159,9 +163,13 @@ All functions are `SECURITY DEFINER`. The frontend never calls tables directly.
 
 ## Production Security
 
-In production, all admin RPC calls are proxied through the `rpc-proxy` Supabase Edge Function (`supabase/functions/rpc-proxy/index.ts`). This ensures the `rpc_secret` value is never sent to the browser.
+In production, all admin RPC calls are proxied through the `rpc-proxy` Supabase
+Edge Function (`supabase/functions/rpc-proxy/index.ts`). This ensures the
+`rpc_secret` value is never sent to the browser.
 
-The proxy is controlled by `USE_PROXY = !import.meta.env.DEV` in `src/shared/api.js`. In development, RPCs are called directly using the `VITE_RPC_SECRET` env variable.
+The proxy is controlled by `USE_PROXY = !import.meta.env.DEV` in
+`src/shared/api.js`. In development, RPCs are called directly using the
+`VITE_RPC_SECRET` env variable.
 
 ---
 

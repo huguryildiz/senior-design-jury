@@ -1,12 +1,14 @@
 # TEDU VERA — E2E Test Guide
 
-Playwright-based end-to-end tests. Runs in a real browser against the real Supabase demo database.
+Playwright-based end-to-end tests. Runs in a real browser against the real
+Supabase demo database.
 
 ---
 
 ## Setup
 
-Playwright is already defined in `package.json`. Before running for the first time, download browser binaries:
+Playwright is already defined in `package.json`. Before running for the first
+time, download browser binaries:
 
 ```bash
 npx playwright install
@@ -56,7 +58,8 @@ E2E_SEMESTER_NAME=2026 Spring
 E2E_LOCKED=true
 ```
 
-If an env var is missing, the relevant test is automatically **skipped** — no CI failure.
+If an env var is missing, the relevant test is automatically **skipped** — no
+CI failure.
 
 ---
 
@@ -87,7 +90,8 @@ Opens `http://localhost:9323` in the browser. What you can see:
 - **pass / fail / skip** status and duration for each test
 - **Screenshots on failure** — the exact moment it broke
 - **Video recording** — full screen capture of the test run
-- **Trace viewer** — step-by-step which element was clicked, which assertion was expected
+- **Trace viewer** — step-by-step which element was clicked, which assertion was
+  expected
 
 To open the trace viewer, click a failed test → `Traces` tab.
 
@@ -107,7 +111,8 @@ Tests fall into two categories:
 - `jury.e2e.01` — requires `E2E_JUROR_PIN` + `E2E_SEMESTER_NAME`
 - `jury.e2e.02` — also requires `E2E_LOCKED=true`
 
-In CI, if only `E2E_ADMIN_PASSWORD` is defined, admin tests run and jury flow tests are skipped — this is expected behavior.
+In CI, if only `E2E_ADMIN_PASSWORD` is defined, admin tests run and jury flow
+tests are skipped — this is expected behavior.
 
 ---
 
@@ -142,7 +147,8 @@ npm run test:report && node scripts/generate-test-report.cjs
 npm run report:all
 ```
 
-`npm run e2e` must be run before `npm run e2e:excel` — the JSON output is read from `test-results/playwright-results.json`.
+`npm run e2e` must be run before `npm run e2e:excel` — the JSON output is read
+from `test-results/playwright-results.json`.
 
 Excel files are written to `test-results/`:
 

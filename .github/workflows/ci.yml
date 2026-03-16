@@ -45,7 +45,7 @@ jobs:
           retention-days: 30
 
   e2e:
-    if: true   # E2E runs locally before push; no isolated test DB yet
+    if: true
     runs-on: ubuntu-latest
     needs: test
     steps:
