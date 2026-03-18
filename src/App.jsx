@@ -2,7 +2,7 @@
 // ============================================================
 // Root component — manages top-level page routing.
 //
-// Pages: "home" | "jury" | "admin"
+// Pages: "home" | "jury_gate" | "jury" | "admin"
 //
 // Security: admin password is stored in a useRef (not useState)
 // so it is never serialised into the React DevTools component
@@ -15,11 +15,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import JuryForm from "./JuryForm";
+import JuryGatePage from "./jury/JuryGatePage";
 import AdminPanel from "./AdminPanel";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import {
   ClipboardIcon,
-  InfoIcon,
   ShieldUserIcon,
   AlertCircleIcon,
   EyeIcon,
@@ -35,13 +35,40 @@ import teduLogo from "./assets/tedu-logo.png";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 const DEMO_PASS = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";
 
+// Semester-scoped session grant key — set after QR token verification.
+// Stored in localStorage so the grant persists across browser sessions.
+const JURY_ACCESS_KEY = "jury_access_semester";
+
 export default function App() {
+  // Read URL params first — a valid ?t= param triggers jury_gate immediately.
+  // /jury-entry path without token uses localStorage grant for resume.
   const [page, setPage] = useState(() => {
     try {
+      const pathname = window.location.pathname;
+      const params   = new URLSearchParams(window.location.search);
+      const urlToken = params.get("t");
+      if (urlToken) return "jury_gate";
+      if (pathname === "/jury-entry") {
+        if (sessionStorage.getItem(JURY_ACCESS_KEY) || localStorage.getItem(JURY_ACCESS_KEY)) return "jury";
+        return "jury_gate";
+      }
       const saved = localStorage.getItem("tedu_portal_page");
-      if (saved === "home" || saved === "jury" || saved === "admin") return saved;
+      if (saved === "admin") return "admin";
+      if (saved === "jury") {
+        if (DEMO_MODE) return "jury";
+        if (sessionStorage.getItem(JURY_ACCESS_KEY) || localStorage.getItem(JURY_ACCESS_KEY)) return "jury";
+        return "home";
+      }
     } catch { }
     return "home";
+  });
+
+  // entryToken: read once from URL (never stored on client beyond this read).
+  const [entryToken] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("t") || "";
+    } catch { return ""; }
   });
   const adminPassRef = useRef("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
@@ -69,6 +96,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (page === "jury_gate") return; // never persist gate state
     try {
       localStorage.setItem("tedu_portal_page", page);
     } catch { }
@@ -198,6 +226,21 @@ export default function App() {
   }
 
 
+
+  // ── Jury gate (QR/token verification) ────────────────────
+  if (page === "jury_gate") {
+    return (
+      <ErrorBoundary>
+        <div id="main-content">
+          <JuryGatePage
+            token={entryToken}
+            onGranted={() => setPage("jury")}
+            onBack={() => setPage("home")}
+          />
+        </div>
+      </ErrorBoundary>
+    );
+  }
 
   // ── Jury form ─────────────────────────────────────────────
   if (page === "jury") {
@@ -392,7 +435,7 @@ export default function App() {
         <div className="home-buttons">
           <button
             className="btn-primary big home-primary-btn"
-            onClick={() => setPage("jury")}
+            onClick={() => DEMO_MODE ? setPage("jury") : setPage("jury_gate")}
           >
             <span className="home-btn-icon" aria-hidden="true"><ClipboardIcon /></span>
             Start Evaluation

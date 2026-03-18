@@ -2,7 +2,7 @@
 // ── Export workflow for ScoreGrid ────────────────────────────
 
 import { useCallback } from "react";
-import { exportGridXLSX } from "./utils";
+import { exportGridXLSX } from "./xlsx/exportXLSX";
 
 export function useGridExport({ buildExportRows, groups, semesterName, visibleJurors }) {
   const doExport = useCallback((jurorList) => {

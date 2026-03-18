@@ -138,6 +138,23 @@
   transform: translateY(-1px);
 }
 
+/* ── Production jury info message (replaces Start Evaluation in prod) ──────── */
+.home-jury-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #f0f4ff;
+  border: 1px solid #c7d2fe;
+  color: var(--brand-700, #3730a3);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+}
+.home-jury-info svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--brand-500, #6366f1); }
+
 /* ── Hint chip ──────────────────────────────────────────────── */
 /* Info box that guides first-time visitors. */
 .home-info {

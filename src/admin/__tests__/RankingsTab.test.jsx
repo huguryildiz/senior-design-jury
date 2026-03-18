@@ -53,7 +53,7 @@ describe("RankingsTab", () => {
   });
 
   qaTest("rank.03", async () => {
-    const exportSpy = vi.spyOn(await import("../utils"), "exportRankingsXLSX").mockResolvedValue();
+    const exportSpy = vi.spyOn(await import("../xlsx/exportXLSX"), "exportRankingsXLSX").mockResolvedValue();
     const ranked = [
       { id: "p1", groupNo: 1, name: "Alpha", students: "", totalAvg: 88, avg: {} },
       { id: "p2", groupNo: 2, name: "Beta", students: "", totalAvg: 77, avg: {} },

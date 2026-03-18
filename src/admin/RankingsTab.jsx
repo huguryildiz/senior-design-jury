@@ -8,7 +8,7 @@ import { APP_CONFIG, CRITERIA, TOTAL_MAX } from "../config";
 import { InfoIcon, ChevronDownIcon, DownloadIcon, ArrowUpIcon, ArrowDownIcon, SearchIcon, FilterIcon } from "../shared/Icons";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
 import { readSection, writeSection } from "./persist";
-import { exportRankingsXLSX } from "./utils";
+import { exportRankingsXLSX } from "./xlsx/exportXLSX";
 import medalFirst from "../assets/1st-place-medal.svg";
 import medalSecond from "../assets/2nd-place-medal.svg";
 import medalThird from "../assets/3rd-place-medal.svg";

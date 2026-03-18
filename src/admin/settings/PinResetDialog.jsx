@@ -1,5 +1,7 @@
 // src/admin/settings/PinResetDialog.jsx
+import { useRef } from "react";
 import { KeyRoundIcon, TriangleAlertIcon } from "../../shared/Icons";
+import { useFocusTrap } from "../../shared/useFocusTrap";
 
 export default function PinResetDialog({
   pinResetTarget,
@@ -11,14 +13,17 @@ export default function PinResetDialog({
   onClose,
   onConfirmReset,
 }) {
+  const containerRef = useRef(null);
+  useFocusTrap({ containerRef, isOpen: !!pinResetTarget, onClose });
+
   if (!pinResetTarget) return null;
 
   return (
-    <div className="manage-modal" role="dialog" aria-modal="true">
-      <div className="manage-modal-card manage-modal-card--danger manage-modal-card--pin-flow">
+    <div className="manage-modal" role="dialog" aria-modal="true" aria-labelledby="pin-reset-dialog-title">
+      <div className="manage-modal-card manage-modal-card--danger manage-modal-card--pin-flow" ref={containerRef}>
         <div className="delete-dialog__header">
           <span className="delete-dialog__icon delete-dialog__icon--pin-reset" aria-hidden="true"><KeyRoundIcon /></span>
-          <div className="delete-dialog__title">
+          <div className="delete-dialog__title" id="pin-reset-dialog-title">
             {resetPinInfo?.pin_plain_once ? "New Juror PIN" : "Reset Juror PIN"}
           </div>
         </div>

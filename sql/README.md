@@ -14,7 +14,7 @@ This directory contains the Supabase database schema and seed files.
 Sets up a fresh Supabase project from scratch. Includes:
 
 - Extensions (`pgcrypto`)
-- Tables: `semesters`, `projects`, `jurors`, `scores`, `audit_log`
+- Tables: `semesters`, `projects`, `jurors`, `scores`, `settings`, `juror_semester_auth`, `audit_logs`
 - Triggers and views
 - Public RPCs (jury evaluation flow)
 - Admin RPCs (admin dashboard)

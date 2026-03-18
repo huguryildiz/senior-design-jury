@@ -3,9 +3,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx-js-style";
-import { formatDashboardTs, buildExportFilename } from "./utils";
+import { formatDashboardTs } from "./utils";
+import { buildExportFilename } from "./xlsx/exportXLSX";
 import { CRITERIA, MUDEK_OUTCOMES } from "../config";
-import { ChevronDownIcon, DownloadIcon, LoaderIcon, CircleXLucideIcon, SearchIcon } from "../shared/Icons";
+import { ChevronDownIcon, CircleXLucideIcon, SearchIcon } from "../shared/Icons";
+import { AnalyticsHeader } from "./components/analytics/AnalyticsHeader";
 import { mean, stdDev, outcomeValues, fmt1, fmt2, buildBoxplotStats } from "../shared/stats";
 import {
   OutcomeByGroupChart,
@@ -16,7 +18,6 @@ import {
   JurorConsistencyHeatmap,
   RubricAchievementChart,
   RadarPrintAll,
-  MudekBadge,
   CHART_COPY,
   OutcomeByGroupChartPrint,
   OutcomeOverviewChartPrint,
@@ -472,16 +473,6 @@ function DashboardEmpty() {
 }
 
 // ── KPI summary strip ─────────────────────────────────────────
-function KpiCard({ label, value, sub, valueClassName }) {
-  return (
-    <div className="kpi-card">
-      <div className="kpi-card-label">{label}</div>
-      <div className={`kpi-card-value${valueClassName ? ` ${valueClassName}` : ""}`}>{value}</div>
-      {sub && <div className="kpi-card-sub">{sub}</div>}
-    </div>
-  );
-}
-
 function TrendSemesterSelect({ semesters, selectedIds, onChange, loading }) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -866,58 +857,20 @@ export default function AnalyticsTab({
           SCREEN CHARTS — hidden in print, replaced by .print-report
           ═══════════════════════════════════════════════════════ */}
       <div className="screen-charts">
-        {/* KPI summary strip */}
-        <div className="analytics-kpi-strip">
-          <KpiCard
-            label="Jurors"
-            value={`${completedJurors}/${totalJurors}`}
-            sub={`${completedPct}% completed`}
-          />
-          <KpiCard
-            label="Evaluations"
-            value={`${scoredEvaluations}/${totalEvaluations}`}
-            sub={`${scoredPct}% scored`}
-          />
-          <KpiCard
-            label="Overall Avg"
-            value={overallAvg !== null ? `${overallAvg}%` : "—"}
-            sub="across all criteria"
-          />
-          <KpiCard
-            label="Last Refresh"
-            value={lastRefreshValue}
-            valueClassName="kpi-card-value--stack"
-            sub=""
-          />
-        </div>
-
-        {/* Toolbar: MÜDEK badge + export buttons */}
-        <div className="dashboard-toolbar">
-          <div className="dashboard-toolbar-left">
-            <MudekBadge />
-          </div>
-          <span className="dashboard-toolbar-divider" aria-hidden="true" />
-          <button
-            className="pdf-export-btn"
-            onClick={handleExportPdf}
-            disabled={exporting}
-            aria-label={exporting ? "Preparing PDF export" : "Export PDF"}
-            title={exporting ? "Preparing PDF…" : 'Export PDF — In the print dialog, uncheck "Headers and footers" to remove the browser URL from the report'}
-          >
-            {exporting ? <span className="spin-icon"><LoaderIcon /></span> : <DownloadIcon />}
-            {exporting ? "Exporting…" : "PDF"}
-          </button>
-          <button
-            className="xlsx-export-btn"
-            onClick={exportExcelAll}
-            disabled={exportingExcel}
-            aria-label={exportingExcel ? "Preparing Excel export" : "Export Excel"}
-            title={exportingExcel ? "Preparing Excel…" : "Export Excel"}
-          >
-            {exportingExcel ? <span className="spin-icon"><LoaderIcon /></span> : <DownloadIcon />}
-            {exportingExcel ? "Exporting…" : "Excel"}
-          </button>
-        </div>
+        <AnalyticsHeader
+          completedJurors={completedJurors}
+          totalJurors={totalJurors}
+          completedPct={completedPct}
+          scoredEvaluations={scoredEvaluations}
+          totalEvaluations={totalEvaluations}
+          scoredPct={scoredPct}
+          overallAvg={overallAvg}
+          lastRefreshValue={lastRefreshValue}
+          exporting={exporting}
+          exportingExcel={exportingExcel}
+          onExportPdf={handleExportPdf}
+          onExportExcel={exportExcelAll}
+        />
 
         {hasSubmitted ? (
           <>

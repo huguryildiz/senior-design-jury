@@ -1,6 +1,27 @@
 // src/jury/useJuryState.js
 // ============================================================
-// Custom hook — owns ALL state and side-effects for the jury flow.
+// Thin orchestrator for the jury evaluation flow.
+//
+// Composes focused sub-hooks and wires them together via
+// useJuryHandlers. Returns the same external API shape as
+// before — JuryForm.jsx and all tests require zero changes.
+//
+// Sub-hooks (each owns a single concern):
+//   useJurorIdentity  — juror name, dept, auth error
+//   useJurorSession   — PIN/session token state
+//   useJuryLoading    — semester/project loading + abort ref
+//   useJuryScoring    — scoring state + pending refs
+//   useJuryEditState  — edit/lock state + polling effect
+//   useJuryWorkflow   — step navigation, derived values
+//   useJuryAutosave   — writeGroup, visibility autosave
+//   useJuryHandlers   — all cross-hook callbacks
+//
+// What stays in the orchestrator:
+//   stateRef            — composite always-fresh ref (read by async callbacks)
+//   Auto-done effect    — avoids circular dep: workflow → handleRequestSubmit
+//                         → writeGroup (autosave) → editLockActive (editState)
+//   Auto-groupSynced effect — needs both editState.editMode and scoring state;
+//                         cannot live in either sub-hook without circularity.
 //
 // ── Write strategy ────────────────────────────────────────────
 //   writeGroup(pid): awaits rpc_upsert_score via Supabase.
@@ -8,129 +29,33 @@
 //     1. onBlur on any score input  → writeGroup(pid)
 //     2. onBlur on comment textarea → writeGroup(pid)
 //     3. Group navigation           → writeGroup(currentPid) then navigate
+//     4. visibilitychange (hidden)  → writeGroup(currentPid)
 //
-//   pendingScoresRef / pendingCommentsRef:
-//     Updated synchronously in onChange handlers BEFORE React
-//     commits state. writeGroup always reads from these refs so
-//     it always sees the latest values regardless of render cycle.
-//
-// ── Identity ──────────────────────────────────────────────────
-//   jurorId (UUID) comes from DB after PIN verification or
-//   after issuing a new PIN (first-time juror).
-//   juryName / juryDept are collected on the identity step.
+//   pendingScoresRef / pendingCommentsRef (owned by useJuryScoring):
+//     Updated synchronously in onChange handlers BEFORE React commits state.
+//     writeGroup always reads from these refs so it always sees the latest
+//     values regardless of render cycle.
 //
 // ── Step flow ─────────────────────────────────────────────────
 //   "identity" → "semester" → ("pin" | "pin_reveal") → "progress_check" → "eval" → "done"
 //   (semester step auto-advances when exactly one active semester)
 // ============================================================
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useToast } from "../components/toast/useToast";
-import { CRITERIA } from "../config";
-import {
-  listSemesters,
-  getActiveSemester,
-  listProjects,
-  upsertScore,
-  createOrGetJurorAndIssuePin,
-  verifyJurorPin,
-  getJurorEditState,
-  finalizeJurorSubmission,
-} from "../shared/api";
+import { isAllFilled } from "./utils/scoreState";
+import { useJurorIdentity } from "./hooks/useJurorIdentity";
+import { useJurorSession } from "./hooks/useJurorSession";
+import { useJuryScoring } from "./hooks/useJuryScoring";
+import { useJuryLoading } from "./hooks/useJuryLoading";
+import { useJuryEditState } from "./hooks/useJuryEditState";
+import { useJuryWorkflow } from "./hooks/useJuryWorkflow";
+import { useJuryAutosave } from "./hooks/useJuryAutosave";
+import { useJuryHandlers } from "./hooks/useJuryHandlers";
 
-const STORAGE_KEYS = {
-  jurorId: "jury.juror_id",
-  semesterId: "jury.semester_id",
-  jurorName: "jury.juror_name",
-  jurorInst: "jury.juror_inst",
-};
-const MAX_PIN_ATTEMPTS = 3;
-
-// ── Empty-state factories (project UUID keyed) ────────────────
-
-const makeEmptyScores = (projects) =>
-  Object.fromEntries(
-    projects.map((p) => [
-      p.project_id,
-      Object.fromEntries(CRITERIA.map((c) => [c.id, null])),
-    ])
-  );
-
-const makeEmptyComments = (projects) =>
-  Object.fromEntries(projects.map((p) => [p.project_id, ""]));
-
-const makeEmptyTouched = (projects) =>
-  Object.fromEntries(
-    projects.map((p) => [
-      p.project_id,
-      Object.fromEntries(CRITERIA.map((c) => [c.id, false])),
-    ])
-  );
-
-const makeAllTouched = (projects) =>
-  Object.fromEntries(
-    projects.map((p) => [
-      p.project_id,
-      Object.fromEntries(CRITERIA.map((c) => [c.id, true])),
-    ])
-  );
-
-// ── Pure helpers ──────────────────────────────────────────────
-
-export const isScoreFilled = (v) => {
-  if (v === null || v === undefined) return false;
-  if (typeof v === "number") return Number.isFinite(v);
-  const trimmed = String(v).trim();
-  if (trimmed === "") return false;
-  return Number.isFinite(Number(trimmed));
-};
-
-const isAllFilled = (scores, pid) =>
-  CRITERIA.every((c) => isScoreFilled(scores[pid]?.[c.id]));
-
-const isAllComplete = (scores, projects) =>
-  projects.every((p) => isAllFilled(scores, p.project_id));
-
-export const countFilled = (scores, projects) =>
-  (projects || []).reduce(
-    (t, p) =>
-      t +
-      CRITERIA.reduce(
-        (n, c) => n + (isScoreFilled(scores[p.project_id]?.[c.id]) ? 1 : 0),
-        0
-      ),
-    0
-  );
-
-export const normalizeScoreValue = (val, max) => {
-  if (val === "" || val === null || val === undefined) return null;
-  const n = parseInt(String(val), 10);
-  if (!Number.isFinite(n)) return null;
-  return Math.min(Math.max(n, 0), max);
-};
-
-const isSemesterLockedError = (err) =>
-  String(err?.message || "").includes("semester_locked");
-
-const buildScoreSnapshot = (scores, comment) => {
-  const normalizedScores = {};
-  let hasAnyScores = false;
-  CRITERIA.forEach((c) => {
-    const v = normalizeScoreValue(scores?.[c.id], c.max);
-    normalizedScores[c.id] = v;
-    if (isScoreFilled(v)) hasAnyScores = true;
-  });
-  const cleanComment = String(comment ?? "");
-  const key =
-    `${CRITERIA.map((c) => (normalizedScores[c.id] ?? "")).join("|")}::${cleanComment}`;
-  return {
-    normalizedScores,
-    comment: cleanComment,
-    key,
-    hasAnyScores,
-    hasComment: cleanComment.trim() !== "",
-  };
-};
+// Re-export pure helpers so existing imports in EvalStep.jsx and test files
+// continue to resolve from this module without any changes.
+export { isScoreFilled, normalizeScoreValue, countFilled } from "./utils/scoreState";
 
 // ─────────────────────────────────────────────────────────────
 // Hook
@@ -138,937 +63,175 @@ const buildScoreSnapshot = (scores, comment) => {
 
 export default function useJuryState() {
 
-  // ── Identity (from DB after PIN login) ────────────────────
-  const [jurorId,  setJurorId]  = useState("");
-  const [jurorSessionToken, setJurorSessionToken] = useState("");
-  const [juryName, setJuryName] = useState("");
-  const [juryDept, setJuryDept] = useState("");
+  // ── Sub-hooks (leaf: no deps on other sub-hooks) ──────────
+  const identity = useJurorIdentity();
+  const session  = useJurorSession();
+  const scoring  = useJuryScoring();
+  const loading  = useJuryLoading();
 
-  // ── Semester ──────────────────────────────────────────────
-  const [semesters,    setSemesters]    = useState([]);
-  const [semesterId,   setSemesterId]   = useState("");
-  const [semesterName, setSemesterName] = useState("");
-  const [activeSemesterInfo, setActiveSemesterInfo] = useState(null);
-  const [activeProjectCount, setActiveProjectCount] = useState(null);
-  const [progressCheck, setProgressCheck] = useState(null);
+  // ── Sub-hooks (with params from already-called hooks) ─────
+  // workflow is called before editState so editState can receive workflow.step
+  // (avoids a circular dep: editState needs step; workflow no longer needs editMode).
+  const workflow = useJuryWorkflow({
+    scores:      scoring.scores,
+    groupSynced: scoring.groupSynced,
+    projects:    loading.projects,
+  });
 
-  // ── Dynamic projects (from DB) ────────────────────────────
-  // Shape: [{ project_id, group_no, project_title, group_students }]
-  const [projects, setProjects] = useState([]);
+  const editState = useJuryEditState({
+    step:              workflow.step,
+    jurorId:           session.jurorId,
+    semesterId:        loading.semesterId,
+    jurorSessionToken: session.jurorSessionToken,
+  });
 
-  // ── Step / navigation ─────────────────────────────────────
-  const [step,    setStep]    = useState("identity");
-  const [current, setCurrent] = useState(0);
+  // ── stateRef: composite always-fresh ref ──────────────────
+  // Assembled here because it spans identity, session, loading, scoring,
+  // and workflow state. Read by writeGroup and async callbacks.
+  // Reassigned every render so async callbacks always see the latest values.
+  const stateRef = useRef({});
+  stateRef.current = {
+    jurorId:           session.jurorId,
+    jurorSessionToken: session.jurorSessionToken,
+    semesterId:        loading.semesterId,
+    projects:          loading.projects,
+    scores:            scoring.scores,
+    comments:          scoring.comments,
+    current:           workflow.current,
+  };
 
-  // ── Scoring state ─────────────────────────────────────────
-  const [scores,   setScores]   = useState({});
-  const [comments, setComments] = useState({});
-  const [touched,  setTouched]  = useState({});
+  const autosave = useJuryAutosave({
+    stateRef,
+    pendingScoresRef:   scoring.pendingScoresRef,
+    pendingCommentsRef: scoring.pendingCommentsRef,
+    editLockActive:     editState.editLockActive,
+    setGroupSynced:     scoring.setGroupSynced,
+    setEditLockActive:  editState.setEditLockActive,
+    step:               workflow.step,
+  });
 
-  const [groupSynced, setGroupSynced] = useState({});
-  const [editMode,    setEditMode]    = useState(false);
-  const [editAllowed, setEditAllowed] = useState(false);
-  const [editLockActive, setEditLockActive] = useState(false);
-
-  const [doneScores,   setDoneScores]   = useState(null);
-  const [doneComments, setDoneComments] = useState(null);
-
-  // ── Loading / save state ──────────────────────────────────
-  // null = idle; { stage: "loading"|"error", message: string }
-  const [loadingState, setLoadingState] = useState(null);
-  const [saveStatus,   setSaveStatus]   = useState("idle");
-
-  // ── Auth state ────────────────────────────────────────────
-  const [pinError, setPinError] = useState("");
-  const [pinErrorCode, setPinErrorCode] = useState("");
-  const [pinAttemptsLeft, setPinAttemptsLeft] = useState(MAX_PIN_ATTEMPTS);
-  const [pinLockedUntil, setPinLockedUntil] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [issuedPin, setIssuedPin] = useState("");
-
-  // ── Submission confirmation ───────────────────────────────
-  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
+  // ── Submit error (toast) ───────────────────────────────────
   const _toast = useToast();
   const setSubmitError = (msg) => { if (msg) _toast.error(msg); };
 
-  // ── Refs ──────────────────────────────────────────────────
-  const doneFiredRef     = useRef(false);
-  const submitPendingRef = useRef(false);
-  // justLoadedRef: set to true after _loadSemester seeds state from DB.
-  // Consumed (cleared) on the first auto-done check so we don't immediately
-  // fire a submit confirmation when a fully-scored juror resumes evaluation.
-  const justLoadedRef    = useRef(false);
+  // ── All cross-hook handlers ────────────────────────────────
+  const handlers = useJuryHandlers({
+    identity, session, scoring, loading, workflow, editState, autosave,
+    stateRef, setSubmitError,
+  });
 
-  // stateRef: always-fresh snapshot for async callbacks
-  const stateRef = useRef({});
-  stateRef.current = {
-    jurorId,
-    jurorSessionToken,
-    semesterId,
-    projects,
-    scores,
-    comments,
-    current,
-  };
-
-  // pendingScoresRef / pendingCommentsRef:
-  // Updated synchronously in onChange handlers — writeGroup reads these
-  // so it always has the latest values regardless of render timing.
-  const pendingScoresRef   = useRef(scores);
-  const pendingCommentsRef = useRef(comments);
-  const lastWrittenRef     = useRef({});
-  const semesterSelectLockRef = useRef(false);
-  // loadAbortRef: AbortController for the active data-load sequence.
-  // Aborted (and replaced) whenever a new _loadSemester or listSemesters
-  // call starts, cancelling any stale in-flight Supabase RPC fetch.
-  const loadAbortRef = useRef(null);
-
-  // ── Derived ───────────────────────────────────────────────
-  const project     = projects[current] || null;
-  const totalFields = projects.length * CRITERIA.length;
-  const progressPct =
-    totalFields > 0
-      ? Math.round((countFilled(scores, projects) / totalFields) * 100)
-      : 0;
-  const allComplete = projects.length > 0 && isAllComplete(scores, projects);
-
-  const clearLocalSession = useCallback(() => {
-    try {
-      Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
-    } catch {}
-  }, []);
-
-  // ── Core write: single group → single score row ───────────
-  // Reads from pendingScoresRef / pendingCommentsRef — always fresh.
-  const writeGroup = useCallback(
-    async (pid) => {
-      const { jurorId: jid, jurorSessionToken: sessionToken, semesterId: sid } = stateRef.current;
-      if (!jid || !sessionToken || !sid || !pid) return false;
-      if (editLockActive) return false;
-
-      const s = pendingScoresRef.current;
-      const c = pendingCommentsRef.current;
-      const currentComment = String(c[pid] || "");
-      const snapshot = buildScoreSnapshot(s[pid], currentComment);
-
-      if (!snapshot.hasAnyScores && !snapshot.hasComment && !lastWrittenRef.current[pid]) {
-        return true; // truly untouched, skip
-      }
-
-      const last  = lastWrittenRef.current[pid];
-      if (last && last.key === snapshot.key) {
-        return true; // no data changes
-      }
-
-      setSaveStatus("saving");
-      try {
-        await upsertScore(sid, pid, jid, sessionToken, snapshot.normalizedScores, snapshot.comment);
-        lastWrittenRef.current[pid] = { key: snapshot.key };
-        setSaveStatus("saved");
-        setTimeout(() => setSaveStatus("idle"), 2000);
-
-        if (isAllFilled(s, pid)) {
-          setGroupSynced((prev) => ({ ...prev, [pid]: true }));
-        }
-        return true;
-      } catch (e) {
-        if (isSemesterLockedError(e)) {
-          setEditLockActive(true);
-        }
-        setSaveStatus("error");
-        setTimeout(() => setSaveStatus("idle"), 3000);
-        return false;
-      }
-    },
-    [editLockActive] // stateRef and refs are stable
-  );
-
-  // ── Group navigation with guaranteed write ────────────────
-  const handleNavigate = useCallback(
-    async (newIndex) => {
-      const { current: cur, projects: projs } = stateRef.current;
-      const currentPid = projs[cur]?.project_id;
-      if (currentPid) await writeGroup(currentPid);
-      setCurrent(newIndex);
-    },
-    [writeGroup]
-  );
-
-  // ── Submit handlers ───────────────────────────────────────
-
-  const handleRequestSubmit = useCallback(async () => {
-    setSubmitError("");
-    if (editLockActive) {
-      setSubmitError("Evaluations are locked for this semester.");
-      return;
-    }
-    const { scores: s, projects: projs } = stateRef.current;
-    if (!isAllComplete(s, projs)) {
-      setTouched(makeAllTouched(projs));
-      const firstIncomplete = projs.findIndex(
-        (p) => !isAllFilled(s, p.project_id)
-      );
-      if (firstIncomplete >= 0) setCurrent(firstIncomplete);
-      return;
-    }
-    if (submitPendingRef.current) return;
-    submitPendingRef.current = true;
-    setLoadingState({ stage: "loading", message: "Saving latest scores…" });
-
-    let allSaved = true;
-    for (const p of projs) {
-      const ok = await writeGroup(p.project_id);
-      if (!ok) allSaved = false;
-    }
-
-    setLoadingState(null);
-    if (!allSaved) {
-      const { jurorId: jid, jurorSessionToken: sessionToken, semesterId: sid } = stateRef.current;
-      try {
-        const editState = await getJurorEditState(sid, jid, sessionToken);
-        if (editState?.lock_active) {
-          setEditLockActive(true);
-          setSubmitError("Evaluations are locked for this semester.");
-        } else {
-          setSubmitError("Could not save all scores. Please check your connection and try again.");
-        }
-      } catch {
-        setSubmitError("Could not save all scores. Please check your connection and try again.");
-      }
-      submitPendingRef.current = false;
-      return;
-    }
-
-    setConfirmingSubmit(true);
-  }, [editLockActive, writeGroup]);
-
-  // ── Auto-upgrade groupSynced ──────────────────────────────
+  // ── Auto-done: show confirmation when all groups synced ───
+  // Kept in orchestrator to avoid circular dependency:
+  //   workflow needs handleRequestSubmit
+  //   handleRequestSubmit needs writeGroup (autosave)
+  //   writeGroup needs editLockActive (editState)
   useEffect(() => {
-    if (step !== "eval" || editMode) return;
+    if (workflow.step !== "eval" || workflow.doneFiredRef.current || editState.editMode) return;
+    if (workflow.submitPendingRef.current) return;
+    if (loading.projects.length === 0) return;
+    // Skip the first render after _loadSemester seeds state so a fully-scored
+    // juror who resumes isn't immediately thrown into the submit confirmation.
+    if (workflow.justLoadedRef.current) { workflow.justLoadedRef.current = false; return; }
+    if (!loading.projects.every((p) => scoring.groupSynced[p.project_id])) return;
+
+    handlers.handleRequestSubmit();
+  }, [scoring.groupSynced, workflow.step, editState.editMode, loading.projects, handlers.handleRequestSubmit]);
+
+  // ── Auto-upgrade groupSynced ───────────────────────────────
+  // If all criteria for a project are filled but the write hasn't confirmed
+  // (e.g. the user filled all fields without blurring), mark the project synced.
+  // Kept in orchestrator (not useJuryWorkflow) to avoid circular dep with editState.
+  useEffect(() => {
+    if (workflow.step !== "eval" || editState.editMode) return;
     const newly = {};
-    projects.forEach((p) => {
-      if (!groupSynced[p.project_id] && isAllFilled(scores, p.project_id)) {
+    loading.projects.forEach((p) => {
+      if (!scoring.groupSynced[p.project_id] && isAllFilled(scoring.scores, p.project_id)) {
         newly[p.project_id] = true;
       }
     });
     if (Object.keys(newly).length > 0) {
-      setGroupSynced((prev) => ({ ...prev, ...newly }));
+      scoring.setGroupSynced((prev) => ({ ...prev, ...newly }));
     }
-  }, [scores, step, groupSynced, editMode, projects]);
-
-  // ── Auto-done: show confirmation when all groups filled ───
-  useEffect(() => {
-    if (step !== "eval" || doneFiredRef.current || editMode) return;
-    if (submitPendingRef.current) return;
-    if (projects.length === 0) return;
-    // Skip the first render after _loadSemester seeds state so a fully-scored
-    // juror who resumes isn't immediately thrown into the submit confirmation.
-    if (justLoadedRef.current) { justLoadedRef.current = false; return; }
-    if (!projects.every((p) => groupSynced[p.project_id])) return;
-
-    handleRequestSubmit();
-  }, [groupSynced, step, editMode, projects, handleRequestSubmit]);
-
-  // ── Score handlers ────────────────────────────────────────
-
-  const handleScore = useCallback(
-    (pid, cid, val) => {
-      if (editLockActive) return;
-      const stored = val === "" ? null : val;
-      const newScores = {
-        ...pendingScoresRef.current,
-        [pid]: { ...pendingScoresRef.current[pid], [cid]: stored },
-      };
-      pendingScoresRef.current = newScores;
-      setScores(newScores);
-      setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
-      if (!isScoreFilled(stored)) {
-        setGroupSynced((prev) => ({ ...prev, [pid]: false }));
-      }
-    },
-    [editLockActive]
-  );
-
-  const handleScoreBlur = useCallback(
-    (pid, cid) => {
-      if (editLockActive) return;
-      const crit = CRITERIA.find((c) => c.id === cid);
-      setTouched((prev) => ({ ...prev, [pid]: { ...prev[pid], [cid]: true } }));
-      // Clamp and normalize value
-      const val       = pendingScoresRef.current[pid]?.[cid];
-      let normalized;
-      if (val === "" || val === null || val === undefined) {
-        normalized = null;
-      } else {
-        const n = parseInt(String(val), 10);
-        normalized = Number.isFinite(n)
-          ? Math.min(Math.max(n, 0), crit.max)
-          : null;
-      }
-      const newScores = {
-        ...pendingScoresRef.current,
-        [pid]: { ...pendingScoresRef.current[pid], [cid]: normalized },
-      };
-      pendingScoresRef.current = newScores;
-      setScores(newScores);
-      writeGroup(pid);
-    },
-    [editLockActive, writeGroup]
-  );
-
-  const handleCommentChange = useCallback((pid, val) => {
-    if (editLockActive) return;
-    pendingCommentsRef.current = { ...pendingCommentsRef.current, [pid]: val };
-    setComments((prev) => ({ ...prev, [pid]: val }));
-  }, [editLockActive]);
-
-  const handleCommentBlur = useCallback(
-    (pid) => {
-      if (editLockActive) return;
-      writeGroup(pid);
-    },
-    [editLockActive, writeGroup]
-  );
-
-  const handleConfirmSubmit = useCallback(async () => {
-    setConfirmingSubmit(false);
-    setSubmitError("");
-    setLoadingState({ stage: "loading", message: "Submitting scores…" });
-
-    const {
-      scores: s,
-      comments: c,
-      jurorId: jid,
-      semesterId: sid,
-      projects: projs,
-    } = stateRef.current;
-
-    if (!jid || !sid || !Array.isArray(projs) || projs.length === 0) {
-      setLoadingState(null);
-      submitPendingRef.current = false;
-      return;
-    }
-
-    // Flush any pending edits before finalizing.
-    let allSaved = true;
-    for (const p of projs) {
-      const ok = await writeGroup(p.project_id);
-      if (!ok) allSaved = false;
-    }
-    if (!allSaved) {
-      setLoadingState(null);
-      setSubmitError("Could not save all scores. Please check your connection and try again.");
-      submitPendingRef.current = false;
-      return;
-    }
-
-    try {
-      const sessionToken = stateRef.current.jurorSessionToken;
-      if (!sessionToken) throw new Error("juror_session_missing");
-      const ok = await finalizeJurorSubmission(sid, jid, sessionToken);
-      if (!ok) throw new Error("finalize_failed");
-
-      doneFiredRef.current = true;
-      setDoneScores({ ...s });
-      setDoneComments({ ...c });
-      setEditMode(false);
-      setStep("done");
-      setEditAllowed(false);
-
-      // Refresh projects to get submission timestamps for DoneStep.
-      listProjects(sid, jid)
-        .then((projectList) => {
-          const uiProjects = projectList.map((p) => ({
-            project_id:     p.project_id,
-            group_no:       p.group_no,
-            project_title:  p.project_title,
-            group_students: p.group_students,
-            final_submitted_at: p.final_submitted_at,
-            updated_at: p.updated_at,
-          }));
-          setProjects(uiProjects);
-        })
-        .catch(() => {});
-    } catch (e) {
-      // Keep user in eval mode; submission didn't finalize.
-      if (isSemesterLockedError(e)) {
-        setEditLockActive(true);
-        setSubmitError("Evaluations are locked for this semester.");
-      } else {
-        setSubmitError("Final submission failed. Please try again.");
-      }
-    } finally {
-      setLoadingState(null);
-      submitPendingRef.current = false;
-    }
-  }, [writeGroup]);
-
-  const handleCancelSubmit = useCallback(() => {
-    setConfirmingSubmit(false);
-    submitPendingRef.current = false;
-  }, []);
-
-  useEffect(() => {
-    if ((step !== "done" && step !== "eval") || !jurorId || !semesterId) return;
-    let alive = true;
-    const refreshEditState = async () => {
-      try {
-        const editState = await getJurorEditState(semesterId, jurorId, jurorSessionToken);
-        if (!alive) return;
-        if (step === "done") setEditAllowed(!!editState?.edit_allowed);
-        setEditLockActive(!!editState?.lock_active);
-      } catch {}
-    };
-
-    refreshEditState();
-    const timer = setInterval(refreshEditState, step === "eval" ? 10000 : 15000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [step, jurorId, semesterId, jurorSessionToken]);
-
-  // ── Visibility Autosave (Mobile/Desktop) ──────────────────
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && step === "eval") {
-        const { current: cur, projects: projs } = stateRef.current;
-        const pid = projs[cur]?.project_id;
-        if (pid) writeGroup(pid);
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [step, writeGroup]);
-
-  // ── Edit-mode from DoneStep ───────────────────────────────
-  const handleEditScores = useCallback(() => {
-    if (!editAllowed) return;
-    const s = doneScores || scores;
-    const c = doneComments || comments;
-    pendingScoresRef.current   = s;
-    pendingCommentsRef.current = c;
-    lastWrittenRef.current     = Object.fromEntries(
-      Object.keys(s || {}).map((pid) => {
-        const snapshot = buildScoreSnapshot(s[pid], c?.[pid]);
-        return [pid, { key: snapshot.key }];
-      })
-    );
-    setScores(s);
-    setComments(c);
-    setEditMode(true);
-    doneFiredRef.current = false;
-    setGroupSynced(
-      Object.fromEntries(projects.map((p) => [p.project_id, true]))
-    );
-    setStep("eval");
-  }, [editAllowed, doneScores, doneComments, scores, comments, projects]);
-
-  // ── Identity submit (name + Institution / Department) ─────
-  const handleIdentitySubmit = useCallback(async () => {
-    const name = juryName.trim();
-    const inst = juryDept.trim();
-    if (!name || !inst) {
-      setAuthError("Please enter your full name and Institution / Department.");
-      return;
-    }
-    setAuthError("");
-    loadAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    loadAbortRef.current = ctrl;
-    setLoadingState({ stage: "loading", message: "Loading semesters…" });
-    try {
-      const semesterList = await listSemesters(ctrl.signal);
-      const active = (semesterList || []).filter((s) => s.is_active);
-      setSemesters(active);
-      if (active.length === 1) {
-        await handleSemesterSelect(active[0]);
-        return;
-      }
-      setLoadingState(null);
-      setStep("semester");
-    } catch (e) {
-      if (e?.name === "AbortError") return;
-      setLoadingState(null);
-      setAuthError("Could not load semesters. Please try again.");
-    }
-  // _loadSemester is intentionally omitted from deps: it is a plain async function
-  // defined inline (not wrapped in useCallback) so its identity changes on every
-  // render. Including it would trigger unnecessary re-runs. The ref-based stateRef
-  // pattern keeps all calls safe regardless of the stale closure.
-  }, [juryName, juryDept]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    let alive = true;
-    const ctrl = new AbortController();
-    const run = async () => {
-      try {
-        const res = await getActiveSemester(ctrl.signal);
-        if (!alive) return;
-        setActiveSemesterInfo(res || null);
-        if (res?.id) {
-          try {
-            const projectList = await listProjects(res.id, null, ctrl.signal);
-            if (!alive) return;
-            setActiveProjectCount(projectList.length);
-          } catch (e) {
-            if (e?.name === "AbortError") return;
-            if (alive) setActiveProjectCount(null);
-          }
-        } else {
-          setActiveProjectCount(null);
-        }
-      } catch (e) {
-        if (e?.name === "AbortError") return;
-        if (alive) setActiveProjectCount(null);
-      }
-    };
-    run();
-    return () => { alive = false; ctrl.abort(); };
-  }, []);
-
-  // ── PIN submit (resume) ───────────────────────────────────
-  const handlePinSubmit = useCallback(async (enteredPin) => {
-    setPinError("");
-    setPinErrorCode("");
-    setPinLockedUntil("");
-    setLoadingState({ stage: "loading", message: "Verifying…" });
-    try {
-      const res = await verifyJurorPin(semesterId, juryName, juryDept, enteredPin);
-      if (!res?.ok) {
-        setLoadingState(null);
-        const failedAttempts =
-          typeof res?.failed_attempts === "number" ? res.failed_attempts : null;
-        const lockedUntil = res?.locked_until || "";
-        const lockedDate = lockedUntil ? new Date(lockedUntil) : null;
-        const isLocked =
-          res?.error_code === "locked"
-          || (lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date());
-        if (res?.error_code === "semester_inactive") {
-          setPinErrorCode("semester_inactive");
-          setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-          setPinError("This semester is no longer active. Please start a new evaluation.");
-        } else if (res?.error_code === "not_found") {
-          setPinErrorCode("not_found");
-          setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-          setPinError("No juror found with this name and Institution / Department.");
-        } else if (res?.error_code === "no_pin") {
-          setPinErrorCode("no_pin");
-          setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-          setPinError("No PIN found for this semester. Please start a new evaluation.");
-        } else if (isLocked) {
-          setPinErrorCode("locked");
-          setPinAttemptsLeft(0);
-          setPinLockedUntil(lockedUntil);
-          setPinError("locked");
-        } else {
-          setPinErrorCode("invalid");
-          if (failedAttempts !== null) {
-            setPinAttemptsLeft(Math.max(0, MAX_PIN_ATTEMPTS - failedAttempts));
-          }
-          setPinError("Incorrect PIN.");
-        }
-        return;
-      }
-      const jid = res.juror_id;
-      const sessionToken = String(res?.session_token || "").trim();
-      if (!sessionToken) {
-        setLoadingState(null);
-        setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-        setPinErrorCode("network");
-        setPinLockedUntil("");
-        setPinError("Session could not be established. Please try again.");
-        return;
-      }
-      const nextName = res.juror_name || juryName;
-      const nextInst = res.juror_inst || juryDept;
-      if (res.juror_name) setJuryName(res.juror_name);
-      if (res.juror_inst) setJuryDept(res.juror_inst);
-      setJurorId(jid);
-      setJurorSessionToken(sessionToken);
-      if (res?.pin_plain_once) {
-        setIssuedPin(res.pin_plain_once);
-        setPinError("");
-        setPinErrorCode("");
-        setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-        setPinLockedUntil("");
-        setLoadingState(null);
-        setStep("pin_reveal");
-        return;
-      }
-      setIssuedPin("");
-      setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-      setPinLockedUntil("");
-      setLoadingState(null);
-        await _loadSemester(
-        { id: semesterId, name: semesterName },
-        jid,
-        { name: nextName, inst: nextInst },
-        { showProgressCheck: true, showEmptyProgress: false }
-      );
-    } catch (_) {
-      setLoadingState(null);
-      setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-      setPinErrorCode("network");
-      setPinLockedUntil("");
-      setPinError("Connection error. Please try again.");
-    }
-  // _loadSemester is intentionally omitted: it is an async function defined inline
-  // and would cause an infinite loop if included. The semesterId/Name deps already
-  // capture the meaningful state changes that should re-trigger this effect.
-  }, [semesterId, semesterName, juryName, juryDept]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Internal: load semester + projects ───────────────────
-  // Shared by handlePinSubmit (auto-advance) and handleSemesterSelect.
-  const _loadSemester = async (semester, overrideJurorId, identityOverride, options = {}) => {
-    const jid = overrideJurorId || stateRef.current.jurorId;
-    const { showProgressCheck = false, showEmptyProgress = false } = options;
-
-    // Cancel any previous in-flight load and issue a fresh signal.
-    loadAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    loadAbortRef.current = ctrl;
-    const { signal } = ctrl;
-
-    setLoadingState({ stage: "loading", message: "Loading projects…" });
-    try {
-      const projectList = await listProjects(semester.id, jid, signal);
-      let editState = null;
-      try {
-        const sessionToken = stateRef.current.jurorSessionToken;
-        editState = await getJurorEditState(semester.id, jid, sessionToken, signal);
-      } catch (e) {
-        if (e?.name === "AbortError") throw e; // propagate abort
-      }
-
-      setSemesterId(semester.id);
-      setSemesterName(semester.name);
-
-      // Seed scores / comments from existing DB data
-      const seedScores   = Object.fromEntries(
-        projectList.map((p) => [p.project_id, { ...p.scores }])
-      );
-      const seedComments = Object.fromEntries(
-        projectList.map((p) => [p.project_id, p.comment || ""])
-      );
-      const seedTouched  = makeEmptyTouched(projectList);
-      // A project is "synced" if all criteria are filled (independent of final submission)
-      const seedSynced   = Object.fromEntries(
-        projectList
-          .filter((p) => isAllFilled(seedScores, p.project_id))
-          .map((p) => [p.project_id, true])
-      );
-
-      // Strip to just the fields the UI needs (scores live in state separately)
-          const uiProjects = projectList.map((p) => ({
-            project_id:     p.project_id,
-            group_no:       p.group_no,
-            project_title:  p.project_title,
-            group_students: p.group_students,
-            final_submitted_at: p.final_submitted_at,
-            updated_at: p.updated_at,
-          }));
-
-      pendingScoresRef.current   = seedScores;
-      pendingCommentsRef.current = seedComments;
-      lastWrittenRef.current     = Object.fromEntries(
-        projectList.map((p) => {
-          const snapshot = buildScoreSnapshot(seedScores[p.project_id], seedComments[p.project_id]);
-          return [p.project_id, { key: snapshot.key }];
-        })
-      );
-
-      setProjects(uiProjects);
-      setScores(seedScores);
-      setComments(seedComments);
-      setTouched(seedTouched);
-      setGroupSynced(seedSynced);
-      setCurrent(0);
-      doneFiredRef.current = false;
-      submitPendingRef.current = false;
-      setLoadingState(null);
-      const canEdit = !!editState?.edit_allowed;
-      setEditAllowed(canEdit);
-      setEditLockActive(!!editState?.lock_active);
-      const allCompleteNow = uiProjects.length > 0 && isAllComplete(seedScores, uiProjects);
-      const finalSubmittedAt = projectList.find((p) => p.final_submitted_at)?.final_submitted_at || "";
-      const isFinalSubmitted = Boolean(finalSubmittedAt);
-      const progressRows = projectList
-        .filter((p) => {
-          if (isFinalSubmitted) return true;
-          const projectScores = p.scores || {};
-          const hasScore = Object.values(projectScores).some(isScoreFilled);
-          const hasComment = String(p.comment || "").trim() !== "";
-          return hasScore || hasComment;
-        })
-        .map((p) => {
-          const projectScores = seedScores[p.project_id] || p.scores || {};
-          const hasScore = Object.values(projectScores).some(isScoreFilled);
-          const hasComment = String(p.comment || "").trim() !== "";
-          const hasAny = hasScore || hasComment;
-          const hasTotal = p.total !== null && p.total !== undefined;
-          const allFilled = !hasTotal && CRITERIA.every((c) => isScoreFilled(projectScores[c.id]));
-          const computedPartialTotal = (!hasTotal && hasScore)
-            ? CRITERIA.reduce((sum, c) => {
-                const raw = projectScores[c.id];
-                if (!isScoreFilled(raw)) return sum;
-                const n = Number(raw);
-                return Number.isFinite(n) ? sum + n : sum;
-              }, 0)
-            : null;
-          const scoreStatus = (hasTotal || allFilled) ? "scored" : (hasScore ? "partial" : "empty");
-          const status = isFinalSubmitted
-            ? "group_submitted"
-            : (hasAny ? "in_progress" : "not_started");
-          const timestamp = isFinalSubmitted
-            ? (p.final_submitted_at || finalSubmittedAt || "")
-            : (hasAny ? (p.updated_at || "") : "");
-          return ({
-            projectId: p.project_id,
-            status,
-            scoreStatus,
-            total: hasTotal ? p.total : computedPartialTotal,
-            partialTotal: computedPartialTotal,
-            timestamp,
-          });
-        });
-      const hasProgress = progressRows.length > 0;
-      const totalCount = projectList.length;
-      const { filledCount, criteriaFilledCount } = projectList.reduce(
-        (acc, p) => {
-          const allFilled = CRITERIA.every((c) => isScoreFilled(seedScores[p.project_id]?.[c.id]));
-          const filled    = CRITERIA.filter((c) => isScoreFilled(seedScores[p.project_id]?.[c.id])).length;
-          return {
-            filledCount:         acc.filledCount + (allFilled ? 1 : 0),
-            criteriaFilledCount: acc.criteriaFilledCount + filled,
-          };
-        },
-        { filledCount: 0, criteriaFilledCount: 0 }
-      );
-      const criteriaTotalCount = totalCount * CRITERIA.length;
-      const allSubmitted = isFinalSubmitted;
-      justLoadedRef.current = true;
-      if (isFinalSubmitted) {
-        setDoneScores({ ...seedScores });
-        setDoneComments({ ...seedComments });
-        setEditMode(false);
-        setProgressCheck(null);
-        setStep("done");
-      } else {
-        setDoneScores(null);
-        setDoneComments(null);
-        if (showProgressCheck && (hasProgress || showEmptyProgress)) {
-          setProgressCheck({
-            rows: progressRows,
-            filledCount,
-            totalCount,
-            criteriaFilledCount,
-            criteriaTotalCount,
-            allSubmitted,
-            editAllowed: canEdit,
-            nextStep: "eval",
-          });
-          setStep("progress_check");
-        } else {
-          setStep("eval");
-        }
-      }
-    } catch (e) {
-      if (e?.name === "AbortError") return; // superseded by a newer load — ignore
-      setLoadingState(null);
-      setAuthError("Could not load projects. Please try again.");
-      setStep("identity");
-    }
-  };
-
-  // ── Semester selection (from SemesterStep) ────────────────
-  const handleSemesterSelect = useCallback(
-    async (semester) => {
-      // semesterSelectLockRef prevents concurrent selections (e.g., double-tap).
-      // Intentionally NOT reset on success: once the juror advances to the PIN/eval
-      // step they cannot navigate back to semester selection, so the lock is
-      // permanently held for the lifetime of the session. It is only reset on error
-      // (to allow retry) or on resetAll() when the flow starts over.
-      if (semesterSelectLockRef.current) return;
-      if (!semester?.is_active) {
-        setAuthError("Only the active semester can be evaluated.");
-        setStep("identity");
-        return;
-      }
-      const name = juryName.trim();
-      const inst = juryDept.trim();
-      if (!name || !inst) {
-        setAuthError("Please enter your full name and Institution / Department.");
-        setStep("identity");
-        return;
-      }
-      semesterSelectLockRef.current = true;
-      setAuthError("");
-      setSemesterId(semester.id);
-      setSemesterName(semester.name);
-      setLoadingState({ stage: "loading", message: "Preparing access…" });
-      try {
-        const res = await createOrGetJurorAndIssuePin(semester.id, name, inst);
-        if (res?.juror_name) setJuryName(res.juror_name);
-        if (res?.juror_inst) setJuryDept(res.juror_inst);
-        if (res?.needs_pin) {
-          setIssuedPin("");
-          setPinError("");
-          const lockedUntil = res?.locked_until || "";
-          const lockedDate = lockedUntil ? new Date(lockedUntil) : null;
-          const isLocked = lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date();
-          if (isLocked) {
-            setPinErrorCode("locked");
-            setPinAttemptsLeft(0);
-            setPinLockedUntil(lockedUntil);
-          } else {
-            setPinErrorCode("");
-            setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-            setPinLockedUntil("");
-          }
-          setLoadingState(null);
-          setStep("pin");
-          return;
-        }
-        setIssuedPin(res?.pin_plain_once || "");
-        setPinError("");
-        setPinErrorCode("");
-        setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-        setPinLockedUntil("");
-        setLoadingState(null);
-        setStep("pin_reveal");
-      } catch (e) {
-        semesterSelectLockRef.current = false;
-        setLoadingState(null);
-        if (String(e?.message || "").includes("semester_inactive")) {
-          setAuthError("This semester is no longer active. Please try again.");
-        } else {
-          setAuthError("Could not start the evaluation. Please try again.");
-        }
-        setStep("identity");
-      }
-    },
-    [juryName, juryDept]
-  );
-
-  const handlePinRevealContinue = useCallback(async () => {
-    if (!issuedPin) return;
-    await handlePinSubmit(issuedPin);
-  }, [issuedPin, handlePinSubmit]);
-
-  const handleProgressContinue = useCallback(() => {
-    if (!progressCheck?.nextStep) return;
-    setStep(progressCheck.nextStep);
-    setProgressCheck(null);
-  }, [progressCheck]);
-
-  // NOTE: We intentionally do NOT auto-resume. PIN is always required on entry.
-
-  // ── Full reset ────────────────────────────────────────────
-  const resetAll = useCallback(() => {
-    setJurorId("");
-    setJurorSessionToken("");
-    setJuryName("");
-    setJuryDept("");
-    setSemesters([]);
-    setSemesterId("");
-    setSemesterName("");
-    setActiveProjectCount(null);
-    setProgressCheck(null);
-    setProjects([]);
-    setStep("identity");
-    setCurrent(0);
-    setScores({});
-    setComments({});
-    setTouched({});
-    setGroupSynced({});
-    setEditMode(false);
-    setEditAllowed(false);
-    setEditLockActive(false);
-    setDoneScores(null);
-    setDoneComments(null);
-    setLoadingState(null);
-    setSaveStatus("idle");
-    setPinError("");
-    setPinErrorCode("");
-    setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
-    setPinLockedUntil("");
-    setAuthError("");
-    setIssuedPin("");
-    setConfirmingSubmit(false);
-    pendingScoresRef.current   = {};
-    pendingCommentsRef.current = {};
-    lastWrittenRef.current     = {};
-    semesterSelectLockRef.current = false;
-    doneFiredRef.current       = false;
-    submitPendingRef.current   = false;
-    justLoadedRef.current      = false;
-  }, []);
+  }, [scoring.scores, workflow.step, scoring.groupSynced, editState.editMode, loading.projects]);
 
   // ─────────────────────────────────────────────────────────
   return {
     // Identity
-    jurorId,
-    jurorSessionToken,
-    juryName, setJuryName,
-    juryDept, setJuryDept,
-    authError,
-    issuedPin,
+    jurorId:           session.jurorId,
+    jurorSessionToken: session.jurorSessionToken,
+    juryName:          identity.juryName,
+    setJuryName:       identity.setJuryName,
+    juryDept:          identity.juryDept,
+    setJuryDept:       identity.setJuryDept,
+    authError:         identity.authError,
+    issuedPin:         session.issuedPin,
 
     // Semester
-    semesters,
-    semesterId,
-    semesterName,
-    activeSemesterInfo,
-    activeProjectCount,
-    progressCheck,
+    semesters:          loading.semesters,
+    semesterId:         loading.semesterId,
+    semesterName:       loading.semesterName,
+    activeSemesterInfo: loading.activeSemesterInfo,
+    activeProjectCount: loading.activeProjectCount,
+    progressCheck:      loading.progressCheck,
 
     // Projects (dynamic)
-    projects,
+    projects: loading.projects,
 
     // Step / navigation
-    step, setStep,
-    current,
-    handleNavigate,
+    step:           workflow.step,
+    setStep:        workflow.setStep,
+    current:        workflow.current,
+    handleNavigate: handlers.handleNavigate,
 
     // Scoring
-    scores, comments, touched,
-    handleScore, handleScoreBlur,
-    handleCommentChange, handleCommentBlur,
+    scores:              scoring.scores,
+    comments:            scoring.comments,
+    touched:             scoring.touched,
+    handleScore:         handlers.handleScore,
+    handleScoreBlur:     handlers.handleScoreBlur,
+    handleCommentChange: handlers.handleCommentChange,
+    handleCommentBlur:   handlers.handleCommentBlur,
 
     // Derived
-    project, progressPct, allComplete,
-    groupSynced, editMode, editAllowed, editLockActive,
-    doneScores, doneComments,
+    project:        workflow.project,
+    progressPct:    workflow.progressPct,
+    allComplete:    workflow.allComplete,
+    groupSynced:    scoring.groupSynced,
+    editMode:       editState.editMode,
+    editAllowed:    editState.editAllowed,
+    editLockActive: editState.editLockActive,
+    doneScores:     scoring.doneScores,
+    doneComments:   scoring.doneComments,
 
     // Loading
-    loadingState,
-    saveStatus,
+    loadingState:   loading.loadingState,
+    saveStatus:     autosave.saveStatus,
+    sessionExpired: autosave.sessionExpired,
 
     // PIN
-    pinError,
-    pinErrorCode,
-    pinAttemptsLeft,
-    pinLockedUntil,
-    handlePinSubmit,
-    handleIdentitySubmit,
-    handlePinRevealContinue,
-    handleProgressContinue,
+    pinError:        session.pinError,
+    pinErrorCode:    session.pinErrorCode,
+    pinAttemptsLeft: session.pinAttemptsLeft,
+    pinLockedUntil:  session.pinLockedUntil,
+    handlePinSubmit:          handlers.handlePinSubmit,
+    handleIdentitySubmit:     handlers.handleIdentitySubmit,
+    handlePinRevealContinue:  handlers.handlePinRevealContinue,
+    handleProgressContinue:   handlers.handleProgressContinue,
 
     // Semester
-    handleSemesterSelect,
+    handleSemesterSelect: handlers.handleSemesterSelect,
 
     // Submit
-    confirmingSubmit,
-    handleRequestSubmit,
-    handleConfirmSubmit,
-    handleCancelSubmit,
+    confirmingSubmit:    workflow.confirmingSubmit,
+    handleRequestSubmit: handlers.handleRequestSubmit,
+    handleConfirmSubmit: handlers.handleConfirmSubmit,
+    handleCancelSubmit:  handlers.handleCancelSubmit,
 
     // Edit
-    handleEditScores,
-    handleFinalSubmit: handleRequestSubmit,
+    handleEditScores:  handlers.handleEditScores,
+    handleFinalSubmit: handlers.handleRequestSubmit,
 
-    resetAll,
-    clearLocalSession,
+    resetAll:          handlers.resetAll,
+    clearLocalSession: handlers.clearLocalSession,
   };
 }

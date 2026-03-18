@@ -2171,5 +2171,82 @@
     "risk": "Broken export on results day means no official document.",
     "coverageStrength": "Strong",
     "severity": "critical"
+  },
+  {
+    "id": "auditUtils.parse.01",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — Date Parsing",
+    "story": "Parse month-name search query",
+    "scenario": "parseSearchDateParts('15 jan 2025') returns { day: 15, month: 1, year: 2025 }",
+    "whyItMatters": "Audit log search by month name is the most common free-text query pattern.",
+    "risk": "Broken parsing silently returns no results, making audit log search non-functional.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "auditUtils.parse.02",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — Date Parsing",
+    "story": "Parse dd.mm.yyyy search query",
+    "scenario": "parseSearchDateParts('15.01.2025') returns { day: 15, month: 1, year: 2025 }",
+    "whyItMatters": "European date format is the default notation for TEDU coordinators.",
+    "risk": "Format rejection causes no results for the most common typed date query.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "auditUtils.parse.03",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — Date String",
+    "story": "Parse ISO datetime string",
+    "scenario": "parseAuditDateString('2025-01-15T14:30') returns { ms: <timestamp>, isDateOnly: false }",
+    "whyItMatters": "Audit filter date fields accept ISO datetime format; parsing must be exact.",
+    "risk": "Wrong ms value shifts the filter window, returning wrong audit entries.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "auditUtils.parse.04",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — Date String",
+    "story": "Reject out-of-bounds year",
+    "scenario": "parseAuditDateString('1800-01-01') returns null",
+    "whyItMatters": "Out-of-bounds years must be rejected to prevent RPC parameter errors.",
+    "risk": "Invalid year passed to RPC could cause a 400 error or incorrect date range.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "auditUtils.range.01",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — Range Validation",
+    "story": "Date range error when start is after end",
+    "scenario": "getAuditDateRangeError({ startDate: '2025-06-01', endDate: '2025-01-01' }) returns non-empty error string",
+    "whyItMatters": "Invalid ranges must show an error before the RPC is called.",
+    "risk": "Sending start > end to the RPC returns zero results with no feedback to the admin.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "auditUtils.params.01",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — RPC Params",
+    "story": "Build audit RPC params with date search",
+    "scenario": "buildAuditParams(defaultFilters, 120, null, '15 jan') sets searchDay=15 searchMonth=1",
+    "whyItMatters": "Server-side date search only works if searchDay/searchMonth fields are set correctly.",
+    "risk": "Missing search fields cause full-scan fallback with incorrect results.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "auditUtils.normalize.01",
+    "module": "Admin / Settings / Audit",
+    "area": "Audit Utils — Name Normalization",
+    "story": "Normalize semicolon-separated student names",
+    "scenario": "normalizeStudentNames('Alice ; Bob\\nCarol') returns 'Alice; Bob; Carol'",
+    "whyItMatters": "Student names pasted from spreadsheets use inconsistent separators.",
+    "risk": "Unnormalized names cause duplicate juror records or failed project imports.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
   }
 ]

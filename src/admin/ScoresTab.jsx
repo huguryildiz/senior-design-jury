@@ -7,6 +7,7 @@ import RankingsTab from "./RankingsTab";
 const AnalyticsTab = lazy(() => import("./AnalyticsTab"));
 import ScoreDetails from "./ScoreDetails";
 import ScoreGrid from "./ScoreGrid";
+import ErrorBoundary from "../shared/ErrorBoundary";
 
 function AnalyticsFallback() {
   return (
@@ -47,23 +48,25 @@ export default function ScoresTab({
         <RankingsTab ranked={ranked} semesterName={semesterName} />
       )}
       {view === "analytics" && (
-        <Suspense fallback={<AnalyticsFallback />}>
-          <AnalyticsTab
-            dashboardStats={dashboardStats}
-            submittedData={submittedData}
-            overviewMetrics={overviewMetrics}
-            lastRefresh={lastRefresh}
-            loading={loading}
-            error={error}
-            semesterName={semesterName}
-            semesterOptions={semesterOptions}
-            trendSemesterIds={trendSemesterIds}
-            onTrendSelectionChange={onTrendSelectionChange}
-            trendData={trendData}
-            trendLoading={trendLoading}
-            trendError={trendError}
-          />
-        </Suspense>
+        <ErrorBoundary fallback={<AnalyticsFallback />}>
+          <Suspense fallback={<AnalyticsFallback />}>
+            <AnalyticsTab
+              dashboardStats={dashboardStats}
+              submittedData={submittedData}
+              overviewMetrics={overviewMetrics}
+              lastRefresh={lastRefresh}
+              loading={loading}
+              error={error}
+              semesterName={semesterName}
+              semesterOptions={semesterOptions}
+              trendSemesterIds={trendSemesterIds}
+              onTrendSelectionChange={onTrendSelectionChange}
+              trendData={trendData}
+              trendLoading={trendLoading}
+              trendError={trendError}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
       {view === "details" && (
         <ScoreDetails

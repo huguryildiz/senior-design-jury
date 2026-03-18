@@ -13,6 +13,7 @@ This directory contains all project documentation. Some subdirectories are gitig
 | `qa/` | Test guides, test session records | No |
 | `audit/` | Dated production audit reports | Yes |
 | `reports/` | Tech debt register, release blockers, analysis | Yes |
+| `refactor/` | Phase-by-phase refactor documentation | No |
 | `prompts/` | AI prompt templates (session tools) | Yes |
 | `misc/` | Raw sample files (CSVs, mockups) | Yes |
 
@@ -45,7 +46,7 @@ Gitignored folders are not committed to the repository. They exist locally for r
 
 | File | Contents |
 | --- | --- |
-| [qa/vitest-guide.md](qa/vitest-guide.md) | Vitest unit test guide — all 36 files, 276 tests, qaTest pattern, Allure reporting |
+| [qa/vitest-guide.md](qa/vitest-guide.md) | Vitest unit test guide — all 37 files, 306 tests, qaTest pattern, Allure reporting |
 | [qa/e2e-guide.md](qa/e2e-guide.md) | Playwright E2E guide — commands, env vars, skip logic, HTML/Excel reports |
 | [qa/smoke_test-guide.md](qa/smoke_test-guide.md) | Pre-jury-day smoke test checklist and automation guide |
 | [qa/qa_workbook_tests.md](qa/qa_workbook_tests.md) | Test expansion record (Sprint 1–3, gap-closing, E2E) |

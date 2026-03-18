@@ -5,439 +5,53 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CRITERIA, TOTAL_MAX } from "../config";
-import { cmp, exportXLSX, formatTs, tsToMillis, rowKey } from "./utils";
-import { readSection, writeSection } from "./persist";
+import { cmp, formatTs, tsToMillis, rowKey } from "./utils";
+import { exportXLSX } from "./xlsx/exportXLSX";
 import {
   FilterPanelActions,
-  FilterPopoverPortal,
   StatusBadge,
   useResponsiveFilterPresentation,
 } from "./components";
 import { getCellState } from "./scoreHelpers";
-import { FilterIcon, DownloadIcon, InfoIcon, SearchIcon, XIcon } from "../shared/Icons";
+import { DownloadIcon, InfoIcon, SearchIcon } from "../shared/Icons";
 import {
   APP_DATE_MIN_DATETIME,
   APP_DATE_MAX_DATETIME,
-  isValidDateParts,
 } from "../shared/dateBounds";
 
-// Show "" for null/undefined/empty/NaN.  0 is a valid score.
-function displayScore(val) {
-  if (val === "" || val === null || val === undefined) return "";
-  if (typeof val === "string" && val.trim() === "") return "";
-  const n = Number(val);
-  if (!Number.isFinite(n)) return "";
-  return n;
-}
+import {
+  useScoreDetailsFilters,
+  SCORE_COLS,
+  SCORE_FILTER_MIN,
+  SCORE_FILTER_MAX,
+  SCORE_MAX_BY_KEY,
+  STATUS_OPTIONS,
+  JUROR_STATUS_OPTIONS,
+  VALID_SORT_DIRS,
+  DEFAULT_SORT_KEY,
+  DEFAULT_SORT_DIR,
+  DATE_MIN_DATETIME,
+  DATE_MAX_DATETIME,
+  SCORE_KEYS,
+  parseDateString,
+  buildDateRange,
+  buildEmptyScoreFilters,
+  toFiniteNumber,
+  isInvalidNumberRange,
+  hasActiveValidNumberRange,
+  clampScoreInput,
+  isMissing,
+  NUMERIC_SORT_KEYS,
+} from "./hooks/useScoreDetailsFilters";
 
-const SCORE_COLS = [
-  ...CRITERIA.map((c) => ({ key: c.id, label: `${c.shortLabel || c.label} /${c.max}` })),
-  { key: "total", label: "Total" },
-];
-const SCORE_FILTER_MIN = 0;
-const SCORE_FILTER_MAX = TOTAL_MAX;
-const SCORE_MAX_BY_KEY = {
-  ...Object.fromEntries(CRITERIA.map((c) => [c.id, c.max])),
-  total: TOTAL_MAX,
-};
-const STATUS_OPTIONS = [
-  { value: "scored",      label: "Scored"       },
-  { value: "partial",     label: "Partial"      },
-  { value: "empty",       label: "Empty"        },
-];
-const JUROR_STATUS_OPTIONS = [
-  { value: "completed",       label: "Completed"       },
-  { value: "ready_to_submit", label: "Ready to Submit" },
-  { value: "in_progress",     label: "In Progress"     },
-  { value: "editing",         label: "Editing"         },
-  { value: "not_started",     label: "Not Started"     },
-];
-const SCORE_STATUS_LEGEND = [
-  { status: "scored", description: "All criteria are scored for this row." },
-  { status: "partial", description: "At least one criterion is missing." },
-  { status: "empty", description: "No score has been entered yet." },
-];
-const JUROR_STATUS_LEGEND = [
-  { status: "completed", description: "Final submission is completed." },
-  { status: "ready_to_submit", description: "All groups are scored and ready for submission." },
-  { status: "in_progress", description: "Scoring has started but is not complete." },
-  { status: "not_started", description: "No scoring activity yet." },
-  { status: "editing", description: "Editing mode is enabled for this juror." },
-];
-
-const VALID_SORT_DIRS = ["asc", "desc"];
-const DEFAULT_SORT_KEY = "updatedMs";
-const DEFAULT_SORT_DIR = "desc";
-
-const DATE_MIN_DATETIME = APP_DATE_MIN_DATETIME;
-const DATE_MAX_DATETIME = APP_DATE_MAX_DATETIME;
-
-function isValidTimeParts(hh, mi, ss) {
-  if (hh < 0 || hh > 23) return false;
-  if (mi < 0 || mi > 59) return false;
-  if (ss < 0 || ss > 59) return false;
-  return true;
-}
-
-function parseDateString(value) {
-  if (!value) return null;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) {
-    const [datePart, timePart] = value.split("T");
-    const [yyyy, mm, dd] = datePart.split("-").map(Number);
-    const [hh, mi, ss = "0"] = timePart.split(":").map(Number);
-    if (!isValidDateParts(yyyy, mm, dd)) return null;
-    if (!isValidTimeParts(hh, mi, ss)) return null;
-    return { ms: new Date(yyyy, mm - 1, dd, hh, mi, ss).getTime(), isDateOnly: false };
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [yyyy, mm, dd] = value.split("-").map(Number);
-    if (!isValidDateParts(yyyy, mm, dd)) return null;
-    return { ms: new Date(yyyy, mm - 1, dd).getTime(), isDateOnly: true };
-  }
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-    const [dd, mm, yyyy] = value.split("/").map(Number);
-    if (!isValidDateParts(yyyy, mm, dd)) return null;
-    return { ms: new Date(yyyy, mm - 1, dd).getTime(), isDateOnly: true };
-  }
-  return null;
-}
-
-function formatDateOnlyFromMs(ms) {
-  if (!Number.isFinite(ms)) return "—";
-  const d = new Date(ms);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
-
-function buildDateRange(parsedFrom, parsedTo) {
-  const fromMs = parsedFrom?.ms ?? 0;
-  const toMsBase = parsedTo?.ms ?? Infinity;
-  const toMs = Number.isFinite(toMsBase)
-    ? toMsBase + (parsedTo?.isDateOnly ? (24 * 60 * 60 * 1000 - 1) : 0)
-    : toMsBase;
-  return { fromMs, toMs };
-}
-
-const SCORE_KEYS = SCORE_COLS.map(({ key }) => key);
-
-function normalizeScoreFilterValue(value, key = "total") {
-  if (value === null || value === undefined || value === "") return "";
-  const n = Number(String(value).replace(",", "."));
-  if (!Number.isFinite(n)) return "";
-  const maxAllowed = Number.isFinite(SCORE_MAX_BY_KEY[key]) ? SCORE_MAX_BY_KEY[key] : SCORE_FILTER_MAX;
-  return String(Math.min(maxAllowed, Math.max(SCORE_FILTER_MIN, n)));
-}
-
-function buildEmptyScoreFilters(stored) {
-  const base = {};
-  SCORE_KEYS.forEach((key) => {
-    const entry = stored && typeof stored === "object" ? stored[key] : null;
-    base[key] = {
-      min: normalizeScoreFilterValue(entry?.min, key),
-      max: normalizeScoreFilterValue(entry?.max, key),
-    };
-  });
-  return base;
-}
-
-function toFiniteNumber(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function isInvalidNumberRange(minRaw, maxRaw) {
-  const minNum = toFiniteNumber(minRaw);
-  const maxNum = toFiniteNumber(maxRaw);
-  if (minRaw && minNum === null) return true;
-  if (maxRaw && maxNum === null) return true;
-  return minNum !== null && maxNum !== null && minNum > maxNum;
-}
-
-function hasActiveValidNumberRange(range) {
-  const minRaw = range?.min ?? "";
-  const maxRaw = range?.max ?? "";
-  if (!minRaw && !maxRaw) return false;
-  return !isInvalidNumberRange(minRaw, maxRaw);
-}
-
-function clampScoreInput(raw, key = "total") {
-  if (raw === "") return "";
-  const n = Number(String(raw).replace(",", "."));
-  if (!Number.isFinite(n)) return raw;
-  const maxAllowed = Number.isFinite(SCORE_MAX_BY_KEY[key]) ? SCORE_MAX_BY_KEY[key] : SCORE_FILTER_MAX;
-  return String(Math.min(maxAllowed, Math.max(SCORE_FILTER_MIN, n)));
-}
-
-function isMissing(val) {
-  if (val === "" || val === null || val === undefined) return true;
-  if (typeof val === "string" && val.trim() === "") return true;
-  if (typeof val === "number") return !Number.isFinite(val);
-  return false;
-}
-
-const NUMERIC_SORT_KEYS = new Set(SCORE_COLS.map(({ key }) => key));
-const joinClass = (...parts) => parts.filter(Boolean).join(" ");
-
-const SWIPE_ACTIVATION_PX = 6;
-
-function enableCellScroll(evt) {
-  const el = evt.currentTarget;
-  if (!el || !el.classList) return;
-  if (typeof el.matches === "function" && !el.matches(":focus-visible")) return;
-  el.classList.add("is-scrollable");
-}
-function disableCellScroll(evt) {
-  const el = evt.currentTarget;
-  if (!el || !el.classList) return;
-  el.classList.remove("is-scrollable");
-  const inner = el.firstElementChild;
-  if (inner) { inner.style.transition = ""; inner.style.transform = ""; }
-  delete el.dataset.currentTranslate;
-}
-function handleCellTouchStart(evt) {
-  const el = evt.currentTarget;
-  const t = evt.touches?.[0];
-  if (!el || !el.classList || !t) return;
-  const inner = el.firstElementChild;
-  if (inner) inner.style.transition = "";
-  el.dataset.touchStartX   = String(t.clientX);
-  el.dataset.touchStartY   = String(t.clientY);
-  el.dataset.baseTranslate = el.dataset.currentTranslate ?? "0";
-  delete el.dataset.maxScroll;
-  delete el.dataset.lastMoveX;
-  delete el.dataset.lastMoveTime;
-  delete el.dataset.pastMoveX;
-  delete el.dataset.pastMoveTime;
-}
-function handleCellTouchMove(evt) {
-  const el = evt.currentTarget;
-  const t = evt.touches?.[0];
-  if (!el || !el.classList || !t) return;
-  const startX = Number(el.dataset.touchStartX);
-  const startY = Number(el.dataset.touchStartY);
-  if (!Number.isFinite(startX) || !Number.isFinite(startY)) return;
-  const rawDx = t.clientX - startX;
-  const dy    = Math.abs(t.clientY - startY);
-  if (Math.abs(rawDx) < SWIPE_ACTIVATION_PX || Math.abs(rawDx) <= dy) return;
-
-  const inner = el.firstElementChild;
-  if (!inner) return;
-
-  if (!el.classList.contains("is-scrollable")) {
-    el.classList.add("is-scrollable");
-    void el.offsetWidth;
-  }
-  if (!el.dataset.maxScroll) {
-    const overflow = inner.scrollWidth - el.clientWidth;
-    el.dataset.maxScroll = String(overflow > 0 ? overflow : 0);
-  }
-
-  const now = Date.now();
-  if (now - Number(el.dataset.pastMoveTime ?? 0) > 80) {
-    el.dataset.pastMoveX    = el.dataset.lastMoveX    ?? String(t.clientX);
-    el.dataset.pastMoveTime = el.dataset.lastMoveTime ?? String(now);
-  }
-  el.dataset.lastMoveX    = String(t.clientX);
-  el.dataset.lastMoveTime = String(now);
-
-  const maxScroll    = Number(el.dataset.maxScroll ?? "0");
-  const baseTranslate = Number(el.dataset.baseTranslate ?? "0");
-  const newTranslate  = Math.min(0, Math.max(-maxScroll, baseTranslate + rawDx));
-  inner.style.transform = `translateX(${newTranslate}px)`;
-  el.dataset.currentTranslate = String(newTranslate);
-}
-function handleCellTouchEnd(evt) {
-  const el = evt.currentTarget;
-  if (!el || !el.classList) return;
-  const pos       = Number(el.dataset.currentTranslate ?? "0");
-  const maxScroll = Number(el.dataset.maxScroll ?? "0");
-  const inner     = el.firstElementChild;
-
-  const lastX    = Number(el.dataset.lastMoveX    ?? "0");
-  const lastTime = Number(el.dataset.lastMoveTime ?? "0");
-  const pastX    = Number(el.dataset.pastMoveX    ?? lastX);
-  const pastTime = Number(el.dataset.pastMoveTime ?? lastTime);
-  const dt       = lastTime - pastTime;
-  const velocity = dt > 10 ? (lastX - pastX) / dt : 0;
-
-  delete el.dataset.touchStartX;
-  delete el.dataset.touchStartY;
-  delete el.dataset.baseTranslate;
-  delete el.dataset.maxScroll;
-  delete el.dataset.lastMoveX;
-  delete el.dataset.lastMoveTime;
-  delete el.dataset.pastMoveX;
-  delete el.dataset.pastMoveTime;
-
-  if (inner && maxScroll > 0 && Math.abs(velocity) > 0.15) {
-    const target = Math.min(0, Math.max(-maxScroll, pos + velocity * 280));
-    if (Math.abs(target - pos) > 3) {
-      inner.style.transition = "transform 450ms cubic-bezier(0.22, 1, 0.36, 1)";
-      inner.style.transform  = `translateX(${target}px)`;
-      el.dataset.currentTranslate = String(target);
-      inner.addEventListener("transitionend", function onEnd() {
-        inner.style.transition = "";
-        inner.removeEventListener("transitionend", onEnd);
-        if (Number(el.dataset.currentTranslate ?? "0") >= 0) {
-          el.classList.remove("is-scrollable");
-          inner.style.transform = "";
-          delete el.dataset.currentTranslate;
-        }
-      });
-      return;
-    }
-  }
-
-  if (pos >= 0) {
-    el.classList.remove("is-scrollable");
-    if (inner) inner.style.transform = "";
-    delete el.dataset.currentTranslate;
-  }
-}
-const CELL_SCROLL_PROPS = {
-  className: "detail-cell-scroll",
-  tabIndex: 0,
-  onFocus: enableCellScroll,
-  onBlur: disableCellScroll,
-  onTouchStart: handleCellTouchStart,
-  onTouchMove: handleCellTouchMove,
-  onTouchEnd: handleCellTouchEnd,
-  onTouchCancel: handleCellTouchEnd,
-};
-function updateNativeCellScrollState(el) {
-  if (!el || !el.classList) return;
-  const isOverflowing = el.scrollWidth > el.clientWidth + 1;
-  el.classList.toggle("is-overflowing", isOverflowing);
-  el.classList.toggle("is-scrolled", el.scrollLeft > 0);
-}
-function handleNativeCellScroll(evt) {
-  updateNativeCellScrollState(evt.currentTarget);
-}
-function setNativeCellScrollRef(el) {
-  updateNativeCellScrollState(el);
-}
-const CELL_SCROLL_NATIVE_PROPS = {
-  className: "detail-cell-scroll is-native-scroll",
-  onScroll: handleNativeCellScroll,
-  ref: setNativeCellScrollRef,
-};
-
-// ── Pagination helpers ─────────────────────────────────────────
-function buildPageTokens(current, total) {
-  if (total <= 1) return [1];
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const always = new Set([1, total, current, current - 1, current + 1]);
-  const pages  = Array.from(always).filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
-  const tokens = [];
-  for (let idx = 0; idx < pages.length; idx++) {
-    if (idx > 0 && pages[idx] - pages[idx - 1] > 1) tokens.push("...");
-    tokens.push(pages[idx]);
-  }
-  return tokens;
-}
-
-function TablePagination({ currentPage, totalPages, pageSize, totalRows, onPageChange, onPageSizeChange }) {
-  const PAGE_SIZES = [10, 15, 25, 50];
-  const rangeStart = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const rangeEnd   = Math.min(currentPage * pageSize, totalRows);
-  const tokens     = buildPageTokens(currentPage, totalPages);
-
-  return (
-    <div className="details-pagination">
-      <div className="details-pagination__left">
-        <label className="details-pagination__size-label" htmlFor="details-page-size">
-          Rows per page
-        </label>
-        <select
-          id="details-page-size"
-          className="details-pagination__size-select"
-          value={pageSize}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-        >
-          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </div>
-      <span className="details-pagination__range">
-        {totalRows === 0 ? "0 rows" : `${rangeStart}–${rangeEnd} of ${totalRows} rows`}
-      </span>
-      <div className="details-pagination__controls">
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(1)} disabled={currentPage === 1} aria-label="First page">{"<<"}</button>
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page">{"<"}</button>
-        {tokens.map((token, idx) =>
-          token === "..." ? (
-            <span key={`el-${idx}`} className="details-pagination__ellipsis">…</span>
-          ) : (
-            <button
-              key={token}
-              type="button"
-              className={`details-pagination__btn details-pagination__page-btn${token === currentPage ? " details-pagination__page-btn--active" : ""}`}
-              onClick={() => onPageChange(token)}
-              aria-label={`Page ${token}`}
-              aria-current={token === currentPage ? "page" : undefined}
-            >
-              {token}
-            </button>
-          )
-        )}
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next page">{">"}</button>
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} aria-label="Last page">{">>"}</button>
-      </div>
-    </div>
-  );
-}
-
-// ── ColHeader ─────────────────────────────────────────────────
-// Reusable <th> with optional sort button + optional filter icon.
-// sk         — sort key (falsy → no sort)
-// filterCol  — filter column id (falsy or noFilter → no filter)
-// isActive   — drives "filtered" CSS class + filter-icon-active
-// onFilterClick — custom filter button click (overrides default)
-// sortIconNode  — extra node rendered inside the sort button (for score cols)
-function ColHeader({ label, sk, filterCol, isActive, noFilter = false, noSort = false,
-                     sortKey, sortDir, onSort, onFilter, onFilterClick, sortIconNode,
-                     thClassName, filterId, isOpen }) {
-  const ariaSortVal = sk && sortKey === sk
-    ? (sortDir === "asc" ? "ascending" : "descending")
-    : undefined;
-  const defaultFilterClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onFilter(filterCol, e);
-  };
-  return (
-    <th style={{ position: "relative", whiteSpace: "nowrap" }} className={thClassName}
-      {...(ariaSortVal ? { "aria-sort": ariaSortVal } : {})}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-        {noSort ? (
-          <span className={`details-col-label${isActive ? " filtered" : ""}`}>{label}</span>
-        ) : (
-          <button
-            type="button"
-            className={`col-sort-label details-col-label${isActive ? " filtered" : ""}`}
-            onClick={() => onSort(sk)}
-          >
-            {label}{sortIconNode && <> {sortIconNode}</>}
-          </button>
-        )}
-        {!noFilter && (
-          <button
-            type="button"
-            className={`col-filter-hotspot${isActive ? " active filter-icon-active" : ""}`}
-            onClick={onFilterClick ?? defaultFilterClick}
-            title={`Filter by ${label.toLowerCase()}`}
-            aria-label={`Filter by ${label}`}
-            aria-expanded={!!isOpen}
-            aria-controls={filterId}
-          >
-            <FilterIcon />
-          </button>
-        )}
-      </div>
-    </th>
-  );
-}
+import ScoreDetailsFilters from "./components/details/ScoreDetailsFilters";
+import ScoreDetailsTable, {
+  displayScore,
+  formatDateOnlyFromMs,
+  CELL_SCROLL_PROPS,
+  CELL_SCROLL_NATIVE_PROPS,
+  joinClass,
+} from "./components/details/ScoreDetailsTable";
 
 // jurors prop: { key, name, dept }[]
 export default function ScoreDetails({
@@ -450,104 +64,52 @@ export default function ScoreDetails({
   summaryData = [],
   loading = false,
 }) {
-  // Read persisted state exactly once (mount only) — useRef prevents re-reads on every render.
-  const _sRef = useRef(null);
-  if (_sRef.current === null) _sRef.current = readSection("details");
-  const _s = _sRef.current;
+  const {
+    filterSemester, setFilterSemester,
+    filterGroupNo, setFilterGroupNo,
+    filterJuror, setFilterJuror,
+    filterDept, setFilterDept,
+    filterStatus, setFilterStatus,
+    filterJurorStatus, setFilterJurorStatus,
+    filterProjectTitle, setFilterProjectTitle,
+    filterStudents, setFilterStudents,
+    filterComment, setFilterComment,
+    scoreFilters, setScoreFilters,
+    updatedFrom, setUpdatedFrom,
+    updatedTo, setUpdatedTo,
+    completedFrom, setCompletedFrom,
+    completedTo, setCompletedTo,
+    updatedDateError, setUpdatedDateError,
+    completedDateError, setCompletedDateError,
+    updatedParsedFrom,
+    updatedParsedTo,
+    updatedParsedFromMs,
+    updatedParsedToMs,
+    isUpdatedInvalidRange,
+    completedParsedFrom,
+    completedParsedTo,
+    completedParsedFromMs,
+    completedParsedToMs,
+    isCompletedInvalidRange,
+    sortKey, setSortKey,
+    sortDir, setSortDir,
+    pageSize, setPageSize,
+    currentPage, setCurrentPage,
+    activeFilterCol, setActiveFilterCol,
+    anchorRect, setAnchorRect,
+    anchorEl, setAnchorEl,
+    multiSearchQuery, setMultiSearchQuery,
+    showStatusLegend, setShowStatusLegend,
+    filterPresentation,
+  } = useScoreDetailsFilters();
 
-  const [filterSemester, setFilterSemester] = useState(() => {
-    if (Array.isArray(_s.filterSemester)) return _s.filterSemester;
-    if (typeof _s.filterSemester === "string" && _s.filterSemester) return [_s.filterSemester];
-    return null; // null = all semesters
-  });
-  const [filterGroupNo,  setFilterGroupNo]  = useState(() => {
-    if (Array.isArray(_s.filterGroupNo)) return _s.filterGroupNo;
-    if (typeof _s.filterGroupNo === "string" && _s.filterGroupNo) return [_s.filterGroupNo];
-    return null; // null = all groups
-  });
-  const [filterJuror,    setFilterJuror]    = useState(() => {
-    if (typeof _s.filterJuror === "string") return _s.filterJuror === "ALL" ? "" : _s.filterJuror;
-    return "";
-  });
-  const [filterDept,     setFilterDept]     = useState(() => {
-    if (typeof _s.filterDept === "string") return _s.filterDept === "ALL" ? "" : _s.filterDept;
-    return "";
-  });
-  const [filterStatus,   setFilterStatus]   = useState(() => {
-    if (Array.isArray(_s.filterStatus)) {
-      if (_s.filterStatus.length === 0) return null;
-      return _s.filterStatus.map((v) => (v === "not_started" ? "empty" : v));
-    }
-    if (typeof _s.filterStatus === "string" && _s.filterStatus && _s.filterStatus !== "ALL") {
-      return [_s.filterStatus === "not_started" ? "empty" : _s.filterStatus];
-    }
-    return null; // null = all statuses
-  });
-  const [filterJurorStatus, setFilterJurorStatus] = useState(() => {
-    if (Array.isArray(_s.filterJurorStatus)) {
-      return _s.filterJurorStatus.length === 0 ? null : _s.filterJurorStatus;
-    }
-    if (typeof _s.filterJurorStatus === "string" && _s.filterJurorStatus && _s.filterJurorStatus !== "ALL") {
-      return [_s.filterJurorStatus];
-    }
-    return null; // null = all juror statuses
-  });
-  const [filterProjectTitle, setFilterProjectTitle] = useState(() => typeof _s.filterProjectTitle === "string" ? _s.filterProjectTitle : "");
-  const [filterStudents,     setFilterStudents]     = useState(() => typeof _s.filterStudents     === "string" ? _s.filterStudents     : "");
-  const legacyDateFrom = typeof _s.dateFrom === "string" ? _s.dateFrom : "";
-  const legacyDateTo = typeof _s.dateTo === "string" ? _s.dateTo : "";
-  const legacyDateCol = _s.dateFilterCol === "completed" ? "completed" : "updated";
-  const [updatedFrom, setUpdatedFrom] = useState(() => {
-    if (typeof _s.updatedFrom === "string") return _s.updatedFrom;
-    return legacyDateCol === "updated" ? legacyDateFrom : "";
-  });
-  const [updatedTo, setUpdatedTo] = useState(() => {
-    if (typeof _s.updatedTo === "string") return _s.updatedTo;
-    return legacyDateCol === "updated" ? legacyDateTo : "";
-  });
-  const [completedFrom, setCompletedFrom] = useState(() => {
-    if (typeof _s.completedFrom === "string") return _s.completedFrom;
-    return legacyDateCol === "completed" ? legacyDateFrom : "";
-  });
-  const [completedTo, setCompletedTo] = useState(() => {
-    if (typeof _s.completedTo === "string") return _s.completedTo;
-    return legacyDateCol === "completed" ? legacyDateTo : "";
-  });
-  const [updatedDateError, setUpdatedDateError] = useState(null);
-  const [completedDateError, setCompletedDateError] = useState(null);
-  const [scoreFilters, setScoreFilters] = useState(() => buildEmptyScoreFilters(_s.scoreFilters));
-  const jurorEditMap = useMemo(() => {
-    const map = new Map();
-    (jurors || []).forEach((j) => {
-      const editEnabled = !!(j.editEnabled ?? j.edit_enabled);
-      if (j.jurorId) map.set(j.jurorId, editEnabled);
-      if (j.key) map.set(j.key, editEnabled);
-      const name = String(j.name ?? j.juryName ?? "").trim().toLowerCase();
-      const dept = String(j.dept ?? j.juryDept ?? "").trim().toLowerCase();
-      if (name || dept) map.set(`${name}__${dept}`, editEnabled);
-    });
-    return map;
-  }, [jurors]);
-  const [filterComment,  setFilterComment]  = useState(() => typeof _s.filterComment === "string" ? _s.filterComment : "");
-  const [sortKey,        setSortKey]        = useState(() => {
-    if (_s.sortKey === null) return null;
-    const rawKey = typeof _s.sortKey === "string" && _s.sortKey ? _s.sortKey : DEFAULT_SORT_KEY;
-    const key = rawKey === "tsMs" ? "updatedMs" : rawKey;
-    return key === "projectId" ? "projectTitle" : key;
-  });
-  const [sortDir,        setSortDir]        = useState(() => VALID_SORT_DIRS.includes(_s.sortDir) ? _s.sortDir : DEFAULT_SORT_DIR);
-  const [pageSize,       setPageSize]       = useState(15);
-  const [currentPage,    setCurrentPage]    = useState(1);
-  const [activeFilterCol, setActiveFilterCol] = useState(null);
-  const [anchorRect, setAnchorRect] = useState(null);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [multiSearchQuery, setMultiSearchQuery] = useState("");
-  const [showStatusLegend, setShowStatusLegend] = useState(false);
-  const filterPresentation = useResponsiveFilterPresentation();
   const useSheetFilters = filterPresentation.mode === "sheet";
+
   const [isTouchInput, setIsTouchInput] = useState(() => (
     typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches
   ));
+
+  // Scroll sync refs — must stay in ScoreDetails
   const topScrollRef = useRef(null);
   const tableScrollRef = useRef(null);
   const cellScrollProps = isTouchInput ? CELL_SCROLL_NATIVE_PROPS : CELL_SCROLL_PROPS;
@@ -556,6 +118,7 @@ export default function ScoreDetails({
     () => new Map((summaryData || []).map((p) => [p.id, { title: p?.name ?? "", students: p?.students ?? "" }])),
     [summaryData]
   );
+
   const semesterOptions = useMemo(() => {
     const map = new Map();
     (semesterCatalog || []).forEach((s) => {
@@ -572,6 +135,7 @@ export default function ScoreDetails({
     add(semesterName);
     return Array.from(map.values());
   }, [semesterCatalog, data, semesterName]);
+
   const groupNoOptions = useMemo(() => {
     const map = new Map();
     data.forEach((row) => {
@@ -583,6 +147,21 @@ export default function ScoreDetails({
       .sort((a, b) => a[1].localeCompare(b[1], "tr", { numeric: true }))
       .map(([, label]) => label);
   }, [data]);
+
+  const jurorEditMap = useMemo(() => {
+    const map = new Map();
+    (jurors || []).forEach((j) => {
+      const editEnabled = !!(j.editEnabled ?? j.edit_enabled);
+      if (j.jurorId) map.set(j.jurorId, editEnabled);
+      if (j.key) map.set(j.key, editEnabled);
+      const name = String(j.name ?? j.juryName ?? "").trim().toLowerCase();
+      const dept = String(j.dept ?? j.juryDept ?? "").trim().toLowerCase();
+      if (name || dept) map.set(`${name}__${dept}`, editEnabled);
+    });
+    return map;
+  }, [jurors]);
+
+  // Touch detection effect
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(hover: none), (pointer: coarse)");
@@ -596,7 +175,7 @@ export default function ScoreDetails({
     };
   }, []);
 
-
+  // Scroll sync effect — uses both refs
   useEffect(() => {
     const top = topScrollRef.current;
     const wrap = tableScrollRef.current;
@@ -638,57 +217,6 @@ export default function ScoreDetails({
     };
   }, []);
 
-  useEffect(() => {
-    writeSection("details", {
-      filterSemester, filterGroupNo, filterJuror, filterDept, filterProjectTitle, filterStudents,
-      filterStatus, filterJurorStatus, updatedFrom, updatedTo, completedFrom, completedTo, filterComment,
-      scoreFilters,
-      sortKey, sortDir,
-    });
-  }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, updatedFrom, updatedTo, completedFrom, completedTo, filterComment, scoreFilters, sortKey, sortDir]);
-
-  const updatedParsedFrom = useMemo(() => (updatedFrom ? parseDateString(updatedFrom) : null), [updatedFrom]);
-  const updatedParsedTo = useMemo(() => (updatedTo ? parseDateString(updatedTo) : null), [updatedTo]);
-  const updatedParsedFromMs = updatedParsedFrom ? updatedParsedFrom.ms : null;
-  const updatedParsedToMs = updatedParsedTo ? updatedParsedTo.ms : null;
-  const isUpdatedInvalidRange = useMemo(() => {
-    if (updatedParsedFromMs === null || updatedParsedToMs === null) return false;
-    return updatedParsedFromMs > updatedParsedToMs;
-  }, [updatedParsedFromMs, updatedParsedToMs]);
-
-  useEffect(() => {
-    if (updatedTo && !updatedFrom) {
-      setUpdatedDateError("The 'From' date is required.");
-    } else if ((updatedFrom && updatedParsedFromMs === null) || (updatedTo && updatedParsedToMs === null)) {
-      setUpdatedDateError("Invalid date format.");
-    } else if (isUpdatedInvalidRange) {
-      setUpdatedDateError("The 'From' date cannot be later than the 'To' date.");
-    } else {
-      setUpdatedDateError(null);
-    }
-  }, [updatedFrom, updatedTo, updatedParsedFromMs, updatedParsedToMs, isUpdatedInvalidRange]);
-
-  const completedParsedFrom = useMemo(() => (completedFrom ? parseDateString(completedFrom) : null), [completedFrom]);
-  const completedParsedTo = useMemo(() => (completedTo ? parseDateString(completedTo) : null), [completedTo]);
-  const completedParsedFromMs = completedParsedFrom ? completedParsedFrom.ms : null;
-  const completedParsedToMs = completedParsedTo ? completedParsedTo.ms : null;
-  const isCompletedInvalidRange = useMemo(() => {
-    if (completedParsedFromMs === null || completedParsedToMs === null) return false;
-    return completedParsedFromMs > completedParsedToMs;
-  }, [completedParsedFromMs, completedParsedToMs]);
-
-  useEffect(() => {
-    if (completedTo && !completedFrom) {
-      setCompletedDateError("The 'From' date is required.");
-    } else if ((completedFrom && completedParsedFromMs === null) || (completedTo && completedParsedToMs === null)) {
-      setCompletedDateError("Invalid date format.");
-    } else if (isCompletedInvalidRange) {
-      setCompletedDateError("The 'From' date cannot be later than the 'To' date.");
-    } else {
-      setCompletedDateError(null);
-    }
-  }, [completedFrom, completedTo, completedParsedFromMs, completedParsedToMs, isCompletedInvalidRange]);
-
   const isUpdatedDateFilterValid = useMemo(() => (
     !!updatedFrom
     && updatedParsedFromMs !== null
@@ -722,6 +250,7 @@ export default function ScoreDetails({
     if (filterComment) count += 1;
     return count;
   }, [filterSemester, filterGroupNo, filterJuror, filterDept, filterStatus, filterJurorStatus, filterProjectTitle, filterStudents, isUpdatedDateFilterValid, isCompletedDateFilterValid, scoreFilters, filterComment]);
+
   const hasAnyFilter = activeFilterCount > 0;
   const isSemesterFilterActive = Array.isArray(filterSemester) || activeFilterCol === "semester";
   const isGroupNoFilterActive = Array.isArray(filterGroupNo) || activeFilterCol === "groupNo";
@@ -805,6 +334,7 @@ export default function ScoreDetails({
     });
   }
 
+  // ── Rows computation ────────────────────────────────────
   const rows = useMemo(() => {
     const { fromMs: updatedFromMs, toMs: updatedToMs } = buildDateRange(updatedParsedFrom, updatedParsedTo);
     const { fromMs: completedFromMs, toMs: completedToMs } = buildDateRange(completedParsedFrom, completedParsedTo);
@@ -900,7 +430,7 @@ export default function ScoreDetails({
         projectTitle,
         students,
         isEditing,
-        effectiveStatus: getCellState(row), // "scored" | "partial" | "empty"
+        effectiveStatus: getCellState(row),
         jurorStatus: jurorStatusMap.get(jurorKey) || "not_started",
       };
     });
@@ -972,7 +502,6 @@ export default function ScoreDetails({
           let min = toFiniteNumber(filter?.min);
           let max = toFiniteNumber(filter?.max);
           if (min !== null && max !== null && min > max) {
-            // Keep invalid ranges visible in chips, but do not apply them.
             continue;
           }
           const value = toFiniteNumber(r[key]);
@@ -989,7 +518,6 @@ export default function ScoreDetails({
     }
 
     if (sortKey) {
-      // Missing values always sink to bottom regardless of sort direction.
       list.sort((a, b) => {
         const av = a[sortKey], bv = b[sortKey];
         const aMiss = isMissing(av);
@@ -1030,6 +558,8 @@ export default function ScoreDetails({
     setSortKey(null);
     setSortDir(DEFAULT_SORT_DIR);
   }
+
+  // ── Columns definition ──────────────────────────────────
   const columns = useMemo(() => {
     const updatedDateFilterValue = { from: updatedFrom, to: updatedTo };
     const completedDateFilterValue = { from: completedFrom, to: completedTo };
@@ -1256,6 +786,7 @@ export default function ScoreDetails({
   ]);
 
   const columnsById = useMemo(() => new Map(columns.map((col) => [col.id, col])), [columns]);
+
   const sortLabel = useMemo(() => {
     if (!sortKey) return null;
     const col = columns.find((c) => c.sortKey === sortKey);
@@ -1353,7 +884,6 @@ export default function ScoreDetails({
   };
 
   // ── Popover config helpers ─────────────────────────────────
-  // Closed over closePopover / toggleMulti — called inline below.
   const makeTextFilter = (title, value, setValue, placeholder, isActive) => ({
     title,
     className: "col-filter-popover col-filter-popover-portal",
@@ -1790,223 +1320,37 @@ export default function ScoreDetails({
         </div>
       </div>
 
-      <div className="details-status-legend">
-        <button
-          type="button"
-          className={`details-status-legend-toggle${showStatusLegend ? " is-open" : ""}`}
-          onClick={() => setShowStatusLegend((prev) => !prev)}
-          aria-expanded={showStatusLegend}
-          aria-controls="details-status-legend-panel"
-        >
-          <span className="details-status-legend-icon" aria-hidden="true"><InfoIcon /></span>
-          <span>Status Legend</span>
-          <span className="details-status-legend-toggle-label">{showStatusLegend ? "Hide" : "Show"}</span>
-        </button>
-        {showStatusLegend && (
-          <div id="details-status-legend-panel" className="details-status-legend-panel" role="note" aria-label="Status legend">
-            <div className="details-status-legend-group">
-              <div className="details-status-legend-title">Score Status</div>
-              <table className="details-status-legend-table" aria-label="Score status legend">
-                <tbody>
-                  {SCORE_STATUS_LEGEND.map((item) => (
-                    <tr key={`score-legend-${item.status}`}>
-                      <td className="details-status-legend-col-badge">
-                        <StatusBadge status={item.status} editingFlag={null} />
-                      </td>
-                      <td className="details-status-legend-col-desc">{item.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="details-status-legend-group">
-              <div className="details-status-legend-title">Juror Status</div>
-              <table className="details-status-legend-table" aria-label="Juror status legend">
-                <tbody>
-                  {JUROR_STATUS_LEGEND.map((item) => (
-                    <tr key={`juror-legend-${item.status}`}>
-                      <td className="details-status-legend-col-badge">
-                        <StatusBadge status={item.status} editingFlag={item.status === "editing" ? "editing" : null} />
-                      </td>
-                      <td className="details-status-legend-col-desc">{item.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {(loading || hasAnyFilter || sortLabel) && (
-        <div className="detail-table-toolbar">
-          {loading && (
-            <span className="detail-loading">Loading all semesters…</span>
-          )}
-          {(hasAnyFilter || sortLabel) && (
-            <div className="filters-chip-row">
-              {(hasAnyFilter || sortLabel) && (
-                <button
-                  type="button"
-                  className="filter-chip filter-chip-clear-all"
-                  onClick={resetFilters}
-                  title="Clear all filters"
-                  aria-label="Clear all filters"
-                >
-                  <span className="chip-label">Clear all</span>
-                  <XIcon />
-                </button>
-              )}
-              {sortLabel && (
-                <button
-                  type="button"
-                  className="details-sort-indicator"
-                  onClick={clearSort}
-                  title="Clear sort"
-                  aria-label="Clear sort"
-                >
-                  <span className="chip-label">Sorted By</span>
-                  <span className="chip-value">{sortLabel}</span>
-                  <span className="details-sort-close" aria-hidden="true">×</span>
-                </button>
-              )}
-              {activeFilterChips.map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  className="filter-chip"
-                  onClick={chip.onClear}
-                  title={`Clear ${chip.label}`}
-                  aria-label={`Clear ${chip.label}`}
-                >
-                  <span className="chip-label">{chip.label}</span>
-                  {chip.value && <span className="chip-value">{chip.value}</span>}
-                  <XIcon />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <FilterPopoverPortal
-        open={!!popoverConfig}
+      <ScoreDetailsFilters
+        showStatusLegend={showStatusLegend}
+        setShowStatusLegend={setShowStatusLegend}
+        loading={loading}
+        hasAnyFilter={hasAnyFilter}
+        sortLabel={sortLabel}
+        activeFilterChips={activeFilterChips}
+        onResetFilters={resetFilters}
+        onClearSort={clearSort}
+        popoverConfig={popoverConfig}
         anchorRect={anchorRect}
         anchorEl={anchorEl}
-        onClose={closePopover}
-        className={popoverConfig?.className}
-        contentKey={popoverConfig?.contentKey}
-        mode={popoverConfig?.mode}
-        trapFocus
-        id={activeFilterCol ? `filter-popover-${activeFilterCol}` : undefined}
-        sheetTitle={popoverConfig?.title}
-        sheetSearch={popoverConfig?.sheetSearch}
-        sheetFooter={popoverConfig?.sheetFooter}
-        sheetBodyClassName={popoverConfig?.sheetBodyClassName}
-      >
-        {popoverConfig?.content}
-      </FilterPopoverPortal>
+        activeFilterCol={activeFilterCol}
+        onClosePopover={closePopover}
+      />
 
-      <div className="details-scroll-hint">
-        <span className="details-scroll-icon" aria-hidden="true"><InfoIcon /></span>
-        <span>Swipe to view more columns. Long text scrolls on touch.</span>
-        <span title="Click a column header to sort. Use the filter inputs to narrow results." style={{cursor:'help', opacity:0.6, fontSize:12, marginLeft:6}}>ⓘ</span>
-      </div>
-
-      {/* Details table */}
-      <div className="detail-table-scroll-top" ref={topScrollRef} aria-hidden="true">
-        <div className="detail-table-scroll-top-inner" />
-      </div>
-      <div className="detail-table-wrap" ref={tableScrollRef}>
-        <table className="detail-table">
-          <thead>
-            <tr>
-              {columns.map((col) => (
-                <ColHeader
-                  key={col.id}
-                  label={col.label}
-                  sk={col.sortKey}
-                  filterCol={col.filter ? col.id : null}
-                  isActive={!!col.filter?.isActive}
-                  noFilter={!col.filter}
-                  noSort={!col.sortKey}
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSort={setSort}
-                  onFilter={openFilterCol}
-                  onFilterClick={col.filter ? (e) => { e.preventDefault(); e.stopPropagation(); openFilterCol(col.id, e); } : undefined}
-                  sortIconNode={col.headerIcon}
-                  thClassName={col.minWidthClass}
-                  filterId={col.filter ? `filter-popover-${col.id}` : undefined}
-                  isOpen={activeFilterCol === col.id}
-                />
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} style={{ textAlign: "center", padding: 32, color: "#64748b" }}>
-                  No matching rows.
-                </td>
-              </tr>
-            )}
-            {pageRows.map((row, i) => {
-              return (
-                <tr
-                  key={`${rowKey(row)}-${row.projectId}`}
-                  className={i % 2 === 1 ? "row-even" : ""}
-                >
-                  {columns.map((col) => {
-                    const cellClassName = typeof col.cellClassName === "function" ? col.cellClassName(row) : col.cellClassName;
-                    const content = col.renderCell
-                      ? col.renderCell(row)
-                      : (() => {
-                          if (col.id === "semester") return row.semester ? row.semester : "—";
-                          if (col.id === "groupNo") return row.groupNo ?? "—";
-                          if (col.id === "projectTitle") return row.projectTitle || "—";
-                          if (col.id === "students") return row.students || "—";
-                          if (col.id === "juror") return row.juryName;
-                          if (col.id === "dept") return row.juryDept;
-                          if (col.id === "status") {
-                            return <StatusBadge status={row.effectiveStatus} editingFlag={null} />;
-                          }
-                          if (col.id === "jurorStatus") {
-                            return <StatusBadge status={row.jurorStatus} editingFlag={row.jurorStatus === "editing" ? "editing" : null} />;
-                          }
-                          return row[col.id] ?? "";
-                        })();
-                    const cellTitle = typeof col.cellTitle === "function" ? col.cellTitle(row) : undefined;
-                    const isTextCell = ["semester", "groupNo", "projectTitle", "students", "juror", "dept"].includes(col.id);
-                    return (
-                      <td
-                        key={`${col.id}-${row.projectId}`}
-                        className={joinClass(col.className, col.minWidthClass, cellClassName)}
-                        style={isTextCell ? { whiteSpace: "nowrap" } : undefined}
-                        title={cellTitle}
-                      >
-                        {isTextCell ? (
-                          <span {...cellScrollProps}>
-                            <span className="detail-cell-scroll-inner">{content}</span>
-                          </span>
-                        ) : (
-                          content
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <TablePagination
+      <ScoreDetailsTable
+        rows={rows}
+        pageRows={pageRows}
+        columns={columns}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={setSort}
+        openFilterCol={openFilterCol}
+        activeFilterCol={activeFilterCol}
+        cellScrollProps={cellScrollProps}
+        topScrollRef={topScrollRef}
+        tableScrollRef={tableScrollRef}
         currentPage={safePage}
         totalPages={totalPages}
         pageSize={pageSize}
-        totalRows={rows.length}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
       />

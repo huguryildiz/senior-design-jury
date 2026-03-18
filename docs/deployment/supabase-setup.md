@@ -47,18 +47,21 @@ For development or demo environments, apply the dummy seed data:
 
 ## 4. Set the Admin Password
 
-The admin password is stored as a bcrypt hash in the `settings` table. Set it via the `rpc_admin_change_password` RPC or by inserting directly:
+The admin password is stored as a bcrypt hash in the `settings` table. Use the
+bootstrap RPC functions in the SQL Editor:
 
 ```sql
-INSERT INTO settings (key, value)
-VALUES (
-  'admin_password_hash',
-  crypt('your-chosen-password', gen_salt('bf'))
-)
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+-- Set the initial admin password (only works when no password is set yet)
+SELECT rpc_admin_bootstrap_password('your-chosen-admin-password');
+
+-- Set the delete password (required for destructive operations)
+SELECT rpc_admin_bootstrap_delete_password('your-delete-password', 'your-chosen-admin-password');
+
+-- Set the backup/export password
+SELECT rpc_admin_bootstrap_backup_password('your-backup-password', 'your-chosen-admin-password');
 ```
 
-Run this in the SQL Editor. Replace `your-chosen-password` with the actual admin password.
+All three passwords can also be changed later from the admin panel → Security tab.
 
 ---
 
@@ -124,9 +127,9 @@ npm run dev
 ```
 
 1. Open `http://localhost:5173`.
-2. Click **Jury Evaluation** — you should see the PIN step (or identity step if no jurors exist yet).
-3. Click **Admin Panel** — enter the password you set in step 4.
-4. The Overview tab should load (empty data is fine for a fresh setup).
+2. Click **Admin Panel** — enter the password you set in step 4. The Overview tab should load (empty data is fine for a fresh setup).
+3. In the admin panel → Settings → Permissions, generate an entry token for the active semester.
+4. Click **Jury Evaluation** — you should be redirected to the `jury_gate` screen. Enter the entry token (or follow the QR link) to proceed to the evaluation flow.
 
 ---
 

@@ -114,8 +114,16 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 -- ── Schema upgrades / legacy cleanup (idempotent) ───────────
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS poster_date date;
-ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS is_locked boolean NOT NULL DEFAULT false;
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS is_locked              boolean NOT NULL DEFAULT false;
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS entry_token_hash        text;
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS entry_token_enabled     boolean NOT NULL DEFAULT false;
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS entry_token_created_at  timestamptz;
+ALTER TABLE public.semesters ADD COLUMN IF NOT EXISTS entry_token_expires_at  timestamptz;
 ALTER TABLE public.projects  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS idx_semesters_entry_token_hash
+  ON public.semesters (entry_token_hash)
+  WHERE entry_token_hash IS NOT NULL;
 
 -- Encrypt legacy pin_plain_once values if a secret is configured.
 -- Requires a Vault secret named 'pin_secret'
@@ -3646,3 +3654,129 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_change_delete_password(text, text, te
 GRANT EXECUTE ON FUNCTION public.rpc_admin_bootstrap_delete_password(text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_semester(uuid, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_full_export(text, text, text) TO anon, authenticated;
+
+-- ── Phase 3.5 — QR/Token-Based Jury Entry Access Control ─────────────────────
+
+-- Public RPC: verify a semester entry token (called from JuryGatePage before juror form renders)
+DROP FUNCTION IF EXISTS public.rpc_verify_semester_entry_token(text);
+CREATE OR REPLACE FUNCTION public.rpc_verify_semester_entry_token(p_token text)
+RETURNS TABLE (ok boolean, semester_id uuid, semester_name text, error_code text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
+DECLARE
+  v_hash text;
+  v_sem  public.semesters%ROWTYPE;
+BEGIN
+  v_hash := encode(extensions.digest(coalesce(p_token, ''), 'sha256'), 'hex');
+  SELECT * INTO v_sem FROM public.semesters
+  WHERE entry_token_hash = v_hash
+    AND entry_token_enabled = true
+    AND (entry_token_expires_at IS NULL OR entry_token_expires_at > now())
+  LIMIT 1;
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT false, null::uuid, null::text, 'invalid'::text;
+    RETURN;
+  END IF;
+  RETURN QUERY SELECT true, v_sem.id, v_sem.name, null::text;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.rpc_verify_semester_entry_token(text) TO anon, authenticated;
+
+-- Admin RPC: generate (or regenerate) a semester entry token
+DROP FUNCTION IF EXISTS public.rpc_admin_generate_entry_token(uuid, text, text);
+CREATE OR REPLACE FUNCTION public.rpc_admin_generate_entry_token(
+  p_semester_id    uuid,
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
+)
+RETURNS TABLE (raw_token text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
+DECLARE
+  v_raw      text;
+  v_hash     text;
+  v_sem_name text;
+BEGIN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
+    RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
+  END IF;
+  v_raw  := encode(gen_random_bytes(24), 'base64');
+  v_hash := encode(extensions.digest(v_raw, 'sha256'), 'hex');
+  UPDATE public.semesters
+  SET entry_token_hash       = v_hash,
+      entry_token_enabled    = true,
+      entry_token_created_at = now(),
+      entry_token_expires_at = null,
+      updated_at             = now()
+  WHERE id = p_semester_id
+  RETURNING name INTO v_sem_name;
+  IF NOT FOUND THEN RAISE EXCEPTION 'semester_not_found'; END IF;
+  PERFORM public._audit_log(
+    'admin', null::uuid, 'entry_token_generate', 'semester', p_semester_id,
+    format('Jury entry token generated (%s)', coalesce(v_sem_name, p_semester_id::text)),
+    jsonb_build_object('semester_id', p_semester_id, 'semester_name', v_sem_name)
+  );
+  RETURN QUERY SELECT v_raw;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_generate_entry_token(uuid, text, text) TO anon, authenticated;
+
+-- Admin RPC: revoke (disable) a semester entry token
+DROP FUNCTION IF EXISTS public.rpc_admin_revoke_entry_token(uuid, text, text);
+CREATE OR REPLACE FUNCTION public.rpc_admin_revoke_entry_token(
+  p_semester_id    uuid,
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
+)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
+DECLARE
+  v_sem_name text;
+BEGIN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
+    RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
+  END IF;
+  UPDATE public.semesters
+  SET entry_token_enabled = false,
+      updated_at          = now()
+  WHERE id = p_semester_id
+  RETURNING name INTO v_sem_name;
+  IF NOT FOUND THEN RAISE EXCEPTION 'semester_not_found'; END IF;
+  PERFORM public._audit_log(
+    'admin', null::uuid, 'entry_token_revoke', 'semester', p_semester_id,
+    format('Jury entry token revoked (%s)', coalesce(v_sem_name, p_semester_id::text)),
+    jsonb_build_object('semester_id', p_semester_id)
+  );
+  RETURN true;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_revoke_entry_token(uuid, text, text) TO anon, authenticated;
+
+-- Admin RPC: fetch current entry token status for a semester
+DROP FUNCTION IF EXISTS public.rpc_admin_get_entry_token_status(uuid, text, text);
+CREATE OR REPLACE FUNCTION public.rpc_admin_get_entry_token_status(
+  p_semester_id    uuid,
+  p_admin_password text,
+  p_rpc_secret     text DEFAULT ''
+)
+RETURNS TABLE (
+  enabled    boolean,
+  created_at timestamptz,
+  expires_at timestamptz,
+  has_token  boolean
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
+DECLARE
+  v_sem public.semesters%ROWTYPE;
+BEGIN
+  IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
+    RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
+  END IF;
+  SELECT * INTO v_sem FROM public.semesters WHERE id = p_semester_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'semester_not_found'; END IF;
+  RETURN QUERY SELECT
+    v_sem.entry_token_enabled,
+    v_sem.entry_token_created_at,
+    v_sem.entry_token_expires_at,
+    (v_sem.entry_token_hash IS NOT NULL);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_get_entry_token_status(uuid, text, text) TO anon, authenticated;

@@ -24,9 +24,9 @@ VITE_RPC_SECRET=your-rpc-secret-from-vault
 
 ---
 
-## E2E Test Variables (`.env.local`)
+## E2E Test Variables (`.env.e2e.local`)
 
-Used by Playwright E2E tests. Tests that require a missing variable are automatically **skipped** — no CI failure.
+Used by Playwright E2E tests. Copy `.env.e2e.example` to `.env.e2e.local` and fill in the values. Tests that require a missing variable are automatically **skipped** — no CI failure.
 
 | Variable | Required for | Notes |
 | --- | --- | --- |

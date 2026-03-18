@@ -1,7 +1,8 @@
 // src/components/admin/DeleteConfirmDialog.jsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TriangleAlertLucideIcon } from "../../shared/Icons";
+import { useFocusTrap } from "../../shared/useFocusTrap";
 
 function buildCountSummary(counts) {
   if (!counts) return null;
@@ -48,6 +49,7 @@ export default function DeleteConfirmDialog({
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +57,13 @@ export default function DeleteConfirmDialog({
     setError("");
     setLoading(false);
   }, [open]);
+
+  const handleClose = () => {
+    if (loading) return;
+    onOpenChange?.(false);
+  };
+
+  useFocusTrap({ containerRef, isOpen: open, onClose: handleClose });
 
   if (!open) return null;
   const label = targetLabel || "Selected record";
@@ -67,11 +76,6 @@ export default function DeleteConfirmDialog({
   const isJurorTarget = targetType === "juror" || isJurorLabel;
   const jurorName = String(targetName || (isJurorLabel ? label.slice(jurorPrefix.length) : "") || "").trim();
   const jurorInst = String(targetInst || "").trim();
-
-  const handleClose = () => {
-    if (loading) return;
-    onOpenChange?.(false);
-  };
 
   const handleConfirm = async () => {
     const value = password.trim();
@@ -92,11 +96,11 @@ export default function DeleteConfirmDialog({
   };
 
   return (
-    <div className="manage-modal" role="dialog" aria-modal="true">
-      <div className="manage-modal-card manage-modal-card--delete">
+    <div className="manage-modal" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+      <div className="manage-modal-card manage-modal-card--delete" ref={containerRef}>
         <div className="delete-dialog__header">
           <span className="delete-dialog__icon" aria-hidden="true"><TriangleAlertLucideIcon /></span>
-          <div className="delete-dialog__title">Delete Confirmation</div>
+          <div className="delete-dialog__title" id="delete-dialog-title">Delete Confirmation</div>
         </div>
         <div className="delete-dialog__body">
           <div className="delete-dialog__line">

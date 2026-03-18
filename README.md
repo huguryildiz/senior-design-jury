@@ -23,15 +23,16 @@ Internal tool, not a public SaaS product.
 
 ## Core Features
 
+- **QR / token jury entry** — jurors scan a QR code or follow a link with a session token to gain access; no public sign-up
 - **PIN-based juror authentication** — 4-digit PINs assigned per juror per semester; bcrypt-hashed, rate-limited (3 failures → 15-minute lockout)
-- **Structured 5-step evaluation flow** — identity → semester selection → project scoring → submission
+- **Guided evaluation flow** — identity → semester selection → PIN entry → project scoring → submission
 - **4-criteria rubric scoring** — Technical Content (0–30), Written Communication (0–30), Oral Communication (0–30), Teamwork (0–10)
 - **Auto-save on blur and tab-hide** — scores written to Supabase on field blur and `visibilitychange`
 - **Admin dashboard** — live score grid, rankings, overview metrics, analytics charts
 - **MÜDEK outcome tracking** — criteria mapped to 18 MÜDEK outcome codes; achievement level reporting
 - **XLSX export** — score details, evaluation grid, rankings — all downloadable as formatted Excel files
 - **Audit log** — all critical admin operations recorded with actor, action, and timestamp
-- **Semester and juror management** — drag-and-drop group assignment, permission scoping
+- **Semester and juror management** — create/edit/delete semesters, projects, and jurors; manage eval lock per semester
 
 ---
 
@@ -39,7 +40,7 @@ Internal tool, not a public SaaS product.
 
 | Role | Access |
 |---|---|
-| **Juror** | Authenticates via PIN, scores assigned project groups, submits evaluations |
+| **Juror** | Gains access via QR/token link, authenticates via PIN, scores assigned project groups, submits evaluations |
 | **Admin** | Full access — manages semesters, projects, jurors, views analytics, exports data, resets PINs, locks evaluations |
 
 ---
@@ -50,12 +51,14 @@ Internal tool, not a public SaaS product.
 |---|---|
 | Frontend | React 18 + Vite |
 | Backend | Supabase (PostgreSQL + RPC functions + RLS) |
-| Auth | Admin: RPC password · Juror: 4-digit PIN (bcrypt) |
+| Auth | Admin: RPC password · Juror: QR token + 4-digit PIN (bcrypt) |
 | Unit tests | Vitest + Testing Library |
 | E2E tests | Playwright |
 | Export | xlsx-js-style |
 | Drag-and-drop | @dnd-kit |
-| Charts | Custom SVG components (Recharts-free) |
+| Charts | Custom SVG components (no Recharts) |
+| Icons | lucide-react |
+| Virtual scrolling | react-window |
 
 ---
 
@@ -63,26 +66,39 @@ Internal tool, not a public SaaS product.
 
 ```text
 src/
-├── App.jsx                 # Root — state-based routing (home / jury / admin)
+├── App.jsx                 # Root — state-based routing (home / jury_gate / jury / admin)
 ├── AdminPanel.jsx          # Admin interface root
 ├── JuryForm.jsx            # Jury flow root
 ├── config.js               # Evaluation criteria, MÜDEK outcomes, colors (single source of truth)
-├── admin/                  # Admin tabs, hooks, export utilities
-├── jury/                   # 5-step jury evaluation flow
-│   ├── useJuryState.js     # Full jury state machine (critical)
-│   ├── PinStep.jsx         # Step 1: PIN entry
-│   ├── PinRevealStep.jsx   # Step 2: PIN reveal (first login)
-│   ├── InfoStep.jsx        # Step 3: Name + department
-│   ├── SemesterStep.jsx    # Step 4: Semester selection
-│   └── EvalStep.jsx        # Step 5: Score entry
-├── charts/                 # Modular analytics chart components
+├── admin/
+│   ├── hooks/              # 12 focused hooks (useManageSemesters, useManageJurors, etc.)
+│   ├── components/         # analytics/, details/ sub-components
+│   ├── settings/           # PinResetDialog, EvalLockConfirmDialog, AuditLogCard, ExportBackupPanel
+│   ├── xlsx/               # exportXLSX.js — Excel export utilities
+│   └── utils/              # auditUtils, sorting helpers
+├── jury/
+│   ├── useJuryState.js     # Thin orchestrator for jury flow state
+│   ├── hooks/              # 7 focused hooks (useJuryScoring, useJuryAutosave, etc.)
+│   ├── utils/              # scoreState.js, progress.js, scoreSnapshot.js
+│   ├── JuryGatePage.jsx    # QR / entry token verification
+│   ├── PinStep.jsx         # PIN entry
+│   ├── PinRevealStep.jsx   # PIN reveal (first login)
+│   ├── InfoStep.jsx        # Name + department
+│   ├── SemesterStep.jsx    # Semester selection
+│   └── EvalStep.jsx        # Score entry
+├── charts/                 # Analytics chart components (Radar, BoxPlot, Heatmap, Outcome, Trend)
+├── components/
+│   ├── admin/              # AdminSecurityPanel
+│   └── toast/              # Toast notification system
 └── shared/
-    ├── api.js              # All Supabase RPC calls + field mapping (critical)
+    ├── api/                # Modularized API layer (adminApi, juryApi, semesterApi, fieldMapping)
+    ├── api.js              # Re-export shim → shared/api/index.js
+    ├── ErrorBoundary.jsx   # Top-level error boundary
     └── stats.js            # Statistical calculations
 sql/
 └── 000_bootstrap.sql       # Full DB schema, tables, RPC functions, grants
 supabase/
-└── functions/rpc-proxy/    # Edge Function — routes admin RPCs in production
+└── functions/rpc-proxy/    # Edge Function — routes admin RPCs, injects RPC_SECRET server-side
 ```
 
 ---
@@ -127,16 +143,26 @@ Passwords can also be set from the admin panel → Security tab after first logi
 npm run dev          # localhost:5173
 npm test             # unit tests (watch mode)
 npm test -- --run    # unit tests (single run, CI-style)
-npm run e2e          # Playwright E2E tests
 npm run build        # production build
 ```
 
-For E2E tests, add test juror credentials to `.env.local`:
+### 5. E2E tests
+
+E2E tests require a separate `.env.e2e.local` file (copy from `.env.e2e.example`):
 
 ```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_RPC_SECRET=...
+E2E_ADMIN_PASSWORD=<admin-password>
 E2E_JUROR_NAME=Test Juror
 E2E_JUROR_DEPT=EE
 E2E_JUROR_PIN=1234
+```
+
+```bash
+npm run e2e          # Playwright E2E tests
+npm run e2e:report   # open HTML report
 ```
 
 ---
@@ -161,6 +187,7 @@ Criterion definitions, rubric bands, and MÜDEK outcome mappings are defined in 
 - **Admin auth** — Password passed as parameter on every RPC call; stored in `useRef`, never in state or localStorage
 - **RPC proxy** — In production, admin RPCs route through a Supabase Edge Function so `rpc_secret` never reaches the browser
 - **PIN auth** — Bcrypt-hashed; 3 incorrect attempts trigger a 15-minute lockout
+- **Entry token** — Jury access requires a valid short-lived token (QR code or URL param `?t=`)
 - **Audit log** — All critical operations (PIN resets, eval lock, deletions) recorded in `audit_logs`
 
 ---
@@ -168,7 +195,7 @@ Criterion definitions, rubric bands, and MÜDEK outcome mappings are defined in 
 ## Test Status
 
 ```text
-Unit:  276/276 ✓
+Unit:  306/306 ✓  (37 test files)
 E2E:     9/10  ✓  (1 skipped — requires locked semester)
 ```
 
@@ -183,6 +210,7 @@ Project documentation is available in the `docs/` directory:
 | [`docs/architecture/`](docs/architecture/) | System overview, database schema |
 | [`docs/deployment/`](docs/deployment/) | Environment variables, Supabase setup, Vercel deployment, Git workflow |
 | [`docs/qa/`](docs/qa/) | Vitest guide, E2E guide, smoke test plan, QA workbook, session records |
+| [`docs/refactor/`](docs/refactor/) | Phase 0–6 refactor documentation |
 | [`docs/audit/`](docs/audit/) | Dated production audit reports (gitignored) |
 | [`docs/reports/`](docs/reports/) | Tech debt register, release blockers (gitignored) |
 

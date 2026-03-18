@@ -57,7 +57,7 @@ After configuring environment variables, trigger a deploy:
 1. Open the production URL (e.g. `https://vera.vercel.app` or your custom domain).
 2. The home page should load.
 3. Click **Admin Panel** → enter the admin password → the dashboard should load with data from Supabase.
-4. Click **Jury Evaluation** → enter a valid PIN → you should reach the evaluation screen.
+4. Click **Jury Evaluation** → you should land on the `jury_gate` screen. Follow a valid entry-token link (QR or `?t=<token>`) to reach the evaluation flow.
 
 If admin RPCs fail (403/401), verify the `rpc-proxy` Edge Function is deployed and the `RPC_SECRET` Vault secret is set correctly. See [supabase-setup.md](supabase-setup.md).
 

@@ -1,7 +1,7 @@
 # TEDU VERA — Unit Test Guide (Vitest)
 
-Vitest-based unit tests. Runs in jsdom — no real browser, no network. All 36 test
-files, 276 tests. Every test must pass before a commit.
+Vitest-based unit tests. Runs in jsdom — no real browser, no network. All 37 test
+files, 306 tests. Every test must pass before a commit.
 
 ---
 
@@ -82,7 +82,7 @@ catalog entry.
 
 ## Supabase Mock Pattern
 
-Every test file that imports anything from `src/shared/api.js` must mock `supabaseClient`:
+Every test file that imports anything from `src/shared/api/` must mock `supabaseClient`:
 
 ```js
 vi.mock("../../lib/supabaseClient", () => ({ supabase: {} }));
@@ -200,7 +200,7 @@ coverage metrics.
 ## Quick Check — Before Poster Day
 
 ```bash
-# Run all 276 unit tests — all must pass
+# Run all 306 unit tests — all must pass
 npm test -- --run
 
 # Then run E2E

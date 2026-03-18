@@ -988,3 +988,38 @@ body {
 .group-accordion-panel-inner {
   overflow: hidden;
 }
+
+/* ── Phase 3.5 — Jury gate screen ──────────────────────────── */
+.gate-card { text-align: center; }
+.gate-icon-denied { background: #fee2e2; color: #dc2626; }
+.gate-icon-denied svg { color: #dc2626; }
+.gate-subtext {
+  margin-top: 10px;
+  font-size: 15px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.5;
+}
+.gate-denied-note {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 500;
+}
+.gate-walkup-note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.4;
+}
+.gate-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e0e7ff;
+  border-top-color: var(--brand-500, #6366f1);
+  border-radius: 50%;
+  animation: gate-spin 0.7s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes gate-spin {
+  to { transform: rotate(360deg); }
+}

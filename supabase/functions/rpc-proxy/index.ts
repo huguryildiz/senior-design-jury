@@ -11,8 +11,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const getCorsHeaders = (origin: string | null) => {
   const allowedOrigins = Deno.env.get("ALLOWED_ORIGINS")?.split(",").map((o: string) => o.trim()) || [];
-  const isAllowed = !origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*");
-  
+
+  // Wildcard CORS bypass is only permitted when ALLOW_WILDCARD_ORIGIN=true is explicitly
+  // set in the Edge Function environment. This env var must NEVER be set in production;
+  // it exists solely for local Supabase CLI development (supabase start).
+  const wildcardAllowed = Deno.env.get("ALLOW_WILDCARD_ORIGIN") === "true";
+  const isAllowed =
+    !origin ||
+    allowedOrigins.includes(origin) ||
+    (wildcardAllowed && allowedOrigins.includes("*"));
+
   return {
     "Access-Control-Allow-Origin": isAllowed ? (origin ?? "*") : "null",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -39,11 +47,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Only allow admin RPC functions (all start with rpc_admin_)
-    // plus rpc_bootstrap_admin_password
+    // Only allow admin RPC functions. All admin functions use the rpc_admin_ prefix.
+    // rpc_admin_bootstrap_password matches this prefix and requires no special case.
+    // (Previously, "rpc_bootstrap_admin_password" was listed as an ALLOWED_EXTRA,
+    //  but that name does not match any real RPC — it was a phantom entry and has
+    //  been removed. The real function is rpc_admin_bootstrap_password.)
     const ALLOWED_PREFIX = "rpc_admin_";
-    const ALLOWED_EXTRAS = ["rpc_bootstrap_admin_password"];
-    if (!fn.startsWith(ALLOWED_PREFIX) && !ALLOWED_EXTRAS.includes(fn)) {
+    if (!fn.startsWith(ALLOWED_PREFIX)) {
       return new Response(
         JSON.stringify({ error: `Function '${fn}' is not allowed through proxy.` }),
         { status: 403, headers: { ...headers, "Content-Type": "application/json" } }

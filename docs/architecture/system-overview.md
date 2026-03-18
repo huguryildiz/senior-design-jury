@@ -10,13 +10,18 @@ custom backend server.
 
 ## State-Based Routing
 
-`App.jsx` manages a top-level `page` state with three values: `"home"`,
-`"jury"`, `"admin"`.
+`App.jsx` manages a top-level `page` state with four values:
+`"home" | "jury_gate" | "jury" | "admin"`.
 
 ```text
-home  ──→  jury   (JuryForm.jsx)
-home  ──→  admin  (AdminPanel.jsx, password-gated)
+home  ──→  jury_gate  ──→  jury   (JuryForm.jsx)
+home  ──→  admin               (AdminPanel.jsx, password-gated)
 ```
+
+**`jury_gate`** is the QR / entry-token verification screen. Jurors land here
+when they follow the QR code link (`?t=<token>`) or visit `/jury-entry`.
+The gate verifies the token and, on success, grants jury access. It is never
+persisted to localStorage — navigating away clears it.
 
 **Why no React Router?** This tool has no URL-sharing or deep-linking
 requirements. Evaluators open the app on a shared device, complete the flow,
@@ -31,28 +36,29 @@ Controlled by two environment variables set at build time:
 
 | Variable | Effect |
 | --- | --- |
-| `VITE_DEMO_MODE=true` | Enables demo mode — pre-fills the admin password field and restricts certain settings |
+| `VITE_DEMO_MODE=true` | Enables demo mode — pre-fills the admin password field and skips `jury_gate` |
 | `VITE_DEMO_ADMIN_PASSWORD` | The password pre-filled in demo mode |
 
-In demo mode, the Settings tab may have restricted access to prevent
-accidental data changes on a shared demo deployment. This is the only
-behavioral difference from a standard deployment.
+In demo mode the `jury_gate` step is bypassed and the "Start Evaluation" button
+navigates directly to `jury`. This is the only behavioral difference from a
+standard deployment.
 
 ---
 
 ## Admin Panel Architecture
 
+Three main tabs. **Scores** has four sub-tabs.
+
 ```text
 App.jsx
 └── AdminPanel.jsx                  ← receives adminPass via prop (useRef in App)
-    ├── OverviewTab.jsx             ← summary stats, juror activity
-    ├── ScoresTab.jsx               ← score grid with freeze/export
-    │   ├── ScoreGrid.jsx
-    │   ├── ScoreDetails.jsx
-    │   └── useScoreGridData.js     ← data loading, filtering, sorting
-    ├── RankingsTab.jsx             ← project rankings
-    ├── AnalyticsTab.jsx            ← MÜDEK charts (lazy-rendered)
-    │   └── src/charts/*            ← individual chart components
+    ├── OverviewTab.jsx             ← summary metrics, juror activity
+    ├── ScoresTab.jsx               ← sub-tab container
+    │   ├── RankingsTab.jsx         ← project rankings
+    │   ├── AnalyticsTab.jsx        ← MÜDEK charts (lazy-loaded)
+    │   │   └── src/charts/*        ← individual chart components
+    │   ├── ScoreGrid.jsx           ← live score matrix
+    │   └── ScoreDetails.jsx        ← filterable per-row score table
     └── SettingsPage.jsx            ← manage semesters, projects, jurors
         ├── ManageSemesterPanel.jsx
         ├── ManageProjectsPanel.jsx
@@ -60,11 +66,27 @@ App.jsx
         └── ManagePermissionsPanel.jsx
 ```
 
+### Admin hooks (`src/admin/hooks/`)
+
+All Settings state lives in focused hooks, not in `SettingsPage.jsx`:
+
+- `useAdminData` — score data loading + project summary
+- `useAdminRealtime` — Supabase Realtime subscription
+- `useAdminTabs` + `useResultsViewState` — tab + sub-tab navigation
+- `useAnalyticsData` — trend chart data
+- `useSettingsCrud` — thin orchestrator wiring the four domain hooks
+- `useManageSemesters` — semester CRUD + eval-lock state
+- `useManageProjects` — project CRUD
+- `useManageJurors` — juror CRUD + PIN reset + edit-mode toggle
+- `useDeleteConfirm` — cross-cutting delete dialog
+- `useAuditLogFilters` — audit log pagination + filtering
+- `useScoreDetailsFilters` — score details filter/sort/pagination
+
 ### Admin password flow
 
 1. User enters password on login screen
 2. `rpc_admin_login` verifies it; password stored in `useRef` (never in React
-   state)
+   state or localStorage)
 3. Every subsequent admin RPC call passes the password as `p_admin_password`
 4. On logout or auth failure, ref is cleared
 
@@ -72,20 +94,43 @@ App.jsx
 
 ## Jury Evaluation Flow
 
+`useJuryState.js` is a thin orchestrator — state is split across focused
+sub-hooks. Step components are dumb (receive state + callbacks via hook).
+
 ```text
-JuryForm.jsx
-└── useJuryState.js                 ← state machine for 6-step flow
-    ├── PinStep.jsx                 ← Step 1: 4-digit PIN entry
-    ├── PinRevealStep.jsx           ← Step 2: PIN display (first login only)
-    ├── InfoStep.jsx                ← Step 3: name + department
-    ├── SemesterStep.jsx            ← Step 4: active semester selection
-    ├── EvalStep.jsx                ← Step 5: score all projects
-    │   └── SheetsProgressDialog   ← submission progress
-    └── DoneStep.jsx                ← Step 6: confirmation screen
+JuryGatePage.jsx                    ← QR / entry-token verification
+└── (on success) → JuryForm.jsx
+    └── useJuryState.js             ← orchestrates 7 sub-hooks
+        ├── InfoStep.jsx            ← "identity": juror name + department
+        ├── SemesterStep.jsx        ← "semester": select active semester
+        ├── PinStep.jsx             ← "pin": 4-digit PIN entry
+        ├── PinRevealStep.jsx       ← "pin_reveal": PIN display (first login only)
+        ├── (progress_check)        ← internal gate, no dedicated component
+        ├── EvalStep.jsx            ← "eval": score all projects
+        │   └── SheetsProgressDialog   ← submission progress
+        └── DoneStep.jsx            ← "done": confirmation screen
 ```
 
-`PinRevealStep` is shown only on first login when the juror's PIN has been
-newly generated and has not yet been acknowledged.
+Step sequence:
+
+```text
+"identity" → "semester" → ("pin" | "pin_reveal") → "progress_check" → "eval" → "done"
+```
+
+`SemesterStep` auto-advances when exactly one active semester exists.
+`PinRevealStep` is shown only on first login when the PIN has not yet been
+acknowledged.
+
+**Sub-hooks** (`src/jury/hooks/`):
+
+- `useJurorIdentity` — juror name, dept, auth error
+- `useJurorSession` — PIN / session token
+- `useJuryLoading` — semester/project loading + abort ref
+- `useJuryScoring` — scoring state + pending refs
+- `useJuryEditState` — edit/lock state + polling effect
+- `useJuryWorkflow` — step navigation, derived values
+- `useJuryAutosave` — `writeGroup`, visibility auto-save
+- `useJuryHandlers` — cross-hook callbacks
 
 **State persistence:** `juror_id` and `semester_id` survive page refreshes via
 `localStorage` for same-device convenience. Cleared on final submission.
@@ -94,29 +139,39 @@ newly generated and has not yet been acknowledged.
 
 ## Supabase RPC Integration
 
-All backend communication goes through `src/shared/api.js`. Components never
+All backend communication goes through `src/shared/api/`. Components never
 call `supabase.rpc()` directly.
 
 ```text
 Component
-  → api.js function
-    → supabase.rpc("rpc_function_name", { params })
+  → src/shared/api/<module>.js function
+    → callAdminRpc / supabase.rpc(...)
       → PostgreSQL function (RLS-enforced)
         → returns data
-      → api.js normalizes field names
-    → component receives typed data
+      → api normalizes field names (fieldMapping.js)
+    → component receives normalized data
 ```
 
-**Field name normalization** happens exclusively in `api.js`:
+**API module structure** (`src/shared/api/`):
+
+- `index.js` — re-exports everything; import from here
+- `adminApi.js` — all admin RPC wrappers (40+ functions, JSDoc'd)
+- `juryApi.js` — jury RPC wrappers
+- `semesterApi.js` — semester queries
+- `fieldMapping.js` — UI ↔ DB field name translation
+- `core/client.js` — Supabase client init + proxy config
+- `core/retry.js` — `withRetry` helper
+
+**Field name normalization** happens exclusively in `fieldMapping.js`:
 
 - DB `written` → UI `design`
 - DB `oral` → UI `delivery`
 
 ### Auth model
 
-- Jurors: 4-digit PIN verified via `rpc_juror_login`
-  (rate-limited in DB — 3 failures → lockout)
-- Admin: password passed per-call to protected RPCs (stateless)
+- Jurors: entry token (QR/URL) + 4-digit PIN verified via `rpc_verify_juror_pin`
+  (rate-limited in DB — 3 failures → 15-minute lockout per semester)
+- Admin: password passed per-call to protected RPCs (stateless, stored in `useRef`)
 - RLS: all tables protected; access granted only through SECURITY DEFINER RPC
   functions
 
@@ -130,13 +185,12 @@ In development, RPCs are called directly using `VITE_RPC_SECRET` from
 
 ## Chart Analytics System
 
-Charts live in `src/charts/`. Each file exports a primary component and a `*Print` variant for print/PDF rendering.
+Charts live in `src/charts/`. Each file exports a primary component and some
+export a `*Print` variant for print/PDF rendering.
 
 ```text
 src/charts/
-├── index.js                    ← barrel export (re-exported by src/Charts.jsx shim)
 ├── chartUtils.jsx              ← CHART_OUTCOMES, OUTCOMES, shared SVG helpers
-├── OutcomeOverviewChart.jsx    ← MÜDEK outcome overview (bar chart)
 ├── OutcomeTrendChart.jsx       ← cross-semester outcome trend (line chart)
 ├── OutcomeByGroupChart.jsx     ← per-group outcome breakdown
 ├── CompetencyRadarChart.jsx    ← radar chart per criterion
@@ -146,10 +200,7 @@ src/charts/
 └── MudekBadge.jsx              ← outcome code badge component
 ```
 
-`src/Charts.jsx` is a compatibility shim: `export * from "./charts/index"`.
-It preserves any old import paths.
-
-Data flows: `AnalyticsTab.jsx` fetches data via `api.js`, then passes it as
+Data flows: `AnalyticsTab.jsx` fetches data via the API, then passes it as
 props to chart components. Charts are pure rendering components with no data
 fetching.
 
@@ -174,25 +225,33 @@ from `config.js`.
 
 ```text
 src/
-├── App.jsx                 ← root, state-based routing, admin auth via useRef
+├── App.jsx                 ← root, state-based routing (home/jury_gate/jury/admin)
 ├── AdminPanel.jsx          ← admin interface root
 ├── JuryForm.jsx            ← jury flow root
 ├── config.js               ← evaluation criteria, MÜDEK outcomes, colors
-├── Charts.jsx              ← compatibility shim for charts/index
-├── admin/                  ← admin tabs, hooks, panels, export utilities
-│   └── settings/           ← settings sub-components (dialogs, panels)
-├── jury/                   ← 6-step evaluation flow + state machine
+├── admin/
+│   ├── hooks/              ← 12 focused hooks (useManageSemesters, useAdminData, etc.)
+│   ├── components/
+│   │   ├── analytics/      ← AnalyticsHeader and related sub-components
+│   │   └── details/        ← ScoreDetailsFilters, ScoreDetailsTable
+│   ├── settings/           ← PinResetDialog, EvalLockConfirmDialog, AuditLogCard, ExportBackupPanel
+│   ├── xlsx/               ← exportXLSX.js (all XLSX export functions)
+│   └── utils/              ← auditUtils.js, sorting helpers
+├── jury/
+│   ├── useJuryState.js     ← orchestrator for jury flow
+│   ├── hooks/              ← 8 focused hooks (useJuryScoring, useJuryAutosave, etc.)
+│   ├── utils/              ← scoreState.js, progress.js, scoreSnapshot.js
+│   └── JuryGatePage.jsx    ← QR / entry-token verification
 ├── charts/                 ← modular SVG chart components
-├── components/             ← shared UI components
-│   ├── Toast.jsx / ToastContainer.jsx / useToast.js
-│   ├── AdminSecurityPanel.jsx
-│   ├── DeleteConfirmDialog.jsx
-│   └── DangerIconButton.jsx
-├── shared/                 ← cross-cutting utilities
-│   ├── api.js              ← all Supabase RPC calls + field mapping (critical)
+├── components/
+│   ├── admin/              ← AdminSecurityPanel, DeleteConfirmDialog
+│   └── toast/              ← Toast notification system
+├── shared/
+│   ├── api/                ← modularized API (adminApi, juryApi, semesterApi, fieldMapping)
+│   ├── api.js              ← legacy re-export shim
 │   ├── ErrorBoundary.jsx
 │   ├── Icons.jsx
-│   └── stats.js, dateBounds.js, semesterSort.js, scrollIndicators.js
+│   └── stats.js, dateBounds.js, semesterSort.js, scrollIndicators.js, useFocusTrap.js
 ├── lib/
 │   └── supabaseClient.js   ← Supabase client initialization
 ├── styles/                 ← one CSS file per major area
@@ -220,7 +279,7 @@ Plain CSS files in `src/styles/`. Each major area has its own file:
 
 ## Testing Architecture
 
-- **Unit tests** — Vitest + Testing Library. 276 tests across 36 files in
+- **Unit tests** — Vitest + Testing Library. 306 tests across 37 files in
   `src/admin/__tests__/`, `src/jury/__tests__/`, `src/shared/__tests__/`, and
   `src/test/`.
 - **E2E tests** — Playwright. 6 spec files in `e2e/`. 9 of 10 tests pass;

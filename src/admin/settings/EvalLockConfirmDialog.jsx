@@ -1,5 +1,7 @@
 // src/admin/settings/EvalLockConfirmDialog.jsx
+import { useRef } from "react";
 import { LockIcon } from "../../shared/Icons";
+import { useFocusTrap } from "../../shared/useFocusTrap";
 
 export default function EvalLockConfirmDialog({
   evalLockConfirmOpen,
@@ -9,14 +11,17 @@ export default function EvalLockConfirmDialog({
   onCancel,
   onConfirm,
 }) {
+  const containerRef = useRef(null);
+  useFocusTrap({ containerRef, isOpen: !!evalLockConfirmOpen, onClose: onCancel });
+
   if (!evalLockConfirmOpen) return null;
 
   return (
-    <div className="manage-modal" role="dialog" aria-modal="true">
-      <div className="manage-modal-card manage-modal-card--danger manage-modal-card--pin-flow manage-modal-card--lock-flow">
+    <div className="manage-modal" role="dialog" aria-modal="true" aria-labelledby="eval-lock-dialog-title">
+      <div className="manage-modal-card manage-modal-card--danger manage-modal-card--pin-flow manage-modal-card--lock-flow" ref={containerRef}>
         <div className="delete-dialog__header">
           <span className="delete-dialog__icon delete-dialog__icon--lock" aria-hidden="true"><LockIcon /></span>
-          <div className="delete-dialog__title">
+          <div className="delete-dialog__title" id="eval-lock-dialog-title">
             {evalLockConfirmNext ? "Lock" : "Unlock"}
           </div>
         </div>

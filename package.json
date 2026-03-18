@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:demo": "vite --mode e2e",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -22,6 +23,8 @@
     "@supabase/supabase-js": "^2.98.0",
     "dnd-kit": "^0.0.2",
     "lucide-react": "^0.576.0",
+    "qr-code-styling": "^1.9.2",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-virtualized-auto-sizer": "^1.0.26",

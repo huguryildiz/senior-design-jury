@@ -1,264 +1,38 @@
 // src/admin/SettingsPage.jsx
 // ============================================================
 // Admin settings page: semesters, projects, jurors, permissions.
+// Thin orchestrator — state and handlers live in hooks.
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "../components/toast/useToast";
 import {
   listSemesters,
   adminListJurors,
   adminGetScores,
   adminProjectSummary,
-  adminSetActiveSemester,
-  adminCreateSemester,
-  adminUpdateSemester,
-  adminListProjects,
-  adminCreateProject,
-  adminUpsertProject,
-  adminCreateJuror,
-  adminUpdateJuror,
-  adminResetJurorPin,
-  adminSetJurorEditMode,
-  adminForceCloseJurorEditMode,
-  adminDeleteEntity,
-  adminDeleteCounts,
   adminSecurityState,
-  adminListAuditLogs,
-  adminSetSemesterEvalLock,
   adminFullExport,
   adminFullImport,
 } from "../shared/api";
-import { supabase } from "../lib/supabaseClient";
 import PinResetDialog from "./settings/PinResetDialog";
 import EvalLockConfirmDialog from "./settings/EvalLockConfirmDialog";
 import AuditLogCard from "./settings/AuditLogCard";
 import ExportBackupPanel from "./settings/ExportBackupPanel";
-import { exportXLSX, exportAuditLogsXLSX, buildExportFilename } from "./utils";
-import { getCellState } from "./scoreHelpers";
+import JuryEntryControlPanel from "./settings/JuryEntryControlPanel";
+import { exportXLSX, buildExportFilename } from "./xlsx/exportXLSX";
 import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
 import JurorSettingsPanel from "./ManageJurorsPanel";
 import AccessSettingsPanel from "./ManagePermissionsPanel";
 import AdminSecurityPanel from "../components/admin/AdminSecurityPanel";
 import DeleteConfirmDialog from "../components/admin/DeleteConfirmDialog";
-import {
-  APP_DATE_MIN_YEAR,
-  APP_DATE_MAX_YEAR,
-  APP_DATE_MIN_DATE,
-  APP_DATE_MAX_DATE,
-  isValidDateParts,
-  isIsoDateWithinBounds,
-} from "../shared/dateBounds";
-import { sortSemestersByPosterDateDesc } from "../shared/semesterSort";
+import { useSettingsCrud } from "./hooks/useSettingsCrud";
+import { useAuditLogFilters } from "./hooks/useAuditLogFilters";
+import { formatAuditTimestamp } from "./utils/auditUtils";
 
-const defaultSettings = {
-  evalLockActive: false,
-};
-
-const AUDIT_PAGE_SIZE = 120;
 const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const MIN_BACKUP_DELAY = 1200;
-
-const defaultAuditFilters = {
-  startDate: "",
-  endDate: "",
-};
-
-const formatAuditTimestamp = (value) => {
-  if (!value) return "—";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "—";
-  const day = String(dt.getDate()).padStart(2, "0");
-  const month = dt.toLocaleString("en-GB", { month: "short" });
-  const year = dt.getFullYear();
-  const hours = String(dt.getHours()).padStart(2, "0");
-  const minutes = String(dt.getMinutes()).padStart(2, "0");
-  return `${day} ${month} ${year} ${hours}:${minutes}`;
-};
-
-const AUDIT_MIN_YEAR = APP_DATE_MIN_YEAR;
-const AUDIT_MAX_YEAR = APP_DATE_MAX_YEAR;
-const SEMESTER_MIN_DATE = APP_DATE_MIN_DATE;
-const SEMESTER_MAX_DATE = APP_DATE_MAX_DATE;
-
-const isSemesterPosterDateInRange = (value) => {
-  return isIsoDateWithinBounds(value, { minDate: SEMESTER_MIN_DATE, maxDate: SEMESTER_MAX_DATE });
-};
-
-const normalizeStudentNames = (value) => {
-  return String(value || "")
-    .replace(/\r\n?/g, "\n")
-    .replace(/\n+/g, ";")
-    .replace(/[,/|&]+/g, ";")
-    .replace(/\s+-\s+/g, ";")
-    .replace(/;+/g, ";")
-    .split(";")
-    .map((name) => name.trim().replace(/\s+/g, " "))
-    .filter(Boolean)
-    .join("; ");
-};
-
-const getJurorNameById = (list, jurorId) => {
-  const target = (list || []).find((j) => String(j?.juror_id || j?.jurorId || "") === String(jurorId || ""));
-  return String(target?.juryName || target?.juror_name || "").trim();
-};
-
-const buildDeleteToastMessage = (type, label) => {
-  const raw = String(label || "").trim();
-  if (type === "project") {
-    const groupNo = raw.replace(/^Group\s+/i, "").trim();
-    return groupNo ? `Group ${groupNo} deleted` : "Group deleted";
-  }
-  if (type === "juror") {
-    const jurorName = raw.replace(/^Juror\s+/i, "").trim();
-    return jurorName ? `Juror ${jurorName} deleted` : "Juror deleted";
-  }
-  if (type === "semester") {
-    const semesterName = raw.replace(/^Semester\s+/i, "").trim();
-    return semesterName ? `Semester ${semesterName} deleted` : "Semester deleted";
-  }
-  return raw ? `${raw} deleted` : "Item deleted";
-};
-
-const isValidTimeParts = (hh, mi, ss) => {
-  if (hh < 0 || hh > 23) return false;
-  if (mi < 0 || mi > 59) return false;
-  if (ss < 0 || ss > 59) return false;
-  return true;
-};
-
-const monthLookup = {
-  jan: 1,
-  feb: 2,
-  mar: 3,
-  apr: 4,
-  may: 5,
-  jun: 6,
-  jul: 7,
-  aug: 8,
-  sep: 9,
-  sept: 9,
-  oct: 10,
-  nov: 11,
-  dec: 12,
-};
-
-const normalizeSearchYear = (yearToken) => {
-  if (!yearToken) return null;
-  const raw = String(yearToken);
-  if (!/^\d{2,4}$/.test(raw)) return null;
-  if (raw.length === 2) return 2000 + Number(raw);
-  return Number(raw);
-};
-
-const parseSearchDateParts = (value) => {
-  const query = String(value || "").trim().toLowerCase();
-  if (!query) return null;
-  let match = query.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(\d{2,4})?$/i);
-  if (match) {
-    const month = monthLookup[match[1].toLowerCase()];
-    const year = normalizeSearchYear(match[2]);
-    if (!month) return null;
-    return { day: null, month, year };
-  }
-  match = query.match(/^(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s*(\d{2,4})?$/i);
-  if (match) {
-    const day = Number(match[1]);
-    const month = monthLookup[match[2].toLowerCase()];
-    const year = normalizeSearchYear(match[3]);
-    if (!month || day < 1 || day > 31) return null;
-    if (year && !isValidDateParts(year, month, day)) return null;
-    return { day, month, year };
-  }
-  match = query.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?$/);
-  if (match) {
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = normalizeSearchYear(match[3]);
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    if (year && !isValidDateParts(year, month, day)) return null;
-    return { day, month, year };
-  }
-  match = query.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
-  if (match) {
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    if (!isValidDateParts(year, month, day)) return null;
-    return { day, month, year };
-  }
-  return null;
-};
-
-const isValidAuditYear = (year) => year >= AUDIT_MIN_YEAR && year <= AUDIT_MAX_YEAR;
-
-const parseAuditDateString = (value) => {
-  if (!value) return null;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value)) {
-    const [datePart, timePart] = value.split("T");
-    const [yyyy, mm, dd] = datePart.split("-").map(Number);
-    const [hh, mi, ss = "0"] = timePart.split(":").map(Number);
-    if (!isValidAuditYear(yyyy)) return null;
-    if (!isValidDateParts(yyyy, mm, dd)) return null;
-    if (!isValidTimeParts(hh, mi, ss)) return null;
-    return { ms: new Date(yyyy, mm - 1, dd, hh, mi, ss).getTime(), isDateOnly: false };
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [yyyy, mm, dd] = value.split("-").map(Number);
-    if (!isValidAuditYear(yyyy)) return null;
-    if (!isValidDateParts(yyyy, mm, dd)) return null;
-    return { ms: new Date(yyyy, mm - 1, dd).getTime(), isDateOnly: true };
-  }
-  return null;
-};
-
-const getAuditDateRangeError = (filters) => {
-  const start = filters?.startDate || "";
-  const end = filters?.endDate || "";
-  const parsedStart = start ? parseAuditDateString(start) : null;
-  const parsedEnd = end ? parseAuditDateString(end) : null;
-  if ((start && !parsedStart) || (end && !parsedEnd)) {
-    return "Invalid date format. Use YYYY-MM-DDThh:mm.";
-  }
-  if (parsedStart && parsedEnd && parsedStart.ms > parsedEnd.ms) {
-    return "The 'From' date/time cannot be later than the 'To' date/time.";
-  }
-  return "";
-};
-
-const buildAuditParams = (filters, limit, cursor, searchText) => {
-  let startAt = null;
-  let endAt = null;
-  if (filters.startDate) {
-    const parsed = parseAuditDateString(filters.startDate);
-    if (parsed) {
-      startAt = new Date(parsed.ms);
-    }
-  }
-  if (filters.endDate) {
-    const parsed = parseAuditDateString(filters.endDate);
-    if (parsed) {
-      const endMs = parsed.ms + (parsed.isDateOnly ? (24 * 60 * 60 * 1000 - 1) : 0);
-      endAt = new Date(endMs);
-    }
-  }
-  const search = String(searchText || "").trim();
-  const searchDate = parseSearchDateParts(search);
-  return {
-    startAt: startAt ? startAt.toISOString() : null,
-    endAt: endAt ? endAt.toISOString() : null,
-    actorTypes: null,
-    actions: null,
-    limit: limit || AUDIT_PAGE_SIZE,
-    beforeAt: cursor?.beforeAt || null,
-    beforeId: cursor?.beforeId || null,
-    search: search ? search : null,
-    searchDay: searchDate?.day || null,
-    searchMonth: searchDate?.month || null,
-    searchYear: searchDate?.year || null,
-  };
-};
 
 function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => {
@@ -282,8 +56,8 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
   const isMobile = useMediaQuery("(max-width: 900px)");
   const isSmallMobile = useMediaQuery("(max-width: 500px)");
   const supportsInfiniteScroll = typeof window !== "undefined" && "IntersectionObserver" in window;
+
   const [openPanels, setOpenPanels] = useState(() => {
-    // On small mobile, start with only one panel open (or all closed)
     const isSM = typeof window !== "undefined" && window.innerWidth <= 500;
     return {
       semester: !isSM,
@@ -294,77 +68,16 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
       audit: !isSM,
       export: !isSM,
       dbbackup: !isSM,
+      juryEntry: false,
     };
   });
 
-  const [panelDirty, setPanelDirty] = useState({ semester: false, projects: false, jurors: false });
-  const handlePanelDirty = useCallback((panel, dirty) => {
-    setPanelDirty((prev) => {
-      if (prev[panel] === dirty) return prev;
-      const next = { ...prev, [panel]: dirty };
-      const anyDirty = Object.values(next).some(Boolean);
-      onDirtyChange?.(anyDirty);
-      return next;
-    });
-  }, [onDirtyChange]);
-
-  const [semesterList, setSemesterList] = useState([]);
-  const [activeSemesterId, setActiveSemesterId] = useState("");
-  const [projects, setProjects] = useState([]);
-  const [jurors, setJurors] = useState([]);
-  const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(false);
   const _toast = useToast();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
-  const [panelErrors, setPanelErrors] = useState({
-    semester: "",
-    projects: "",
-    jurors: "",
-  });
-  const setPanelError = (panel, err) => {
-    setPanelErrors((prev) => ({ ...prev, [panel]: err || "" }));
-  };
-  const clearPanelError = (panel) => setPanelError(panel, "");
-  const clearAllPanelErrors = () => {
-    setPanelErrors({
-      semester: "",
-      projects: "",
-      jurors: "",
-    });
-  };
-  const [resetPinInfo, setResetPinInfo] = useState(null);
-  const [pinResetTarget, setPinResetTarget] = useState(null);
-  const [pinResetLoading, setPinResetLoading] = useState(false);
-  const [pinCopied, setPinCopied] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteCounts, setDeleteCounts] = useState(null);
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState("");
-  const [auditFilters, setAuditFilters] = useState(defaultAuditFilters);
-  const [auditSearch, setAuditSearch] = useState("");
-  const [auditHasMore, setAuditHasMore] = useState(true);
-  const [auditCursor, setAuditCursor] = useState(null);
-  const [auditExporting, setAuditExporting] = useState(false);
-  const [showAllAuditLogs, setShowAllAuditLogs] = useState(false);
-  const auditSearchRef = useRef("");
-  const jurorTimerRef = useRef(null);  // debounce for loadJurors-only refetch
-  const auditTimerRef = useRef(null);  // debounce for loadAuditLogs refetch
-  const pinCopyTimerRef = useRef(null);
-  const adminSecurityRef = useRef(null);
-  const auditCardRef = useRef(null);
-  const auditScrollRef = useRef(null);
-  const auditSentinelRef = useRef(null);
-  const localTimeZone = (() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time";
-    } catch {
-      return "Local time";
-    }
-  })();
-  const importFileRef = useRef(null);
 
-  const [dbBackupMode, setDbBackupMode] = useState(null); // null | 'export' | 'import'
+  const [backupPasswordSet, setBackupPasswordSet] = useState(true);
+  const [dbBackupMode, setDbBackupMode] = useState(null);
   const [dbBackupPassword, setDbBackupPassword] = useState("");
   const [dbImportData, setDbImportData] = useState(null);
   const [dbImportFileName, setDbImportFileName] = useState("");
@@ -375,65 +88,33 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
   const [dbBackupError, setDbBackupError] = useState("");
   const [dbImportSuccess, setDbImportSuccess] = useState("");
   const [dbImportWarning, setDbImportWarning] = useState("");
-  const [backupPasswordSet, setBackupPasswordSet] = useState(true);
-  const [evalLockConfirmOpen, setEvalLockConfirmOpen] = useState(false);
-  const [evalLockConfirmNext, setEvalLockConfirmNext] = useState(false);
-  const [evalLockConfirmLoading, setEvalLockConfirmLoading] = useState(false);
-  const [evalLockError, setEvalLockError] = useState("");
 
-  const copyPinToClipboard = async (pinValue) => {
-    if (!pinValue) return false;
+  const adminSecurityRef = useRef(null);
+  const importFileRef = useRef(null);
+
+  const localTimeZone = (() => {
     try {
-      if (navigator.clipboard?.writeText && window.isSecureContext) {
-        await navigator.clipboard.writeText(pinValue);
-        return true;
-      }
-    } catch (copyError) {
-      // fallback below
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local time";
+    } catch {
+      return "Local time";
     }
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = pinValue;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "fixed";
-      textarea.style.top = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(textarea);
-      return ok;
-    } catch (fallbackError) {
-      return false;
-    }
-  };
+  })();
 
-  useEffect(() => {
-    setPinCopied(false);
-    if (pinCopyTimerRef.current) {
-      clearTimeout(pinCopyTimerRef.current);
-      pinCopyTimerRef.current = null;
-    }
-  }, [resetPinInfo]);
+  // ── Audit log hook ────────────────────────────────────────
+  const audit = useAuditLogFilters({ adminPass, isMobile, setMessage });
 
-  const activeSemester = useMemo(
-    () => semesterList.find((s) => s.id === activeSemesterId) || null,
-    [semesterList, activeSemesterId]
-  );
-  const activeSemesterLabel = activeSemester?.name || "—";
-  const viewSemesterId = useMemo(() => {
-    if (selectedSemesterId && semesterList.some((s) => s.id === selectedSemesterId)) return selectedSemesterId;
-    return activeSemesterId || "";
-  }, [selectedSemesterId, semesterList, activeSemesterId]);
-  const viewSemester = useMemo(
-    () => semesterList.find((s) => s.id === viewSemesterId) || null,
-    [semesterList, viewSemesterId]
-  );
-  const viewSemesterLabel = viewSemester?.name || "—";
+  // ── CRUD hook ─────────────────────────────────────────────
+  const crud = useSettingsCrud({
+    adminPass,
+    selectedSemesterId,
+    onDirtyChange,
+    onActiveSemesterChange,
+    setMessage,
+    setLoading,
+    onAuditChange: audit.scheduleAuditRefresh,
+  });
 
-  useEffect(() => {
-    setSettings({ evalLockActive: Boolean(viewSemester?.is_locked) });
-  }, [viewSemester?.id, viewSemester?.is_locked]);
-
+  // ── Security state (backup password check) ────────────────
   useEffect(() => {
     let active = true;
     adminSecurityState()
@@ -454,7 +135,6 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
       if (isCurrentlyOpen) {
         return { ...prev, [id]: false };
       }
-      // Single-open: close all other panels when opening a new one
       const next = {};
       for (const key of Object.keys(prev)) {
         next[key] = key === id;
@@ -463,1027 +143,116 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     });
   };
 
-  const loadSemesters = useCallback(async () => {
-    const sems = await listSemesters();
-    setSemesterList(sems);
-    const active = sems.find((s) => s.is_active) || sems[0];
-    setActiveSemesterId(active?.id || "");
-  }, []);
-
-  const refreshSemesters = useCallback(async () => {
-    const sems = await listSemesters();
-    setSemesterList(sems);
-    if (!activeSemesterId || !sems.some((s) => s.id === activeSemesterId)) {
-      const active = sems.find((s) => s.is_active) || sems[0];
-      setActiveSemesterId(active?.id || "");
-    }
-  }, [activeSemesterId]);
-
-  const loadProjects = useCallback(async (semesterId) => {
-    if (!semesterId || !adminPass) return;
-    const rows = await adminListProjects(semesterId, adminPass);
-    setProjects(rows || []);
-  }, [adminPass]);
-
-  const loadJurors = useCallback(async () => {
+  // ── Export handlers (stay here because they need semesterList) ──
+  const handleExportProjects = async () => {
     if (!adminPass) return;
-    const [rows, scoreRows] = await Promise.all([
-      adminListJurors(viewSemesterId, adminPass),
-      adminGetScores(viewSemesterId, adminPass),
-    ]);
-    const scoredByJuror = new Map();
-    const startedByJuror = new Map();
-    (scoreRows || []).forEach((r) => {
-      const jurorId = String(r?.jurorId || "").trim();
-      if (!jurorId) return;
-      const cellState = getCellState(r);
-      if (cellState === "scored") {
-        scoredByJuror.set(jurorId, (scoredByJuror.get(jurorId) || 0) + 1);
-      }
-      if (cellState !== "empty") {
-        startedByJuror.set(jurorId, (startedByJuror.get(jurorId) || 0) + 1);
-      }
+    const sems = (crud.semesterList && crud.semesterList.length ? crud.semesterList : await listSemesters()) || [];
+    if (!sems.length) return;
+    const orderedSemesters = [...sems].sort((a, b) => {
+      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
+      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
+      return bTs - aTs;
     });
-    const mapped = (rows || []).map((j) => {
-      const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
-      const jurorId = String(j?.jurorId || j?.juror_id || "").trim();
-      const totalProjects = Math.max(
-        0,
-        Number(j?.totalProjects ?? j?.total_projects ?? 0) || 0
-      );
-      const scoredProjects = scoredByJuror.get(jurorId) || 0;
-      const startedProjects = startedByJuror.get(jurorId) || 0;
-      const editEnabled = toBool(j?.editEnabled ?? j?.edit_enabled);
-      const isCompleted = Boolean(j?.finalSubmittedAt || j?.final_submitted_at);
-      const overviewStatus = editEnabled
-        ? "editing"
-        : isCompleted
-          ? "completed"
-          : (totalProjects > 0 && scoredProjects >= totalProjects)
-            ? "ready_to_submit"
-            : startedProjects > 0
-              ? "in_progress"
-              : "not_started";
-      return {
-        ...j,
-        overviewStatus,
-        overviewTotalProjects: totalProjects,
-        overviewScoredProjects: scoredProjects,
-        overviewStartedProjects: startedProjects,
-      };
-    });
-    setJurors(mapped);
-  }, [adminPass, viewSemesterId]);
-
-  useEffect(() => {
-    auditSearchRef.current = auditSearch;
-  }, [auditSearch]);
-
-  const loadAuditLogs = useCallback(async (filters, options = {}) => {
-    if (!adminPass) return;
-    const mode = options.mode || "replace";
-    const cursor = options.cursor || null;
-    const searchTerm = options.search ?? auditSearchRef.current;
-    setAuditLoading(true);
-    setAuditError("");
-    const rangeError = getAuditDateRangeError(filters || defaultAuditFilters);
-    if (rangeError) {
-      setAuditError(rangeError);
-      setAuditLogs([]);
-      setAuditCursor(null);
-      setAuditHasMore(false);
-      setAuditLoading(false);
-      return;
-    }
-    try {
-      const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, searchTerm);
-      const rawRows = await adminListAuditLogs(params, adminPass);
-      const rows = (rawRows || []).filter((row) => row?.action !== "admin_login_success");
-      if (mode === "append") {
-        setAuditLogs((prev) => [...prev, ...(rows || [])]);
-      } else {
-        setAuditLogs(rows || []);
-      }
-      setAuditHasMore((rawRows || []).length >= (params.limit || AUDIT_PAGE_SIZE));
-      if (rawRows && rawRows.length > 0) {
-        const last = rawRows[rawRows.length - 1];
-        setAuditCursor({ beforeAt: last.created_at, beforeId: last.id });
-      }
-    } catch (e) {
-      setAuditError(e?.message || "Could not load audit logs. Try again or adjust filters.");
-    } finally {
-      setAuditLoading(false);
-    }
-  }, [adminPass]);
-
-  const applySemesterPatch = useCallback((patch) => {
-    if (!patch?.id) return;
-    setSemesterList((prev) => {
-      const next = [...prev];
-      const idx = next.findIndex((s) => s.id === patch.id);
-      if (idx >= 0) {
-        next[idx] = {
-          ...next[idx],
-          ...patch,
-          updated_at: patch.updated_at || next[idx].updated_at || new Date().toISOString(),
+    const projectsBySemester = await Promise.all(
+      orderedSemesters.map(async (sem) => {
+        const { adminListProjects } = await import("../shared/api");
+        return {
+          semesterName: sem?.name || "",
+          rows: await adminListProjects(sem.id, adminPass),
         };
-      } else {
-        next.push({
-          ...patch,
-          updated_at: patch.updated_at || new Date().toISOString(),
-        });
-      }
-      return sortSemestersByPosterDateDesc(next);
-    });
-  }, []);
-
-  const applyProjectPatch = useCallback((patch) => {
-    if (!patch) return;
-    setProjects((prev) => {
-      const next = [...prev];
-      const idx = next.findIndex(
-        (p) =>
-          (patch.id && p.id === patch.id)
-          || (
-            patch.group_no != null
-            && p.group_no === patch.group_no
-            && (!patch.semester_id || p.semester_id === patch.semester_id)
-          )
-      );
-      const updated = {
-        ...((idx >= 0 ? next[idx] : {}) || {}),
-        ...patch,
-        updated_at: patch.updated_at || (idx >= 0 ? next[idx]?.updated_at : null) || new Date().toISOString(),
-      };
-      if (idx >= 0) next[idx] = updated;
-      else next.push(updated);
-      return next;
-    });
-  }, []);
-
-  const applyJurorPatch = useCallback((patch) => {
-    if (!patch) return;
-    const jurorId = patch.juror_id || patch.jurorId || patch.id;
-    if (!jurorId) return;
-    setJurors((prev) => {
-      const next = [...prev];
-      const idx = next.findIndex((j) => (j.juror_id || j.jurorId) === jurorId);
-      const updated = {
-        ...((idx >= 0 ? next[idx] : {}) || {}),
-        ...patch,
-      };
-      if (idx >= 0) next[idx] = updated;
-      else next.push(updated);
-      return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    clearPanelError("semester");
-    loadSemesters()
-      .catch(() => setPanelError("semester", "Could not load semesters. Try refreshing or check your connection."))
-      .finally(() => setLoading(false));
-  }, [loadSemesters]);
-
-  useEffect(() => {
-    if (!viewSemesterId) return;
-    if (!adminPass) {
-      setEvalLockError("Admin password missing. Please re-login.");
-      return;
-    }
-    setLoading(true);
-    clearPanelError("projects");
-    clearPanelError("jurors");
-    Promise.all([
-      loadProjects(viewSemesterId),
-      loadJurors(),
-    ])
-      .catch((e) => {
-        const message = e?.message || "Could not load settings data. Check admin password or refresh.";
-        setPanelError("projects", message);
-        setPanelError("jurors", message);
       })
-      .finally(() => setLoading(false));
-  }, [viewSemesterId, adminPass, loadProjects, loadJurors]);
-
-  useEffect(() => {
-    if (!adminPass) return;
-    loadAuditLogs(auditFilters, { mode: "replace", cursor: null });
-  }, [adminPass, auditFilters, loadAuditLogs]);
-
-  // Background refresh removed — Supabase Realtime subscription (below)
-  // handles live updates via postgres_changes events, eliminating the
-  // need for periodic polling.
-
-  const AUDIT_COMPACT_COUNT = isMobile ? 3 : 4;
-  const hasAuditToggle = auditHasMore || auditLogs.length > AUDIT_COMPACT_COUNT;
-  const visibleAuditLogs = showAllAuditLogs
-    ? auditLogs
-    : auditLogs.slice(0, AUDIT_COMPACT_COUNT);
-  const auditRangeError = getAuditDateRangeError(auditFilters);
-  const hasAuditFilters = Boolean(
-    auditSearch.trim()
-    || auditFilters.startDate
-    || auditFilters.endDate
-  );
-  // Show skeleton rows on initial load (no existing data yet)
-  const showAuditSkeleton = auditLoading && auditLogs.length === 0;
-  // Dim stale rows while a replace-fetch is in flight (existing data present)
-  const isAuditStaleRefresh = auditLoading && auditLogs.length > 0;
-
-  useEffect(() => {
-    if (!hasAuditToggle && showAllAuditLogs) {
-      setShowAllAuditLogs(false);
-    }
-  }, [hasAuditToggle, showAllAuditLogs]);
-
-  // Note: Audit log height is driven by its own "show all / show fewer" state.
-
-  // Debounced juror-only refetch (enriched data: auth status, completion counts, etc.)
-  const scheduleJurorRefresh = useCallback(() => {
-    if (!adminPass) return;
-    if (jurorTimerRef.current) return;
-    jurorTimerRef.current = setTimeout(() => {
-      jurorTimerRef.current = null;
-      loadJurors().catch(() => {});
-    }, 400);
-  }, [adminPass, loadJurors]);
-
-  // Debounced audit log refetch (respects current filters)
-  const scheduleAuditRefresh = useCallback(() => {
-    if (!adminPass) return;
-    if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
-    auditTimerRef.current = setTimeout(() => {
-      auditTimerRef.current = null;
-      loadAuditLogs(auditFilters, { mode: "replace", cursor: null }).catch(() => {});
-    }, 600);
-  }, [adminPass, auditFilters, loadAuditLogs]);
-
-  // Debounced search refetch (server-side search, reset pagination)
-  useEffect(() => {
-    if (!adminPass) return;
-    if (auditTimerRef.current) clearTimeout(auditTimerRef.current);
-    setAuditCursor(null);
-    setAuditHasMore(true);
-    auditTimerRef.current = setTimeout(() => {
-      auditTimerRef.current = null;
-      loadAuditLogs(auditFilters, { mode: "replace", cursor: null }).catch(() => {});
-    }, 350);
-    return () => {
-      if (auditTimerRef.current) {
-        clearTimeout(auditTimerRef.current);
-        auditTimerRef.current = null;
-      }
-    };
-  }, [auditSearch, adminPass, auditFilters, loadAuditLogs]);
-
-  // Infinite scroll: load older audit logs when the sentinel comes into view
-  useEffect(() => {
-    if (!supportsInfiniteScroll) return;
-    const root = auditScrollRef.current;
-    const sentinel = auditSentinelRef.current;
-    if (!root || !sentinel) return;
-    if (!auditHasMore || auditLoading) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-        if (!auditHasMore || auditLoading) return;
-        if (!auditCursor) return;
-        loadAuditLogs(auditFilters, { mode: "append", cursor: auditCursor });
-      },
-      { root, rootMargin: "200px 0px", threshold: 0.1 }
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [supportsInfiniteScroll, auditHasMore, auditLoading, auditCursor, auditFilters, loadAuditLogs]);
+    const XLSX = await import("xlsx-js-style");
+    const headers = ["Semester", "Group No", "Project Title", "Students"];
+    const data = projectsBySemester.flatMap(({ semesterName, rows }) =>
+      (rows || []).map((p) => [
+        semesterName,
+        p?.group_no ?? "",
+        p?.project_title ?? "",
+        p?.group_students || "",
+      ])
+    );
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Groups");
+    XLSX.writeFile(wb, buildExportFilename("groups", "all-semesters"));
+  };
 
-  useEffect(() => {
+  const handleExportJurors = async () => {
     if (!adminPass) return;
-
-    const channel = supabase
-      .channel("admin-manage-live")
-
-      // ── semesters: patch in-place, no full reload ──────────
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "semesters" }, (payload) => {
-        if (payload.new?.id) applySemesterPatch(payload.new);
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "semesters" }, (payload) => {
-        if (payload.new?.id) {
-          applySemesterPatch(payload.new);
-          if (payload.new.is_active) setActiveSemesterId(payload.new.id);
-        }
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "semesters" }, (payload) => {
-        const deletedId = payload.old?.id;
-        if (!deletedId) return;
-        setSemesterList((prev) => {
-          const next = prev.filter((s) => s.id !== deletedId);
-          setActiveSemesterId((cur) => {
-            if (cur !== deletedId) return cur;
-            const active = next.find((s) => s.is_active) || next[0];
-            return active?.id || "";
-          });
-          return next;
-        });
-      })
-
-      // ── projects: patch in-place for viewed semester ───────
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "projects" }, (payload) => {
-        if (payload.new?.semester_id === viewSemesterId) applyProjectPatch(payload.new);
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "projects" }, (payload) => {
-        if (payload.new?.semester_id === viewSemesterId) applyProjectPatch(payload.new);
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "projects" }, (payload) => {
-        const deletedId = payload.old?.id;
-        if (deletedId) setProjects((prev) => prev.filter((p) => p.id !== deletedId));
-      })
-
-      // ── jurors / auth / scores: enriched → refetch jurors only
-      .on("postgres_changes", { event: "*", schema: "public", table: "jurors" }, scheduleJurorRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "juror_semester_auth" }, scheduleJurorRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "scores" }, scheduleJurorRefresh)
-
-      // ── audit_logs: debounced reload respecting filters ────
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "audit_logs" }, scheduleAuditRefresh)
-
-      .subscribe();
-
-    return () => {
-      if (jurorTimerRef.current) { clearTimeout(jurorTimerRef.current); jurorTimerRef.current = null; }
-      if (auditTimerRef.current) { clearTimeout(auditTimerRef.current); auditTimerRef.current = null; }
-      supabase.removeChannel(channel);
+    const sems = (crud.semesterList && crud.semesterList.length ? crud.semesterList : await listSemesters()) || [];
+    if (!sems.length) return;
+    const orderedSemesters = [...sems].sort((a, b) => {
+      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
+      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
+      return bTs - aTs;
+    });
+    const jurorsBySemester = await Promise.all(
+      orderedSemesters.map(async (sem) => ({
+        semesterName: sem?.name || "",
+        rows: await adminListJurors(sem.id, adminPass),
+      }))
+    );
+    const isAssignedJuror = (j) => {
+      if (j?.isAssigned === true) return true;
+      if (j?.is_assigned === true) return true;
+      if (typeof j?.isAssigned === "string") return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
+      if (typeof j?.is_assigned === "string") return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
+      return false;
     };
-  }, [
-    adminPass,
-    viewSemesterId,
-    applySemesterPatch,
-    applyProjectPatch,
-    scheduleJurorRefresh,
-    scheduleAuditRefresh,
-  ]);
-
-  const handleSetActiveSemester = async (semesterId) => {
-    setMessage("");
-    clearPanelError("semester");
-    if (!adminPass) {
-      setPanelError("semester", "Admin password missing. Please re-login.");
-      return { ok: false };
-    }
-    setLoading(true);
-    try {
-      const nextSemesterName = semesterList.find((s) => s.id === semesterId)?.name || "";
-      await adminSetActiveSemester(semesterId, adminPass);
-      setSemesterList((prev) =>
-        prev.map((s) => ({ ...s, is_active: s.id === semesterId }))
+    const XLSX = await import("xlsx-js-style");
+    const headers = ["Semester", "Juror Name", "Institution / Department"];
+    const data = jurorsBySemester.flatMap(({ semesterName, rows }) => {
+      const hasAssignedFlag = (rows || []).some((j) =>
+        j?.isAssigned !== undefined && j?.isAssigned !== null
+        || j?.is_assigned !== undefined && j?.is_assigned !== null
       );
-      setActiveSemesterId(semesterId);
-      onActiveSemesterChange?.(semesterId);
-      setMessage(nextSemesterName ? `Current semester set to ${nextSemesterName}.` : "Current semester set.");
-      return { ok: true };
-    } catch (e) {
-      setPanelError("semester", e?.message || "Could not update active semester. Try again or re-login.");
-      return { ok: false };
-    } finally {
-      setLoading(false);
-    }
+      const exportRows = hasAssignedFlag ? (rows || []).filter(isAssignedJuror) : (rows || []);
+      return exportRows.map((j) => [
+        semesterName,
+        j?.juryName || j?.juror_name || j?.jurorName || "",
+        j?.juryDept || j?.juror_inst || j?.jurorInst || "",
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Jurors");
+    XLSX.writeFile(wb, buildExportFilename("jurors", "all-semesters"));
   };
 
-  const handleCreateSemester = async (payload) => {
-    setMessage("");
-    clearPanelError("semester");
-    if (!adminPass) {
-      setPanelError("semester", "Admin password missing. Please re-login.");
-      return { ok: false };
-    }
-    if (!isSemesterPosterDateInRange(payload?.poster_date)) {
-      return { ok: false, fieldErrors: { poster_date: `Poster date must be between ${SEMESTER_MIN_DATE} and ${SEMESTER_MAX_DATE}.` } };
-    }
-    setLoading(true);
-    try {
-      const created = await adminCreateSemester(payload, adminPass);
-      if (created?.id) {
-        applySemesterPatch(created);
-      } else {
-        applySemesterPatch({
-          id: `temp-${Date.now()}`,
-          name: payload.name,
-          poster_date: payload.poster_date,
-          is_active: false,
-        });
-      }
-      const semesterName = String(payload?.name || created?.name || "").trim();
-      setMessage(semesterName ? `Semester ${semesterName} created` : "Semester created");
-      return { ok: true };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      const msgLower = msg.toLowerCase();
-      if (msg.includes("semester_name_exists")
-        || msgLower.includes("semesters_name_ci_unique")
-        || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, fieldErrors: { name: "Semester name already exists." } };
-      } else if (msg.includes("semester_name_required")) {
-        return { ok: false, fieldErrors: { name: "Semester name is required." } };
-      } else {
-        setPanelError("semester", msg || "Could not create semester. Try again or check admin password.");
-        return { ok: false };
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateSemester = async (payload) => {
-    setMessage("");
-    clearPanelError("semester");
-    if (!adminPass) {
-      setPanelError("semester", "Admin password missing. Please re-login.");
-      return { ok: false };
-    }
-    if (!isSemesterPosterDateInRange(payload?.poster_date)) {
-      return { ok: false, fieldErrors: { poster_date: `Poster date must be between ${SEMESTER_MIN_DATE} and ${SEMESTER_MAX_DATE}.` } };
-    }
-    setLoading(true);
-    try {
-      await adminUpdateSemester(payload, adminPass);
-      applySemesterPatch({
-        id: payload.id,
-        name: payload.name,
-        poster_date: payload.poster_date,
-      });
-      const semesterName = String(payload?.name || "").trim();
-      setMessage(semesterName ? `Semester ${semesterName} updated` : "Semester updated");
-      return { ok: true };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      const msgLower = msg.toLowerCase();
-      if (msg.includes("semester_name_exists")
-        || msgLower.includes("semesters_name_ci_unique")
-        || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, fieldErrors: { name: "Semester name already exists." } };
-      } else if (msg.includes("semester_name_required")) {
-        return { ok: false, fieldErrors: { name: "Semester name is required." } };
-      } else {
-        setPanelError("semester", msg || "Could not update semester. Try again or check admin password.");
-        return { ok: false };
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImportProjects = async (rows) => {
-    if (!viewSemesterId) {
-      setPanelError("projects", "Select a semester from the header before importing groups.");
-      return { ok: false };
-    }
-    setMessage("");
-    clearPanelError("projects");
-    setLoading(true);
-    try {
-      const semesterContext = (viewSemesterLabel && viewSemesterLabel !== "—")
-        ? viewSemesterLabel
-        : "selected semester";
-      let skipped = 0;
-      for (const row of rows) {
-        const normalizedStudents = normalizeStudentNames(row.group_students);
-        try {
-          const res = await adminCreateProject(
-            { ...row, group_students: normalizedStudents, semesterId: viewSemesterId },
-            adminPass
-          );
-          applyProjectPatch({
-            id: res?.project_id || res?.projectId || undefined,
-            semester_id: viewSemesterId,
-            group_no: row.group_no,
-            project_title: row.project_title,
-            group_students: normalizedStudents,
-          });
-        } catch (e) {
-          const msg = String(e?.message || "");
-          const msgLower = msg.toLowerCase();
-          if (msg.includes("project_group_exists")
-            || msgLower.includes("projects_semester_group_no_key")
-            || msgLower.includes("duplicate key value violates unique constraint")) {
-            skipped += 1;
-            continue;
-          }
-          throw e;
-        }
-      }
-      setMessage(
-        skipped > 0
-          ? `Groups imported for Semester ${semesterContext}, skipped ${skipped} existing groups`
-          : `Groups imported for Semester ${semesterContext}`
-      );
-      return { ok: true, skipped };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      const msgLower = msg.toLowerCase();
-      if (msg.includes("project_group_exists")
-        || msgLower.includes("projects_semester_group_no_key")
-        || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, formError: "Some groups already exist. Refresh and try again." };
-      } else {
-        return { ok: false, formError: msg || "Could not import groups. Check the CSV format and try again." };
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddProject = async (row) => {
-    const targetSemesterId = row?.semesterId || viewSemesterId;
-    if (!targetSemesterId) {
-      setPanelError("projects", "Select a semester before adding a group.");
-      return { ok: false };
-    }
-    setMessage("");
-    clearPanelError("projects");
-    setLoading(true);
-    try {
-      const normalizedStudents = normalizeStudentNames(row.group_students);
-      const targetSemesterName = semesterList.find((s) => s.id === targetSemesterId)?.name || "";
-      const res = await adminCreateProject(
-        { ...row, group_students: normalizedStudents, semesterId: targetSemesterId },
-        adminPass
-      );
-      const projectId = res?.project_id || res?.projectId;
-      if (!projectId) {
-        throw new Error("Could not create group. Please refresh and try again.");
-      }
-      if (targetSemesterId === viewSemesterId) {
-        applyProjectPatch({
-          id: projectId,
-          semester_id: targetSemesterId,
-          group_no: row.group_no,
-          project_title: row.project_title,
-          group_students: normalizedStudents,
-        });
-        await loadProjects(targetSemesterId);
-      }
-      setMessage(
-        targetSemesterName
-          ? `Group ${row.group_no} created in Semester ${targetSemesterName}`
-          : `Group ${row.group_no} created`
-      );
-      return { ok: true };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      const msgLower = msg.toLowerCase();
-      if (msg.includes("project_group_exists")
-        || msgLower.includes("projects_semester_group_no_key")
-        || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, fieldErrors: { group_no: `Group ${row.group_no} already exists. Use 'Edit' to update.` } };
-      } else {
-        setPanelError("projects", msg || "Could not save group. Try again or check admin password.");
-        return { ok: false };
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditProject = async (row) => {
-    const targetSemesterId = row?.semesterId || viewSemesterId;
-    if (!targetSemesterId) return;
-    setMessage("");
-    clearPanelError("projects");
-    setLoading(true);
-    try {
-      const normalizedStudents = normalizeStudentNames(row.group_students);
-      const res = await adminUpsertProject(
-        { ...row, group_students: normalizedStudents, semesterId: targetSemesterId },
-        adminPass
-      );
-      if (targetSemesterId === viewSemesterId) {
-        applyProjectPatch({
-          id: res?.project_id || res?.projectId || undefined,
-          semester_id: targetSemesterId,
-          group_no: row.group_no,
-          project_title: row.project_title,
-          group_students: normalizedStudents,
-        });
-      }
-      setMessage(`Group ${row.group_no} updated`);
-      return { ok: true };
-    } catch (e) {
-      setPanelError("projects", e?.message || "Could not update group. Try again or check admin password.");
-      return { ok: false };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const handleAddJuror = async (row) => {
-    setMessage("");
-    clearPanelError("jurors");
-    setLoading(true);
-    try {
-      const created = await adminCreateJuror(row, adminPass);
-      if (created?.juror_id) {
-        applyJurorPatch({
-          juror_id: created.juror_id,
-          juror_name: created.juror_name,
-          juror_inst: created.juror_inst,
-          locked_until: null,
-          last_seen_at: null,
-          is_locked: false,
-          is_assigned: false,
-          scored_semesters: [],
-          edit_enabled: false,
-          final_submitted_at: null,
-          last_activity_at: null,
-          total_projects: projects.length,
-          completed_projects: 0,
-        });
-      }
-      const jurorName = String(created?.juror_name || row?.juror_name || "").trim();
-      setMessage(jurorName ? `Juror ${jurorName} added` : "Juror added");
-      return { ok: true };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      const msgLower = msg.toLowerCase();
-      if (msg.includes("juror_exists")
-        || msgLower.includes("jurors_name_inst_norm_uniq")
-        || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, fieldErrors: { duplicate: "A juror with the same name and institution / department already exists." } };
-      } else {
-        setPanelError("jurors", msg || "Could not add juror. Try again or check admin password.");
-        return { ok: false };
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImportJurors = async (rows) => {
-    setMessage("");
-    clearPanelError("jurors");
-    setLoading(true);
-    try {
-      let skipped = 0;
-      for (const row of rows) {
-        try {
-          const created = await adminCreateJuror(row, adminPass);
-          if (created?.juror_id) {
-            applyJurorPatch({
-              juror_id: created.juror_id,
-              juror_name: created.juror_name,
-              juror_inst: created.juror_inst,
-              locked_until: null,
-              last_seen_at: null,
-              is_locked: false,
-              is_assigned: false,
-              scored_semesters: [],
-              edit_enabled: false,
-              final_submitted_at: null,
-              last_activity_at: null,
-              total_projects: projects.length,
-              completed_projects: 0,
-            });
-          }
-        } catch (e) {
-          const msg = String(e?.message || "");
-          const msgLower = msg.toLowerCase();
-          if (msg.includes("juror_exists")
-            || msgLower.includes("jurors_name_inst_norm_uniq")
-            || msgLower.includes("duplicate key value violates unique constraint")) {
-            skipped += 1;
-            continue;
-          }
-          throw e;
-        }
-      }
-      setMessage(
-        skipped > 0
-          ? `Jurors imported. Skipped ${skipped} existing jurors`
-          : "Jurors imported"
-      );
-      return { ok: true, skipped };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      const msgLower = msg.toLowerCase();
-      if (msg.includes("juror_exists")
-        || msgLower.includes("jurors_name_inst_norm_uniq")
-        || msgLower.includes("duplicate key value violates unique constraint")) {
-        return { ok: false, formError: "Some jurors already exist. Refresh and try again." };
-      } else {
-        return { ok: false, formError: msg || "Could not import jurors. Check the CSV format and try again." };
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditJuror = async (row) => {
-    if (!row?.jurorId) return;
-    setMessage("");
-    clearPanelError("jurors");
-    setLoading(true);
-    try {
-      await adminUpdateJuror(row, adminPass);
-      applyJurorPatch({
-        juror_id: row.jurorId,
-        juror_name: row.juror_name,
-        juror_inst: row.juror_inst,
-      });
-      const jurorName = String(row?.juror_name || "").trim();
-      setMessage(jurorName ? `Juror ${jurorName} updated` : "Juror updated");
-      return { ok: true };
-    } catch (e) {
-      setPanelError("jurors", e?.message || "Could not update juror. Try again or check admin password.");
-      return { ok: false };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPin = async (juror) => {
-    const jurorId = juror?.jurorId || juror?.juror_id;
-    const jurorName = juror?.juror_name || juror?.juryName;
-    const jurorInst = juror?.juror_inst || juror?.juryDept;
-    if (!viewSemesterId || !jurorId) {
-      setPanelError("jurors", "Select a semester from the header before resetting a PIN.");
-      return { ok: false };
-    }
-    setMessage("");
-    clearPanelError("jurors");
-    setLoading(true);
-    try {
-      const res = await adminResetJurorPin({ semesterId: viewSemesterId, jurorId }, adminPass);
-      setResetPinInfo({
-        ...res,
-        juror_name: jurorName || res?.juror_name || null,
-        juror_inst: jurorInst || res?.juror_inst || null,
-      });
-      applyJurorPatch({
-        juror_id: jurorId,
-        locked_until: null,
-        failed_attempts: 0,
-        is_locked: false,
-        last_seen_at: null,
-      });
-      const jurorDisplayName = String(jurorName || res?.juror_name || "").trim();
-      const semesterLabel = viewSemesterLabel || "";
-      const toastJuror = jurorDisplayName || "juror";
-      setMessage(semesterLabel ? `PIN reset for ${toastJuror} — ${semesterLabel}` : `PIN reset for ${toastJuror}`);
-      return { ok: true, data: res };
-    } catch (e) {
-      const msg = String(e?.message || "");
-      if (msg.includes("semester_inactive")) {
-        setPanelError("jurors", "Only the semester selected in header can be edited.");
-      } else if (msg.includes("unauthorized")) {
-        setPanelError("jurors", "Admin password is invalid. Please re-login.");
-      } else {
-        setPanelError("jurors", e?.message || "Could not reset PIN. Try again or check admin password.");
-      }
-      return { ok: false };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const requestResetPin = (juror) => {
-    if (!juror) return;
-    setResetPinInfo(null);
-    setPinCopied(false);
-    setPinResetTarget(juror);
-  };
-
-  const confirmResetPin = async () => {
-    if (!pinResetTarget || pinResetLoading) return;
-    setPinResetLoading(true);
-    try {
-      const result = await handleResetPin(pinResetTarget);
-      if (result?.ok) {
-        setPinCopied(false);
-      }
-    } finally {
-      setPinResetLoading(false);
-    }
-  };
-
-  const closeResetPinDialog = () => {
-    setPinResetTarget(null);
-    setResetPinInfo(null);
-    setPinCopied(false);
-  };
-
-  const handleToggleJurorEdit = async ({ jurorId, enabled }) => {
-    if (!viewSemesterId || !jurorId) return;
-    setMessage("");
-    setEvalLockError("");
-    if (!enabled) {
-      setEvalLockError("Edit mode can only be closed by juror resubmission.");
-      return;
-    }
-    // Optimistic update — revert below if the RPC fails
-    applyJurorPatch({ juror_id: jurorId, edit_enabled: true });
-    setLoading(true);
-    try {
-      await adminSetJurorEditMode(
-        { semesterId: viewSemesterId, jurorId, enabled: true },
-        adminPass
-      );
-      const jurorName = getJurorNameById(jurors, jurorId);
-      setMessage(jurorName ? `Editing unlocked for Juror ${jurorName}` : "Editing unlocked for juror");
-    } catch (e) {
-      applyJurorPatch({ juror_id: jurorId, edit_enabled: false }); // revert
-      const msg = String(e?.message || "");
-      if (msg.includes("edit_mode_disable_not_allowed")) {
-        setEvalLockError("Edit mode can only be closed by juror resubmission.");
-      } else if (msg.includes("final_submit_required")) {
-        setEvalLockError("Edit mode can only be closed by juror resubmission.");
-      } else if (msg.includes("final_submission_required")) {
-        setEvalLockError("Juror must have a completed submission before edit mode can be enabled.");
-      } else if (msg.includes("no_pin")) {
-        setEvalLockError("Juror PIN is missing for this semester. Reset the PIN first.");
-      } else if (msg.includes("semester_not_found") || msg.includes("semester_inactive")) {
-        setEvalLockError("Selected semester could not be found. Refresh and try again.");
-      } else if (msg.includes("semester_locked")) {
-        setEvalLockError("Evaluation lock is active. Unlock the semester first.");
-      } else if (msg.includes("unauthorized")) {
-        setEvalLockError("Admin password is invalid. Please re-login.");
-      } else {
-        setEvalLockError(e?.message || "Could not update edit mode. Try again or check admin password.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForceCloseJurorEdit = async ({ jurorId }) => {
-    if (!viewSemesterId || !jurorId) return;
-    setMessage("");
-    setEvalLockError("");
-    applyJurorPatch({ juror_id: jurorId, edit_enabled: false });
-    setLoading(true);
-    try {
-      await adminForceCloseJurorEditMode(
-        { semesterId: viewSemesterId, jurorId },
-        adminPass
-      );
-      const jurorName = getJurorNameById(jurors, jurorId);
-      setMessage(jurorName ? `Editing locked for Juror ${jurorName}` : "Editing locked for juror");
-    } catch (e) {
-      applyJurorPatch({ juror_id: jurorId, edit_enabled: true }); // revert
-      const msg = String(e?.message || "");
-      if (msg.includes("no_pin")) {
-        setEvalLockError("Juror PIN is missing for this semester. Reset the PIN first.");
-      } else if (msg.includes("semester_not_found") || msg.includes("semester_inactive")) {
-        setEvalLockError("Selected semester could not be found. Refresh and try again.");
-      } else if (msg.includes("unauthorized")) {
-        setEvalLockError("Admin password is invalid. Please re-login.");
-      } else {
-        setEvalLockError(e?.message || "Could not lock editing. Try again or check admin password.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const handleSaveSettings = async (next) => {
-    if (!adminPass) {
-      setEvalLockError("Admin password missing. Please re-login.");
-      return;
-    }
-    if (!viewSemesterId) {
-      setEvalLockError("Select a semester from the header before changing lock settings.");
-      return;
-    }
-    setLoading(true);
-    setMessage("");
-    setEvalLockError("");
-    try {
-      await adminSetSemesterEvalLock(viewSemesterId, !!next.evalLockActive, adminPass);
-      applySemesterPatch({
-        id: viewSemesterId,
-        is_locked: !!next.evalLockActive,
-      });
-      setSettings(next);
-      const semesterContext = (viewSemesterLabel && viewSemesterLabel !== "—")
-        ? viewSemesterLabel
-        : "the selected";
-      setMessage(
-        next.evalLockActive
-          ? `Scoring for ${semesterContext} semester is now closed.`
-          : `Scoring for ${semesterContext} semester is now open.`
-      );
-    } catch (e) {
-      const msg = String(e?.message || "");
-      if (msg.includes("semester_not_found") || msg.includes("semester_inactive")) {
-        setEvalLockError("Selected semester could not be found. Refresh and try again.");
-      } else if (msg.includes("unauthorized")) {
-        setEvalLockError("Admin password is invalid. Please re-login.");
-      } else {
-        setEvalLockError(e?.message || "Could not save settings. Try again or check admin password.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAuditRefresh = () => {
-    loadAuditLogs(auditFilters, { mode: "replace", cursor: null });
-  };
-
-  const handleAuditReset = () => {
-    setAuditFilters(defaultAuditFilters);
-    setAuditSearch("");
-    setAuditCursor(null);
-    setAuditHasMore(true);
-  };
-
-  const handleAuditLoadMore = () => {
-    if (!auditHasMore || auditLoading) return;
-    loadAuditLogs(auditFilters, { mode: "append", cursor: auditCursor });
-  };
-
-  const handleAuditExport = async () => {
+  const handleExportScores = async () => {
     if (!adminPass) return;
-    setAuditExporting(true);
-    setAuditError("");
-    try {
-      const pageSize = 500;
-      let cursor = null;
-      let all = [];
-      let loops = 0;
-      while (true) {
-        const params = buildAuditParams(auditFilters, pageSize, cursor, auditSearch);
-        const rows = await adminListAuditLogs(params, adminPass);
-        if (!rows || rows.length === 0) break;
-        all = [...all, ...rows];
-        if (rows.length < pageSize) break;
-        const last = rows[rows.length - 1];
-        cursor = { beforeAt: last.created_at, beforeId: last.id };
-        loops += 1;
-        if (loops > 200) break; // safety cap (~100k rows)
-      }
-      if (!all.length) {
-        setMessage("No audit entries found for export");
-        return;
-      }
-      await exportAuditLogsXLSX(all, { filters: auditFilters, search: auditSearch });
-      setMessage("Audit log exported");
-    } catch (e) {
-      setAuditError(e?.message || "Could not export audit logs.");
-    } finally {
-      setAuditExporting(false);
-    }
+    const sems = (crud.semesterList && crud.semesterList.length ? crud.semesterList : await listSemesters()) || [];
+    if (!sems.length) return;
+    const orderedSemesters = [...sems].sort((a, b) => {
+      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
+      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
+      return bTs - aTs;
+    });
+    const results = await Promise.all(
+      orderedSemesters.map(async (sem) => {
+        const [rows, summary] = await Promise.all([
+          adminGetScores(sem.id, adminPass),
+          adminProjectSummary(sem.id, adminPass).catch(() => []),
+        ]);
+        const summaryMap = new Map((summary || []).map((p) => [p.id, p]));
+        const mappedRows = (rows || []).map((r) => ({
+          ...r,
+          semester: sem?.name || "",
+          students: summaryMap.get(r.projectId)?.students ?? "",
+        }));
+        return { rows: mappedRows, summary: summary || [] };
+      })
+    );
+    await exportXLSX(results.flatMap((x) => x.rows), {
+      semesterName: "all-semesters",
+      summaryData: results.flatMap((x) => x.summary),
+    });
   };
 
-  const handleRequestDelete = async (target) => {
-    if (!target || !target.id) return;
-    setDeleteTarget(target);
-    setDeleteCounts(null);
-    if (!adminPass) return;
-    try {
-      const counts = await adminDeleteCounts(target.type, target.id, adminPass);
-      setDeleteCounts(counts);
-    } catch (_) { /* counts are optional */ }
-  };
-
-  const mapDeleteError = (e) => {
-    const msg = String(e?.message || "");
-    if (msg.includes("delete_password_missing")) {
-      return "Delete password is not configured. Set it in Admin Security, then try again.";
-    }
-    if (msg.includes("incorrect_delete_password") || msg.includes("unauthorized")) {
-      return "Incorrect delete password. Try again.";
-    }
-    if (msg.includes("not_found")) {
-      return "Item not found. Refresh the list and try again.";
-    }
-    return "Could not delete. Please try again.";
-  };
-
-  const handleConfirmDelete = async (password) => {
-    if (!deleteTarget) throw new Error("Nothing selected for deletion.");
-    const { type, id, label } = deleteTarget;
-    setMessage("");
-    clearAllPanelErrors();
-    await adminDeleteEntity({ targetType: type, targetId: id, deletePassword: password });
-    if (type === "semester") {
-      setSemesterList((prev) => {
-        const remaining = prev.filter((s) => s.id !== id);
-        if (activeSemesterId === id) {
-          setActiveSemesterId(remaining[0]?.id || "");
-        }
-        return remaining;
-      });
-    } else if (type === "project") {
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-    } else if (type === "juror") {
-      setJurors((prev) => prev.filter((j) => (j.juror_id || j.jurorId) !== id));
-    }
-    setMessage(buildDeleteToastMessage(type, label));
-  };
-
+  // ── DB backup helpers ─────────────────────────────────────
   const handleDbExportStart = () => {
     if (!backupPasswordSet || dbBackupLoading) return;
     setDbBackupMode("export");
@@ -1619,7 +388,7 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = buildExportFilename("backup", activeSemester?.name, "json");
+      a.download = buildExportFilename("backup", crud.activeSemester?.name, "json");
       a.click();
       URL.revokeObjectURL(url);
       setDbBackupMode(null);
@@ -1666,111 +435,6 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
     }
   };
 
-  const handleExportProjects = async () => {
-    if (!adminPass) return;
-    const sems = (semesterList && semesterList.length ? semesterList : await listSemesters()) || [];
-    if (!sems.length) return;
-    const orderedSemesters = [...sems].sort((a, b) => {
-      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
-      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
-      return bTs - aTs;
-    });
-    const projectsBySemester = await Promise.all(
-      orderedSemesters.map(async (sem) => ({
-        semesterName: sem?.name || "",
-        rows: await adminListProjects(sem.id, adminPass),
-      }))
-    );
-    const XLSX = await import("xlsx-js-style");
-    const headers = ["Semester", "Group No", "Project Title", "Students"];
-    const data = projectsBySemester.flatMap(({ semesterName, rows }) =>
-      (rows || []).map((p) => [
-        semesterName,
-        p?.group_no ?? "",
-        p?.project_title ?? "",
-        p?.group_students || "",
-      ])
-    );
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Groups");
-    XLSX.writeFile(wb, buildExportFilename("groups", "all-semesters"));
-  };
-
-  const handleExportJurors = async () => {
-    if (!adminPass) return;
-    const sems = (semesterList && semesterList.length ? semesterList : await listSemesters()) || [];
-    if (!sems.length) return;
-    const orderedSemesters = [...sems].sort((a, b) => {
-      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
-      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
-      return bTs - aTs;
-    });
-    const jurorsBySemester = await Promise.all(
-      orderedSemesters.map(async (sem) => ({
-        semesterName: sem?.name || "",
-        rows: await adminListJurors(sem.id, adminPass),
-      }))
-    );
-    const isAssignedJuror = (j) => {
-      if (j?.isAssigned === true) return true;
-      if (j?.is_assigned === true) return true;
-      if (typeof j?.isAssigned === "string") return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
-      if (typeof j?.is_assigned === "string") return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
-      return false;
-    };
-    const XLSX = await import("xlsx-js-style");
-    const headers = ["Semester", "Juror Name", "Institution / Department"];
-    const data = jurorsBySemester.flatMap(({ semesterName, rows }) => {
-      const hasAssignedFlag = (rows || []).some((j) =>
-        j?.isAssigned !== undefined && j?.isAssigned !== null
-        || j?.is_assigned !== undefined && j?.is_assigned !== null
-      );
-      const exportRows = hasAssignedFlag ? (rows || []).filter(isAssignedJuror) : (rows || []);
-      return exportRows.map((j) => [
-        semesterName,
-        j?.juryName || j?.juror_name || j?.jurorName || "",
-        j?.juryDept || j?.juror_inst || j?.jurorInst || "",
-      ]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Jurors");
-    XLSX.writeFile(wb, buildExportFilename("jurors", "all-semesters"));
-  };
-
-  const handleExportScores = async () => {
-    if (!adminPass) return;
-    const sems = (semesterList && semesterList.length ? semesterList : await listSemesters()) || [];
-    if (!sems.length) return;
-    const orderedSemesters = [...sems].sort((a, b) => {
-      const aTs = a?.poster_date ? Date.parse(a.poster_date) : 0;
-      const bTs = b?.poster_date ? Date.parse(b.poster_date) : 0;
-      return bTs - aTs;
-    });
-    const results = await Promise.all(
-      orderedSemesters.map(async (sem) => {
-        const [rows, summary] = await Promise.all([
-          adminGetScores(sem.id, adminPass),
-          adminProjectSummary(sem.id, adminPass).catch(() => []),
-        ]);
-        const summaryMap = new Map((summary || []).map((p) => [p.id, p]));
-        const mappedRows = (rows || []).map((r) => ({
-          ...r,
-          semester: sem?.name || "",
-          students: summaryMap.get(r.projectId)?.students ?? "",
-        }));
-        return { rows: mappedRows, summary: summary || [] };
-      })
-    );
-    await exportXLSX(results.flatMap((x) => x.rows), {
-      semesterName: "all-semesters",
-      summaryData: results.flatMap((x) => x.summary),
-    });
-  };
-
   return (
     <div className="manage-page manage-page--settings">
       {loading && (
@@ -1781,43 +445,30 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
         </div>
       )}
       <PinResetDialog
-        pinResetTarget={pinResetTarget}
-        resetPinInfo={resetPinInfo}
-        pinResetLoading={pinResetLoading}
-        pinCopied={pinCopied}
-        viewSemesterLabel={viewSemesterLabel}
-        onCopyPin={async () => {
-          const pinValue = resetPinInfo?.pin_plain_once;
-          if (!pinValue) return;
-          const ok = await copyPinToClipboard(pinValue);
-          if (ok) {
-            setPinCopied(true);
-            if (pinCopyTimerRef.current) {
-              clearTimeout(pinCopyTimerRef.current);
-            }
-            pinCopyTimerRef.current = setTimeout(() => {
-              setPinCopied(false);
-            }, 2000);
-          }
-        }}
-        onClose={closeResetPinDialog}
-        onConfirmReset={confirmResetPin}
+        pinResetTarget={crud.pinResetTarget}
+        resetPinInfo={crud.resetPinInfo}
+        pinResetLoading={crud.pinResetLoading}
+        pinCopied={crud.pinCopied}
+        viewSemesterLabel={crud.viewSemesterLabel}
+        onCopyPin={crud.handleCopyPin}
+        onClose={crud.closeResetPinDialog}
+        onConfirmReset={crud.confirmResetPin}
       />
       <DeleteConfirmDialog
-        open={!!deleteTarget}
-        targetType={deleteTarget?.type}
-        targetLabel={deleteTarget?.label}
-        targetName={deleteTarget?.name}
-        targetInst={deleteTarget?.inst}
-        counts={deleteCounts}
+        open={!!crud.deleteTarget}
+        targetType={crud.deleteTarget?.type}
+        targetLabel={crud.deleteTarget?.label}
+        targetName={crud.deleteTarget?.name}
+        targetInst={crud.deleteTarget?.inst}
+        counts={crud.deleteCounts}
         onOpenChange={(open) => {
-          if (!open) { setDeleteTarget(null); setDeleteCounts(null); }
+          if (!open) { crud.setDeleteTarget(null); crud.setDeleteCounts(null); }
         }}
         onConfirm={async (password) => {
           try {
-            await handleConfirmDelete(password);
+            await crud.handleConfirmDelete(password);
           } catch (e) {
-            const msg = mapDeleteError(e);
+            const msg = crud.mapDeleteError(e);
             throw new Error(msg);
           }
         }}
@@ -1888,21 +539,21 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
           <h3 className="manage-section-title">Data Management</h3>
           <div className="manage-section-grid">
             <SemesterSettingsPanel
-              semesters={semesterList}
-              activeSemesterId={activeSemesterId}
-              activeSemesterName={activeSemesterLabel}
-              panelError={panelErrors.semester}
+              semesters={crud.semesterList}
+              activeSemesterId={crud.activeSemesterId}
+              activeSemesterName={crud.activeSemesterLabel}
+              panelError={crud.panelErrors.semester}
               isMobile={isMobile}
               isOpen={openPanels.semester}
               onToggle={() => togglePanel("semester")}
-              onDirtyChange={(dirty) => handlePanelDirty("semester", dirty)}
-              onSetActive={handleSetActiveSemester}
-              onCreateSemester={handleCreateSemester}
-              onUpdateSemester={handleUpdateSemester}
+              onDirtyChange={(dirty) => crud.handlePanelDirty("semester", dirty)}
+              onSetActive={crud.handleSetActiveSemester}
+              onCreateSemester={crud.handleCreateSemester}
+              onUpdateSemester={crud.handleUpdateSemester}
               onDeleteSemester={(s) =>
-                (s?.id === activeSemesterId
-                  ? setPanelError("semester", "Current semester cannot be deleted. Select another semester first.")
-                  : handleRequestDelete({
+                (s?.id === crud.activeSemesterId
+                  ? crud.setPanelError("semester", "Current semester cannot be deleted. Select another semester first.")
+                  : crud.handleRequestDelete({
                       type: "semester",
                       id: s?.id,
                       label: `Semester ${s?.name || ""}`.trim(),
@@ -1912,21 +563,21 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
             />
 
             <ProjectSettingsPanel
-              projects={projects}
-              semesterName={viewSemester?.name || ""}
-              activeSemesterId={viewSemesterId}
-              activeSemesterName={viewSemesterLabel}
-              semesterOptions={semesterList}
-              panelError={panelErrors.projects}
+              projects={crud.projects}
+              semesterName={crud.viewSemester?.name || ""}
+              activeSemesterId={crud.viewSemesterId}
+              activeSemesterName={crud.viewSemesterLabel}
+              semesterOptions={crud.semesterList}
+              panelError={crud.panelErrors.projects}
               isMobile={isMobile}
               isOpen={openPanels.projects}
               onToggle={() => togglePanel("projects")}
-              onDirtyChange={(dirty) => handlePanelDirty("projects", dirty)}
-              onImport={handleImportProjects}
-              onAddGroup={handleAddProject}
-              onEditGroup={handleEditProject}
+              onDirtyChange={(dirty) => crud.handlePanelDirty("projects", dirty)}
+              onImport={crud.handleImportProjects}
+              onAddGroup={crud.handleAddProject}
+              onEditGroup={crud.handleEditProject}
               onDeleteProject={(p, groupLabel) =>
-                handleRequestDelete({
+                crud.handleRequestDelete({
                   type: "project",
                   id: p?.id,
                   label: `Group ${groupLabel}`,
@@ -1935,18 +586,18 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
             />
 
             <JurorSettingsPanel
-              jurors={jurors}
-              panelError={panelErrors.jurors}
+              jurors={crud.jurors}
+              panelError={crud.panelErrors.jurors}
               isMobile={isMobile}
               isOpen={openPanels.jurors}
               onToggle={() => togglePanel("jurors")}
-              onDirtyChange={(dirty) => handlePanelDirty("jurors", dirty)}
-              onImport={handleImportJurors}
-              onAddJuror={handleAddJuror}
-              onEditJuror={handleEditJuror}
-              onResetPin={requestResetPin}
+              onDirtyChange={(dirty) => crud.handlePanelDirty("jurors", dirty)}
+              onImport={crud.handleImportJurors}
+              onAddJuror={crud.handleAddJuror}
+              onEditJuror={crud.handleEditJuror}
+              onResetPin={crud.requestResetPin}
               onDeleteJuror={(j) =>
-                handleRequestDelete({
+                crud.handleRequestDelete({
                   type: "juror",
                   id: j?.jurorId || j?.juror_id,
                   label: `Juror ${j?.juryName || j?.juror_name || ""}`.trim(),
@@ -1957,21 +608,21 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
             />
 
             <AccessSettingsPanel
-              settings={settings}
-              jurors={jurors}
-              activeSemesterId={viewSemesterId}
-              activeSemesterName={viewSemesterLabel}
-              evalLockError={evalLockError}
+              settings={crud.settings}
+              jurors={crud.jurors}
+              activeSemesterId={crud.viewSemesterId}
+              activeSemesterName={crud.viewSemesterLabel}
+              evalLockError={crud.evalLockError}
               isMobile={isMobile}
               isOpen={openPanels.permissions}
               onToggle={() => togglePanel("permissions")}
               onRequestEvalLockChange={(checked) => {
-                setEvalLockError("");
-                setEvalLockConfirmNext(Boolean(checked));
-                setEvalLockConfirmOpen(true);
+                crud.setEvalLockError("");
+                crud.setEvalLockConfirmNext(Boolean(checked));
+                crud.setEvalLockConfirmOpen(true);
               }}
-              onToggleEdit={handleToggleJurorEdit}
-              onForceCloseEdit={handleForceCloseJurorEdit}
+              onToggleEdit={crud.handleToggleJurorEdit}
+              onForceCloseEdit={crud.handleForceCloseJurorEdit}
             />
           </div>
         </section>
@@ -1987,43 +638,13 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
               adminPass={adminPass}
               innerRef={adminSecurityRef}
             />
-            <AuditLogCard
+            <JuryEntryControlPanel
               isMobile={isMobile}
-              isOpen={openPanels.audit}
-              onToggle={() => togglePanel("audit")}
-              auditCardRef={auditCardRef}
-              auditScrollRef={auditScrollRef}
-              auditSentinelRef={auditSentinelRef}
-              auditFilters={auditFilters}
-              auditSearch={auditSearch}
-              auditRangeError={auditRangeError}
-              auditError={auditError}
-              auditExporting={auditExporting}
-              auditLoading={auditLoading}
-              auditHasMore={auditHasMore}
-              visibleAuditLogs={visibleAuditLogs}
-              showAuditSkeleton={showAuditSkeleton}
-              isAuditStaleRefresh={isAuditStaleRefresh}
-              hasAuditFilters={hasAuditFilters}
-              hasAuditToggle={hasAuditToggle}
-              showAllAuditLogs={showAllAuditLogs}
-              localTimeZone={localTimeZone}
-              AUDIT_COMPACT_COUNT={AUDIT_COMPACT_COUNT}
-              supportsInfiniteScroll={supportsInfiniteScroll}
-              onSetAuditFilters={setAuditFilters}
-              onSetAuditSearch={setAuditSearch}
-              onAuditExport={handleAuditExport}
-              onToggleShowAll={() => {
-                setShowAllAuditLogs((prev) => {
-                  const next = !prev;
-                  if (!next && auditScrollRef.current) {
-                    auditScrollRef.current.scrollTop = 0;
-                  }
-                  return next;
-                });
-              }}
-              onAuditLoadMore={handleAuditLoadMore}
-              formatAuditTimestamp={formatAuditTimestamp}
+              isOpen={openPanels.juryEntry}
+              onToggle={() => togglePanel("juryEntry")}
+              semesterId={crud.viewSemesterId}
+              semesterName={crud.semesterList.find((s) => s.id === crud.viewSemesterId)?.name || ""}
+              adminPass={adminPass}
             />
           </div>
         </section>
@@ -2031,6 +652,46 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
         <section className="manage-section" style={{ gridColumn: "1 / -1" }}>
           <h3 className="manage-section-title">Data Operations</h3>
           <div className="manage-section-grid">
+            <div style={{ gridRow: "span 2", minWidth: 0 }}>
+              <AuditLogCard
+                isMobile={isMobile}
+                isOpen={openPanels.audit}
+                onToggle={() => togglePanel("audit")}
+                auditCardRef={audit.auditCardRef}
+                auditScrollRef={audit.auditScrollRef}
+                auditSentinelRef={audit.auditSentinelRef}
+                auditFilters={audit.auditFilters}
+                auditSearch={audit.auditSearch}
+                auditRangeError={audit.auditRangeError}
+                auditError={audit.auditError}
+                auditExporting={audit.auditExporting}
+                auditLoading={audit.auditLoading}
+                auditHasMore={audit.auditHasMore}
+                visibleAuditLogs={audit.visibleAuditLogs}
+                showAuditSkeleton={audit.showAuditSkeleton}
+                isAuditStaleRefresh={audit.isAuditStaleRefresh}
+                hasAuditFilters={audit.hasAuditFilters}
+                hasAuditToggle={audit.hasAuditToggle}
+                showAllAuditLogs={audit.showAllAuditLogs}
+                localTimeZone={localTimeZone}
+                AUDIT_COMPACT_COUNT={audit.AUDIT_COMPACT_COUNT}
+                supportsInfiniteScroll={supportsInfiniteScroll}
+                onSetAuditFilters={audit.setAuditFilters}
+                onSetAuditSearch={audit.setAuditSearch}
+                onAuditExport={audit.handleAuditExport}
+                onToggleShowAll={() => {
+                  audit.setShowAllAuditLogs((prev) => {
+                    const next = !prev;
+                    if (!next && audit.auditScrollRef.current) {
+                      audit.auditScrollRef.current.scrollTop = 0;
+                    }
+                    return next;
+                  });
+                }}
+                onAuditLoadMore={audit.handleAuditLoadMore}
+                formatAuditTimestamp={formatAuditTimestamp}
+              />
+            </div>
             <ExportBackupPanel
               isMobile={isMobile}
               openPanels={openPanels}
@@ -2080,16 +741,16 @@ export default function SettingsPage({ adminPass, onAdminPasswordChange, selecte
       </div>
 
       <EvalLockConfirmDialog
-        evalLockConfirmOpen={evalLockConfirmOpen}
-        evalLockConfirmNext={evalLockConfirmNext}
-        evalLockConfirmLoading={evalLockConfirmLoading}
-        viewSemesterLabel={viewSemesterLabel}
-        onCancel={() => setEvalLockConfirmOpen(false)}
+        evalLockConfirmOpen={crud.evalLockConfirmOpen}
+        evalLockConfirmNext={crud.evalLockConfirmNext}
+        evalLockConfirmLoading={crud.evalLockConfirmLoading}
+        viewSemesterLabel={crud.viewSemesterLabel}
+        onCancel={() => crud.setEvalLockConfirmOpen(false)}
         onConfirm={async () => {
-          setEvalLockConfirmLoading(true);
-          await handleSaveSettings({ ...settings, evalLockActive: evalLockConfirmNext });
-          setEvalLockConfirmLoading(false);
-          setEvalLockConfirmOpen(false);
+          crud.setEvalLockConfirmLoading(true);
+          await crud.handleSaveSettings({ ...crud.settings, evalLockActive: crud.evalLockConfirmNext });
+          crud.setEvalLockConfirmLoading(false);
+          crud.setEvalLockConfirmOpen(false);
         }}
       />
     </div>

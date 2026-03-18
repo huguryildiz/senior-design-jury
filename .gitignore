@@ -8,6 +8,7 @@ docs/misc/
 docs/audit/
 docs/reports/
 docs/prompts/
+docs/refactor/
 
 # Test output (tümü test-results/ altında toplanıyor)
 test-results/
@@ -16,6 +17,8 @@ coverage/
 # Environment (never commit secrets)
 .env.local
 .env*.local
+supabase/functions/.env
+supabase/functions/.env.local
 
 # OS
 .DS_Store
