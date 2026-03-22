@@ -215,7 +215,7 @@
 }
 .pin-error-banner .premium-error-title,
 .pin-error-banner .premium-error-detail {
-  color: #b91c1c;
+  color: var(--error-text);
 }
 
 /* PIN reveal actions */
@@ -237,7 +237,7 @@
 
 .pin-reveal-copy-error {
   text-align: center;
-  color: #b91c1c;
+  color: var(--error-text);
   font-size: 0.85rem;
   margin-top: 6px;
   padding: 6px 12px;
@@ -2065,10 +2065,14 @@
   line-height: 1.4;
   padding: 8px 12px;
   border-radius: 8px;
-  width: max-content;
+  width: fit-content;
+  width: -webkit-fit-content;
+  width: -moz-fit-content;
   max-width: 240px;
   white-space: normal;
-  text-align: left;
+  word-wrap: break-word;
+  text-align: justify;
+  text-justify: inter-word;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   visibility: hidden;
@@ -2111,7 +2115,7 @@
   border: 1px solid #fecaca;
   border-left: 4px solid #ef4444;
   border-radius: 8px;
-  color: #b91c1c;
+  color: var(--error-text);
   font-size: 14px;
   margin: 8px 0;
 }
@@ -2120,7 +2124,7 @@
   background: none;
   border: 1px solid #ef4444;
   border-radius: 6px;
-  color: #b91c1c;
+  color: var(--error-text);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;

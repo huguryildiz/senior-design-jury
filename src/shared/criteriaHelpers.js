@@ -71,6 +71,15 @@ export function normalizeCriterion(c) {
  */
 export function criterionToTemplate(row) {
   const key = row._key ? row._key : _labelToKey(row.label);
+  const criterionMax = Number(row.max);
+  const boundedMax = Number.isFinite(criterionMax) && criterionMax >= 0 ? criterionMax : 0;
+  const clampBand = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    if (n < 0) return 0;
+    if (n > boundedMax) return boundedMax;
+    return n;
+  };
   return {
     key,
     label:          row.label.trim(),
@@ -82,9 +91,9 @@ export function criterionToTemplate(row) {
     mudek_outcomes: (row.mudek ?? []).map(_codeToId),       // derived for compat
     rubric: (row.rubric ?? []).map((b) => ({
       level: b.level ?? "",
-      min:   Number(b.min),
-      max:   Number(b.max),
-      range: `${b.min}–${b.max}`,   // always computed, never from user input
+      min:   clampBand(b.min),
+      max:   clampBand(b.max),
+      range: `${clampBand(b.min)}–${clampBand(b.max)}`,   // always computed, never from user input
       desc:  (b.desc ?? "").trim(),
     })),
   };
@@ -108,6 +117,26 @@ export function getActiveCriteria(template) {
  */
 export function templateToCriteria(template) {
   if (!Array.isArray(template) || template.length === 0) return [];
+  return template.map(normalizeCriterion);
+}
+
+/**
+ * Structure-normalizing adapter for semester criteria templates.
+ * Fills missing structural fields with safe defaults via normalizeCriterion.
+ *
+ * Contract:
+ * - Does NOT fabricate rubric ranges or silently repair invalid content.
+ * - Missing rubric → [] (editor will seed a default rubric for display).
+ * - Missing max → 0 (surfaces as "Must be greater than 0" in the editor).
+ * - Missing shortLabel → derived from label.
+ * - Missing color → "#94A3B8".
+ * - Missing blurb → "".
+ *
+ * @param {Array} template - Raw criteria_template from DB (any stored shape)
+ * @returns {Array} Normalized view-model array
+ */
+export function normalizeSemesterCriteria(template) {
+  if (!Array.isArray(template)) return [];
   return template.map(normalizeCriterion);
 }
 

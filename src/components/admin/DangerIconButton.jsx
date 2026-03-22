@@ -1,6 +1,5 @@
-// src/components/admin/DangerIconButton.jsx
-
 import { TrashIcon } from "../../shared/Icons";
+import Tooltip from "../../shared/Tooltip";
 
 export default function DangerIconButton({
   ariaLabel,
@@ -12,12 +11,11 @@ export default function DangerIconButton({
   Icon = TrashIcon,
   label = "Delete",
 }) {
-  return (
+  const button = (
     <button
       type="button"
       className={`manage-icon-btn${danger ? " danger" : ""}${showLabel ? " with-label" : ""}`}
-      aria-label={ariaLabel}
-      title={title}
+      aria-label={ariaLabel || title}
       onClick={onClick}
       disabled={disabled}
     >
@@ -25,4 +23,10 @@ export default function DangerIconButton({
       {showLabel && <span className="manage-icon-btn-label">{label}</span>}
     </button>
   );
+
+  if (title && !showLabel) {
+    return <Tooltip text={title}>{button}</Tooltip>;
+  }
+
+  return button;
 }

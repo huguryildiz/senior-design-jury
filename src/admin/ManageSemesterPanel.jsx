@@ -1,7 +1,7 @@
 // src/admin/ManageSemesterPanel.jsx
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2Icon, ChevronDownIcon, PencilIcon, SearchIcon, CirclePlusIcon, CalendarPlusIcon } from "../shared/Icons";
+import { CheckCircle2Icon, ChevronDownIcon, PencilIcon, SearchIcon, CirclePlusIcon } from "../shared/Icons";
 import LastActivity from "./LastActivity";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import CriteriaManager from "./CriteriaManager";
@@ -359,7 +359,7 @@ export default function ManageSemesterPanel({
             <div className="manage-modal" role="dialog" aria-modal="true">
               <div className="manage-modal-card manage-modal-card--semester manage-modal-card--resizable-ready">
                 <div className="edit-dialog__header">
-                  <span className="edit-dialog__icon" aria-hidden="true"><CalendarPlusIcon /></span>
+                  <span className="edit-dialog__icon" aria-hidden="true"><CirclePlusIcon /></span>
                   <div className="edit-dialog__title">Create Semester</div>
                 </div>
 

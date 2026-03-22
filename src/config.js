@@ -19,6 +19,22 @@ export const APP_CONFIG = {
   showStudents: true,
 };
 
+// ── Criteria / Rubric editor UI text ──────────────────────────
+// Keep rubric-related placeholder/help copy centralized here so
+// semester editor components avoid ad hoc local strings.
+export const RUBRIC_EDITOR_TEXT = {
+  criterionBlurbPlaceholder: "Brief description of the criterion.",
+  rubricBandNamePlaceholder: "Band name",
+  rubricBandMinPlaceholder: "Min",
+  rubricBandMaxPlaceholder: "Max",
+  rubricBandDescriptionPlaceholder: "Exemplary performance across all areas…",
+  mudekFilterPlaceholder: "Filter outcomes…",
+};
+
+// Default band labels used when creating fallback rubric bands for
+// custom criteria that do not have a config-backed rubric template.
+export const RUBRIC_DEFAULT_LEVELS = ["Excellent", "Good", "Developing", "Insufficient"];
+
 // ── Evaluation Criteria ───────────────────────────────────────
 // Order here controls display order in jury form AND admin panel.
 // Sheet column order (G–J): Technical / Written / Oral / Teamwork

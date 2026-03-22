@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarClockIcon, ChevronDownIcon, FileTextIcon, MonitorCogIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, FileUpIcon, CloudUploadIcon, FolderPlusIcon } from "../shared/Icons";
+import { CalendarClockIcon, ChevronDownIcon, FileTextIcon, MonitorCogIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, FileUpIcon, CloudUploadIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
+import Tooltip from "../shared/Tooltip";
 import LastActivity from "./LastActivity";
 import { buildTimestampSearchText, parseCsv } from "./utils";
 
@@ -82,27 +83,6 @@ function CircleMinusIcon({ className = "" } = {}) {
   );
 }
 
-function CirclePlusSmallIcon({ className = "" } = {}) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="1em"
-      height="1em"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M8 12h8" />
-      <path d="M12 8v8" />
-    </svg>
-  );
-}
 
 function SortableStudentRow({ id, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -688,7 +668,7 @@ export default function ManageProjectsPanel({
               <div className="manage-modal-card manage-modal-card--create-group">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
-                    <FolderPlusIcon />
+                    <CirclePlusIcon />
                   </span>
                   <div className="edit-dialog__title">Create Group</div>
                 </div>
@@ -758,17 +738,18 @@ export default function ManageProjectsPanel({
                                   ...style,
                                 }}
                               >
-                                <button
-                                  className="manage-icon-btn"
-                                  type="button"
-                                  title="Drag to reorder"
-                                  aria-label={`Drag student ${idx + 1} to reorder`}
-                                  style={{ cursor: "grab", alignSelf: "center", touchAction: "none" }}
-                                  {...attributes}
-                                  {...listeners}
-                                >
-                                  {dragHandle}
-                                </button>
+                                <Tooltip text="Drag to reorder">
+                                  <button
+                                    className="manage-icon-btn"
+                                    type="button"
+                                    aria-label={`Drag student ${idx + 1} to reorder`}
+                                    style={{ cursor: "grab", alignSelf: "center", touchAction: "none" }}
+                                    {...attributes}
+                                    {...listeners}
+                                  >
+                                    {dragHandle}
+                                  </button>
+                                </Tooltip>
                                 <input
                                   className="manage-input"
                                   value={student}
@@ -807,7 +788,7 @@ export default function ManageProjectsPanel({
                       aria-label="Add student"
                     >
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-                        <CirclePlusSmallIcon />
+                        <CirclePlusIcon />
                         Student
                       </span>
                     </button>
@@ -911,17 +892,18 @@ export default function ManageProjectsPanel({
                                 ...style,
                               }}
                             >
-                              <button
-                                className="manage-icon-btn"
-                                type="button"
-                                title="Drag to reorder"
-                                aria-label={`Drag student ${idx + 1} to reorder`}
-                                style={{ cursor: "grab", alignSelf: "center", touchAction: "none" }}
-                                {...attributes}
-                                {...listeners}
-                              >
-                                {dragHandle}
-                              </button>
+                              <Tooltip text="Drag to reorder">
+                                <button
+                                  className="manage-icon-btn"
+                                  type="button"
+                                  aria-label={`Drag student ${idx + 1} to reorder`}
+                                  style={{ cursor: "grab", alignSelf: "center", touchAction: "none" }}
+                                  {...attributes}
+                                  {...listeners}
+                                >
+                                  {dragHandle}
+                                </button>
+                              </Tooltip>
                               <input
                                 className="manage-input"
                                 value={student}

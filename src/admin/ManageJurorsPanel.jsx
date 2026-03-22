@@ -10,7 +10,6 @@ import {
   LandmarkIcon,
   UserCheckIcon,
   LockIcon,
-  UserPlusIcon,
   KeyRoundIcon,
   PencilIcon,
   SearchIcon,
@@ -542,7 +541,7 @@ export default function ManageJurorsPanel({
               <div className="manage-modal-card">
                 <div className="edit-dialog__header">
                   <span className="edit-dialog__icon" aria-hidden="true">
-                    <UserPlusIcon />
+                    <CirclePlusIcon />
                   </span>
                   <div className="edit-dialog__title">Create Juror</div>
                 </div>

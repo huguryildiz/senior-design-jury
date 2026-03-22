@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 export default function AutoGrow({
   value,
   onChange,
+  onBlur,
   disabled,
   placeholder,
   ariaLabel,
@@ -32,6 +33,7 @@ export default function AutoGrow({
       className={`manage-textarea${hasError ? " is-danger" : ""}${className ? " " + className : ""}`}
       value={value}
       onChange={onChange}
+      onBlur={onBlur}
       disabled={disabled}
       placeholder={placeholder}
       aria-label={ariaLabel}

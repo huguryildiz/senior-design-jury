@@ -62,7 +62,7 @@
 .toast-error {
   background: #fdecea;
   border-left: 4px solid #dc3545;
-  color: #7b1921;
+  color: var(--error-text);
 }
 
 .toast-warning {

@@ -185,8 +185,11 @@
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
   max-width: min(260px, calc(100vw - 16px));
-  width: max-content;
+  width: fit-content;
+  width: -webkit-fit-content;
+  width: -moz-fit-content;
   white-space: pre-line;
+  word-wrap: break-word; /* Ensure extremely long words wrap */
   word-break: break-word;
   pointer-events: none;
 }
@@ -493,7 +496,6 @@
 .matrix-avg-label { color: #a16207 !important; font-weight: 700 !important; }
 .matrix-avg-cell  { color: #a16207; font-weight: 600; font-size: 13px; }
 .matrix-avg-row td:first-child { overflow: visible; }
-.matrix-avg-label { /* layout from .matrix-juror-inner */ }
 .matrix-avg-tooltip {
   display: inline-flex;
   align-items: center;
