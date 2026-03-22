@@ -142,6 +142,8 @@ export function useSettingsCrud({
   }, [semesters.loadSemesters]);
 
   // ── Load projects + jurors when viewSemesterId / adminPass changes ──
+  // Uses Promise.allSettled so one panel failure doesn't block the other.
+  // Juror score enrichment is deferred — the fast juror list renders first.
   useEffect(() => {
     if (!semesters.viewSemesterId) return;
     if (!adminPass) {
@@ -151,20 +153,37 @@ export function useSettingsCrud({
     incLoading();
     clearPanelError("projects");
     clearPanelError("jurors");
-    Promise.all([
-      projects.loadProjects(semesters.viewSemesterId),
+
+    const semId = semesters.viewSemesterId;
+
+    Promise.allSettled([
+      projects.loadProjects(semId),
       jurors.loadJurors(),
-    ])
-      .catch((e) => {
-        const message =
-          e?.message ||
-          "Could not load settings data. Check admin password or refresh.";
-        setPanelError("projects", message);
-        setPanelError("jurors", message);
-      })
-      .finally(() => decLoading());
+    ]).then((results) => {
+      // Handle project load failure
+      if (results[0].status === "rejected") {
+        const msg = results[0].reason?.message ||
+          "Could not load groups. Check admin password or refresh.";
+        setPanelError("projects", msg);
+      }
+      // Handle juror load failure
+      if (results[1].status === "rejected") {
+        const msg = results[1].reason?.message ||
+          "Could not load jurors. Check admin password or refresh.";
+        setPanelError("jurors", msg);
+      }
+    }).finally(() => decLoading());
+
+    // Deferred: enrich jurors with score data after first paint.
+    // Runs independently — failures are silently ignored (non-critical for initial render).
+    const enrichTimer = setTimeout(() => {
+      jurors.enrichJurorScores().catch(() => {});
+    }, 100);
+
+    return () => clearTimeout(enrichTimer);
+    // Stable deps only — loadProjects/loadJurors/enrichJurorScores use refs internally
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [semesters.viewSemesterId, adminPass, projects.loadProjects, jurors.loadJurors]);
+  }, [semesters.viewSemesterId, adminPass]);
 
   // ── Supabase Realtime subscription ───────────────────────
   useEffect(() => {
@@ -349,6 +368,8 @@ export function useSettingsCrud({
     handlePanelDirty,
     loadSemesters: semesters.loadSemesters,
     loadJurors: jurors.loadJurors,
+    enrichJurorScores: jurors.enrichJurorScores,
+    loadJurorsAndEnrich: jurors.loadJurorsAndEnrich,
     scheduleJurorRefresh: jurors.scheduleJurorRefresh,
     refreshSemesters: semesters.refreshSemesters,
     externalUpdatedSemesterId: semesters.externalUpdatedSemesterId,

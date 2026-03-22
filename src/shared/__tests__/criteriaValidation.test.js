@@ -169,10 +169,10 @@ describe("criteriaValidation", () => {
   });
 
   qaTest("criteria.validation.13", () => {
-    // MÜDEK error when mudekTemplate non-empty and mudek empty
+    // No MÜDEK error when mudekTemplate is non-empty and mudek is empty
     const row = fullRow({ mudek: [] });
     const { errors } = validateCriterion(row, [row], MUDEK_TPL, 0);
-    expect(errors.mudek).toMatch(/at least one/i);
+    expect(errors.mudek).toBeUndefined();
   });
 
   qaTest("criteria.validation.14", () => {

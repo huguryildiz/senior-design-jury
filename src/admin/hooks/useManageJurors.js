@@ -45,7 +45,8 @@ export function useManageJurors({
   viewSemesterLabel,
   projects,
   setMessage,
-  setLoading,
+  incLoading,
+  decLoading,
   setPanelError,
   clearPanelError,
   setEvalLockError,
@@ -58,6 +59,14 @@ export function useManageJurors({
 
   const jurorTimerRef = useRef(null);
   const pinCopyTimerRef = useRef(null);
+
+  // ── Stable refs for values used inside callbacks ─────────
+  // These refs allow loadJurors / enrichJurorScores identity to remain
+  // stable across renders, preventing effect re-triggers.
+  const adminPassRef = useRef(adminPass);
+  adminPassRef.current = adminPass;
+  const viewSemesterIdRef = useRef(viewSemesterId);
+  viewSemesterIdRef.current = viewSemesterId;
 
   // ── Reset pinCopied when resetPinInfo changes ─────────────
   useEffect(() => {
@@ -91,13 +100,8 @@ export function useManageJurors({
     setJurors((prev) => prev.filter((j) => (j.juror_id || j.jurorId) !== deletedId));
   }, []);
 
-  // ── Load function ────────────────────────────────────────
-  const loadJurors = useCallback(async () => {
-    if (!adminPass) return;
-    const [rows, scoreRows] = await Promise.all([
-      adminListJurors(viewSemesterId, adminPass),
-      adminGetScores(viewSemesterId, adminPass),
-    ]);
+  // ── Score enrichment helper (pure, no state dep) ─────────
+  const _buildEnrichedJurors = (rows, scoreRows) => {
     const scoredByJuror = new Map();
     const startedByJuror = new Map();
     (scoreRows || []).forEach((r) => {
@@ -111,7 +115,7 @@ export function useManageJurors({
         startedByJuror.set(jurorId, (startedByJuror.get(jurorId) || 0) + 1);
       }
     });
-    const mapped = (rows || []).map((j) => {
+    return (rows || []).map((j) => {
       const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
       const jurorId = String(j?.jurorId || j?.juror_id || "").trim();
       const totalProjects = Math.max(
@@ -139,24 +143,60 @@ export function useManageJurors({
         overviewStartedProjects: startedProjects,
       };
     });
-    setJurors(mapped);
-  }, [adminPass, viewSemesterId]);
+  };
+
+  // ── Fast load: juror list only (no score fetch) ──────────
+  // Renders the juror panel immediately.  Score enrichment is deferred.
+  const loadJurors = useCallback(async () => {
+    const pass = adminPassRef.current;
+    const semId = viewSemesterIdRef.current;
+    if (!pass) return;
+    const rows = await adminListJurors(semId, pass);
+    // Map without score data — overview fields default to "not_started"
+    setJurors(_buildEnrichedJurors(rows, []));
+  }, []); // stable identity — reads from refs
+
+  // ── Deferred enrichment: fetch scores and update overview ──
+  // Called separately after initial render, or by Realtime refresh.
+  const enrichJurorScores = useCallback(async () => {
+    const pass = adminPassRef.current;
+    const semId = viewSemesterIdRef.current;
+    if (!pass) return;
+    const [rows, scoreRows] = await Promise.all([
+      adminListJurors(semId, pass),
+      adminGetScores(semId, pass),
+    ]);
+    setJurors(_buildEnrichedJurors(rows, scoreRows));
+  }, []); // stable identity — reads from refs
+
+  // ── Full load: list + enrich in one call (for CRUD/Realtime) ──
+  const loadJurorsAndEnrich = useCallback(async () => {
+    const pass = adminPassRef.current;
+    const semId = viewSemesterIdRef.current;
+    if (!pass) return;
+    const [rows, scoreRows] = await Promise.all([
+      adminListJurors(semId, pass),
+      adminGetScores(semId, pass),
+    ]);
+    setJurors(_buildEnrichedJurors(rows, scoreRows));
+  }, []); // stable identity — reads from refs
 
   // ── scheduleJurorRefresh ──────────────────────────────────
+  // Uses the full load+enrich path (Realtime changes may be score changes).
   const scheduleJurorRefresh = useCallback(() => {
-    if (!adminPass) return;
+    if (!adminPassRef.current) return;
     if (jurorTimerRef.current) return;
     jurorTimerRef.current = setTimeout(() => {
       jurorTimerRef.current = null;
-      loadJurors().catch(() => {});
+      loadJurorsAndEnrich().catch(() => {});
     }, 400);
-  }, [adminPass, loadJurors]);
+  }, [loadJurorsAndEnrich]);
 
   // ── Juror CRUD handlers ──────────────────────────────────
   const handleAddJuror = async (row) => {
     setMessage("");
     clearPanelError("jurors");
-    setLoading(true);
+    incLoading();
     try {
       const created = await adminCreateJuror(row, adminPass);
       if (created?.juror_id) {
@@ -202,14 +242,14 @@ export function useManageJurors({
         return { ok: false };
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
   const handleImportJurors = async (rows) => {
     setMessage("");
     clearPanelError("jurors");
-    setLoading(true);
+    incLoading();
     try {
       let skipped = 0;
       for (const row of rows) {
@@ -268,7 +308,7 @@ export function useManageJurors({
         };
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -276,7 +316,7 @@ export function useManageJurors({
     if (!row?.jurorId) return;
     setMessage("");
     clearPanelError("jurors");
-    setLoading(true);
+    incLoading();
     try {
       await adminUpdateJuror(row, adminPass);
       applyJurorPatch({
@@ -294,7 +334,7 @@ export function useManageJurors({
       );
       return { ok: false };
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -335,7 +375,7 @@ export function useManageJurors({
     }
     setMessage("");
     clearPanelError("jurors");
-    setLoading(true);
+    incLoading();
     try {
       const res = await adminResetJurorPin({ semesterId: viewSemesterId, jurorId }, adminPass);
       setResetPinInfo({
@@ -373,7 +413,7 @@ export function useManageJurors({
       }
       return { ok: false };
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -428,7 +468,7 @@ export function useManageJurors({
       return;
     }
     applyJurorPatch({ juror_id: jurorId, edit_enabled: true });
-    setLoading(true);
+    incLoading();
     try {
       await adminSetJurorEditMode(
         { semesterId: viewSemesterId, jurorId, enabled: true },
@@ -467,7 +507,7 @@ export function useManageJurors({
         );
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -476,7 +516,7 @@ export function useManageJurors({
     setMessage("");
     setEvalLockError?.("");
     applyJurorPatch({ juror_id: jurorId, edit_enabled: false });
-    setLoading(true);
+    incLoading();
     try {
       await adminForceCloseJurorEditMode(
         { semesterId: viewSemesterId, jurorId },
@@ -504,7 +544,7 @@ export function useManageJurors({
         );
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -517,6 +557,8 @@ export function useManageJurors({
     applyJurorPatch,
     removeJuror,
     loadJurors,
+    enrichJurorScores,
+    loadJurorsAndEnrich,
     scheduleJurorRefresh,
     handleAddJuror,
     handleImportJurors,

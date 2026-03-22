@@ -28,6 +28,7 @@ function renderManager() {
     />
   );
 
+  fireEvent.click(screen.getByRole("button", { name: /expand criterion technical/i }));
   return { onSave };
 }
 

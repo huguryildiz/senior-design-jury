@@ -219,6 +219,37 @@ export function buildMudekLookup(mudekTemplate) {
   );
 }
 
+/**
+ * Prune invalid or deleted MÜDEK outcomes from criteria mappings.
+ * A criterion may have an empty mapping (mudek: []).
+ * 
+ * @param {Array} criteria - Array of semantic criteria objects
+ * @param {Array} mudekTemplate - Current valid MÜDEK outcomes
+ * @returns {Array} A new criteria array with cleaned mappings (if changed), or the original array
+ */
+export function pruneCriteriaMudekMappings(criteria, mudekTemplate) {
+  if (!Array.isArray(criteria)) return [];
+  const validCodes = new Set((mudekTemplate || []).map((o) => o.code));
+  
+  let changed = false;
+  const pruned = criteria.map((c) => {
+    const originalMudek = Array.isArray(c.mudek) ? c.mudek : [];
+    const validMudek = originalMudek.filter((code) => validCodes.has(code));
+    const uniqueMudek = [...new Set(validMudek)];
+    
+    if (
+      uniqueMudek.length !== originalMudek.length ||
+      uniqueMudek.some((code, i) => code !== originalMudek[i])
+    ) {
+      changed = true;
+      return { ...c, mudek: uniqueMudek };
+    }
+    return c;
+  });
+  
+  return changed ? pruned : criteria;
+}
+
 // ── Internal helpers ──────────────────────────────────────────
 
 /** "1.2" → "po_1_2" */

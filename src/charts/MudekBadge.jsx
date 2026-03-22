@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CRITERIA, MUDEK_OUTCOMES } from "../config";
-import LevelPill from "../shared/LevelPill";
+import LevelPill, { isKnownBandVariant, getBandPositionStyle, getBandScoreRank } from "../shared/LevelPill";
 import { GraduationCapIcon, ChevronDownIcon, SearchIcon, InfoIcon } from "../shared/Icons";
 import { CHART_OUTCOMES, compareOutcomeCodes } from "./chartUtils";
 import { normalizeCriterion } from "../shared/criteriaHelpers";
@@ -168,15 +168,20 @@ function MudekRubricTab({ criteria = CRITERIA }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {rubric.map((band, bi) => (
-                      <tr key={band.level || bi}>
-                        <td data-label="Range">{band.range || `${band.min}–${band.max}`}</td>
-                        <td data-label="Level">
-                          <LevelPill variant={band.level}>{band.level}</LevelPill>
-                        </td>
-                        <td data-label="Description">{band.desc}</td>
-                      </tr>
-                    ))}
+                    {rubric.map((band, bi) => {
+                      const pillStyle = isKnownBandVariant(band.level)
+                        ? undefined
+                        : getBandPositionStyle(getBandScoreRank(rubric, band), rubric.length);
+                      return (
+                        <tr key={band.level || bi}>
+                          <td data-label="Range">{band.range || `${band.min}–${band.max}`}</td>
+                          <td data-label="Level">
+                            <LevelPill variant={band.level} style={pillStyle}>{band.level}</LevelPill>
+                          </td>
+                          <td data-label="Description">{band.desc}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

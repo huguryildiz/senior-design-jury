@@ -7,7 +7,7 @@
 // CRUD Decomposition).
 // ============================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listSemesters,
   adminSetActiveSemester,
@@ -48,7 +48,8 @@ export function useManageSemesters({
   adminPass,
   selectedSemesterId,
   setMessage,
-  setLoading,
+  incLoading,
+  decLoading,
   onActiveSemesterChange,
   setPanelError,
   clearPanelError,
@@ -56,6 +57,12 @@ export function useManageSemesters({
   const [semesterList, setSemesterList] = useState([]);
   const [activeSemesterId, setActiveSemesterId] = useState("");
   const [settings, setSettings] = useState(defaultSettings);
+
+  // In-flight guard for handleSetActiveSemester (Fix 3)
+  const setActiveInFlightRef = useRef(false);
+
+  // Tracks the ID of a semester that was updated externally via Realtime while edit modal is open
+  const [externalUpdatedSemesterId, setExternalUpdatedSemesterId] = useState(null);
 
   // Eval-lock dialog state (owned here because it is driven by semester state)
   const [evalLockError, setEvalLockError] = useState("");
@@ -142,13 +149,15 @@ export function useManageSemesters({
 
   // ── Semester CRUD handlers ───────────────────────────────
   const handleSetActiveSemester = async (semesterId) => {
+    if (setActiveInFlightRef.current) return { ok: false };
     setMessage("");
     clearPanelError("semester");
     if (!adminPass) {
       setPanelError("semester", "Admin password missing. Please re-login.");
       return { ok: false };
     }
-    setLoading(true);
+    setActiveInFlightRef.current = true;
+    incLoading();
     try {
       const nextSemesterName = semesterList.find((s) => s.id === semesterId)?.name || "";
       await adminSetActiveSemester(semesterId, adminPass);
@@ -161,7 +170,8 @@ export function useManageSemesters({
       setPanelError("semester", e?.message || "Could not update active semester. Try again or re-login.");
       return { ok: false };
     } finally {
-      setLoading(false);
+      decLoading();
+      setActiveInFlightRef.current = false;
     }
   };
 
@@ -175,7 +185,7 @@ export function useManageSemesters({
     if (!isSemesterPosterDateInRange(payload?.poster_date)) {
       return { ok: false, fieldErrors: { poster_date: `Poster date must be between ${SEMESTER_MIN_DATE} and ${SEMESTER_MAX_DATE}.` } };
     }
-    setLoading(true);
+    incLoading();
     try {
       const created = await adminCreateSemester(payload, adminPass);
       if (created?.id) {
@@ -187,6 +197,8 @@ export function useManageSemesters({
           poster_date: payload.poster_date,
           is_active: false,
         });
+        // Reconcile the temp entry with the real server state
+        refreshSemesters();
       }
       const semesterName = String(payload?.name || created?.name || "").trim();
       setMessage(semesterName ? `Semester ${semesterName} created` : "Semester created");
@@ -207,7 +219,7 @@ export function useManageSemesters({
         return { ok: false };
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -221,7 +233,7 @@ export function useManageSemesters({
     if (!isSemesterPosterDateInRange(payload?.poster_date)) {
       return { ok: false, fieldErrors: { poster_date: `Poster date must be between ${SEMESTER_MIN_DATE} and ${SEMESTER_MAX_DATE}.` } };
     }
-    setLoading(true);
+    incLoading();
     try {
       await adminUpdateSemester(payload, adminPass);
       applySemesterPatch({
@@ -229,6 +241,7 @@ export function useManageSemesters({
         name: payload.name,
         poster_date: payload.poster_date,
         ...(payload.criteria_template !== undefined ? { criteria_template: payload.criteria_template } : {}),
+        ...(payload.mudek_template !== undefined ? { mudek_template: payload.mudek_template } : {}),
       });
       const semesterName = String(payload?.name || "").trim();
       setMessage(semesterName ? `Semester ${semesterName} updated` : "Semester updated");
@@ -249,7 +262,7 @@ export function useManageSemesters({
         return { ok: false };
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -260,7 +273,7 @@ export function useManageSemesters({
       setPanelError("semester", "Admin password missing. Please re-login.");
       return { ok: false };
     }
-    setLoading(true);
+    incLoading();
     try {
       await adminUpdateSemesterCriteriaTemplate(semesterId, name, posterDate, template, adminPass);
       applySemesterPatch({ id: semesterId, criteria_template: template });
@@ -271,7 +284,7 @@ export function useManageSemesters({
       setPanelError("semester", msg || "Could not update criteria template. Try again or check admin password.");
       return { ok: false, error: msg };
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -282,7 +295,7 @@ export function useManageSemesters({
       setPanelError("semester", "Admin password missing. Please re-login.");
       return { ok: false };
     }
-    setLoading(true);
+    incLoading();
     try {
       await adminUpdateSemesterMudekTemplate(semesterId, name, posterDate, template, adminPass);
       applySemesterPatch({ id: semesterId, mudek_template: template });
@@ -293,7 +306,7 @@ export function useManageSemesters({
       setPanelError("semester", msg || "Could not update MÜDEK template. Try again or check admin password.");
       return { ok: false, error: msg };
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -307,7 +320,7 @@ export function useManageSemesters({
       setEvalLockError("Select a semester from the header before changing lock settings.");
       return;
     }
-    setLoading(true);
+    incLoading();
     setMessage("");
     setEvalLockError("");
     try {
@@ -331,7 +344,7 @@ export function useManageSemesters({
         setEvalLockError(e?.message || "Could not save settings. Try again or check admin password.");
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -362,5 +375,7 @@ export function useManageSemesters({
     handleUpdateCriteriaTemplate,
     handleUpdateMudekTemplate,
     handleSaveSettings,
+    externalUpdatedSemesterId,
+    notifyExternalSemesterUpdate: (id) => setExternalUpdatedSemesterId(id),
   };
 }

@@ -1,6 +1,7 @@
 // src/admin/ManageSemesterPanel.jsx
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import { CheckCircle2Icon, ChevronDownIcon, PencilIcon, SearchIcon, CirclePlusIcon } from "../shared/Icons";
 import LastActivity from "./LastActivity";
 import DangerIconButton from "../components/admin/DangerIconButton";
@@ -15,7 +16,7 @@ import {
   isIsoDateWithinBounds,
 } from "../shared/dateBounds";
 import { sortSemestersByPosterDateDesc } from "../shared/semesterSort";
-import { defaultCriteriaTemplate, defaultMudekTemplate } from "../shared/criteriaHelpers";
+import { defaultCriteriaTemplate, defaultMudekTemplate, pruneCriteriaMudekMappings } from "../shared/criteriaHelpers";
 
 // ── 3-tab bar ────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ const TAB_LABELS = {
   mudek:    "MÜDEK Outcomes",
 };
 
-function SemesterEditorTabs({ activeTab, onTab }) {
+function SemesterEditorTabs({ activeTab, onTab, dirtyTabs = {} }) {
   return (
     <div className="manage-segmented-tabs" role="tablist" aria-label="Semester editor tabs">
       {["semester", "criteria", "mudek"].map((t) => (
@@ -38,6 +39,7 @@ function SemesterEditorTabs({ activeTab, onTab }) {
           type="button"
         >
           {TAB_LABELS[t]}
+          {dirtyTabs[t] && <span className="tab-unsaved-dot" aria-label="unsaved changes" />}
         </button>
       ))}
     </div>
@@ -62,6 +64,7 @@ export default function ManageSemesterPanel({
   onUpdateMudekTemplate,
   onDeleteSemester,
   isLockedFn,
+  externalUpdatedSemesterId,
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -83,17 +86,59 @@ export default function ManageSemesterPanel({
   const [editForm, setEditForm] = useState({ id: "", name: "", poster_date: "", criteria_template: [], mudek_template: [] });
   const [editError, setEditError] = useState("");
 
+  // Track original edit form values to avoid false dirty on open/cancel (Fix 7)
+  const editOrigRef = useRef(null);
+
+  // Unsaved indicator state for Criteria / MÜDEK tabs (Fix 8)
+  const [editCriteriaDirty, setEditCriteriaDirty] = useState(false);
+  const [editMudekDirty, setEditMudekDirty] = useState(false);
+
+  // Unsaved-changes leave dialog (Fix 1)
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+
+  // Stale-edit detection: set when a Realtime UPDATE arrives for the semester currently being edited
+  const [staleSemester, setStaleSemester] = useState(false);
+  useEffect(() => {
+    if (!showEdit || !externalUpdatedSemesterId || !editForm.id) return;
+    if (externalUpdatedSemesterId === editForm.id) {
+      setStaleSemester(true);
+    }
+  }, [externalUpdatedSemesterId, showEdit, editForm.id]);
+
+  const editDirty =
+    showEdit &&
+    editOrigRef.current !== null &&
+    (editForm.name !== editOrigRef.current.name ||
+      editForm.poster_date !== editOrigRef.current.poster_date);
+
   const isDirty =
     (showCreate && (createForm.name.trim() !== "" || createForm.poster_date !== "")) ||
-    showEdit;
+    editDirty;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Warn before browser/tab close when any unsaved changes exist
+  const isAnyDirty = isDirty || editCriteriaDirty || editMudekDirty;
+  useEffect(() => {
+    if (!isAnyDirty) return;
+    const handler = (e) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isAnyDirty]);
+
+  const handleLeaveConfirm = () => {
+    setLeaveDialogOpen(false);
+    closeCreate();
+    closeEdit();
+    onToggle();
+  };
+
   const handleToggle = () => {
     if (isOpen && isDirty) {
-      if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+      setLeaveDialogOpen(true);
+      return;
     }
     onToggle();
   };
@@ -114,6 +159,14 @@ export default function ManageSemesterPanel({
   };
   const createMeta = getFormMeta(createForm);
   const editMeta = getFormMeta(editForm);
+  const createCriteriaTemplate = useMemo(
+    () => pruneCriteriaMudekMappings(createForm.criteria_template, createForm.mudek_template),
+    [createForm.criteria_template, createForm.mudek_template]
+  );
+  const editCriteriaTemplate = useMemo(
+    () => pruneCriteriaMudekMappings(editForm.criteria_template, editForm.mudek_template),
+    [editForm.criteria_template, editForm.mudek_template]
+  );
 
   const uniqueSemesters = useMemo(() => {
     const byId = new Map();
@@ -181,6 +234,10 @@ export default function ManageSemesterPanel({
     setEditError("");
     setEditTab("semester");
     setEditForm({ id: "", name: "", poster_date: "", criteria_template: [], mudek_template: [] });
+    editOrigRef.current = null;
+    setEditCriteriaDirty(false);
+    setEditMudekDirty(false);
+    setStaleSemester(false);
   };
 
   return (
@@ -309,10 +366,11 @@ export default function ManageSemesterPanel({
                     title="Edit semester"
                     aria-label={`Edit ${s.name}`}
                     onClick={() => {
+                      const normalizedDate = normalizeDateInput(s.poster_date);
                       setEditForm({
                         id: s.id,
                         name: s.name || "",
-                        poster_date: normalizeDateInput(s.poster_date),
+                        poster_date: normalizedDate,
                         criteria_template: Array.isArray(s.criteria_template) && s.criteria_template.length > 0
                           ? s.criteria_template
                           : defaultCriteriaTemplate(),
@@ -320,6 +378,9 @@ export default function ManageSemesterPanel({
                           ? s.mudek_template
                           : defaultMudekTemplate(),
                       });
+                      editOrigRef.current = { name: s.name || "", poster_date: normalizedDate };
+                      setEditCriteriaDirty(false);
+                      setEditMudekDirty(false);
                       setEditTab("semester");
                       setShowEdit(true);
                     }}
@@ -340,7 +401,7 @@ export default function ManageSemesterPanel({
             ))}
 
             {normalizedSearch && filteredSemesters.length === 0 && (
-              <div className="manage-empty manage-empty-search">No results.</div>
+              <div className="manage-empty manage-empty-search">No semesters match your search.</div>
             )}
           </div>
 
@@ -403,7 +464,8 @@ export default function ManageSemesterPanel({
                   {/* Tab 2: Criteria — secondary during create */}
                   {createTab === "criteria" && (
                     <CriteriaManager
-                      template={createForm.criteria_template}
+                      key={`create-criteria-${JSON.stringify(createCriteriaTemplate)}-${JSON.stringify(createForm.mudek_template.map((o) => o.code))}`}
+                      template={createCriteriaTemplate}
                       mudekTemplate={createForm.mudek_template}
                       disabled={false}
                       isLocked={false}
@@ -418,10 +480,19 @@ export default function ManageSemesterPanel({
                   {createTab === "mudek" && (
                     <MudekManager
                       mudekTemplate={createForm.mudek_template}
+                      criteriaTemplate={createCriteriaTemplate}
                       disabled={false}
                       isLocked={false}
+                      onDraftChange={(template) => {
+                        setCreateForm((f) => ({
+                          ...f,
+                          mudek_template: template,
+                          criteria_template: pruneCriteriaMudekMappings(f.criteria_template, template),
+                        }));
+                      }}
                       onSave={async (template) => {
-                        setCreateForm((f) => ({ ...f, mudek_template: template }));
+                        const prunedCriteria = pruneCriteriaMudekMappings(createCriteriaTemplate, template);
+                        setCreateForm((f) => ({ ...f, mudek_template: template, criteria_template: prunedCriteria }));
                         return { ok: true };
                       }}
                     />
@@ -476,7 +547,13 @@ export default function ManageSemesterPanel({
                   <div className="edit-dialog__title">Edit Semester</div>
                 </div>
 
-                <SemesterEditorTabs activeTab={editTab} onTab={setEditTab} />
+                <SemesterEditorTabs activeTab={editTab} onTab={setEditTab} dirtyTabs={{ criteria: editCriteriaDirty, mudek: editMudekDirty }} />
+
+                {staleSemester && (
+                  <div className="manage-hint manage-hint-warning manage-stale-warning" role="alert">
+                    This semester was updated in another session. Reload before saving to avoid overwriting newer changes.
+                  </div>
+                )}
 
                 <div className="manage-modal-body">
                   {/* Tab 1: Semester metadata */}
@@ -512,10 +589,12 @@ export default function ManageSemesterPanel({
                   {/* Tab 2: Criteria */}
                   {editTab === "criteria" && (
                     <CriteriaManager
-                      template={editForm.criteria_template}
+                      key={`edit-criteria-${editForm.id}-${JSON.stringify(editCriteriaTemplate)}-${JSON.stringify(editForm.mudek_template.map((o) => o.code))}`}
+                      template={editCriteriaTemplate}
                       mudekTemplate={editForm.mudek_template}
                       disabled={false}
                       isLocked={isLockedFn ? isLockedFn(editForm.id) : false}
+                      onDirtyChange={setEditCriteriaDirty}
                       onSave={async (template) => {
                         if (!onUpdateCriteriaTemplate) return { ok: false, error: "Not configured" };
                         const result = await onUpdateCriteriaTemplate(
@@ -536,20 +615,48 @@ export default function ManageSemesterPanel({
                   {editTab === "mudek" && (
                     <MudekManager
                       mudekTemplate={editForm.mudek_template}
+                      criteriaTemplate={editCriteriaTemplate}
                       disabled={false}
                       isLocked={isLockedFn ? isLockedFn(editForm.id) : false}
+                      onDirtyChange={setEditMudekDirty}
+                      onDraftChange={(template) => {
+                        setEditForm((f) => ({
+                          ...f,
+                          mudek_template: template,
+                          criteria_template: pruneCriteriaMudekMappings(f.criteria_template, template),
+                        }));
+                        setEditCriteriaDirty(true);
+                      }}
                       onSave={async (template) => {
-                        if (!onUpdateMudekTemplate) return { ok: false, error: "Not configured" };
-                        const result = await onUpdateMudekTemplate(
-                          editForm.id,
-                          editForm.name.trim(),
-                          editForm.poster_date,
-                          template
-                        );
-                        if (result?.ok) {
-                          setEditForm((f) => ({ ...f, mudek_template: template }));
+                        const prunedCriteria = pruneCriteriaMudekMappings(editCriteriaTemplate, template);
+                        const criteriaChanged = prunedCriteria !== editCriteriaTemplate;
+
+                        if (criteriaChanged) {
+                          const res = await onUpdateSemester({
+                            id: editForm.id,
+                            name: editForm.name.trim(),
+                            poster_date: editForm.poster_date,
+                            mudek_template: template,
+                            criteria_template: prunedCriteria,
+                          });
+                          if (res?.fieldErrors) return { ok: false, error: "Invalid semester data." };
+                          if (res?.ok === false) return { ok: false, error: "Could not save MÜDEK Outcomes." };
+                          
+                          setEditForm((f) => ({ ...f, mudek_template: template, criteria_template: prunedCriteria }));
+                          return { ok: true };
+                        } else {
+                          if (!onUpdateMudekTemplate) return { ok: false, error: "Not configured" };
+                          const result = await onUpdateMudekTemplate(
+                            editForm.id,
+                            editForm.name.trim(),
+                            editForm.poster_date,
+                            template
+                          );
+                          if (result?.ok) {
+                            setEditForm((f) => ({ ...f, mudek_template: template }));
+                          }
+                          return result;
                         }
-                        return result;
                       }}
                     />
                   )}
@@ -564,7 +671,8 @@ export default function ManageSemesterPanel({
                     <button
                       className="manage-btn primary"
                       type="button"
-                      disabled={!editMeta.canSubmit}
+                      disabled={!editMeta.canSubmit || staleSemester}
+                      title={staleSemester ? "Reload the page before saving — this semester was updated externally" : undefined}
                       onClick={async () => {
                         const res = await onUpdateSemester({
                           id: editForm.id,
@@ -587,6 +695,16 @@ export default function ManageSemesterPanel({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={leaveDialogOpen}
+        onOpenChange={setLeaveDialogOpen}
+        title="Unsaved changes"
+        body="You have unsaved changes. Leave anyway?"
+        confirmLabel="Leave anyway"
+        cancelLabel="Keep editing"
+        onConfirm={handleLeaveConfirm}
+      />
     </div>
   );
 }

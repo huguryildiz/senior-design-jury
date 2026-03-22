@@ -6,7 +6,7 @@
 // CRUD Decomposition).
 // ============================================================
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   adminListProjects,
   adminCreateProject,
@@ -33,11 +33,18 @@ export function useManageProjects({
   viewSemesterLabel,
   semesterList,
   setMessage,
-  setLoading,
+  incLoading,
+  decLoading,
   setPanelError,
   clearPanelError,
 }) {
   const [projects, setProjects] = useState([]);
+
+  // ── Stable refs for values used inside callbacks ─────────
+  const adminPassRef = useRef(adminPass);
+  adminPassRef.current = adminPass;
+  const setPanelErrorRef = useRef(setPanelError);
+  setPanelErrorRef.current = setPanelError;
 
   // ── Patch / remove helpers ───────────────────────────────
   const applyProjectPatch = useCallback((patch) => {
@@ -71,19 +78,20 @@ export function useManageProjects({
     setProjects((prev) => prev.filter((p) => p.id !== deletedId));
   }, []);
 
-  // ── Load function ────────────────────────────────────────
+  // ── Load function (stable identity — uses refs) ──────────
   const loadProjects = useCallback(
     async (semesterId) => {
-      if (!semesterId || !adminPass) return;
+      const pass = adminPassRef.current;
+      if (!semesterId || !pass) return;
       try {
-        const rows = await adminListProjects(semesterId, adminPass);
+        const rows = await adminListProjects(semesterId, pass);
         setProjects(rows || []);
       } catch (e) {
         const msg = e?.message || "Could not load groups. Check admin password or refresh.";
-        setPanelError("projects", msg);
+        setPanelErrorRef.current("projects", msg);
       }
     },
-    [adminPass, setPanelError]
+    [] // stable identity — reads from refs
   );
 
   // ── Project CRUD handlers ────────────────────────────────
@@ -94,7 +102,7 @@ export function useManageProjects({
     }
     setMessage("");
     clearPanelError("projects");
-    setLoading(true);
+    incLoading();
     try {
       const semesterContext =
         viewSemesterLabel && viewSemesterLabel !== "—"
@@ -158,7 +166,7 @@ export function useManageProjects({
         };
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -170,7 +178,7 @@ export function useManageProjects({
     }
     setMessage("");
     clearPanelError("projects");
-    setLoading(true);
+    incLoading();
     try {
       const normalizedStudents = normalizeStudentNames(row.group_students);
       const targetSemesterName =
@@ -221,7 +229,7 @@ export function useManageProjects({
         return { ok: false };
       }
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 
@@ -230,7 +238,7 @@ export function useManageProjects({
     if (!targetSemesterId) return;
     setMessage("");
     clearPanelError("projects");
-    setLoading(true);
+    incLoading();
     try {
       const normalizedStudents = normalizeStudentNames(row.group_students);
       const res = await adminUpsertProject(
@@ -253,7 +261,7 @@ export function useManageProjects({
       // Return message so the edit modal can show it in-context; do not use a distant panel banner.
       return { ok: false, message: msg };
     } finally {
-      setLoading(false);
+      decLoading();
     }
   };
 

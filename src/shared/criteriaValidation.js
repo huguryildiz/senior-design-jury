@@ -216,9 +216,6 @@ export function validateCriterion(row, allRows, mudekTemplate, index) {
 
   // MÜDEK
   const mudekArray = Array.isArray(row.mudek) ? row.mudek : [];
-  if (mudekTemplate.length > 0 && mudekArray.length === 0) {
-    errors.mudek = "Select at least one MÜDEK outcome";
-  }
   if (new Set(mudekArray).size !== mudekArray.length) {
     errors.mudek_dup = "Duplicate MÜDEK selections";
   }

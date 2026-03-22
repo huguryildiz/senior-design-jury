@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo/vera-logo.png" alt="VERA Logo" width="200">
+</p>
+
 # VERA
 
 **TEDU Capstone Jury Evaluation Platform** · *Verdict & Evaluation Ranking Assistant*

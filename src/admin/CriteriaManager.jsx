@@ -20,10 +20,11 @@
 //   isLocked      — when true, structural edits disabled; only label/shortLabel/blurb editable
 // ============================================================
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import AutoGrow from "../shared/AutoGrow";
 import BlockingValidationAlert from "../shared/BlockingValidationAlert";
 import Tooltip from "../shared/Tooltip";
+import { useFocusTrap } from "../shared/useFocusTrap";
 import {
   DndContext,
   PointerSensor,
@@ -37,12 +38,22 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { GripVerticalIcon, TrashIcon, XIcon, ChevronDownIcon, ChevronUpIcon, CirclePlusIcon } from "../shared/Icons";
+import {
+  GripVerticalIcon,
+  TrashIcon,
+  TriangleAlertLucideIcon,
+  XIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CirclePlusIcon,
+  GraduationCapIcon,
+  ListChecksIcon,
+} from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import { CSS } from "@dnd-kit/utilities";
 import { normalizeCriterion, criterionToTemplate } from "../shared/criteriaHelpers";
 import { validateSemesterCriteria, isDisposableEmptyDraftCriterion } from "../shared/criteriaValidation";
-import LevelPill from "../shared/LevelPill";
+import LevelPill, { isKnownBandVariant, getBandPositionStyle, getBandScoreRank } from "../shared/LevelPill";
 import { CRITERIA, RUBRIC_DEFAULT_LEVELS, RUBRIC_EDITOR_TEXT } from "../config";
 
 // ── Default rubric seed for a new criterion ───────────────────
@@ -94,6 +105,7 @@ function templateToRow(c, idx) {
     blurb:      n.blurb,
     mudek:      n.mudek,                        // display codes only
     rubric:     boundedRubric,
+    _expanded:  false,
     _mudekOpen: false,
     _rubricOpen: false,
     _rubricTouched: true,
@@ -119,8 +131,9 @@ function emptyRow(idx) {
       { level: developing, min: "", max: "", desc: "" },
       { level: insufficient, min: "", max: "", desc: "" },
     ],
-    _mudekOpen: false,
-    _rubricOpen: false,
+    _expanded:  true,
+    _mudekOpen: true,
+    _rubricOpen: true,
     _rubricTouched: false,
     _fieldTouched: {},
   };
@@ -233,6 +246,137 @@ function getBandRangeLabel(band) {
   return `${min}\u2013${max}`;
 }
 
+function getCriterionTintStyle(color, alpha = "22") {
+  const base = String(color || "").trim();
+  if (/^#([0-9a-f]{6})$/i.test(base)) {
+    return {
+      backgroundColor: `${base}${alpha}`,
+      borderColor: base,
+      color: base,
+    };
+  }
+  return {
+    backgroundColor: "rgba(148, 163, 184, 0.12)",
+    borderColor: base || "#94A3B8",
+    color: base || "#475569",
+  };
+}
+
+function getMudekTooltipContent(code, outcome) {
+  const descEn = String(outcome?.desc_en ?? "").trim();
+  const descTr = String(outcome?.desc_tr ?? "").trim();
+  return (
+      <span className="criteria-tooltip-content">
+      <span className="criteria-tooltip-line criteria-tooltip-line--title">{code}</span>
+      {descEn && (
+        <span className="criteria-tooltip-line criteria-tooltip-line--desc">
+          🇬🇧 {descEn}
+        </span>
+      )}
+      {descTr && (
+        <span className="criteria-tooltip-line criteria-tooltip-line--desc">
+          🇹🇷 {descTr}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function getMudekTooltipLabel(code, outcome) {
+  const descEn = String(outcome?.desc_en ?? "").trim();
+  const descTr = String(outcome?.desc_tr ?? "").trim();
+  const parts = [code];
+  if (descEn) parts.push(`🇬🇧 ${descEn}`);
+  if (descTr) parts.push(`🇹🇷 ${descTr}`);
+  return parts.join(" — ");
+}
+
+function getRubricTooltipContent(label, rangeLabel, desc) {
+  return (
+    <span className="criteria-tooltip-content">
+      <span className="criteria-tooltip-line criteria-tooltip-line--title">{label}</span>
+      {rangeLabel && (
+        <span className="criteria-tooltip-line criteria-tooltip-line--muted">
+          Range: {rangeLabel}
+        </span>
+      )}
+      {desc && (
+        <span className="criteria-tooltip-line criteria-tooltip-line--desc">
+          Description: {desc}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function getRubricTooltipLabel(label, rangeLabel, desc) {
+  const parts = [label];
+  if (rangeLabel) parts.push(`Range: ${rangeLabel}`);
+  if (desc) parts.push(desc);
+  return parts.join(" — ");
+}
+
+function getCriterionDisplayName(row, index) {
+  return String(row?.label ?? "").trim() || String(row?.shortLabel ?? "").trim() || `Criterion ${index + 1}`;
+}
+
+function CriterionDeleteDialog({ open, rowLabel, onOpenChange, onConfirm }) {
+  const containerRef = useRef(null);
+
+  useFocusTrap({
+    containerRef,
+    isOpen: open,
+    onClose: () => onOpenChange(false),
+  });
+
+  if (!open) return null;
+
+  return (
+    <div className="manage-modal" role="dialog" aria-modal="true" aria-labelledby="criterion-delete-dialog-title">
+      <div className="manage-modal-card manage-modal-card--delete" ref={containerRef}>
+        <div className="delete-dialog__header">
+          <span className="delete-dialog__icon" aria-hidden="true">
+            <TrashIcon />
+          </span>
+          <div className="delete-dialog__title" id="criterion-delete-dialog-title">
+            Delete Confirmation
+          </div>
+        </div>
+        <div className="delete-dialog__body">
+          <div className="delete-dialog__line delete-dialog__line--lead">
+            <strong className="manage-delete-focus">{rowLabel || "This criterion"}</strong>
+            {" will be deleted. Are you sure?"}
+          </div>
+          <div className="delete-dialog__impact delete-dialog__impact--error">
+            <div className="delete-dialog__impact-icon" aria-hidden="true">
+              <TriangleAlertLucideIcon />
+            </div>
+            <div className="delete-dialog__impact-text">
+              This action removes the criterion from the semester settings. It cannot be undone.
+            </div>
+          </div>
+        </div>
+        <div className="delete-dialog__actions">
+          <button
+            className="manage-btn manage-btn--delete-cancel"
+            type="button"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="manage-btn manage-btn--delete-confirm"
+            type="button"
+            onClick={onConfirm}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ── MÜDEK pill selector ───────────────────────────────────────
 
@@ -241,6 +385,9 @@ function MudekPillSelector({ selected, mudekTemplate, onChange, disabled, criter
   const options = (mudekTemplate || []);
   const outcomeByCode = new Map(options.map((o) => [o.code, o]));
   const color = criterionColor || "#94A3B8";
+
+  // Render-time sanitization: only show chips that still exist
+  const validSelected = selected.filter((code) => outcomeByCode.has(code));
 
   if (options.length === 0) {
     return (
@@ -269,46 +416,41 @@ function MudekPillSelector({ selected, mudekTemplate, onChange, disabled, criter
     <div className="criteria-mudek-selector">
       <div className="manage-hint manage-hint-inline">Select the MÜDEK outcomes mapped to this criterion.</div>
       <div className="criteria-mudek-pills">
-        {selected.length === 0 && (
-          <span className="criteria-mudek-none">None selected</span>
+        {validSelected.length === 0 && (
+          <span className="criteria-mudek-none">
+            {selected.length > 0 ? "No valid mapping" : "None selected"}
+          </span>
         )}
-        {selected.map((code) => (
-          <span
+        {validSelected.map((code) => (
+          <Tooltip
             key={code}
-            className="criteria-mudek-pill"
-            style={{ backgroundColor: color + "22", borderColor: color, color }}
+            text={getMudekTooltipContent(code, outcomeByCode.get(code))}
           >
-            <Tooltip
-              text={(
-                <span className="criteria-tooltip-content">
-                  <span className="criteria-tooltip-line criteria-tooltip-line--title">{code}</span>
-                  {outcomeByCode.get(code)?.desc_en?.trim() && (
-                    <span className="criteria-tooltip-line criteria-tooltip-line--desc">{outcomeByCode.get(code).desc_en.trim()}</span>
-                  )}
-                </span>
-              )}
+            <span
+              className="criteria-mudek-pill"
+              style={getCriterionTintStyle(color)}
+              tabIndex={0}
+              aria-label={getMudekTooltipLabel(code, outcomeByCode.get(code))}
             >
               <span
                 className="criteria-mudek-pill-label criteria-pill-typography"
-                tabIndex={0}
-                aria-label={`MÜDEK ${code} details`}
               >
                 {code}
               </span>
-            </Tooltip>
-            {!disabled && (
-              <Tooltip text={`Remove MÜDEK ${code}`}>
-                <button
-                  type="button"
-                  className="criteria-mudek-pill-remove"
-                  onClick={() => toggle(code)}
-                  aria-label={`Remove MÜDEK ${code}`}
-                >
-                  ✕
-                </button>
-              </Tooltip>
-            )}
-          </span>
+              {!disabled && (
+                <Tooltip text={`Remove MÜDEK ${code}`}>
+                  <button
+                    type="button"
+                    className="criteria-mudek-pill-remove"
+                    onClick={() => toggle(code)}
+                    aria-label={`Remove MÜDEK ${code}`}
+                  >
+                    ✕
+                  </button>
+                </Tooltip>
+              )}
+            </span>
+          </Tooltip>
         ))}
       </div>
 
@@ -329,7 +471,7 @@ function MudekPillSelector({ selected, mudekTemplate, onChange, disabled, criter
                   key={o.id}
                   type="button"
                   className={`criteria-mudek-chip${checked ? " selected" : ""}`}
-                  style={checked ? { backgroundColor: color + "33", borderColor: color } : {}}
+                  style={checked ? getCriterionTintStyle(color, "33") : {}}
                   onClick={() => toggle(o.code)}
                   title={o.desc_en || o.code}
                 >
@@ -502,10 +644,20 @@ export default function CriteriaManager({
   template = [],
   mudekTemplate = [],
   onSave,
+  onDirtyChange,
   disabled = false,
   isLocked = false,
 }) {
   const instanceId = useId();
+  const mudekOutcomeByCode = new Map((mudekTemplate || []).map((o) => [o.code, o]));
+  const mudekOutcomeCodes = useMemo(
+    () => new Set((mudekTemplate || []).map((o) => o.code)),
+    [mudekTemplate]
+  );
+  const sanitizeMudekSelection = useCallback(
+    (selected = []) => (Array.isArray(selected) ? selected.filter((code) => mudekOutcomeCodes.has(code)) : []),
+    [mudekOutcomeCodes]
+  );
 
   const buildRows = useCallback(
     (tpl) =>
@@ -519,15 +671,25 @@ export default function CriteriaManager({
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveAttempted, setSaveAttempted] = useState(false);
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState(null);
+  const activeRows = useMemo(
+    () =>
+      rows.map((row) => ({
+        ...row,
+        mudek: sanitizeMudekSelection(row.mudek),
+      })),
+    [rows, sanitizeMudekSelection]
+  );
 
   // Sync when template prop changes
   useEffect(() => {
     setRows(buildRows(template));
     setSaveError("");
     setSaveAttempted(false);
+    onDirtyChange?.(false);
   }, [JSON.stringify(template)]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { errors, rubricErrorsByCriterion, totalMax } = validateSemesterCriteria(rows, mudekTemplate);
+  const { errors, rubricErrorsByCriterion, totalMax } = validateSemesterCriteria(activeRows, mudekTemplate);
   const totalOk = totalMax === 100;
   const hasValidationErrors =
     Object.keys(errors).length > 0 ||
@@ -545,7 +707,7 @@ export default function CriteriaManager({
     const reasons = [];
     if (!totalOk) reasons.push(`Current total: ${totalMax} / 100.`);
 
-    rows.forEach((row, i) => {
+    activeRows.forEach((row, i) => {
       const name = String(row.label ?? row.shortLabel ?? "").trim() || "Untitled criterion";
       const prefix = `Criteria: "${name}" — `;
 
@@ -609,16 +771,29 @@ export default function CriteriaManager({
       return next;
     });
     setSaveError("");
+    onDirtyChange?.(true);
   };
 
   const addRow = () => {
     setRows((prev) => [...prev, emptyRow(prev.length)]);
     setSaveError("");
+    onDirtyChange?.(true);
   };
 
   const removeRow = (i) => {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
     setSaveError("");
+    onDirtyChange?.(true);
+  };
+
+  const requestRemoveRow = (i) => {
+    setPendingDeleteIndex(i);
+  };
+
+  const confirmRemoveRow = () => {
+    if (pendingDeleteIndex === null) return;
+    removeRow(pendingDeleteIndex);
+    setPendingDeleteIndex(null);
   };
 
   const toggleRubric = (i) => {
@@ -648,6 +823,31 @@ export default function CriteriaManager({
     });
   };
 
+  const toggleCriterionCard = (i) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = { ...next[i], _expanded: !next[i]._expanded };
+      if (row._expanded) {
+        if (mudekTemplate.length > 0) {
+          row._mudekOpen = true;
+        }
+        if (row.rubric.length === 0) {
+          const seeded = getConfigRubricSeed(row) || defaultRubricBands(Number(row.max) || 30);
+          const criterionMax = Number(row.max);
+          row.rubric =
+            Number.isFinite(criterionMax) && criterionMax >= 0
+              ? clampRubricBandsToCriterionMax(seeded, criterionMax)
+              : seeded;
+        }
+        if (row.rubric.length > 0) {
+          row._rubricOpen = true;
+        }
+      }
+      next[i] = row;
+      return next;
+    });
+  };
+
   // DnD
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -656,6 +856,7 @@ export default function CriteriaManager({
 
   const handleDragEnd = ({ active, over }) => {
     if (!over || active.id === over.id) return;
+    onDirtyChange?.(true);
     setRows((prev) => {
       const fromIndex = prev.findIndex((r) => r._id === String(active.id));
       const toIndex   = prev.findIndex((r) => r._id === String(over.id));
@@ -716,6 +917,29 @@ export default function CriteriaManager({
           e.coverageError
       );
 
+    if (localHasErrors || localTotal !== 100) {
+      setRows((prev) =>
+        prev.map((r, i) => {
+          const rubric = localRubricErrors[i];
+          const rowHasErrors =
+            !!localErrors[`label_${i}`] ||
+            !!localErrors[`shortLabel_${i}`] ||
+            !!localErrors[`blurb_${i}`] ||
+            !!localErrors[`max_${i}`] ||
+            !!localErrors[`mudek_${i}`] ||
+            !!localErrors[`mudek_dup_${i}`] ||
+            !!rubric;
+          if (!rowHasErrors) return r;
+          return {
+            ...r,
+            _expanded: true,
+            _mudekOpen: mudekTemplate.length > 0 ? true : r._mudekOpen,
+            _rubricOpen: true,
+          };
+        })
+      );
+    }
+
     if (localHasErrors || localTotal !== 100 || disabled) return;
 
     setSaving(true);
@@ -723,11 +947,13 @@ export default function CriteriaManager({
     try {
       const normalized = activeRows.map((r) => {
         const boundedRubric = clampRubricBandsToCriterionMax(r.rubric, Number(r.max));
-        return criterionToTemplate({ ...r, rubric: boundedRubric });
+        return criterionToTemplate({ ...r, mudek: sanitizeMudekSelection(r.mudek), rubric: boundedRubric });
       });
       const result = await onSave(normalized);
       if (!result?.ok) {
         setSaveError(result?.error || "Could not save criteria template. Try again.");
+      } else {
+        onDirtyChange?.(false);
       }
     } catch (e) {
       setSaveError(e?.message || "Could not save criteria template. Try again.");
@@ -736,7 +962,7 @@ export default function CriteriaManager({
     }
   };
 
-  const rowIds = rows.map((r) => r._id);
+  const rowIds = activeRows.map((r) => r._id);
 
   return (
     <div className="criteria-manager">
@@ -761,14 +987,11 @@ export default function CriteriaManager({
                   <div
                     ref={setNodeRef}
                     style={{ ...style, borderLeftColor: row.color || "#94A3B8" }}
-                    className="criterion-card"
+                    className={`criterion-row${row._expanded ? " is-expanded" : ""}`}
                   >
-                    {/* ── Card header row ── */}
-                    <div className="criterion-card-header">
-                      {/* ── Toolbar: Drag, Swatch, Remove ── */}
-                      <div className="criterion-card-toolbar">
-                        <label className="criteria-manager-cell-label toolbar-label-placeholder">&nbsp;</label>
-                        <div className="criterion-card-toolbar-actions">
+                    <div className="criterion-row-top">
+                      <div className="criterion-row-head">
+                        <div className="criterion-row-leading">
                           <Tooltip text="Drag up or down to reorder criterion">
                             <button
                               type="button"
@@ -781,7 +1004,7 @@ export default function CriteriaManager({
                               <GripVerticalIcon />
                             </button>
                           </Tooltip>
-                          
+
                           <Tooltip text="Change criterion color accent">
                             <label
                               className="criterion-color-picker-trigger"
@@ -797,203 +1020,310 @@ export default function CriteriaManager({
                               />
                             </label>
                           </Tooltip>
+                        </div>
 
-                          <DangerIconButton
-                            Icon={XIcon}
-                            onClick={() => removeRow(i)}
-                            disabled={structurallyLocked || rows.length === 1}
-                            ariaLabel={`Remove criterion ${i + 1}`}
-                            title="Remove criterion"
-                          />
+                        <div className="criterion-row-main">
+                          <div className="criterion-row-title-line">
+                            <span className="criterion-row-swatch" style={{ backgroundColor: row.color || "#94A3B8" }} aria-hidden="true" />
+                            <span className="criterion-row-title">{getCriterionDisplayName(row, i)}</span>
+                          </div>
+                          <div className="criterion-row-meta">
+                            {String(row.shortLabel || "No short label")} · {row.max !== "" ? `${row.max} pts` : "No max"}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Label */}
-                      <div className="criterion-field criterion-field--label">
-                        <label className="criteria-manager-cell-label">Label</label>
-                        <input
-                          className={`manage-input${(saveAttempted || row._fieldTouched?.label) && errors[`label_${i}`] ? " is-danger" : ""}`}
-                          value={row.label}
-                          onChange={(e) => setRow(i, "label", e.target.value)}
-                          onBlur={() => markTouched(i, "label")}
-                          placeholder="Technical Content"
-                          disabled={disabled}
-                          aria-label={`Criterion ${i + 1} label`}
+                      <div className="criterion-row-actions">
+                        <Tooltip text={row._expanded ? "Collapse criterion" : "Expand criterion"}>
+                          <button
+                            type="button"
+                            className="manage-icon-btn criterion-row-expand-btn"
+                            onClick={() => toggleCriterionCard(i)}
+                            aria-expanded={row._expanded}
+                            aria-controls={`criterion-body-${row._id}`}
+                            aria-label={`${row._expanded ? "Collapse" : "Expand"} criterion ${getCriterionDisplayName(row, i)}`}
+                          >
+                            {row._expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                          </button>
+                        </Tooltip>
+                        <DangerIconButton
+                          Icon={XIcon}
+                          onClick={() => requestRemoveRow(i)}
+                          disabled={structurallyLocked || rows.length === 1}
+                          ariaLabel={`Remove criterion ${i + 1}`}
+                          title="Remove criterion"
                         />
-                        {(saveAttempted || row._fieldTouched?.label) && errors[`label_${i}`] && (
-                          <div className="manage-field-error manage-field-error--simple">{errors[`label_${i}`]}</div>
-                        )}
-                      </div>
-
-                      {/* ShortLabel */}
-                      <div className="criterion-field criterion-field--short">
-                        <label className="criteria-manager-cell-label">Short label</label>
-                        <input
-                          className={`manage-input${(saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] ? " is-danger" : ""}`}
-                          value={row.shortLabel}
-                          onChange={(e) => setRow(i, "shortLabel", e.target.value)}
-                          onBlur={() => markTouched(i, "shortLabel")}
-                          placeholder="Technical"
-                          disabled={disabled}
-                          aria-label={`Criterion ${i + 1} short label`}
-                        />
-                        {(saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] && (
-                          <div className="manage-field-error manage-field-error--simple">{errors[`shortLabel_${i}`]}</div>
-                        )}
-                      </div>
-
-                      {/* Max */}
-                      <div className="criterion-field criterion-field--max">
-                        <label className="criteria-manager-cell-label">Max</label>
-                        <input
-                          className={`manage-input${(saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] ? " is-danger" : ""}`}
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={row.max}
-                          onChange={(e) => setRow(i, "max", e.target.value)}
-                          onBlur={() => markTouched(i, "max")}
-                          placeholder="30"
-                          disabled={structurallyLocked}
-                          aria-label={`Criterion ${i + 1} max score`}
-                        />
-                        {(saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] && (
-                          <div className="manage-field-error manage-field-error--simple">{errors[`max_${i}`]}</div>
-                        )}
                       </div>
                     </div>
 
-                    {/* ── Description ── */}
-                    <div className="criterion-field criterion-field--blurb">
-                      <label className="criteria-manager-cell-label">Description</label>
-                      <AutoGrow
-                        value={row.blurb}
-                        onChange={(e) => setRow(i, "blurb", e.target.value)}
-                        onBlur={() => markTouched(i, "blurb")}
-                        disabled={disabled}
-                        placeholder={RUBRIC_EDITOR_TEXT.criterionBlurbPlaceholder}
-                        ariaLabel={`Criterion ${i + 1} description`}
-                        hasError={(saveAttempted || row._fieldTouched?.blurb) && !!errors[`blurb_${i}`]}
-                        className="criterion-blurb-textarea"
-                      />
-                      {(saveAttempted || row._fieldTouched?.blurb) && errors[`blurb_${i}`] && (
-                        <div className="manage-field-error manage-field-error--simple">{errors[`blurb_${i}`]}</div>
-                      )}
+                    <div className="criterion-row-preview">
+                      <div className="criterion-row-preview-line">
+                        <span className="criterion-row-kicker">
+                          <span className="criterion-row-kicker-icon criterion-row-kicker-icon--mudek" aria-hidden="true">
+                            <GraduationCapIcon />
+                          </span>
+                          <span>MÜDEK</span>
+                        </span>
+                        <div className="criterion-row-chip-row">
+                          {sanitizeMudekSelection(row.mudek).length > 0 ? (
+                            <>
+                              {sanitizeMudekSelection(row.mudek).map((code) => (
+                                <Tooltip
+                                  key={code}
+                                  text={getMudekTooltipContent(code, mudekOutcomeByCode.get(code))}
+                                >
+                                  <span
+                                    className="criterion-row-chip criterion-row-chip--mudek"
+                                    style={getCriterionTintStyle(row.color)}
+                                    tabIndex={0}
+                                    aria-label={getMudekTooltipLabel(code, mudekOutcomeByCode.get(code))}
+                                  >
+                                    {code}
+                                  </span>
+                                </Tooltip>
+                              ))}
+                            </>
+                          ) : (
+                            <span className="criterion-row-empty">None selected</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="criterion-row-preview-line">
+                        <span className="criterion-row-kicker">
+                          <span className="criterion-row-kicker-icon criterion-row-kicker-icon--rubric" aria-hidden="true">
+                            <ListChecksIcon />
+                          </span>
+                          <span>Rubric</span>
+                        </span>
+                        <div className="criterion-row-pill-row">
+                          {row.rubric.length > 0 ? (
+                            <>
+                              {row.rubric.map((band, bi) => {
+                                  const label = getBandDisplayLabel(row.rubric, bi);
+                                  const rangeLabel = getBandRangeLabel(band);
+                                  const desc = String(band?.desc || "").trim();
+                                  const pillStyle = isKnownBandVariant(band?.level)
+                                    ? undefined
+                                    : getBandPositionStyle(getBandScoreRank(row.rubric, band), row.rubric.length);
+                                  return (
+                                    <Tooltip
+                                      key={`${label}-${bi}`}
+                                      text={getRubricTooltipContent(label, rangeLabel, desc)}
+                                    >
+                                      <span
+                                        className="criteria-rubric-summary-pill-trigger criterion-row-pill-trigger"
+                                        tabIndex={0}
+                                        aria-label={getRubricTooltipLabel(label, rangeLabel, desc)}
+                                      >
+                                        <LevelPill
+                                          variant={band?.level}
+                                          className="criterion-row-pill"
+                                          style={pillStyle}
+                                        >
+                                          <span className="criterion-row-pill-text criteria-pill-typography">{label}</span>
+                                        </LevelPill>
+                                      </span>
+                                    </Tooltip>
+                                  );
+                                })}
+                              </>
+                          ) : (
+                            <span className="criterion-row-empty">No rubric bands</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* ── MÜDEK mapping ── */}
-                    {mudekTemplate.length > 0 && (
-                      <div className={`criterion-field criterion-field--mudek criterion-subsection${row._mudekOpen ? " is-open" : " is-collapsed"}`}>
-                        <div className="criterion-subsection-header">
-                          <div className="criterion-subsection-title-wrap">
-                            <span className="criterion-subsection-title">MÜDEK Outcomes</span>
+                    {row._expanded && (
+                      <div id={`criterion-body-${row._id}`} className="criterion-row-editor">
+                        <div className="criterion-row-expanded-fields">
+                          {/* Label */}
+                          <div className="criterion-field criterion-field--label">
+                            <label className="criteria-manager-cell-label">Label</label>
+                            <input
+                              className={`manage-input${(saveAttempted || row._fieldTouched?.label) && errors[`label_${i}`] ? " is-danger" : ""}`}
+                              value={row.label}
+                              onChange={(e) => setRow(i, "label", e.target.value)}
+                              onBlur={() => markTouched(i, "label")}
+                              placeholder="Technical Content"
+                              disabled={disabled}
+                              aria-label={`Criterion ${i + 1} label`}
+                            />
+                            {(saveAttempted || row._fieldTouched?.label) && errors[`label_${i}`] && (
+                              <div className="manage-field-error manage-field-error--simple">{errors[`label_${i}`]}</div>
+                            )}
                           </div>
-                          {!structurallyLocked && (
-                            <Tooltip text={row._mudekOpen ? "Hide MÜDEK selection panel" : "Map this criterion to one or more MÜDEK outcomes"}>
+
+                          {/* ShortLabel */}
+                          <div className="criterion-field criterion-field--short">
+                            <label className="criteria-manager-cell-label">Short label</label>
+                            <input
+                              className={`manage-input${(saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] ? " is-danger" : ""}`}
+                              value={row.shortLabel}
+                              onChange={(e) => setRow(i, "shortLabel", e.target.value)}
+                              onBlur={() => markTouched(i, "shortLabel")}
+                              placeholder="Technical"
+                              disabled={disabled}
+                              aria-label={`Criterion ${i + 1} short label`}
+                            />
+                            {(saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] && (
+                              <div className="manage-field-error manage-field-error--simple">{errors[`shortLabel_${i}`]}</div>
+                            )}
+                          </div>
+
+                          {/* Max */}
+                          <div className="criterion-field criterion-field--max">
+                            <label className="criteria-manager-cell-label">Max</label>
+                            <input
+                              className={`manage-input${(saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] ? " is-danger" : ""}`}
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={row.max}
+                              onChange={(e) => setRow(i, "max", e.target.value)}
+                              onBlur={() => markTouched(i, "max")}
+                              placeholder="30"
+                              disabled={structurallyLocked}
+                              aria-label={`Criterion ${i + 1} max score`}
+                            />
+                            {(saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] && (
+                              <div className="manage-field-error manage-field-error--simple">{errors[`max_${i}`]}</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* ── Description ── */}
+                        <div className="criterion-field criterion-field--blurb">
+                          <label className="criteria-manager-cell-label">Description</label>
+                          <AutoGrow
+                            value={row.blurb}
+                            onChange={(e) => setRow(i, "blurb", e.target.value)}
+                            onBlur={() => markTouched(i, "blurb")}
+                            disabled={disabled}
+                            placeholder={RUBRIC_EDITOR_TEXT.criterionBlurbPlaceholder}
+                            ariaLabel={`Criterion ${i + 1} description`}
+                            hasError={(saveAttempted || row._fieldTouched?.blurb) && !!errors[`blurb_${i}`]}
+                            className="criterion-blurb-textarea"
+                          />
+                          {(saveAttempted || row._fieldTouched?.blurb) && errors[`blurb_${i}`] && (
+                            <div className="manage-field-error manage-field-error--simple">{errors[`blurb_${i}`]}</div>
+                          )}
+                        </div>
+
+                        {/* ── MÜDEK mapping ── */}
+                        {mudekTemplate.length > 0 && (
+                          <div className={`criterion-field criterion-field--mudek criterion-subsection${row._mudekOpen ? " is-open" : " is-collapsed"}`}>
+                            <div className="criterion-subsection-header">
+                              <div className="criterion-subsection-title-wrap">
+                                <span className="criterion-subsection-title-icon criterion-subsection-title-icon--mudek" aria-hidden="true">
+                                  <GraduationCapIcon />
+                                </span>
+                                <span className="criterion-subsection-title">MÜDEK Outcomes</span>
+                              </div>
+                              {!structurallyLocked && (
+                                <Tooltip text={row._mudekOpen ? "Hide MÜDEK selection panel" : "Map this criterion to one or more MÜDEK outcomes"}>
+                                  <button
+                                    type="button"
+                                    className="criterion-subsection-action criterion-subsection-action--mudek"
+                                    onClick={() => toggleMudek(i)}
+                                    aria-expanded={row._mudekOpen}
+                                    aria-label="Select MÜDEK Outcomes"
+                                  >
+                                    {row._mudekOpen ? (
+                                      <><ChevronUpIcon className="criteria-btn-icon" /> Close</>
+                                    ) : (
+                                      <><ChevronDownIcon className="criteria-btn-icon" /> Select</>
+                                    )}
+                                  </button>
+                                </Tooltip>
+                              )}
+                            </div>
+                            <div className="criterion-subsection-body">
+                              <MudekPillSelector
+                                selected={sanitizeMudekSelection(row.mudek)}
+                                mudekTemplate={mudekTemplate}
+                                onChange={(next) => setRow(i, "mudek", next)}
+                                disabled={structurallyLocked}
+                                criterionColor={row.color}
+                                open={row._mudekOpen}
+                              />
+                              {errors[`mudek_${i}`] && mudekTemplate.length > 0 && (
+                                <div className="manage-field-error manage-field-error--simple">{errors[`mudek_${i}`]}</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Rubric bands ── */}
+                        <div className={`criterion-field criterion-field--rubric criterion-subsection${row._rubricOpen ? " is-open" : " is-collapsed"}`}>
+                          <div className="criterion-subsection-header">
+                            <div className="criterion-subsection-title-wrap">
+                              <span className="criterion-subsection-title-icon criterion-subsection-title-icon--rubric" aria-hidden="true">
+                                <ListChecksIcon />
+                              </span>
+                              <span className="criterion-subsection-title">Rubric</span>
+                              <span className="criterion-subsection-meta">
+                                {row.rubric.length} band{row.rubric.length !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            <Tooltip text={row._rubricOpen ? "Collapse the scoring rubric for this criterion" : "Expand to edit scoring levels and descriptions"}>
                               <button
                                 type="button"
-                                className="criterion-subsection-action criterion-subsection-action--mudek"
-                                onClick={() => toggleMudek(i)}
-                                aria-expanded={row._mudekOpen}
-                                aria-label="Select MÜDEK Outcomes"
+                                className="criterion-subsection-action rubric-toggle-btn"
+                                onClick={() => toggleRubric(i)}
+                                aria-expanded={row._rubricOpen}
                               >
-                                {row._mudekOpen ? (
-                                  <><ChevronUpIcon className="criteria-btn-icon" /> Close</>
+                                {row._rubricOpen ? (
+                                  <><ChevronUpIcon className="criteria-btn-icon" /> Hide Rubric</>
                                 ) : (
-                                  <><ChevronDownIcon className="criteria-btn-icon" /> Select</>
+                                  <><ChevronDownIcon className="criteria-btn-icon" /> Edit Rubric</>
                                 )}
                               </button>
                             </Tooltip>
-                          )}
-                        </div>
-                        <div className="criterion-subsection-body">
-                          <MudekPillSelector
-                            selected={row.mudek}
-                            mudekTemplate={mudekTemplate}
-                            onChange={(next) => setRow(i, "mudek", next)}
-                            disabled={structurallyLocked}
-                            criterionColor={row.color}
-                            open={row._mudekOpen}
-                          />
-                          {errors[`mudek_${i}`] && mudekTemplate.length > 0 && (
-                            <div className="manage-field-error manage-field-error--simple">{errors[`mudek_${i}`]}</div>
-                          )}
+                          </div>
+                          <div className="criterion-subsection-body">
+                            <div className="manage-hint manage-hint-inline">Define score ranges so bands cover the full criterion score without overlap.</div>
+                            {!row._rubricOpen && row.rubric.length > 0 && (
+                              <div className="criteria-rubric-summary" aria-label="Rubric summary">
+                                {row.rubric.map((band, bi) => {
+                                  const label = getBandDisplayLabel(row.rubric, bi);
+                                  const rangeLabel = getBandRangeLabel(band);
+                                  const desc = String(band?.desc || "").trim();
+                                  const pillStyle = isKnownBandVariant(band?.level)
+                                    ? undefined
+                                    : getBandPositionStyle(getBandScoreRank(row.rubric, band), row.rubric.length);
+                                  return (
+                                    <Tooltip
+                                      key={`${label}-${bi}`}
+                                      text={getRubricTooltipContent(label, rangeLabel, desc)}
+                                    >
+                                      <span
+                                        className="criteria-rubric-summary-pill-trigger"
+                                        tabIndex={0}
+                                        aria-label={getRubricTooltipLabel(label, rangeLabel, desc)}
+                                      >
+                                        <LevelPill variant={band?.level} className="criteria-rubric-summary-pill" style={pillStyle}>
+                                          <span className="criteria-rubric-summary-pill-text criteria-pill-typography">{label}</span>
+                                        </LevelPill>
+                                      </span>
+                                    </Tooltip>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {row._rubricOpen && (
+                              <RubricBandEditor
+                                bands={row.rubric}
+                                onChange={(next) => setRow(i, "rubric", next)}
+                                disabled={structurallyLocked}
+                                criterionMax={row.max}
+                                rubricErrors={(row._rubricTouched || saveAttempted) ? rubricErrorsByCriterion[i] : null}
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
-
-                    {/* ── Rubric bands ── */}
-                    <div className={`criterion-field criterion-field--rubric criterion-subsection${row._rubricOpen ? " is-open" : " is-collapsed"}`}>
-                      <div className="criterion-subsection-header">
-                        <div className="criterion-subsection-title-wrap">
-                          <span className="criterion-subsection-title">Rubric</span>
-                          <span className="criterion-subsection-meta">
-                            {row.rubric.length} band{row.rubric.length !== 1 ? "s" : ""}
-                          </span>
-                        </div>
-                        <Tooltip text={row._rubricOpen ? "Collapse the scoring rubric for this criterion" : "Expand to edit scoring levels and descriptions"}>
-                          <button
-                            type="button"
-                            className="criterion-subsection-action rubric-toggle-btn"
-                            onClick={() => toggleRubric(i)}
-                            aria-expanded={row._rubricOpen}
-                          >
-                            {row._rubricOpen ? (
-                              <><ChevronUpIcon className="criteria-btn-icon" /> Hide Rubric</>
-                            ) : (
-                              <><ChevronDownIcon className="criteria-btn-icon" /> Edit Rubric</>
-                            )}
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <div className="criterion-subsection-body">
-                        <div className="manage-hint manage-hint-inline">Define score ranges so bands cover the full criterion score without overlap.</div>
-                        {!row._rubricOpen && row.rubric.length > 0 && (
-                          <div className="criteria-rubric-summary" aria-label="Rubric summary">
-                            {row.rubric.map((band, bi) => {
-                              const label = getBandDisplayLabel(row.rubric, bi);
-                              const rangeLabel = getBandRangeLabel(band);
-                              const desc = String(band?.desc || "").trim();
-                              return (
-                                <Tooltip
-                                  key={`${label}-${bi}`}
-                                  text={(
-                                    <span className="criteria-tooltip-content">
-                                      <span className="criteria-tooltip-line criteria-tooltip-line--title">{label}</span>
-                                      {rangeLabel && (
-                                        <span className="criteria-tooltip-line criteria-tooltip-line--muted">
-                                          Range: {rangeLabel}
-                                        </span>
-                                      )}
-                                      {desc && <span className="criteria-tooltip-line criteria-tooltip-line--desc">{desc}</span>}
-                                    </span>
-                                  )}
-                                >
-                                  <span
-                                    className="criteria-rubric-summary-pill-trigger"
-                                    tabIndex={0}
-                                    aria-label={`Rubric ${label} details`}
-                                  >
-                                    <LevelPill variant={band?.level} className="criteria-rubric-summary-pill">
-                                      <span className="criteria-rubric-summary-pill-text criteria-pill-typography">{label}</span>
-                                    </LevelPill>
-                                  </span>
-                                </Tooltip>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {row._rubricOpen && (
-                          <RubricBandEditor
-                            bands={row.rubric}
-                            onChange={(next) => setRow(i, "rubric", next)}
-                            disabled={structurallyLocked}
-                            criterionMax={row.max}
-                            rubricErrors={(row._rubricTouched || saveAttempted) ? rubricErrorsByCriterion[i] : null}
-                          />
-                        )}
-                      </div>
-                    </div>
                   </div>
                 )}
               </SortableCriterionRow>
@@ -1046,6 +1376,15 @@ export default function CriteriaManager({
           {saveError}
         </div>
       )}
+
+      <CriterionDeleteDialog
+        open={pendingDeleteIndex !== null}
+        rowLabel={pendingDeleteIndex !== null ? getCriterionDisplayName(rows[pendingDeleteIndex], pendingDeleteIndex) : ""}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setPendingDeleteIndex(null);
+        }}
+        onConfirm={confirmRemoveRow}
+      />
     </div>
   );
 }

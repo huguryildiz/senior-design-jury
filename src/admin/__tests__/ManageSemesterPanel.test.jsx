@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ManageSemesterPanel from "../ManageSemesterPanel";
 import { qaTest } from "../../test/qaTest.js";
@@ -192,5 +192,32 @@ describe("ManageSemesterPanel smoke tests", () => {
       expect(screen.getByText("Semester name already exists.")).toBeInTheDocument();
     });
     expect(props.onCreateSemester).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes deleted MÜDEK outcomes from mapped criteria in the draft semester form", async () => {
+    renderPanel();
+
+    fireEvent.click(screen.getByRole("button", { name: "Semester" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Evaluation Criteria" }));
+
+    expect(screen.getByText("1.2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "MÜDEK Outcomes" }));
+    fireEvent.click(screen.getByRole("button", { name: /remove outcome 2/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Delete Confirmation")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("1.2", { selector: ".criterion-row-chip" })).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save MÜDEK Outcomes" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Evaluation Criteria" }));
+    await waitFor(() => {
+      expect(screen.queryByText("1.2", { selector: ".criterion-row-chip" })).not.toBeInTheDocument();
+    });
   });
 });

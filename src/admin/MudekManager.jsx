@@ -21,8 +21,9 @@
 //                   are disabled; only en and tr remain editable
 // ============================================================
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import AutoGrow from "../shared/AutoGrow";
+import BlockingValidationAlert from "../shared/BlockingValidationAlert";
 import ConfirmDialog from "../shared/ConfirmDialog";
 import {
   DndContext,
@@ -37,7 +38,14 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { GripVerticalIcon, XIcon, CirclePlusIcon } from "../shared/Icons";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CirclePlusIcon,
+  GripVerticalIcon,
+  GoalIcon,
+  XIcon,
+} from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
 import Tooltip from "../shared/Tooltip";
 import { CSS } from "@dnd-kit/utilities";
@@ -62,14 +70,33 @@ function normalizeMudekOutcome(o) {
   };
 }
 
+function mudekRowsToTemplate(rows) {
+  return rows.map((r) => ({
+    id:      codeToId(r.code.trim()),
+    code:    r.code.trim(),
+    desc_en: r.en.trim(),
+    desc_tr: r.tr.trim(),
+  }));
+}
+
+function mudekTemplateSignature(template) {
+  return JSON.stringify(
+    (Array.isArray(template) ? template : []).map((o) => {
+      const n = normalizeMudekOutcome(o);
+      return [n.code, n.en, n.tr];
+    })
+  );
+}
+
 function templateToRow(o, idx) {
   const n = normalizeMudekOutcome(o);
-  return { _rowId: `mudek-row-${idx}-${Date.now()}`, ...n };
+  return { _rowId: `mudek-row-${idx}-${Date.now()}`, _expanded: false, ...n };
 }
 
 function emptyRow(idx) {
   return {
     _rowId: `mudek-row-new-${idx}-${Date.now()}`,
+    _expanded: true,
     code:   "",
     en:     "",
     tr:     "",
@@ -154,6 +181,33 @@ function hasMeaningfulMudekOutcomeContent(row) {
   return !!row.code.trim() || !!row.en.trim() || !!row.tr.trim();
 }
 
+function truncateText(value, max = 56) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+function getPreviewText(value, emptyLabel) {
+  const text = truncateText(value, 82);
+  return text || emptyLabel;
+}
+
+function getMudekDisplayName(row, index) {
+  return String(row?.code ?? "").trim() || `Outcome ${index + 1}`;
+}
+
+function MudekLanguageFlag({ language, label }) {
+  const symbol = language === "tr" ? "🇹🇷" : "🇬🇧";
+  return (
+    <Tooltip text={label}>
+      <span className="mudek-manager-row-flag" role="img" aria-label={label}>
+        {symbol}
+      </span>
+    </Tooltip>
+  );
+}
+
 // ── Sortable row wrapper ──────────────────────────────────────
 
 function SortableMudekRow({ id, children }) {
@@ -171,7 +225,10 @@ function SortableMudekRow({ id, children }) {
 
 export default function MudekManager({
   mudekTemplate = [],
+  criteriaTemplate = [],
   onSave,
+  onDraftChange,
+  onDirtyChange,
   disabled = false,
   isLocked = false,
 }) {
@@ -186,14 +243,25 @@ export default function MudekManager({
   const [touched, setTouched] = useState(() => new Set());
   const [saveAttempted, setSaveAttempted] = useState(false);
   const [removeConfirmIdx, setRemoveConfirmIdx] = useState(null);
+  const draftChangeRef = useRef(onDraftChange);
+  const lastEmittedRowsSigRef = useRef("");
+  const rowsSignature = JSON.stringify(rows.map((r) => [r.code.trim(), r.en.trim(), r.tr.trim()]));
+  const templateSignature = mudekTemplateSignature(mudekTemplate);
+
+  useEffect(() => {
+    draftChangeRef.current = onDraftChange;
+  }, [onDraftChange, draftChangeRef]);
 
   // Sync when mudekTemplate prop changes; reset all interaction state
   useEffect(() => {
+    if (templateSignature === rowsSignature) return;
+    if (lastEmittedRowsSigRef.current === rowsSignature) return;
     setRows(buildRows(mudekTemplate));
     setSaveError("");
     setTouched(new Set());
     setSaveAttempted(false);
-  }, [JSON.stringify(mudekTemplate)]); // eslint-disable-line react-hooks/exhaustive-deps
+    onDirtyChange?.(false);
+  }, [templateSignature]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const touch = (key) =>
     setTouched((prev) => {
@@ -205,28 +273,66 @@ export default function MudekManager({
 
   const allErrors = computeAllErrors(rows);
   const hasErrors = Object.keys(allErrors).length > 0;
-  const hasEmptyDraftRows = rows.some(isEmptyMudekOutcomeDraft);
 
   const displayErrors = rows.reduce((acc, row, i) =>
     Object.assign(acc, validateMudekOutcome(row, i, rows, touched, saveAttempted)), {});
+
+  const saveBlockReasons = (() => {
+    if (!hasErrors) return [];
+    
+    const reasons = [];
+    rows.forEach((row, i) => {
+      const codeVal = row.code.trim();
+      const labelName = codeVal ? `"${codeVal}"` : `"Untitled outcome"`;
+      const prefix = `Outcome ${labelName} — `;
+      
+      const codeE = allErrors[`code_${i}`];
+      if (codeE) {
+        if (codeE === "Required") reasons.push(`${prefix}Code is required.`);
+        else if (codeE === "Duplicate code") reasons.push(`${prefix}Duplicate code.`);
+        else reasons.push(`${prefix}Invalid code format.`);
+      }
+      if (allErrors[`en_${i}`]) reasons.push(`${prefix}English description is required.`);
+      if (allErrors[`tr_${i}`]) reasons.push(`${prefix}Turkish description is required.`);
+    });
+    
+    return [...new Set(reasons)];
+  })();
 
   // structurallyLocked: code, drag, delete, add are all disabled
   // EN/TR only use `disabled` (the prop), NOT structurallyLocked —
   // this preserves editability of descriptions when isLocked=true.
   const structurallyLocked = isLocked || disabled;
 
-  const setRow = (i, field, value) => {
+  const emitDraft = (nextRows) => {
+    const sig = JSON.stringify(nextRows.map((r) => [r.code.trim(), r.en.trim(), r.tr.trim()]));
+    lastEmittedRowsSigRef.current = sig;
+    draftChangeRef.current?.(mudekRowsToTemplate(nextRows));
+  };
+
+  const toggleRow = (i) => {
     setRows((prev) => {
       const next = [...prev];
-      next[i] = { ...next[i], [field]: value };
+      next[i] = { ...next[i], _expanded: !next[i]._expanded };
       return next;
     });
+  };
+
+  const setRow = (i, field, value) => {
+    const next = [...rows];
+    next[i] = { ...next[i], [field]: value };
+    setRows(next);
+    emitDraft(next);
     setSaveError("");
+    onDirtyChange?.(true);
   };
 
   const addRow = () => {
-    setRows((prev) => [...prev, emptyRow(prev.length)]);
+    const next = [...rows, emptyRow(rows.length)];
+    setRows(next);
+    emitDraft(next);
     setSaveError("");
+    onDirtyChange?.(true);
   };
 
   const removeRow = (i) => {
@@ -235,14 +341,20 @@ export default function MudekManager({
       setRemoveConfirmIdx(i);
       return;
     }
-    setRows((prev) => prev.filter((_, idx) => idx !== i));
+    const next = rows.filter((_, idx) => idx !== i);
+    setRows(next);
+    emitDraft(next);
     setSaveError("");
+    onDirtyChange?.(true);
   };
 
   const confirmRemoveRow = () => {
-    setRows((prev) => prev.filter((_, idx) => idx !== removeConfirmIdx));
+    const next = rows.filter((_, idx) => idx !== removeConfirmIdx);
+    setRows(next);
+    emitDraft(next);
     setSaveError("");
     setRemoveConfirmIdx(null);
+    onDirtyChange?.(true);
   };
 
   // DnD sensors
@@ -253,15 +365,15 @@ export default function MudekManager({
 
   const handleDragEnd = ({ active, over }) => {
     if (!over || active.id === over.id) return;
-    setRows((prev) => {
-      const fromIndex = prev.findIndex((r) => r._rowId === String(active.id));
-      const toIndex   = prev.findIndex((r) => r._rowId === String(over.id));
-      if (fromIndex < 0 || toIndex < 0) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
+    onDirtyChange?.(true);
+    const fromIndex = rows.findIndex((r) => r._rowId === String(active.id));
+    const toIndex   = rows.findIndex((r) => r._rowId === String(over.id));
+    if (fromIndex < 0 || toIndex < 0) return;
+    const next = [...rows];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setRows(next);
+    emitDraft(next);
   };
 
   const handleSave = async () => {
@@ -271,24 +383,28 @@ export default function MudekManager({
     setSaveAttempted(true);
 
     // 2. Validate; block if errors remain
-    if (hasErrors) return;
+    if (hasErrors) {
+      setRows((prev) =>
+        prev.map((r, i) => {
+          const rowHasErrors = !!allErrors[`code_${i}`] || !!allErrors[`en_${i}`] || !!allErrors[`tr_${i}`];
+          return rowHasErrors ? { ...r, _expanded: true } : r;
+        })
+      );
+      return;
+    }
 
     // 3. Save
     setSaving(true);
     setSaveError("");
     try {
-      const normalized = rows.map((r) => ({
-        id:      codeToId(r.code.trim()),
-        code:    r.code.trim(),
-        desc_en: r.en.trim(),
-        desc_tr: r.tr.trim(),
-      }));
+      const normalized = mudekRowsToTemplate(rows);
       const result = await onSave(normalized);
       if (!result?.ok) {
         setSaveError(result?.error || "Could not save MÜDEK template. Try again.");
       } else {
         setTouched(new Set());
         setSaveAttempted(false);
+        onDirtyChange?.(false);
       }
     } catch (e) {
       setSaveError(e?.message || "Could not save MÜDEK template. Try again.");
@@ -298,6 +414,11 @@ export default function MudekManager({
   };
 
   const rowIds = rows.map((r) => r._rowId);
+
+  const removeRowCode = removeConfirmIdx !== null ? rows[removeConfirmIdx]?.code.trim() : "";
+  const usageCount = removeRowCode
+    ? criteriaTemplate.filter(c => Array.isArray(c.mudek) && c.mudek.includes(removeRowCode)).length
+    : 0;
 
   return (
     <div className="mudek-manager">
@@ -327,96 +448,139 @@ export default function MudekManager({
               {rows.map((row, i) => (
                 <SortableMudekRow key={row._rowId} id={row._rowId}>
                   {({ attributes, listeners, setNodeRef, style }) => (
-                    <div ref={setNodeRef} style={style} className="mudek-manager-row mudek-manager-row--stacked">
+                    <div
+                      ref={setNodeRef}
+                      style={style}
+                      className={`mudek-manager-row-shell${row._expanded ? " is-expanded" : ""}`}
+                    >
+                      <div className="mudek-manager-row-top">
+                        <div className="mudek-manager-row-head">
+                          <div className="mudek-manager-row-leading">
+                            <Tooltip text="Drag to reorder">
+                              <button
+                                type="button"
+                                className="manage-icon-btn mudek-manager-drag-handle"
+                                disabled={structurallyLocked}
+                                aria-label={`Drag to reorder outcome ${i + 1}`}
+                                {...attributes}
+                                {...listeners}
+                              >
+                                <GripVerticalIcon />
+                              </button>
+                            </Tooltip>
 
-                      {/* ── Row header: drag handle + delete ── */}
-                      <div className="mudek-manager-row-header">
-                        <Tooltip text="Drag to reorder">
-                          <button
-                            type="button"
-                            className="manage-icon-btn mudek-manager-drag-handle"
-                            disabled={structurallyLocked}
-                            aria-label={`Drag to reorder outcome ${i + 1}`}
-                            {...attributes}
-                            {...listeners}
-                          >
-                            <GripVerticalIcon />
-                          </button>
-                        </Tooltip>
-                        <DangerIconButton
-                          Icon={XIcon}
-                          onClick={() => removeRow(i)}
-                          disabled={structurallyLocked || rows.length === 1}
-                          ariaLabel={`Remove outcome ${i + 1}`}
-                          title="Remove outcome"
-                        />
+                            <div className="mudek-manager-row-main">
+                              <div className="mudek-manager-row-title-line">
+                                <span className="mudek-manager-row-goal" aria-hidden="true">
+                                  <GoalIcon />
+                                </span>
+                                <span className="mudek-manager-row-code">{getMudekDisplayName(row, i)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mudek-manager-row-actions">
+                            <Tooltip text={row._expanded ? "Collapse outcome" : "Expand outcome"}>
+                              <button
+                                type="button"
+                                className="manage-icon-btn mudek-manager-row-expand-btn"
+                                onClick={() => toggleRow(i)}
+                                aria-expanded={row._expanded}
+                                aria-controls={`mudek-body-${row._rowId}`}
+                                aria-label={`${row._expanded ? "Collapse" : "Expand"} ${getMudekDisplayName(row, i)}`}
+                              >
+                                {row._expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                              </button>
+                            </Tooltip>
+                            <DangerIconButton
+                              Icon={XIcon}
+                              onClick={() => removeRow(i)}
+                              disabled={structurallyLocked || rows.length === 1}
+                              ariaLabel={`Remove outcome ${i + 1}`}
+                              title="Remove outcome"
+                            />
+                          </div>
+                        </div>
+
+                        {!row._expanded && (
+                          <div className="mudek-manager-row-preview" aria-label={`Outcome ${i + 1} preview`}>
+                            <div className="mudek-manager-row-preview-line">
+                              <MudekLanguageFlag language="en" label="English" />
+                              <span className="mudek-manager-row-preview-text">
+                                {getPreviewText(row.en, "No English text")}
+                              </span>
+                            </div>
+                            <div className="mudek-manager-row-preview-line">
+                              <MudekLanguageFlag language="tr" label="Turkish" />
+                              <span className="mudek-manager-row-preview-text">
+                                {getPreviewText(row.tr, "No Turkish text")}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* ── Stacked fields ── */}
-                      <div className="mudek-manager-row-fields">
-
-                        {/* Code */}
-                        <div className="mudek-manager-field-group">
-                          <label className="mudek-manager-cell-label">Code</label>
-                          <input
-                            className={`manage-input mudek-manager-input${displayErrors[`code_${i}`] ? " is-danger" : ""}`}
-                            value={row.code}
-                            onChange={(e) => setRow(i, "code", e.target.value)}
-                            onBlur={() => touch(`code_${i}`)}
-                            placeholder="1.2"
-                            disabled={structurallyLocked}
-                            aria-label={`Outcome ${i + 1} code`}
-                          />
-                          {displayErrors[`code_${i}`] && (
-                            <div className="manage-field-error manage-field-error--simple">
-                              {displayErrors[`code_${i}`]}
+                      {row._expanded && (
+                        <div id={`mudek-body-${row._rowId}`} className="mudek-manager-row-editor">
+                          <div className="mudek-manager-row-expanded-fields">
+                            <div className="mudek-manager-field-group mudek-manager-field-group--code">
+                              <label className="mudek-manager-cell-label">Program outcome</label>
+                              <input
+                                className={`manage-input mudek-manager-input${displayErrors[`code_${i}`] ? " is-danger" : ""}`}
+                                value={row.code}
+                                onChange={(e) => setRow(i, "code", e.target.value)}
+                                onBlur={() => touch(`code_${i}`)}
+                                placeholder="1.2"
+                                disabled={structurallyLocked}
+                                aria-label={`Outcome ${i + 1} code`}
+                              />
+                              {displayErrors[`code_${i}`] && (
+                                <div className="manage-field-error manage-field-error--simple">
+                                  {displayErrors[`code_${i}`]}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
-                        {/* English description */}
-                        <div className="mudek-manager-field-group">
-                          <label className="mudek-manager-cell-label">
-                            <span aria-hidden="true">🇬🇧</span> English description
-                          </label>
-                          <AutoGrow
-                            value={row.en}
-                            onChange={(e) => setRow(i, "en", e.target.value)}
-                            onBlur={() => touch(`en_${i}`)}
-                            disabled={disabled}
-                            placeholder="English description"
-                            ariaLabel={`Outcome ${i + 1} English description`}
-                            hasError={!!displayErrors[`en_${i}`]}
-                          />
-                          {displayErrors[`en_${i}`] && (
-                            <div className="manage-field-error manage-field-error--simple">
-                              {displayErrors[`en_${i}`]}
+                            <div className="mudek-manager-field-group">
+                              <label className="mudek-manager-cell-label">English description</label>
+                              <AutoGrow
+                                value={row.en}
+                                onChange={(e) => setRow(i, "en", e.target.value)}
+                                onBlur={() => touch(`en_${i}`)}
+                                disabled={disabled}
+                                placeholder="English description"
+                                ariaLabel={`Outcome ${i + 1} English description`}
+                                hasError={!!displayErrors[`en_${i}`]}
+                                className="mudek-manager-textarea"
+                              />
+                              {displayErrors[`en_${i}`] && (
+                                <div className="manage-field-error manage-field-error--simple">
+                                  {displayErrors[`en_${i}`]}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
-                        {/* Turkish description */}
-                        <div className="mudek-manager-field-group">
-                          <label className="mudek-manager-cell-label">
-                            <span aria-hidden="true">🇹🇷</span> Turkish description
-                          </label>
-                          <AutoGrow
-                            value={row.tr}
-                            onChange={(e) => setRow(i, "tr", e.target.value)}
-                            onBlur={() => touch(`tr_${i}`)}
-                            disabled={disabled}
-                            placeholder="Türkçe açıklama"
-                            ariaLabel={`Outcome ${i + 1} Turkish description`}
-                            hasError={!!displayErrors[`tr_${i}`]}
-                          />
-                          {displayErrors[`tr_${i}`] && (
-                            <div className="manage-field-error manage-field-error--simple">
-                              {displayErrors[`tr_${i}`]}
+                            <div className="mudek-manager-field-group">
+                              <label className="mudek-manager-cell-label">Turkish description</label>
+                              <AutoGrow
+                                value={row.tr}
+                                onChange={(e) => setRow(i, "tr", e.target.value)}
+                                onBlur={() => touch(`tr_${i}`)}
+                                disabled={disabled}
+                                placeholder="Türkçe açıklama"
+                                ariaLabel={`Outcome ${i + 1} Turkish description`}
+                                hasError={!!displayErrors[`tr_${i}`]}
+                                className="mudek-manager-textarea"
+                              />
+                              {displayErrors[`tr_${i}`] && (
+                                <div className="manage-field-error manage-field-error--simple">
+                                  {displayErrors[`tr_${i}`]}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
-
-                      </div>
+                      )}
                     </div>
                   )}
                 </SortableMudekRow>
@@ -446,6 +610,21 @@ export default function MudekManager({
         </button>
       </div>
 
+      {saveAttempted && saveBlockReasons.length > 0 && (
+        <BlockingValidationAlert>
+          {saveBlockReasons.length === 1
+            ? saveBlockReasons[0]
+            : (
+              <ul className="manage-hint-list">
+                {saveBlockReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )
+          }
+        </BlockingValidationAlert>
+      )}
+
       {isLocked && (
         <div className="manage-hint manage-hint-warning" role="status">
           Structure locked — scoring has started for this semester. Only descriptions can be edited.
@@ -460,11 +639,20 @@ export default function MudekManager({
       <ConfirmDialog
         open={removeConfirmIdx !== null}
         onOpenChange={(open) => { if (!open) setRemoveConfirmIdx(null); }}
-        title="Remove Outcome"
-        body="This MÜDEK outcome contains entered content. Are you sure you want to remove it?"
-        warning="This action will discard the unsaved content in this row."
+        title="Delete Confirmation"
+        body={
+          usageCount > 0
+            ? `This MÜDEK outcome is used by ${usageCount} criteria. Deleting it will remove those mappings automatically. Some criteria may remain without a MÜDEK mapping.`
+            : "This MÜDEK outcome contains entered content. Are you sure you want to remove it?"
+        }
+        warning={
+          usageCount > 0
+            ? ""
+            : "This action will discard the unsaved content in this row."
+        }
         confirmLabel="Remove"
         onConfirm={confirmRemoveRow}
+        tone="danger"
       />
     </div>
   );

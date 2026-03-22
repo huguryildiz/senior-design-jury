@@ -7,7 +7,7 @@
 import { memo, useState } from "react";
 import { CRITERIA, MUDEK_OUTCOMES } from "../config";
 import { ChevronDownIcon, TriangleAlertIcon } from "../shared/Icons";
-import LevelPill from "../shared/LevelPill";
+import LevelPill, { isKnownBandVariant, getBandPositionStyle, getBandScoreRank } from "../shared/LevelPill";
 
 function parseScoreInput(raw, max) {
   if (raw === "" || raw === null || raw === undefined) return null;
@@ -117,6 +117,9 @@ const ScoringGrid = memo(function ScoringGrid({
                     numericScore >= bounds.min &&
                     numericScore <= bounds.max
                   );
+                  const pillStyle = isKnownBandVariant(r.level)
+                    ? undefined
+                    : getBandPositionStyle(getBandScoreRank(crit.rubric, r), crit.rubric.length);
                   return (
                     <div
                       key={r.range}
@@ -125,7 +128,7 @@ const ScoringGrid = memo(function ScoringGrid({
                       data-max={bounds?.max}
                     >
                       <div className="rubric-range">{r.range}</div>
-                      <LevelPill variant={r.level}>{r.level}</LevelPill>
+                      <LevelPill variant={r.level} style={pillStyle}>{r.level}</LevelPill>
                       <div className="rubric-desc">{r.desc}</div>
                     </div>
                   );
