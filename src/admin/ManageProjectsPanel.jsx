@@ -6,6 +6,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { CalendarClockIcon, ChevronDownIcon, FileTextIcon, MonitorCogIcon, PencilIcon, SearchIcon, UsersLucideIcon, CirclePlusIcon, UploadIcon, FileUpIcon, CloudUploadIcon } from "../shared/Icons";
 import DangerIconButton from "../components/admin/DangerIconButton";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import Tooltip from "../shared/Tooltip";
 import LastActivity from "./LastActivity";
 import { buildTimestampSearchText, parseCsv } from "./utils";
@@ -133,6 +134,7 @@ export default function ManageProjectsPanel({
   const [importWarning, setImportWarning] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [guardError, setGuardError] = useState("");
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const isDirty =
@@ -145,7 +147,8 @@ export default function ManageProjectsPanel({
 
   const handleToggle = () => {
     if (isOpen && isDirty) {
-      if (!window.confirm("You have unsaved changes. Leave anyway?")) return;
+      setShowUnsavedConfirm(true);
+      return;
     }
     onToggle();
   };
@@ -1130,6 +1133,20 @@ export default function ManageProjectsPanel({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={showUnsavedConfirm}
+        onOpenChange={(open) => setShowUnsavedConfirm(open)}
+        title="Unsaved Changes"
+        body="You have unsaved changes. If you close the panel now, your changes will be lost."
+        confirmLabel="Leave Anyway"
+        cancelLabel="Keep Editing"
+        tone="caution"
+        onConfirm={() => {
+          setShowUnsavedConfirm(false);
+          onToggle();
+        }}
+      />
     </div>
   );
 }
