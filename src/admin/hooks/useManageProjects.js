@@ -74,10 +74,15 @@ export function useManageProjects({
   const loadProjects = useCallback(
     async (semesterId) => {
       if (!semesterId || !adminPass) return;
-      const rows = await adminListProjects(semesterId, adminPass);
-      setProjects(rows || []);
+      try {
+        const rows = await adminListProjects(semesterId, adminPass);
+        setProjects(rows || []);
+      } catch (e) {
+        const msg = e?.message || "Could not load groups. Check admin password or refresh.";
+        setPanelError("projects", msg);
+      }
     },
-    [adminPass]
+    [adminPass, setPanelError]
   );
 
   // ── Project CRUD handlers ────────────────────────────────
