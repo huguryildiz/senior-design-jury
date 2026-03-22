@@ -220,6 +220,40 @@ describe("ManageProjectsPanel — group_no upper bound validation", () => {
   });
 });
 
+describe("ManageProjectsPanel — import flow hardening", () => {
+  beforeEach(() => localStorage.clear());
+
+  qaTest("groups.import.02", async () => {
+    const { container } = render(<ManageProjectsPanel {...DEFAULT_PROPS} />);
+    const file = new File([""], "groups.csv", { type: "text/csv" });
+    await uploadFile(container, file);
+    await waitFor(() => {
+      expect(screen.getByText(/empty|no valid rows|nothing to import/i)).toBeInTheDocument();
+    });
+  });
+});
+
+describe("ManageProjectsPanel — delete guard", () => {
+  beforeEach(() => localStorage.clear());
+
+  qaTest("groups.delete.02", () => {
+    const onDeleteProject = vi.fn();
+    render(
+      <ManageProjectsPanel
+        {...DEFAULT_PROPS}
+        // project without server-confirmed id
+        projects={[{ group_no: 1, project_title: "No-ID Group", group_students: "Alice", semester_id: "s1" }]}
+        onDeleteProject={onDeleteProject}
+      />
+    );
+    fireEvent.click(screen.getByLabelText(/delete group 1/i));
+    // onDeleteProject must NOT be called when id is missing
+    expect(onDeleteProject).not.toHaveBeenCalled();
+    // Panel error must appear
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+});
+
 describe("ManageProjectsPanel — CRUD smoke tests", () => {
   beforeEach(() => localStorage.clear());
 

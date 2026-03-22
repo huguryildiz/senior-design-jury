@@ -112,6 +112,7 @@ export default function ManageProjectsPanel({
 }) {
   const panelRef = useRef(null);
   const fileRef = useRef(null);
+  const importCancelRef = useRef(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -386,7 +387,10 @@ export default function ManageProjectsPanel({
     }
     const text = await file.text();
     const rows = parseCsv(text);
-    if (!rows.length) return;
+    if (!rows.length) {
+      setImportError("The file appears to be empty. Check the file and try again.");
+      return;
+    }
     const header = rows[0].map((h) => h.toLowerCase());
     const idxGroup = header.indexOf("group_no");
     const idxTitle = header.indexOf("project_title");
@@ -499,7 +503,6 @@ export default function ManageProjectsPanel({
     const successMsg = toImport.length > 0
       ? `• Import complete: ${toImport.length} added, ${skippedExisting.length} skipped.`
       : "";
-    setImportSuccess(successMsg);
 
     const warningParts = [];
     if (skippedExisting.length) {
@@ -525,20 +528,26 @@ export default function ManageProjectsPanel({
     }
 
     setIsImporting(true);
+    importCancelRef.current = false;
     let res;
     try {
-      res = await onImport(toImport);
+      res = await onImport(toImport, { cancelRef: importCancelRef });
     } finally {
       setIsImporting(false);
     }
+    if (res?.cancelled) {
+      setImportError("Import stopped. Rows processed before stopping were saved.");
+      return;
+    }
     if (res?.formError) {
-      setImportSuccess("");
       setImportError(res.formError);
       return;
     }
     if (res?.ok === false) {
       return;
     }
+    // Success: show message only after import resolves
+    setImportSuccess(successMsg);
     const serverSkipped = Number(res?.skipped || 0);
     if (serverSkipped > 0) {
       const extra = `• Skipped ${serverSkipped} existing groups during import.`;
@@ -1088,8 +1097,20 @@ export default function ManageProjectsPanel({
                   </details>
                 </div>
                 <div className="manage-modal-actions">
-                  <button className="manage-btn manage-btn--import-cancel" type="button" onClick={() => setShowImport(false)} disabled={isImporting}>
-                    {isImporting ? "Importing…" : "Cancel"}
+                  <button
+                    className="manage-btn manage-btn--import-cancel"
+                    type="button"
+                    onClick={() => {
+                      if (isImporting) {
+                        // Soft-cancel: stops loop between rows.
+                        // Note: true request abort is not feasible with the current Supabase RPC wrappers.
+                        importCancelRef.current = true;
+                      } else {
+                        setShowImport(false);
+                      }
+                    }}
+                  >
+                    {isImporting ? "Stop" : "Cancel"}
                   </button>
                 </div>
               </div>

@@ -87,7 +87,7 @@ export function useManageProjects({
   );
 
   // ── Project CRUD handlers ────────────────────────────────
-  const handleImportProjects = async (rows) => {
+  const handleImportProjects = async (rows, { cancelRef } = {}) => {
     if (!viewSemesterId) {
       setPanelError("projects", "Select a semester from the header before importing groups.");
       return { ok: false };
@@ -102,6 +102,11 @@ export function useManageProjects({
           : "selected semester";
       let skipped = 0;
       for (const row of rows) {
+        if (cancelRef?.current) {
+          // Soft-cancel: user requested stop between rows.
+          // Note: true request abort is not feasible with current Supabase RPC wrappers.
+          return { ok: false, cancelled: true };
+        }
         const normalizedStudents = normalizeStudentNames(row.group_students);
         try {
           const res = await adminCreateProject(
@@ -129,6 +134,8 @@ export function useManageProjects({
           throw e;
         }
       }
+      // Full refresh to get server-confirmed IDs and normalize client state
+      await loadProjects(viewSemesterId);
       setMessage(
         skipped > 0
           ? `Groups imported for Semester ${semesterContext}, skipped ${skipped} existing groups`
