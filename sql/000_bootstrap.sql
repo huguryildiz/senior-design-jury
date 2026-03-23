@@ -2183,6 +2183,7 @@ SET search_path = public, extensions
 AS $$
 DECLARE
   v_name text;
+  v_has_scores boolean := false;
 BEGIN
   IF NOT public._verify_admin_password(p_admin_password, p_rpc_secret) THEN
     RAISE EXCEPTION 'unauthorized' USING ERRCODE = 'P0401';
@@ -2198,6 +2199,28 @@ BEGIN
       AND s.id <> p_semester_id
   ) THEN
     RAISE EXCEPTION 'semester_name_exists';
+  END IF;
+
+  -- Once a semester is eval-locked OR has any score activity, criteria/mudek templates
+  -- become immutable. Name/poster_date updates remain allowed.
+  IF p_criteria_template IS NOT NULL OR p_mudek_template IS NOT NULL THEN
+    -- Check is_locked flag first (set explicitly by admin before scoring begins).
+    IF EXISTS (SELECT 1 FROM semesters WHERE id = p_semester_id AND is_locked = TRUE) THEN
+      RAISE EXCEPTION 'semester_template_locked_by_scores';
+    END IF;
+    -- Also block if any score activity has started.
+    SELECT EXISTS (
+      SELECT 1
+      FROM scores sc
+      WHERE sc.semester_id = p_semester_id
+        AND (
+          sc.final_submitted_at IS NOT NULL
+          OR (sc.criteria_scores IS NOT NULL AND sc.criteria_scores <> '{}'::jsonb)
+        )
+    ) INTO v_has_scores;
+    IF v_has_scores THEN
+      RAISE EXCEPTION 'semester_template_locked_by_scores';
+    END IF;
   END IF;
 
   UPDATE semesters
