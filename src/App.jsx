@@ -28,16 +28,13 @@ import {
 import { adminBootstrapPassword, adminLogin, adminSecurityState } from "./shared/api";
 import { initScrollIndicators } from "./shared/scrollIndicators";
 import MinimalLoaderOverlay from "./shared/MinimalLoaderOverlay";
+import { getPage, setPage as persistPage, getJuryAccess } from "./shared/storage";
 import "./styles/home.css";
 
 import teduLogo from "./assets/tedu-logo.png";
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 const DEMO_PASS = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";
-
-// Semester-scoped session grant key — set after QR token verification.
-// Stored in localStorage so the grant persists across browser sessions.
-const JURY_ACCESS_KEY = "jury_access_semester";
 
 export default function App() {
   // Read URL params first — a valid ?t= param triggers jury_gate immediately.
@@ -49,14 +46,14 @@ export default function App() {
       const urlToken = params.get("t");
       if (urlToken) return "jury_gate";
       if (pathname === "/jury-entry") {
-        if (sessionStorage.getItem(JURY_ACCESS_KEY) || localStorage.getItem(JURY_ACCESS_KEY)) return "jury";
+        if (getJuryAccess()) return "jury";
         return "jury_gate";
       }
-      const saved = localStorage.getItem("tedu_portal_page");
+      const saved = getPage();
       if (saved === "admin") return "admin";
       if (saved === "jury") {
         if (DEMO_MODE) return "jury";
-        if (sessionStorage.getItem(JURY_ACCESS_KEY) || localStorage.getItem(JURY_ACCESS_KEY)) return "jury";
+        if (getJuryAccess()) return "jury";
         return "home";
       }
     } catch { }
@@ -97,9 +94,7 @@ export default function App() {
 
   useEffect(() => {
     if (page === "jury_gate") return; // never persist gate state
-    try {
-      localStorage.setItem("tedu_portal_page", page);
-    } catch { }
+    persistPage(page);
   }, [page]);
 
   useEffect(() => initScrollIndicators(), []);

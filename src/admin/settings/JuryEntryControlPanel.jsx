@@ -34,6 +34,11 @@ import {
   ChevronDownIcon,
   AlertCircleIcon,
 } from "../../shared/Icons";
+import {
+  getRawToken as storageGetRawToken,
+  setRawToken as storageSetRawToken,
+  clearRawToken as storageClearRawToken,
+} from "../../shared/storage";
 
 // ── Status badge ──────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -77,7 +82,6 @@ export default function JuryEntryControlPanel({
 
   const _toast = useToast();
 
-  const tokenStorageKey = semesterId ? `jury_raw_token_${semesterId}` : null;
   const [copied, setCopied]     = useState(false);
   const qrRef                   = useRef(null);
   const qrInstance              = useRef(null);
@@ -132,13 +136,11 @@ export default function JuryEntryControlPanel({
       setShowQR(false);
       return;
     }
-    const saved = tokenStorageKey
-      ? (sessionStorage.getItem(tokenStorageKey) || localStorage.getItem(tokenStorageKey))
-      : null;
+    const saved = storageGetRawToken(semesterId);
     setRawToken(saved || "");
     setShowQR(!!saved);
     loadStatus();
-  }, [semesterId, tokenStorageKey, loadStatus]);
+  }, [semesterId, loadStatus]);
 
   // ── Generate / Regenerate ─────────────────────────────────
   async function handleGenerate() {
@@ -147,19 +149,13 @@ export default function JuryEntryControlPanel({
     setError("");
     setRawToken("");
     setShowQR(false);
-    if (tokenStorageKey) {
-      sessionStorage.removeItem(tokenStorageKey);
-      localStorage.removeItem(tokenStorageKey);
-    }
+    storageClearRawToken(semesterId);
     try {
       const token = await adminGenerateEntryToken(semesterId, adminPass);
       if (token) {
         setRawToken(token);
         setShowQR(true);
-        if (tokenStorageKey) {
-          sessionStorage.setItem(tokenStorageKey, token);
-          localStorage.setItem(tokenStorageKey, token);
-        }
+        storageSetRawToken(semesterId, token);
         await loadStatus();
       } else {
         setError("Token generation failed — please try again.");
@@ -184,10 +180,7 @@ export default function JuryEntryControlPanel({
       await adminRevokeEntryToken(semesterId, adminPass);
       setRawToken("");
       setShowQR(false);
-      if (tokenStorageKey) {
-        sessionStorage.removeItem(tokenStorageKey);
-        localStorage.removeItem(tokenStorageKey);
-      }
+      storageClearRawToken(semesterId);
       await loadStatus();
       _toast.success("Jury access revoked");
       setRevokeModalOpen(false);

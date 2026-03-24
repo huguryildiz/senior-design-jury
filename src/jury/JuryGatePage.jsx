@@ -19,9 +19,7 @@
 import { useEffect, useState } from "react";
 import { verifyEntryToken } from "../shared/api";
 import { AlertCircleIcon } from "../shared/Icons";
-
-// Must match the constant in App.jsx.
-const JURY_ACCESS_KEY = "jury_access_semester";
+import { setJuryAccess } from "../shared/storage";
 
 export default function JuryGatePage({ token, onGranted, onBack }) {
   // "loading" → verifying token; "denied" → bad/expired token; "missing" → no token
@@ -34,8 +32,7 @@ export default function JuryGatePage({ token, onGranted, onBack }) {
       .then((res) => {
         if (!active) return;
         if (res?.ok) {
-          sessionStorage.setItem(JURY_ACCESS_KEY, res.semester_id);
-          localStorage.setItem(JURY_ACCESS_KEY, res.semester_id);
+          setJuryAccess(res.semester_id);
           window.history.replaceState(null, "", "/jury-entry");
           onGranted();
         } else {

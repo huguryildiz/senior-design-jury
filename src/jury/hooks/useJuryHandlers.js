@@ -52,13 +52,7 @@ import {
 } from "../utils/scoreState";
 import { buildScoreSnapshot, isSemesterLockedError, isSessionExpiredError } from "../utils/scoreSnapshot";
 import { buildProgressCheck } from "../utils/progress";
-
-const STORAGE_KEYS = {
-  jurorId:    "jury.juror_id",
-  semesterId: "jury.semester_id",
-  jurorName:  "jury.juror_name",
-  jurorInst:  "jury.juror_inst",
-};
+import { getJurySessionKeys } from "../../shared/storage";
 
 export function useJuryHandlers({
   identity,
@@ -688,7 +682,7 @@ export function useJuryHandlers({
   // ── Clear localStorage ─────────────────────────────────────
   const clearLocalSession = useCallback(() => {
     try {
-      Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
+      Object.values(getJurySessionKeys()).forEach((k) => localStorage.removeItem(k));
     } catch {}
   }, []);
 

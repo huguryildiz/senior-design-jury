@@ -7,11 +7,11 @@
 // Shape       : { tab: {…}, evaluations: {…}, details: {…}, jurors: {…}, grid: {…} }
 // ============================================================
 
-const STORAGE_KEY = "jury_admin_ui_state_v1";
+import { KEYS } from "../shared/storage/keys";
 
 function load() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(KEYS.ADMIN_UI_STATE);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -33,6 +33,6 @@ export function readSection(section) {
 export function writeSection(section, data) {
   try {
     const obj = load();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...obj, [section]: data }));
+    localStorage.setItem(KEYS.ADMIN_UI_STATE, JSON.stringify({ ...obj, [section]: data }));
   } catch {}
 }
