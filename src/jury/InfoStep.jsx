@@ -11,7 +11,7 @@
 // and delegates everything else downstream.
 // ============================================================
 
-import { InfoIcon, UserRoundCheckIcon, AlertCircleIcon, UniversityIcon } from "../shared/Icons";
+import { InfoIcon, UserRoundCheckIcon, AlertCircleIcon, LandmarkIcon } from "../shared/Icons";
 
 export default function InfoStep({
   juryName, setJuryName,
@@ -83,9 +83,19 @@ export default function InfoStep({
           <div className="premium-icon-square" aria-hidden="true"><UserRoundCheckIcon /></div>
           <div className="premium-title">Jury Information</div>
           {(currentSemester?.university || currentSemester?.department) && (
-            <div className="premium-subtitle" style={{ fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.35rem", justifyContent: "center" }}>
-              <span className="premium-info-icon" aria-hidden="true"><UniversityIcon /></span>
-              {[currentSemester.university, currentSemester.department].filter(Boolean).join(" · ")}
+            <div
+              className="premium-subtitle"
+              style={{ fontSize: "0.95rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.2rem" }}
+            >
+              {currentSemester?.university && (
+                <span>{currentSemester.university}</span>
+              )}
+              {currentSemester?.department && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                  <span className="premium-info-icon" aria-hidden="true"><LandmarkIcon /></span>
+                  {currentSemester.department}
+                </span>
+              )}
             </div>
           )}
           <div className="premium-info-block" aria-label="Jury schedule summary">

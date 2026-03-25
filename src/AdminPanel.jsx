@@ -41,7 +41,6 @@ import {
   TriangleAlertIcon,
   UserRoundCogIcon,
   LogOutIcon,
-  LockIcon,
   CalendarRangeIcon,
   LandmarkIcon,
 } from "./shared/Icons";
@@ -647,7 +646,6 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
               <div className="ph-control-group">
                 <span className="ph-control-label"><LandmarkIcon /> Department</span>
                 <span className="ph-tenant-locked">
-                  <LockIcon />
                   <span>{activeTenant.name}</span>
                 </span>
               </div>

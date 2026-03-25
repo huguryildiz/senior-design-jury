@@ -53,7 +53,10 @@ export default function ScoreDetails({
 }) {
   const { activeTenant } = useAuth();
   const tenantCode = activeTenant?.code || "";
-  const activeCriteria = getActiveCriteria(criteriaTemplate);
+  const activeCriteria = useMemo(
+    () => getActiveCriteria(criteriaTemplate),
+    [criteriaTemplate]
+  );
   const {
     scoreCols,
     scoreKeys,

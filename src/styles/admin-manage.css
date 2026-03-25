@@ -4126,6 +4126,7 @@ textarea.manage-input--create {
 .manage-page--settings .manage-section-grid {
   grid-auto-flow: row dense;
 }
+
 @media (max-width: 900px) {
   .manage-section-grid {
     grid-template-columns: 1fr;

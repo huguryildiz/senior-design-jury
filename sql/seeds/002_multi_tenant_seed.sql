@@ -105,42 +105,56 @@ DO $$
 DECLARE
   v_t record;
   v_template_4 jsonb := '[
-    {"key":"technical","label":"Technical Content","shortLabel":"Technical","max":30},
-    {"key":"design","label":"Written Communication","shortLabel":"Written","max":30},
-    {"key":"delivery","label":"Oral Communication","shortLabel":"Oral","max":30},
-    {"key":"teamwork","label":"Teamwork","shortLabel":"Teamwork","max":10}
+    {"key":"technical","label":"Technical Content","shortLabel":"Technical","max":30,"mudek":["1.2","2","3.1","3.2"],"mudek_outcomes":["po_1_2","po_2","po_3_1","po_3_2"]},
+    {"key":"design","label":"Written Communication","shortLabel":"Written","max":30,"mudek":["9.2"],"mudek_outcomes":["po_9_2"]},
+    {"key":"delivery","label":"Oral Communication","shortLabel":"Oral","max":30,"mudek":["9.1"],"mudek_outcomes":["po_9_1"]},
+    {"key":"teamwork","label":"Teamwork","shortLabel":"Teamwork","max":10,"mudek":["8.1","8.2"],"mudek_outcomes":["po_8_1","po_8_2"]}
   ]'::jsonb;
   v_template_3 jsonb := '[
-    {"key":"technical","label":"Technical Design","shortLabel":"Technical","max":40},
-    {"key":"presentation","label":"Presentation","shortLabel":"Presentation","max":35},
-    {"key":"teamwork","label":"Teamwork","shortLabel":"Teamwork","max":25}
+    {"key":"technical","label":"Technical Design","shortLabel":"Technical","max":40,"mudek":["1.2","2","3.1","3.2","4"],"mudek_outcomes":["po_1_2","po_2","po_3_1","po_3_2","po_4"]},
+    {"key":"presentation","label":"Presentation","shortLabel":"Presentation","max":35,"mudek":["9.1","9.2"],"mudek_outcomes":["po_9_1","po_9_2"]},
+    {"key":"teamwork","label":"Teamwork","shortLabel":"Teamwork","max":25,"mudek":["8.1","8.2"],"mudek_outcomes":["po_8_1","po_8_2"]}
   ]'::jsonb;
   v_template_5 jsonb := '[
-    {"key":"technical","label":"Technical Content","shortLabel":"Technical","max":25},
-    {"key":"design","label":"Design Quality","shortLabel":"Design","max":20},
-    {"key":"delivery","label":"Oral Delivery","shortLabel":"Oral","max":20},
-    {"key":"report","label":"Written Report","shortLabel":"Report","max":20},
-    {"key":"teamwork","label":"Teamwork","shortLabel":"Teamwork","max":15}
+    {"key":"technical","label":"Technical Content","shortLabel":"Technical","max":25,"mudek":["1.2","2"],"mudek_outcomes":["po_1_2","po_2"]},
+    {"key":"design","label":"Design Quality","shortLabel":"Design","max":20,"mudek":["3.1","3.2"],"mudek_outcomes":["po_3_1","po_3_2"]},
+    {"key":"delivery","label":"Oral Delivery","shortLabel":"Oral","max":20,"mudek":["9.1"],"mudek_outcomes":["po_9_1"]},
+    {"key":"report","label":"Written Report","shortLabel":"Report","max":20,"mudek":["9.2","5"],"mudek_outcomes":["po_9_2","po_5"]},
+    {"key":"teamwork","label":"Teamwork","shortLabel":"Teamwork","max":15,"mudek":["8.1","8.2"],"mudek_outcomes":["po_8_1","po_8_2"]}
   ]'::jsonb;
   v_template jsonb;
-  -- MÜDEK outcome mappings per criteria template
+  -- MÜDEK outcome dictionaries per criteria template
   v_mudek_4 jsonb := '[
-    {"key":"technical","outcomes":["1.2","2","3.1","3.2"]},
-    {"key":"design","outcomes":["9.2"]},
-    {"key":"delivery","outcomes":["9.1"]},
-    {"key":"teamwork","outcomes":["8.1","8.2"]}
+    {"id":"po_1_2","code":"1.2","desc_en":"Ability to apply knowledge of mathematics, natural sciences, fundamental engineering, computation, and discipline-specific topics to solve complex engineering problems.","desc_tr":"Matematik, fen bilimleri, temel mühendislik, bilgisayarla hesaplama ve ilgili mühendislik disiplinine özgü konulardaki bilgileri, karmaşık mühendislik problemlerinin çözümünde kullanabilme becerisi."},
+    {"id":"po_2","code":"2","desc_en":"Ability to identify, formulate, and analyse complex engineering problems using fundamental science, mathematics, and engineering knowledge, with consideration of relevant UN Sustainable Development Goals.","desc_tr":"Karmaşık mühendislik problemlerini, temel bilim, matematik ve mühendislik bilgilerini kullanarak ve ele alınan problemle ilgili BM Sürdürülebilir Kalkınma Amaçlarını gözetarak tanımlama, formüle etme ve analiz becerisi."},
+    {"id":"po_3_1","code":"3.1","desc_en":"Ability to design creative solutions to complex engineering problems.","desc_tr":"Karmaşık mühendislik problemlerine yaratıcı çözümler tasarlama becerisi."},
+    {"id":"po_3_2","code":"3.2","desc_en":"Ability to design complex systems, processes, devices, or products under realistic constraints and conditions, meeting current and future requirements.","desc_tr":"Karmaşık sistemleri, süreçleri, cihazları veya ürünleri gerçekçi kısıtları ve koşulları gözetarak, mevcut ve gelecekteki gereksinimleri karşılayacak biçimde tasarlama becerisi."},
+    {"id":"po_8_1","code":"8.1","desc_en":"Ability to work effectively as a team member or leader in intra-disciplinary teams (in-person, remote, or hybrid).","desc_tr":"Bireysel olarak disiplin içi takım çalışmalarında (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi."},
+    {"id":"po_8_2","code":"8.2","desc_en":"Ability to work effectively as a team member or leader in multidisciplinary teams (in-person, remote, or hybrid).","desc_tr":"Bireysel olarak çok disiplinli takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi."},
+    {"id":"po_9_1","code":"9.1","desc_en":"Ability to communicate effectively on technical topics orally, adapting to audience differences (education, language, profession, etc.).","desc_tr":"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda sözlü etkin iletişim kurma becerisi."},
+    {"id":"po_9_2","code":"9.2","desc_en":"Ability to communicate effectively on technical topics in writing, adapting to audience differences (education, language, profession, etc.).","desc_tr":"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda yazılı etkin iletişim kurma becerisi."}
   ]'::jsonb;
   v_mudek_3 jsonb := '[
-    {"key":"technical","outcomes":["1.2","2","3.1","3.2","4"]},
-    {"key":"presentation","outcomes":["9.1","9.2"]},
-    {"key":"teamwork","outcomes":["8.1","8.2"]}
+    {"id":"po_1_2","code":"1.2","desc_en":"Ability to apply knowledge of mathematics, natural sciences, fundamental engineering, computation, and discipline-specific topics to solve complex engineering problems.","desc_tr":"Matematik, fen bilimleri, temel mühendislik, bilgisayarla hesaplama ve ilgili mühendislik disiplinine özgü konulardaki bilgileri, karmaşık mühendislik problemlerinin çözümünde kullanabilme becerisi."},
+    {"id":"po_2","code":"2","desc_en":"Ability to identify, formulate, and analyse complex engineering problems using fundamental science, mathematics, and engineering knowledge, with consideration of relevant UN Sustainable Development Goals.","desc_tr":"Karmaşık mühendislik problemlerini, temel bilim, matematik ve mühendislik bilgilerini kullanarak ve ele alınan problemle ilgili BM Sürdürülebilir Kalkınma Amaçlarını gözetarak tanımlama, formüle etme ve analiz becerisi."},
+    {"id":"po_3_1","code":"3.1","desc_en":"Ability to design creative solutions to complex engineering problems.","desc_tr":"Karmaşık mühendislik problemlerine yaratıcı çözümler tasarlama becerisi."},
+    {"id":"po_3_2","code":"3.2","desc_en":"Ability to design complex systems, processes, devices, or products under realistic constraints and conditions, meeting current and future requirements.","desc_tr":"Karmaşık sistemleri, süreçleri, cihazları veya ürünleri gerçekçi kısıtları ve koşulları gözetarak, mevcut ve gelecekteki gereksinimleri karşılayacak biçimde tasarlama becerisi."},
+    {"id":"po_4","code":"4","desc_en":"Ability to select and use appropriate techniques, resources, and modern engineering and IT tools — including estimation and modelling — for the analysis and solution of complex engineering problems, with awareness of their limitations.","desc_tr":"Karmaşık mühendislik problemlerinin analizi ve çözümüne yönelik, tahmin ve modelleme de dahil olmak üzere, uygun teknikleri, kaynakları ve modern mühendislik ve bilişim araçlarını, sınırlamalarının da farkında olarak seçme ve kullanma becerisi."},
+    {"id":"po_8_1","code":"8.1","desc_en":"Ability to work effectively as a team member or leader in intra-disciplinary teams (in-person, remote, or hybrid).","desc_tr":"Bireysel olarak disiplin içi takım çalışmalarında (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi."},
+    {"id":"po_8_2","code":"8.2","desc_en":"Ability to work effectively as a team member or leader in multidisciplinary teams (in-person, remote, or hybrid).","desc_tr":"Bireysel olarak çok disiplinli takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi."},
+    {"id":"po_9_1","code":"9.1","desc_en":"Ability to communicate effectively on technical topics orally, adapting to audience differences (education, language, profession, etc.).","desc_tr":"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda sözlü etkin iletişim kurma becerisi."},
+    {"id":"po_9_2","code":"9.2","desc_en":"Ability to communicate effectively on technical topics in writing, adapting to audience differences (education, language, profession, etc.).","desc_tr":"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda yazılı etkin iletişim kurma becerisi."}
   ]'::jsonb;
   v_mudek_5 jsonb := '[
-    {"key":"technical","outcomes":["1.2","2"]},
-    {"key":"design","outcomes":["3.1","3.2"]},
-    {"key":"delivery","outcomes":["9.1"]},
-    {"key":"report","outcomes":["9.2","5"]},
-    {"key":"teamwork","outcomes":["8.1","8.2"]}
+    {"id":"po_1_2","code":"1.2","desc_en":"Ability to apply knowledge of mathematics, natural sciences, fundamental engineering, computation, and discipline-specific topics to solve complex engineering problems.","desc_tr":"Matematik, fen bilimleri, temel mühendislik, bilgisayarla hesaplama ve ilgili mühendislik disiplinine özgü konulardaki bilgileri, karmaşık mühendislik problemlerinin çözümünde kullanabilme becerisi."},
+    {"id":"po_2","code":"2","desc_en":"Ability to identify, formulate, and analyse complex engineering problems using fundamental science, mathematics, and engineering knowledge, with consideration of relevant UN Sustainable Development Goals.","desc_tr":"Karmaşık mühendislik problemlerini, temel bilim, matematik ve mühendislik bilgilerini kullanarak ve ele alınan problemle ilgili BM Sürdürülebilir Kalkınma Amaçlarını gözetarak tanımlama, formüle etme ve analiz becerisi."},
+    {"id":"po_3_1","code":"3.1","desc_en":"Ability to design creative solutions to complex engineering problems.","desc_tr":"Karmaşık mühendislik problemlerine yaratıcı çözümler tasarlama becerisi."},
+    {"id":"po_3_2","code":"3.2","desc_en":"Ability to design complex systems, processes, devices, or products under realistic constraints and conditions, meeting current and future requirements.","desc_tr":"Karmaşık sistemleri, süreçleri, cihazları veya ürünleri gerçekçi kısıtları ve koşulları gözetarak, mevcut ve gelecekteki gereksinimleri karşılayacak biçimde tasarlama becerisi."},
+    {"id":"po_5","code":"5","desc_en":"Ability to use research methods for investigating complex engineering problems, including literature review, experiment design, experimentation, data collection, and analysis and interpretation of results.","desc_tr":"Karmaşık mühendislik problemlerinin incelenmesi için literatür araştırması, deney tasarlama, deney yapma, veri toplama, sonuçları analiz etme ve yorumlama dahil, araştırma yöntemlerini kullanma becerisi."},
+    {"id":"po_8_1","code":"8.1","desc_en":"Ability to work effectively as a team member or leader in intra-disciplinary teams (in-person, remote, or hybrid).","desc_tr":"Bireysel olarak disiplin içi takım çalışmalarında (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi."},
+    {"id":"po_8_2","code":"8.2","desc_en":"Ability to work effectively as a team member or leader in multidisciplinary teams (in-person, remote, or hybrid).","desc_tr":"Bireysel olarak çok disiplinli takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi."},
+    {"id":"po_9_1","code":"9.1","desc_en":"Ability to communicate effectively on technical topics orally, adapting to audience differences (education, language, profession, etc.).","desc_tr":"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda sözlü etkin iletişim kurma becerisi."},
+    {"id":"po_9_2","code":"9.2","desc_en":"Ability to communicate effectively on technical topics in writing, adapting to audience differences (education, language, profession, etc.).","desc_tr":"Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda yazılı etkin iletişim kurma becerisi."}
   ]'::jsonb;
   v_mudek jsonb;
   v_semesters text[] := ARRAY['Fall 2025', 'Spring 2026', 'Summer 2026'];

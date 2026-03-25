@@ -523,112 +523,191 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
               />
             )}
 
-            <SemesterSettingsPanel
-              semesters={crud.semesterList}
-              currentSemesterId={crud.currentSemesterId}
-              currentSemesterName={crud.currentSemesterLabel}
-              formatSemesterName={(n) => n || ""}
-              panelError={crud.panelErrors.semester}
-              isMobile={isMobile}
-              isOpen={openPanels.semester}
-              onToggle={() => togglePanel("semester")}
-              onDirtyChange={(dirty) => crud.handlePanelDirty("semester", dirty)}
-              onSetCurrent={crud.handleSetCurrentSemester}
-              onCreateSemester={crud.handleCreateSemester}
-              onUpdateSemester={crud.handleUpdateSemester}
-              onUpdateCriteriaTemplate={crud.handleUpdateCriteriaTemplate}
-              onUpdateMudekTemplate={crud.handleUpdateMudekTemplate}
-              isLockedFn={crud.isLockedFn}
-              externalUpdatedSemesterId={crud.externalUpdatedSemesterId}
-              externalDeletedSemesterId={crud.externalDeletedSemesterId}
-              onDeleteSemester={(s) => {
-                if (s?.id === crud.currentSemesterId) {
-                  crud.setPanelError("semester", "Current semester cannot be deleted. Select another semester first.");
-                  return;
+            <div>
+              <SemesterSettingsPanel
+                semesters={crud.semesterList}
+                currentSemesterId={crud.currentSemesterId}
+                currentSemesterName={crud.currentSemesterLabel}
+                formatSemesterName={(n) => n || ""}
+                panelError={crud.panelErrors.semester}
+                isMobile={isMobile}
+                isOpen={openPanels.semester}
+                onToggle={() => togglePanel("semester")}
+                onDirtyChange={(dirty) => crud.handlePanelDirty("semester", dirty)}
+                onSetCurrent={crud.handleSetCurrentSemester}
+                onCreateSemester={crud.handleCreateSemester}
+                onUpdateSemester={crud.handleUpdateSemester}
+                onUpdateCriteriaTemplate={crud.handleUpdateCriteriaTemplate}
+                onUpdateMudekTemplate={crud.handleUpdateMudekTemplate}
+                isLockedFn={crud.isLockedFn}
+                externalUpdatedSemesterId={crud.externalUpdatedSemesterId}
+                externalDeletedSemesterId={crud.externalDeletedSemesterId}
+                onDeleteSemester={(s) => {
+                  if (s?.id === crud.currentSemesterId) {
+                    crud.setPanelError("semester", "Current semester cannot be deleted. Select another semester first.");
+                    return;
+                  }
+                  if (crud.semesterList.length === 1) {
+                    crud.setPanelError("semester", "Cannot delete the only remaining semester.");
+                    return;
+                  }
+                  if (!tenantId) {
+                    crud.setPanelError("semester", "Tenant ID missing. Please re-login.");
+                    return;
+                  }
+                  crud.handleRequestDelete({
+                    type: "semester",
+                    id: s?.id,
+                    label: `Semester ${(s?.semester_name) || ""}`.trim(),
+                  });
+                }}
+              />
+            </div>
+
+            {!isSuper && (
+              <ProjectSettingsPanel
+                projects={crud.projects}
+                semesterName={crud.viewSemesterLabel}
+                currentSemesterId={crud.viewSemesterId}
+                semesterOptions={crud.semesterList}
+                panelError={crud.panelErrors.projects}
+                isMobile={isMobile}
+                isOpen={openPanels.projects}
+                onToggle={() => togglePanel("projects")}
+                onDirtyChange={(dirty) => crud.handlePanelDirty("projects", dirty)}
+                onImport={crud.handleImportProjects}
+                onAddGroup={crud.handleAddProject}
+                onEditGroup={crud.handleEditProject}
+                onRetry={crud.reloadProjects}
+                onDeleteProject={(p, groupLabel) =>
+                  crud.handleRequestDelete({
+                    type: "project",
+                    id: p?.id,
+                    label: `Group ${groupLabel}`,
+                  })
                 }
-                if (crud.semesterList.length === 1) {
-                  crud.setPanelError("semester", "Cannot delete the only remaining semester.");
-                  return;
+              />
+            )}
+
+            {!isSuper && (
+              <JurorSettingsPanel
+                jurors={crud.jurors}
+                panelError={crud.panelErrors.jurors}
+                isMobile={isMobile}
+                isOpen={openPanels.jurors}
+                onToggle={() => togglePanel("jurors")}
+                onDirtyChange={(dirty) => crud.handlePanelDirty("jurors", dirty)}
+                onImport={crud.handleImportJurors}
+                onAddJuror={crud.handleAddJuror}
+                onEditJuror={crud.handleEditJuror}
+                onResetPin={crud.requestResetPin}
+                onDeleteJuror={(j) =>
+                  crud.handleRequestDelete({
+                    type: "juror",
+                    id: j?.jurorId || j?.juror_id,
+                    label: `Juror ${j?.juryName || j?.juror_name || ""}`.trim(),
+                    name: j?.juryName || j?.juror_name || "",
+                    inst: j?.juryDept || j?.juror_inst || "",
+                  })
                 }
-                if (!tenantId) {
-                  crud.setPanelError("semester", "Tenant ID missing. Please re-login.");
-                  return;
-                }
-                crud.handleRequestDelete({
-                  type: "semester",
-                  id: s?.id,
-                  label: `Semester ${(s?.semester_name) || ""}`.trim(),
-                });
-              }}
-            />
+              />
+            )}
+
+            {!isSuper && (
+              <AccessSettingsPanel
+                settings={crud.settings}
+                jurors={crud.jurors}
+                currentSemesterId={crud.viewSemesterId}
+                currentSemesterName={crud.viewSemesterLabel}
+                evalLockError={crud.evalLockError}
+                isMobile={isMobile}
+                isOpen={openPanels.permissions}
+                onToggle={() => togglePanel("permissions")}
+                onRequestEvalLockChange={(checked) => {
+                  crud.setEvalLockError("");
+                  crud.setEvalLockConfirmNext(Boolean(checked));
+                  crud.setEvalLockConfirmOpen(true);
+                }}
+                onToggleEdit={crud.handleToggleJurorEdit}
+                onForceCloseEdit={crud.handleForceCloseJurorEdit}
+              />
+            )}
           </div>
         </section>
 
         <section className="manage-section" style={{ gridColumn: "1 / -1" }}>
-          <h3 className="manage-section-title">Data &amp; Access Management</h3>
+          <h3 className="manage-section-title">
+            {isSuper ? "Data & Access Management" : "Access & Security Management"}
+          </h3>
           <div className="manage-section-grid">
-            <ProjectSettingsPanel
-              projects={crud.projects}
-              semesterName={crud.viewSemesterLabel}
-              currentSemesterId={crud.viewSemesterId}
-              semesterOptions={crud.semesterList}
-              panelError={crud.panelErrors.projects}
-              isMobile={isMobile}
-              isOpen={openPanels.projects}
-              onToggle={() => togglePanel("projects")}
-              onDirtyChange={(dirty) => crud.handlePanelDirty("projects", dirty)}
-              onImport={crud.handleImportProjects}
-              onAddGroup={crud.handleAddProject}
-              onEditGroup={crud.handleEditProject}
-              onRetry={crud.reloadProjects}
-              onDeleteProject={(p, groupLabel) =>
-                crud.handleRequestDelete({
-                  type: "project",
-                  id: p?.id,
-                  label: `Group ${groupLabel}`,
-                })
-              }
-            />
+            {isSuper && (
+              <ProjectSettingsPanel
+                projects={crud.projects}
+                semesterName={crud.viewSemesterLabel}
+                currentSemesterId={crud.viewSemesterId}
+                semesterOptions={crud.semesterList}
+                panelError={crud.panelErrors.projects}
+                isMobile={isMobile}
+                isOpen={openPanels.projects}
+                onToggle={() => togglePanel("projects")}
+                onDirtyChange={(dirty) => crud.handlePanelDirty("projects", dirty)}
+                onImport={crud.handleImportProjects}
+                onAddGroup={crud.handleAddProject}
+                onEditGroup={crud.handleEditProject}
+                onRetry={crud.reloadProjects}
+                onDeleteProject={(p, groupLabel) =>
+                  crud.handleRequestDelete({
+                    type: "project",
+                    id: p?.id,
+                    label: `Group ${groupLabel}`,
+                  })
+                }
+              />
+            )}
 
-            <JurorSettingsPanel
-              jurors={crud.jurors}
-              panelError={crud.panelErrors.jurors}
-              isMobile={isMobile}
-              isOpen={openPanels.jurors}
-              onToggle={() => togglePanel("jurors")}
-              onDirtyChange={(dirty) => crud.handlePanelDirty("jurors", dirty)}
-              onImport={crud.handleImportJurors}
-              onAddJuror={crud.handleAddJuror}
-              onEditJuror={crud.handleEditJuror}
-              onResetPin={crud.requestResetPin}
-              onDeleteJuror={(j) =>
-                crud.handleRequestDelete({
-                  type: "juror",
-                  id: j?.jurorId || j?.juror_id,
-                  label: `Juror ${j?.juryName || j?.juror_name || ""}`.trim(),
-                  name: j?.juryName || j?.juror_name || "",
-                  inst: j?.juryDept || j?.juror_inst || "",
-                })
-              }
-            />
+            {isSuper && (
+              <JurorSettingsPanel
+                jurors={crud.jurors}
+                panelError={crud.panelErrors.jurors}
+                isMobile={isMobile}
+                isOpen={openPanels.jurors}
+                onToggle={() => togglePanel("jurors")}
+                onDirtyChange={(dirty) => crud.handlePanelDirty("jurors", dirty)}
+                onImport={crud.handleImportJurors}
+                onAddJuror={crud.handleAddJuror}
+                onEditJuror={crud.handleEditJuror}
+                onResetPin={crud.requestResetPin}
+                onDeleteJuror={(j) =>
+                  crud.handleRequestDelete({
+                    type: "juror",
+                    id: j?.jurorId || j?.juror_id,
+                    label: `Juror ${j?.juryName || j?.juror_name || ""}`.trim(),
+                    name: j?.juryName || j?.juror_name || "",
+                    inst: j?.juryDept || j?.juror_inst || "",
+                  })
+                }
+              />
+            )}
 
-            <AccessSettingsPanel
-              settings={crud.settings}
-              jurors={crud.jurors}
-              currentSemesterId={crud.viewSemesterId}
-              currentSemesterName={crud.viewSemesterLabel}
-              evalLockError={crud.evalLockError}
-              isMobile={isMobile}
-              isOpen={openPanels.permissions}
-              onToggle={() => togglePanel("permissions")}
-              onRequestEvalLockChange={(checked) => {
-                crud.setEvalLockError("");
-                crud.setEvalLockConfirmNext(Boolean(checked));
-                crud.setEvalLockConfirmOpen(true);
-              }}
-              onToggleEdit={crud.handleToggleJurorEdit}
-              onForceCloseEdit={crud.handleForceCloseJurorEdit}
-            />
+            {isSuper && (
+              <AccessSettingsPanel
+                settings={crud.settings}
+                jurors={crud.jurors}
+                currentSemesterId={crud.viewSemesterId}
+                currentSemesterName={crud.viewSemesterLabel}
+                evalLockError={crud.evalLockError}
+                isMobile={isMobile}
+                isOpen={openPanels.permissions}
+                onToggle={() => togglePanel("permissions")}
+                onRequestEvalLockChange={(checked) => {
+                  crud.setEvalLockError("");
+                  crud.setEvalLockConfirmNext(Boolean(checked));
+                  crud.setEvalLockConfirmOpen(true);
+                }}
+                onToggleEdit={crud.handleToggleJurorEdit}
+                onForceCloseEdit={crud.handleForceCloseJurorEdit}
+              />
+            )}
 
             <AdminSecurityPanel
               isMobile={isMobile}

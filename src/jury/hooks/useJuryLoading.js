@@ -32,7 +32,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
-import { getCurrentSemester, listProjects } from "../../shared/api";
+import { getCurrentSemester, listProjects, listSemesters } from "../../shared/api";
 import { getJuryAccess } from "../../shared/storage";
 
 export function useJuryLoading() {
@@ -58,7 +58,11 @@ export function useJuryLoading() {
     const run = async () => {
       try {
         const grantedSemesterId = getJuryAccess();
-        const res = await getCurrentSemester(ctrl.signal, grantedSemesterId);
+        let res = await getCurrentSemester(ctrl.signal, grantedSemesterId);
+        if (!res && grantedSemesterId) {
+          const sems = await listSemesters(ctrl.signal);
+          res = (sems || []).find((s) => s.id === grantedSemesterId) || null;
+        }
         if (!alive) return;
         setCurrentSemesterInfo(res || null);
         if (res?.id) {
