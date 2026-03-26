@@ -16,6 +16,33 @@ import { adminProfileUpsert } from "../api/admin/profiles";
 
 export const AuthContext = createContext(null);
 
+function isRecoverableAuthLockError(error) {
+  const msg = String(error?.message || "");
+  return (
+    error?.name === "AbortError" &&
+    (msg.includes("Lock broken by another request with the 'steal' option") ||
+      msg.includes("was not released within"))
+  );
+}
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function getSessionWithRetry(maxAttempts = 3) {
+  let lastError;
+  for (let i = 0; i < maxAttempts; i += 1) {
+    try {
+      return await supabase.auth.getSession();
+    } catch (error) {
+      lastError = error;
+      if (!isRecoverableAuthLockError(error) || i === maxAttempts - 1) {
+        throw error;
+      }
+      await wait(120 * (i + 1));
+    }
+  }
+  throw lastError;
+}
+
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
@@ -114,17 +141,47 @@ export default function AuthProvider({ children }) {
 
   useEffect(() => {
     mountedRef.current = true;
+    let bootstrapped = false;
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      handleAuthChange("INITIAL_SESSION", initialSession);
+    // Safety net: never keep app blocked behind auth loading forever.
+    const bootstrapTimeout = setTimeout(() => {
+      if (!mountedRef.current || bootstrapped) return;
+      setLoading(false);
+    }, 4000);
+
+    const finishBootstrap = () => {
+      bootstrapped = true;
+      clearTimeout(bootstrapTimeout);
+    };
+
+    // Subscribe first so auth events are not missed while initial session loads.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      handleAuthChange(event, newSession).finally(() => {
+        finishBootstrap();
+      });
     });
 
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+    // Get initial session
+    getSessionWithRetry()
+      .then(({ data: { session: initialSession } }) => {
+        return handleAuthChange("INITIAL_SESSION", initialSession);
+      })
+      .catch((error) => {
+        if (isRecoverableAuthLockError(error)) {
+          // Lock contention during startup should not crash initialization.
+          return handleAuthChange("INITIAL_SESSION", null);
+        }
+        console.error("Initial session fetch failed:", error);
+        return handleAuthChange("INITIAL_SESSION", null);
+      })
+      .finally(() => {
+        if (!mountedRef.current) return;
+        finishBootstrap();
+      });
 
     return () => {
       mountedRef.current = false;
+      clearTimeout(bootstrapTimeout);
       subscription.unsubscribe();
     };
   }, [handleAuthChange]);

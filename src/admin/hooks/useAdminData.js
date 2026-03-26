@@ -206,6 +206,19 @@ export function useAdminData({
     }
   }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Failsafe for first paint: release the App-level initial overlay even if
+  // initial network/auth requests hang and never resolve.
+  useEffect(() => {
+    if (!loading) return;
+    if (initialLoadFiredRef.current) return;
+    const t = setTimeout(() => {
+      if (initialLoadFiredRef.current) return;
+      initialLoadFiredRef.current = true;
+      onInitialLoadDone?.();
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [loading, onInitialLoadDone]);
+
   // ── Background (silent) refresh ────────────────────────────
   // Assigned each render so the Realtime hook always calls the latest
   // closure without needing to rebuild the subscription.

@@ -91,6 +91,19 @@ function AppInner() {
 
   useEffect(() => initScrollIndicators(), []);
 
+  // Failsafe: never keep admin initial overlay open forever.
+  useEffect(() => {
+    if (page !== "admin") return;
+    if (auth.loading) return;
+    if (!auth.user) return;
+    if (!adminInitialLoading) return;
+
+    const t = setTimeout(() => {
+      setAdminInitialLoading(false);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [page, auth.loading, auth.user, adminInitialLoading]);
+
   useEffect(() => {
     try {
       const hash = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
