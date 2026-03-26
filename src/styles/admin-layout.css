@@ -15,30 +15,29 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  color: #cbd5e1;
+  background: linear-gradient(135deg, #162A66 0%, #0F1B4C 100%);
+  color: #94a3b8;
   font-size: 12.5px;
   font-weight: 400;
   padding: 8px 20px;
   letter-spacing: 0.3px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 0 0 10px 10px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-top: none;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  margin: 0 auto;
+  max-width: calc(100% - 24px);
 }
 .demo-banner-icon {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.2);
   flex-shrink: 0;
 }
 .demo-banner-icon svg {
-  stroke: #818cf8;
+  stroke: #fff;
+  opacity: 0.85;
 }
 .demo-banner-text {
   display: flex;
@@ -47,7 +46,7 @@
 }
 .demo-banner-text strong {
   font-weight: 600;
-  color: #e2e8f0;
+  color: #c7d2fe;
   letter-spacing: 0.4px;
 }
 .demo-banner-sep {
