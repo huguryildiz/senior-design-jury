@@ -53,15 +53,10 @@ bootstrap RPC functions in the SQL Editor:
 ```sql
 -- Set the initial admin password (only works when no password is set yet)
 SELECT rpc_admin_bootstrap_password('your-chosen-admin-password');
-
--- Set the delete password (required for destructive operations)
-SELECT rpc_admin_bootstrap_delete_password('your-delete-password', 'your-chosen-admin-password');
-
--- Set the backup/export password
-SELECT rpc_admin_bootstrap_backup_password('your-backup-password', 'your-chosen-admin-password');
 ```
 
-All three passwords can also be changed later from the admin panel → Security tab.
+The admin password can also be changed later from the admin panel → Security tab.
+Delete and backup operations are secured by JWT auth + role checks + audit logging.
 
 ---
 

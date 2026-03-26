@@ -24,8 +24,9 @@ import SemesterSettingsPanel from "./ManageSemesterPanel";
 import ProjectSettingsPanel from "./ManageProjectsPanel";
 import JurorSettingsPanel from "./ManageJurorsPanel";
 import AccessSettingsPanel from "./ManagePermissionsPanel";
-import DeleteConfirmDialog from "../components/admin/DeleteConfirmDialog";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import { useSettingsCrud } from "./hooks/useSettingsCrud";
+import { buildCountSummary } from "./hooks/useDeleteConfirm";
 import { useManageOrganizations } from "./hooks/useManageOrganizations";
 import { useAuditLogFilters } from "./hooks/useAuditLogFilters";
 import { formatAuditTimestamp } from "./utils/auditUtils";
@@ -82,9 +83,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
   const _toast = useToast();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
 
-  const [backupPasswordSet, setBackupPasswordSet] = useState(true);
   const [dbBackupMode, setDbBackupMode] = useState(null);
-  const [dbBackupPassword, setDbBackupPassword] = useState("");
   const [dbImportData, setDbImportData] = useState(null);
   const [dbImportFileName, setDbImportFileName] = useState("");
   const [dbImportFileSize, setDbImportFileSize] = useState(0);
@@ -270,9 +269,8 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
 
   // ── DB backup helpers ─────────────────────────────────────
   const handleDbExportStart = () => {
-    if (!backupPasswordSet || dbBackupLoading) return;
+    if (dbBackupLoading) return;
     setDbBackupMode("export");
-    setDbBackupPassword("");
     setDbBackupConfirmText("");
     setDbBackupError("");
     setDbImportSuccess("");
@@ -284,9 +282,8 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
   };
 
   const handleDbImportStart = () => {
-    if (!backupPasswordSet || dbBackupLoading) return;
+    if (dbBackupLoading) return;
     setDbBackupMode("import");
-    setDbBackupPassword("");
     setDbBackupConfirmText("");
     setDbBackupError("");
     setDbImportSuccess("");
@@ -385,21 +382,17 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
 
   const mapDbBackupError = (e) => {
     const msg = String(e?.message || "");
-    if (msg.includes("backup_password_missing")) {
-      return "Backup & restore password is not configured. Set it in Admin Security, then try again.";
-    }
-    if (msg.includes("incorrect_backup_password")) return "Incorrect backup & restore password. Try again.";
     if (msg.includes("unauthorized")) return "Unauthorized. Please re-login.";
     return null;
   };
 
   const handleDbExportConfirm = async () => {
-    if (!dbBackupPassword || !tenantId) return;
+    if (!tenantId) return;
     const start = Date.now();
     setDbBackupLoading(true);
     setDbBackupError("");
     try {
-      const data = await adminFullExport(dbBackupPassword, tenantId);
+      const data = await adminFullExport(tenantId);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -408,12 +401,11 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
       a.click();
       URL.revokeObjectURL(url);
       setDbBackupMode(null);
-      setDbBackupPassword("");
       setDbBackupConfirmText("");
       setDbImportDragging(false);
       setMessage("Database backup downloaded");
     } catch (e) {
-      setDbBackupError(mapDbBackupError(e) || "Export failed. Try again or check your passwords.");
+      setDbBackupError(mapDbBackupError(e) || "Export failed. Please try again.");
     } finally {
       const remaining = Math.max(0, MIN_BACKUP_DELAY - (Date.now() - start));
       if (remaining) await new Promise((r) => setTimeout(r, remaining));
@@ -422,7 +414,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
   };
 
   const handleDbImportConfirm = async () => {
-    if (!dbImportData || !dbBackupPassword || !tenantId) return;
+    if (!dbImportData || !tenantId) return;
     if (dbBackupConfirmText.trim() !== "RESTORE") {
       setDbBackupError("Type RESTORE to confirm.");
       return;
@@ -431,9 +423,8 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
     setDbBackupLoading(true);
     setDbBackupError("");
     try {
-      await adminFullImport(dbImportData, dbBackupPassword, tenantId);
+      await adminFullImport(dbImportData, tenantId);
       setDbBackupMode(null);
-      setDbBackupPassword("");
       setDbBackupConfirmText("");
       setDbImportDragging(false);
       setDbImportData(null);
@@ -470,19 +461,34 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
         onClose={crud.closeResetPinDialog}
         onConfirmReset={crud.confirmResetPin}
       />
-      <DeleteConfirmDialog
+      <ConfirmDialog
         open={!!crud.deleteTarget}
-        targetType={crud.deleteTarget?.type}
-        targetLabel={crud.deleteTarget?.label}
-        targetName={crud.deleteTarget?.name}
-        targetInst={crud.deleteTarget?.inst}
-        counts={crud.deleteCounts}
         onOpenChange={(open) => {
           if (!open) { crud.setDeleteTarget(null); crud.setDeleteCounts(null); }
         }}
-        onConfirm={async (password) => {
+        title="Delete Confirmation"
+        body={
+          crud.deleteTarget ? (
+            <>
+              <strong className="manage-delete-focus">{crud.deleteTarget.label || "Selected record"}</strong>
+              {crud.deleteTarget.inst && (
+                <span className="manage-delete-focus-inst"> ({crud.deleteTarget.inst})</span>
+              )}
+              {" will be deleted. Are you sure?"}
+            </>
+          ) : ""
+        }
+        warning={
+          crud.deleteTarget?.type === "semester"
+            ? "This will permanently delete all jurors, groups, and scores associated with this semester. This action cannot be undone."
+            : buildCountSummary(crud.deleteCounts) || "This action cannot be undone."
+        }
+        typedConfirmation={crud.deleteTarget?.typedConfirmation || undefined}
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={async () => {
           try {
-            await crud.handleConfirmDelete(password);
+            await crud.handleConfirmDelete();
           } catch (e) {
             const msg = crud.mapDeleteError(e);
             throw new Error(msg);
@@ -742,10 +748,8 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
             <ExportBackupPanel
               isMobile={isMobile}
               openPanels={openPanels}
-              backupPasswordSet={backupPasswordSet}
               dbBackupMode={dbBackupMode}
               dbBackupLoading={dbBackupLoading}
-              dbBackupPassword={dbBackupPassword}
               dbBackupConfirmText={dbBackupConfirmText}
               dbBackupError={dbBackupError}
               dbImportData={dbImportData}
@@ -765,12 +769,10 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
               onDbImportFileSelect={handleDbImportFileSelect}
               onSetDbImportDragging={setDbImportDragging}
               onDbImportFile={handleDbImportFile}
-              onSetDbBackupPassword={setDbBackupPassword}
               onSetDbBackupError={setDbBackupError}
               onSetDbBackupConfirmText={setDbBackupConfirmText}
               onCancelBackupDialog={() => {
                 setDbBackupMode(null);
-                setDbBackupPassword("");
                 setDbBackupConfirmText("");
                 setDbImportData(null);
                 setDbImportFileName("");

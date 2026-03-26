@@ -157,10 +157,10 @@ export async function adminDeleteCounts(targetType, targetId) {
 /**
  * Dispatches a permanent delete to the appropriate domain function.
  */
-export async function adminDeleteEntity({ targetType, targetId, deletePassword }) {
+export async function adminDeleteEntity({ targetType, targetId }) {
   if (!targetType || !targetId) throw new Error("targetType and targetId are required.");
-  if (targetType === "semester") return adminDeleteSemester(targetId, deletePassword);
-  if (targetType === "project")  return adminDeleteProject(targetId, deletePassword);
-  if (targetType === "juror")    return adminDeleteJuror(targetId, deletePassword);
+  if (targetType === "semester") return adminDeleteSemester(targetId);
+  if (targetType === "project")  return adminDeleteProject(targetId);
+  if (targetType === "juror")    return adminDeleteJuror(targetId);
   throw new Error("Unsupported delete target.");
 }

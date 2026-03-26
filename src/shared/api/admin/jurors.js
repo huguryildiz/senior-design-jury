@@ -73,13 +73,11 @@ export async function adminForceCloseJurorEditMode(payload) {
 
 /**
  * Permanently deletes a juror and all their associated score data.
- * Requires the separate delete password.
  */
-export async function adminDeleteJuror(jurorId, deletePassword) {
+export async function adminDeleteJuror(jurorId) {
   try {
     const data = await callAdminRpcV2("rpc_admin_juror_delete", {
-      p_juror_id:        jurorId,
-      p_delete_password: deletePassword,
+      p_juror_id: jurorId,
     });
     return data === true;
   } catch (e) { rethrowUnauthorized(e); }

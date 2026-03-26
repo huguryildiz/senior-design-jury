@@ -25,10 +25,8 @@ const SAMPLE_DB_BACKUP_JSON = `{
 export default function ExportBackupPanel({
   isMobile,
   openPanels,
-  backupPasswordSet,
   dbBackupMode,
   dbBackupLoading,
-  dbBackupPassword,
   dbBackupConfirmText,
   dbBackupError,
   dbImportData,
@@ -48,7 +46,6 @@ export default function ExportBackupPanel({
   onDbImportFileSelect,
   onSetDbImportDragging,
   onDbImportFile,
-  onSetDbBackupPassword,
   onSetDbBackupError,
   onSetDbBackupConfirmText,
   onCancelBackupDialog,
@@ -106,13 +103,8 @@ export default function ExportBackupPanel({
         {(!isMobile || openPanels.dbbackup) && (
           <div className="manage-card-body">
             <div className="manage-card-desc">
-              Export or restore the database. Requires the backup &amp; restore password.
+              Export or restore the database for this tenant.
             </div>
-            {!backupPasswordSet && (
-              <AlertCard variant="warning">
-                Backup &amp; restore password is not set. Create one in Admin Security to enable export/import.
-              </AlertCard>
-            )}
             <input
               ref={importFileRef}
               type="file"
@@ -126,7 +118,7 @@ export default function ExportBackupPanel({
                 className="manage-btn"
                 type="button"
                 onClick={onDbExportStart}
-                disabled={!backupPasswordSet || dbBackupLoading}
+                disabled={dbBackupLoading}
               >
                 <DownloadIcon /> Export JSON
               </button>
@@ -134,7 +126,7 @@ export default function ExportBackupPanel({
                 className="manage-btn"
                 type="button"
                 onClick={onDbImportStart}
-                disabled={!backupPasswordSet || dbBackupLoading}
+                disabled={dbBackupLoading}
               >
                 <UploadIcon /> Import / Restore
               </button>
@@ -255,17 +247,6 @@ export default function ExportBackupPanel({
                   </details>
                 </>
               )}
-              <div className="manage-field">
-                <label className="manage-label">Backup &amp; Restore Password</label>
-                <input
-                  type="password"
-                  className="manage-input"
-                  value={dbBackupPassword}
-                  onChange={(e) => { onSetDbBackupPassword(e.target.value); onSetDbBackupError(""); }}
-                  disabled={dbBackupLoading}
-                  autoComplete="off"
-                />
-              </div>
               {dbBackupMode === "import" && (
                 <div className="manage-field">
                   <label className="manage-label">Type RESTORE to confirm</label>
@@ -299,7 +280,6 @@ export default function ExportBackupPanel({
                 type="button"
                 disabled={
                   dbBackupLoading
-                  || !dbBackupPassword
                   || (dbBackupMode === "import" && (!dbImportData || dbBackupConfirmText.trim() !== "RESTORE"))
                 }
                 onClick={dbBackupMode === "export" ? onDbExportConfirm : onDbImportConfirm}

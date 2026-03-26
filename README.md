@@ -1,27 +1,30 @@
 <p align="center">
-  <img src="src/assets/vera_logo_white.png" alt="VERA Logo" width="200">
+  <img src="src/assets/vera_logo_white.png" alt="VERA Logo" width="600">
 </p>
 
 # VERA
 
-**TEDU Capstone Jury Evaluation Platform** · *Verdict & Evaluation Ranking Assistant*
+**TEDU Capstone Jury Evaluation Platform** · *Verdict & Evaluation Ranking Assistant (VERA)*
 
-VERA is an internal academic web application used by the Department of
-Electrical & Electronics Engineering of TED University to conduct structured
-poster-day evaluations for EE 491/492 Senior Project courses.
+VERA is a multi-tenant academic jury evaluation platform built for universities and departments that need a structured, transparent, and scalable way to assess capstone and senior design projects.
 
 ---
 
+First developed for TED University, VERA helps jurors evaluate student teams through a guided scoring experience and gives administrators a central workspace for managing semesters, organizations, jurors, projects, rankings, analytics, and accreditation-oriented reporting.
+
 ## Overview
 
-On poster day, faculty jurors walk the poster exhibition hall, score student
-projects across four rubric-based criteria, and submit their evaluations
-through VERA's guided interface. Admins manage semesters, juror assignments,
-and project data — and generate rankings, analytics, and MÜDEK outcome reports
-from the admin dashboard.
+During evaluation events such as poster day, faculty jurors move across project
+stations, assess teams using configurable rubric criteria, and submit scores
+through VERA’s guided evaluation flow.
 
-**Usage pattern:** Active ~2–3 days per year (poster day + preparation).
-Internal tool, not a public SaaS product.
+Administrators manage the full process from the admin panel, including
+organizations, semesters, juror assignments, project records, rankings,
+analytics, and MÜDEK-aligned outcome reporting.
+
+**Usage pattern:** VERA is used most intensively during a focused academic
+evaluation window each term, typically covering preparation, evaluation day,
+and immediate post-event review.
 
 ---
 
@@ -133,13 +136,11 @@ Run in Supabase SQL Editor:
 -- Full schema
 \i sql/000_bootstrap.sql
 
--- Set initial admin passwords
+-- Set initial admin password
 SELECT rpc_admin_bootstrap_password('strong-admin-password');
-SELECT rpc_admin_bootstrap_delete_password('delete-password', 'admin-password');
-SELECT rpc_admin_bootstrap_backup_password('backup-password', 'admin-password');
 ```
 
-Passwords can also be set from the admin panel → Security tab after first login.
+The admin password can also be changed from the admin panel → Security tab after first login.
 
 ### 4. Run the dev server
 

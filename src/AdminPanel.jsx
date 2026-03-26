@@ -15,7 +15,7 @@
 //   - Derived useMemo values and JSX remain here
 // ============================================================
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CRITERIA } from "./config";
 import { getActiveCriteria } from "./shared/criteriaHelpers";
@@ -26,7 +26,9 @@ import { writeSection } from "./admin/persist";
 import { getCellState, computeOverviewMetrics } from "./admin/scoreHelpers";
 import { useAdminTabs } from "./admin/hooks/useAdminTabs";
 import { useAdminData } from "./admin/hooks/useAdminData";
+import { useAnchoredPopover } from "./shared/useAnchoredPopover";
 import { RefreshIcon } from "./admin/components";
+import UserAvatarMenu from "./admin/components/UserAvatarMenu";
 import {
   ListChecksIcon,
   ChartIcon,
@@ -40,7 +42,6 @@ import {
   Grid3x3Icon,
   TriangleAlertIcon,
   UserRoundCogIcon,
-  LogOutIcon,
   CalendarRangeIcon,
   LandmarkIcon,
 } from "./shared/Icons";
@@ -74,64 +75,6 @@ const EVALUATION_VIEWS = [
   { id: "grid", label: "Grid", icon: Grid3x3Icon },
   { id: "details", label: "Details", icon: TableIcon },
 ];
-
-function useAnchoredPopover(isOpen, deps = []) {
-  const triggerRef = useRef(null);
-  const panelRef = useRef(null);
-  const [panelStyle, setPanelStyle] = useState(null);
-  const [panelPlacement, setPanelPlacement] = useState("bottom");
-
-  const computePanelPosition = useCallback(() => {
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
-    const minWidth = Math.max(rect.width, 180);
-    const viewportW = window.innerWidth;
-    const viewportH = window.innerHeight;
-
-    let left = Math.min(rect.left, viewportW - minWidth - 12);
-    left = Math.max(12, left);
-    let top = rect.bottom + 6;
-    let placement = "bottom";
-
-    if (panelRef.current) {
-      const panelHeight = panelRef.current.offsetHeight;
-      if (top + panelHeight > viewportH - 12) {
-        const aboveTop = rect.top - panelHeight - 6;
-        if (aboveTop >= 12) {
-          top = aboveTop;
-          placement = "top";
-        } else {
-          top = Math.max(12, viewportH - panelHeight - 12);
-        }
-      }
-    }
-
-    setPanelPlacement(placement);
-    setPanelStyle({
-      position: "fixed",
-      top: `${Math.round(top)}px`,
-      left: `${Math.round(left)}px`,
-      minWidth: `${Math.round(minWidth)}px`,
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    const update = () => computePanelPosition();
-    update();
-    const raf = requestAnimationFrame(update);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
-  }, [isOpen, computePanelPosition, ...deps]);
-
-  return { triggerRef, panelRef, panelStyle, panelPlacement };
-}
 
 function SemesterDropdown({
   semesterList,
@@ -599,18 +542,11 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
             <div className="ph-brand">
               <img src={veraLogo} alt="VERA" className="ph-logo" />
             </div>
-            <div className="ph-identity">
-              <span className="ph-greeting">
-                Welcome back{displayName ? `, ${displayName}` : ""}!
-              </span>
-            </div>
           </div>
           <div className="ph-utility">
-            {lastRefresh && (
-              <span className="last-updated">
-                <span className="last-updated-time">{lastRefreshTime}</span>
-              </span>
-            )}
+            <span className="last-updated" style={lastRefresh ? undefined : { visibility: "hidden" }}>
+              <span className="last-updated-time">{lastRefreshTime}</span>
+            </span>
             <button
               className={`refresh-btn${loading ? " is-loading" : ""}`}
               onClick={() => fetchData()}
@@ -619,15 +555,7 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
             >
               <RefreshIcon />
             </button>
-            <button
-              className="ph-logout-btn"
-              onClick={onLogout}
-              aria-label="Log out"
-              title="Log out"
-            >
-              <LogOutIcon />
-              <span className="ph-logout-label">Log out</span>
-            </button>
+            <UserAvatarMenu onLogout={onLogout} />
           </div>
         </div>
 

@@ -51,7 +51,7 @@ export default function ResetPasswordCreateForm({ onUpdatePassword, onBackToLogi
           <p className="admin-auth-subtitle">Your password has been updated. You can now sign in.</p>
         </div>
         <button type="button" onClick={onBackToLogin} className="admin-auth-submit">
-          Go to Sign In
+          Back to Sign In
         </button>
       </div>
     );

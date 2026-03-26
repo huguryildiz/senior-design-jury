@@ -43,13 +43,11 @@ export async function adminUpsertProject(payload) {
 
 /**
  * Permanently deletes a project and its associated score data.
- * Requires the separate delete password.
  */
-export async function adminDeleteProject(projectId, deletePassword) {
+export async function adminDeleteProject(projectId) {
   try {
     const data = await callAdminRpcV2("rpc_admin_project_delete", {
-      p_project_id:      projectId,
-      p_delete_password: deletePassword,
+      p_project_id: projectId,
     });
     return data === true;
   } catch (e) { rethrowUnauthorized(e); }

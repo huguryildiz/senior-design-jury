@@ -125,12 +125,25 @@ Deno.serve(async (req: Request) => {
     }
 
     const to = userData.user.email.toLowerCase();
-    const subject = "Your VERA password was changed";
-    const intro = "Your VERA account password has been updated.";
+    let isSuperAdmin = false;
+    try {
+      const { data: memberships } = await client.rpc("rpc_admin_auth_get_session");
+      const rows = Array.isArray(memberships) ? memberships : [];
+      isSuperAdmin = rows.some((row: { role?: string | null }) => row?.role === "super_admin");
+    } catch {
+      isSuperAdmin = false;
+    }
+
+    const subject = isSuperAdmin
+      ? "Your VERA super admin password was changed"
+      : "Your VERA admin password was changed";
+    const intro = isSuperAdmin
+      ? "Your VERA super admin account password has been updated."
+      : "Your VERA admin account password has been updated.";
     const body = "If you made this change, no action is needed. If this was not you, reset your password immediately and contact support.";
     const text = `${intro} ${body}`;
     const html = buildHtmlTemplate({
-      title: "Password Changed",
+      title: isSuperAdmin ? "Super Admin Password Changed" : "Password Changed",
       intro,
       body,
       logoUrl,
@@ -148,4 +161,3 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
-

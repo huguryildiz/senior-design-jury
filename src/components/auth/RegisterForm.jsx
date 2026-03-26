@@ -257,7 +257,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, onReturnHome
       </label>
 
       <button type="submit" disabled={loading} className="admin-auth-submit">
-        {loading ? "Registering…" : "Register & Apply"}
+        {loading ? "Registering…" : "Register"}
       </button>
 
       <p className="admin-auth-switch">

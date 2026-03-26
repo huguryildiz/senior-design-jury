@@ -6,7 +6,9 @@
 @media (max-width: 768px), (orientation: landscape) and (max-width: 1024px) {
   .premium-header .ph-row { padding: 0 16px; }
   .premium-header .tab-bar-wrap { padding: 0 16px; }
-  .ph-logo { height: 28px; }
+  .ph-logo { height: 36px; }
+  .ph-top-band { padding-top: 14px; padding-bottom: 14px; border-bottom: none; }
+  .ph-controls-wrap { border-top: 1px solid var(--gray-200); padding-top: 6px; }
   .ph-controls-row { flex-wrap: wrap; row-gap: 8px; }
   .ph-controls-right { margin-left: 0; }
   .tab-bar { gap: 8px; }
@@ -34,7 +36,7 @@
 }
 
 @media (max-width: 540px) {
-  .ph-logo { height: 24px; }
+  .ph-logo { height: 32px; }
   .ph-logout-label { display: none; }
   .ph-logout-btn { padding: 0 8px; width: 36px; height: 36px; justify-content: center; }
   .premium-header .refresh-btn { width: 36px; height: 36px; }

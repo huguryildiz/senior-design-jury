@@ -75,6 +75,7 @@ export default function ManageOrganizationsPanel({
   handleUpdateOrg,
   handleApproveApplication,
   handleRejectApplication,
+  applicationActionLoading,
   handleCreateTenantAdminApplication,
   handleUpdateTenantAdmin,
   handleDeleteTenantAdmin,
@@ -604,8 +605,17 @@ export default function ManageOrganizationsPanel({
                   <div className="manage-org-admin-section-title">Pending Applications</div>
                   <div className="manage-org-admins">
                     {adminsDialogOrg.pendingApplications?.length ? (
-                      adminsDialogOrg.pendingApplications.map((entry) => (
-                        <div key={entry.applicationId} className="manage-org-admin-row manage-org-admin-row--pending">
+                      adminsDialogOrg.pendingApplications.map((entry) => {
+                        const isApproveLoading =
+                          applicationActionLoading?.id === entry.applicationId
+                          && applicationActionLoading?.action === "approve";
+                        const isRejectLoading =
+                          applicationActionLoading?.id === entry.applicationId
+                          && applicationActionLoading?.action === "reject";
+                        const isRowLoading = isApproveLoading || isRejectLoading;
+
+                        return (
+                          <div key={entry.applicationId} className="manage-org-admin-row manage-org-admin-row--pending">
                           <div className="manage-org-admin-line manage-org-admin-line--name">
                             <span className="manage-org-admin-line-icon" aria-hidden="true"><UserStarIcon /></span>
                             <span className="manage-org-admin-name swipe-x">{entry.name || "—"}</span>
@@ -627,21 +637,26 @@ export default function ManageOrganizationsPanel({
                           <div className="manage-org-admin-actions">
                             <button
                               type="button"
-                              className="manage-btn primary"
+                              className={`manage-btn primary${isApproveLoading ? " is-spinning" : ""}`}
                               onClick={() => handleApproveApplication(entry.applicationId)}
+                              disabled={isRowLoading}
                             >
+                              {isApproveLoading && <span className="spinner" aria-hidden="true" />}
                               Approve
                             </button>
                             <button
                               type="button"
-                              className="manage-btn"
+                              className={`manage-btn${isRejectLoading ? " is-spinning" : ""}`}
                               onClick={() => handleRejectApplication(entry.applicationId)}
+                              disabled={isRowLoading}
                             >
+                              {isRejectLoading && <span className="spinner" aria-hidden="true" />}
                               Reject
                             </button>
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="manage-org-admin-empty">No pending applications.</div>
                     )}
@@ -767,16 +782,18 @@ export default function ManageOrganizationsPanel({
           <ConfirmDialog
             open={!!adminDeleteTarget}
             onOpenChange={(open) => { if (!open) setAdminDeleteTarget(null); }}
-            title="Delete admin"
+            title="Delete Confirmation"
             body={
               adminDeleteTarget
-                ? `This will permanently remove ${adminDeleteTarget.name || adminDeleteTarget.email} (${adminDeleteTarget.email}) from auth and admin tables.`
+                ? `This will permanently remove ${adminDeleteTarget.name || adminDeleteTarget.email} (${adminDeleteTarget.email}).`
                 : ""
             }
             warning="This action is permanent and cannot be undone."
-            confirmLabel="Delete permanently"
+            typedConfirmation={adminDeleteTarget?.name || adminDeleteTarget?.email || undefined}
+            confirmLabel="Delete"
             cancelLabel="Cancel"
             tone="danger"
+            icon="alert"
             onConfirm={confirmAdminDelete}
           />
 

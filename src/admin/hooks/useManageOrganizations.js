@@ -76,6 +76,7 @@ export function useManageOrganizations({
   const [editForm, setEditForm] = useState(EMPTY_EDIT);
   const [editError, setEditError] = useState("");
   const editOrigRef = useRef(EMPTY_EDIT);
+  const [applicationActionLoading, setApplicationActionLoading] = useState({ id: "", action: "" });
 
   // ── Load ──────────────────────────────────────────────────
   const loadOrgs = useCallback(async () => {
@@ -274,6 +275,7 @@ export function useManageOrganizations({
   const handleApproveApplication = useCallback(async (applicationId) => {
     if (!enabled || !applicationId) return;
     setError("");
+    setApplicationActionLoading({ id: applicationId, action: "approve" });
     incLoading();
     try {
       await approveAdminApplication(applicationId);
@@ -283,6 +285,7 @@ export function useManageOrganizations({
       const msg = String(e?.message || "");
       setError(msg || "Could not approve application.");
     } finally {
+      setApplicationActionLoading({ id: "", action: "" });
       decLoading();
     }
   }, [enabled, loadOrgs, setMessage, incLoading, decLoading]);
@@ -290,6 +293,7 @@ export function useManageOrganizations({
   const handleRejectApplication = useCallback(async (applicationId) => {
     if (!enabled || !applicationId) return;
     setError("");
+    setApplicationActionLoading({ id: applicationId, action: "reject" });
     incLoading();
     try {
       await rejectAdminApplication(applicationId);
@@ -299,6 +303,7 @@ export function useManageOrganizations({
       const msg = String(e?.message || "");
       setError(msg || "Could not reject application.");
     } finally {
+      setApplicationActionLoading({ id: "", action: "" });
       decLoading();
     }
   }, [enabled, loadOrgs, setMessage, incLoading, decLoading]);
@@ -400,6 +405,7 @@ export function useManageOrganizations({
     handleUpdateOrg,
     handleApproveApplication,
     handleRejectApplication,
+    applicationActionLoading,
     handleCreateTenantAdminApplication,
     handleUpdateTenantAdmin,
     handleDeleteTenantAdmin,

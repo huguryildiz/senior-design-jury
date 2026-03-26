@@ -40,7 +40,7 @@ describe("useDeleteConfirm", () => {
     });
 
     await act(async () => {
-      await result.current.handleConfirmDelete("delete-pass");
+      await result.current.handleConfirmDelete();
     });
 
     expect(onSemesterDeleted).toHaveBeenCalledWith("s1");

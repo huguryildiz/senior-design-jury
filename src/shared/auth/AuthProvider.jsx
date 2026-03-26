@@ -214,6 +214,7 @@ export default function AuthProvider({ children }) {
     activeTenant,
     setActiveTenant,
     displayName,
+    setDisplayName,
     isSuper,
     isPending,
     loading,
@@ -223,7 +224,7 @@ export default function AuthProvider({ children }) {
     resetPassword,
     updatePassword,
     refreshMemberships,
-  }), [user, session, tenants, activeTenant, setActiveTenant, displayName,
+  }), [user, session, tenants, activeTenant, setActiveTenant, displayName, setDisplayName,
        isSuper, isPending, loading, signIn, signUp, signOut, resetPassword, updatePassword, refreshMemberships]);
 
   return (

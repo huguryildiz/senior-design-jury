@@ -94,13 +94,11 @@ export async function adminUpdateSemesterMudekTemplate(semesterId, semesterName,
 
 /**
  * Permanently deletes a semester and all associated data.
- * Requires the separate delete password (not the admin auth).
  */
-export async function adminDeleteSemester(semesterId, deletePassword) {
+export async function adminDeleteSemester(semesterId) {
   try {
     const data = await callAdminRpcV2("rpc_admin_semester_delete", {
-      p_semester_id:     semesterId,
-      p_delete_password: deletePassword,
+      p_semester_id: semesterId,
     });
     return data === true;
   } catch (e) { rethrowUnauthorized(e); }
