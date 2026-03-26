@@ -60,6 +60,12 @@ async function parseProxyResponse(res, fallbackMessage) {
   const err = new Error(message);
   if (json?.code) err.code = json.code;
   err.httpStatus = res.status;
+
+  // Demo mode write-block: mark so callers can skip retry/re-auth logic.
+  if (res.status === 403 && message.includes("demo mode")) {
+    err.demoBlocked = true;
+  }
+
   throw err;
 }
 
@@ -95,12 +101,13 @@ export async function callAdminRpc(fn, params = {}) {
 export async function callAdminRpcV2(fn, params = {}) {
   if (USE_PROXY) {
     const token = await getSessionTokenWithRetry();
+    const authToken = token || (import.meta.env.VITE_SUPABASE_ANON_KEY ?? "");
     const res = await fetch(RPC_PROXY_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         apikey:        import.meta.env.VITE_SUPABASE_ANON_KEY ?? "",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ fn, params }),
     });

@@ -6,6 +6,8 @@
 import { useState } from "react";
 import { KeyRoundIcon, InfoIcon } from "../shared/Icons";
 
+const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
+
 export default function PinRevealStep({ pin, onContinue, onBack }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -107,6 +109,13 @@ export default function PinRevealStep({ pin, onContinue, onBack }) {
           <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
           <span>Use this PIN to resume your evaluation later or on another device.</span>
         </div>
+
+        {isDemoMode && (
+          <div className="premium-info-strip">
+            <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
+            <span>In production, each juror receives a unique 4-digit PIN for secure access.</span>
+          </div>
+        )}
 
         <label className="pin-reveal-confirm-label">
           <input

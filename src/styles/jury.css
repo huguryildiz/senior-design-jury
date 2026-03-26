@@ -94,6 +94,13 @@
   text-align: left;
 }
 
+/* QR showcase (demo only) */
+.qr-showcase-visual {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 12px;
+}
+
 /* PIN shown once on first registration */
 .pin-display {
   display: flex;

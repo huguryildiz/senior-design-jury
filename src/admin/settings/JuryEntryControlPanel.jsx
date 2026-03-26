@@ -70,6 +70,7 @@ export default function JuryEntryControlPanel({
   isOpen,
   onToggle,
   isMobile,
+  isDemoMode = false,
 }) {
   const [status, setStatus]     = useState(null);
   const [error, setError]       = useState("");
@@ -309,7 +310,7 @@ export default function JuryEntryControlPanel({
                     type="button"
                     className="manage-btn primary"
                     onClick={handleGenerate}
-                    disabled={regenerating || revoking}
+                    disabled={regenerating || revoking || isDemoMode}
                   >
                     {regenerating ? <div className="spinner" /> : (hasToken ? <RefreshCcwIcon /> : <QrCodeIcon />)}
                     {regenerating ? "Generating…" : (hasToken ? "Regenerate QR" : "Generate QR")}
@@ -319,7 +320,7 @@ export default function JuryEntryControlPanel({
                     type="button"
                     className={`manage-btn primary${regenerating ? " is-spinning" : ""}`}
                     onClick={handleGenerate}
-                    disabled={regenerating || revoking}
+                    disabled={regenerating || revoking || isDemoMode}
                   >
                     <RefreshCcwIcon />
                     {regenerating ? "Regenerating…" : "Regenerate QR"}
@@ -331,7 +332,7 @@ export default function JuryEntryControlPanel({
                     type="button"
                     className="manage-btn danger"
                     onClick={() => setRevokeModalOpen(true)}
-                    disabled={regenerating || revoking}
+                    disabled={regenerating || revoking || isDemoMode}
                   >
                     {revoking ? <div className="spinner" /> : <BanIcon />}
                     Revoke Access

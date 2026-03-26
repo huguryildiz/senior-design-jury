@@ -58,9 +58,13 @@ const normalizeTab = (value) => {
  *   updateTabHints: () => void,
  * }}
  */
-export function useAdminTabs({ settingsDirtyRef }) {
+export function useAdminTabs({ settingsDirtyRef, isDemoMode = false }) {
   // ── Tab state ────────────────────────────────────────────
   const [adminTab, setAdminTabRaw] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const urlTab = sp.get("tab");
+    if (urlTab) return normalizeTab(urlTab);
+    if (isDemoMode) return "overview";
     const saved = readSection("tab");
     const savedTab = saved.adminTab || saved.activeTab;
     const normalized = normalizeTab(savedTab);

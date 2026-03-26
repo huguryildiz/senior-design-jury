@@ -860,7 +860,7 @@ body {
     align-items: center;
     justify-content: center;
     color: currentColor;
-    background: var(--surface-bg, var(--card-bg));
+    background: transparent;
     pointer-events: none;
   }
 

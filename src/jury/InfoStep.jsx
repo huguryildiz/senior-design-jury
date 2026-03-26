@@ -13,6 +13,8 @@
 
 import { InfoIcon, UserRoundCheckIcon, AlertCircleIcon, LandmarkIcon, UniversityIcon } from "../shared/Icons";
 
+const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
+
 export default function InfoStep({
   juryName, setJuryName,
   juryDept, setJuryDept,
@@ -163,6 +165,13 @@ export default function InfoStep({
             />
           </div>
         </div>
+
+        {isDemoMode && (
+          <div className="premium-info-strip">
+            <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
+            <span>In production, jurors enter their real name and department.</span>
+          </div>
+        )}
 
         <button
           className="premium-btn-primary"

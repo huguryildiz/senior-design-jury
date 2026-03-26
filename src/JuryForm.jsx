@@ -4,6 +4,7 @@
 
 import { useEffect }           from "react";
 import useJuryState            from "./jury/useJuryState";
+import QRShowcaseStep          from "./jury/QRShowcaseStep";
 import InfoStep                from "./jury/InfoStep";
 import PinStep                 from "./jury/PinStep";
 import PinRevealStep           from "./jury/PinRevealStep";
@@ -17,7 +18,7 @@ import "./styles/jury.css";
 
 export default function JuryForm({ onBack }) {
   const {
-    step,
+    step, setStep,
     juryName, juryDept,
     setJuryName, setJuryDept,
     authError,
@@ -74,6 +75,11 @@ export default function JuryForm({ onBack }) {
     resetAll();
     onBack();
   };
+
+  // ── QR Showcase (demo only) ───────────────────────────────
+  if (step === "qr_showcase") {
+    return <QRShowcaseStep onContinue={() => setStep("identity")} />;
+  }
 
   // ── Identity ──────────────────────────────────────────────
   if (step === "identity") {

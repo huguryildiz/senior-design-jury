@@ -16,6 +16,7 @@ export default function ManageProjectsPanel({
   currentSemesterId,
   semesterOptions = [],
   panelError = "",
+  isDemoMode = false,
   isMobile,
   isOpen,
   onToggle,
@@ -273,6 +274,7 @@ export default function ManageProjectsPanel({
             <button
               className="manage-btn"
               type="button"
+              disabled={isDemoMode}
               onClick={() => {
                 setShowImport(true);
               }}
@@ -283,6 +285,7 @@ export default function ManageProjectsPanel({
             <button
               className="manage-btn primary"
               type="button"
+              disabled={isDemoMode}
               onClick={() => {
                 setAddError("");
                 setForm((f) => ({ ...f, semester_id: currentSemesterId || f.semester_id || "" }));
@@ -316,6 +319,7 @@ export default function ManageProjectsPanel({
                 project={p}
                 index={idx}
                 semesterName={semesterName}
+                isDemoMode={isDemoMode}
                 onMetaScroll={handleMetaScroll}
                 onEdit={handleEditProject}
                 onDelete={handleDeleteProject}
@@ -384,6 +388,7 @@ export default function ManageProjectsPanel({
               onCancel={() => setShowAdd(false)}
               onClearError={() => setAddError("")}
               mode="add"
+              isDemoMode={isDemoMode}
               semesterOptions={semesterOptions}
             />
           )}
@@ -399,6 +404,7 @@ export default function ManageProjectsPanel({
               onCancel={() => { setShowEdit(false); setEditError(""); }}
               onClearError={() => setEditError("")}
               mode="edit"
+              isDemoMode={isDemoMode}
             />
           )}
 

@@ -19,6 +19,7 @@ export default function ManagePermissionsPanel({
   onRequestEvalLockChange,
   onToggleEdit,
   onForceCloseEdit,
+  isDemoMode = false,
 }) {
   const panelRef = useRef(null);
   const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
@@ -303,7 +304,7 @@ export default function ManagePermissionsPanel({
                 <input
                   type="checkbox"
                   checked={local.evalLockActive}
-                  disabled={!hasActiveSemester || evalLockPending}
+                  disabled={!hasActiveSemester || evalLockPending || isDemoMode}
                   onChange={(e) => handleEvalLockChange(e.target.checked)}
                 />
                 <span className="manage-toggle-track" />
@@ -482,7 +483,7 @@ export default function ManagePermissionsPanel({
                             <button
                               type="button"
                               className="manage-icon-btn with-label manage-cancel-edit-action"
-                              disabled={!canForceClose}
+                              disabled={!canForceClose || isDemoMode}
                               title="Lock editing and return juror to completed state."
                               aria-label="Lock editing"
                               onClick={() => {
@@ -498,7 +499,7 @@ export default function ManagePermissionsPanel({
                             <button
                               type="button"
                               className="manage-icon-btn with-label manage-enable-edit-action"
-                              disabled={!canEnableEdit}
+                              disabled={!canEnableEdit || isDemoMode}
                               title={enableEditTitle}
                               aria-label="Unlock editing"
                               onClick={() => {

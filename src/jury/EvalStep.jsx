@@ -20,10 +20,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CRITERIA } from "../config";
 import { isScoreFilled } from "./useJuryState";
-import { HomeIcon, PencilIcon } from "../shared/Icons";
+import { HomeIcon, PencilIcon, InfoIcon } from "../shared/Icons";
 import EvalHeader from "./EvalHeader";
 import GroupStatusPanel from "./GroupStatusPanel";
 import ScoringGrid from "./ScoringGrid";
+
+const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 export default function EvalStep({
   juryName, juryDept,
@@ -115,6 +117,13 @@ export default function EvalStep({
           />
 
           <div className="eval-body">
+            {isDemoMode && (
+              <div className="premium-info-strip" style={{ margin: "0 0 12px" }}>
+                <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
+                <span>Demo mode — scores are saved to a sandbox database that resets daily.</span>
+              </div>
+            )}
+
             <GroupStatusPanel
               pid={pid}
               groupSynced={groupSynced}

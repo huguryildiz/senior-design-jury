@@ -51,6 +51,7 @@ export default function ExportBackupPanel({
   onCancelBackupDialog,
   onDbExportConfirm,
   onDbImportConfirm,
+  isDemoMode = false,
 }) {
   return (
     <>
@@ -86,6 +87,7 @@ export default function ExportBackupPanel({
         )}
       </div>
 
+      {!isDemoMode && (
       <div className={`manage-card${isMobile ? " is-collapsible" : ""}`}>
         <button
           type="button"
@@ -134,8 +136,9 @@ export default function ExportBackupPanel({
           </div>
         )}
       </div>
+      )}
 
-      {dbBackupMode && (
+      {!isDemoMode && dbBackupMode && (
         <div className="manage-modal" role="dialog" aria-modal="true">
           <div className={`manage-modal-card${dbBackupMode === "import" ? " manage-modal-card--db-restore" : ""}`}>
             {dbBackupMode === "export" ? (

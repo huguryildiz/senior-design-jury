@@ -307,17 +307,23 @@ function AppInner() {
           A smarter way to evaluate and rank capstone projects
         </p>
 
+        {DEMO_MODE && (
+          <p className="home-demo-desc">
+            Live demo with sample data. Explore the admin panel or try the jury evaluation flow.
+          </p>
+        )}
+
         <div className="home-buttons">
           <button
             className="btn-primary big home-primary-btn"
             onClick={() => DEMO_MODE ? setPage("jury") : setPage("jury_gate")}
           >
             <span className="home-btn-icon" aria-hidden="true"><ClipboardIcon /></span>
-            Start Evaluation
+            {DEMO_MODE ? "Try Jury Flow" : "Start Evaluation"}
           </button>
           <button className="btn-outline big home-secondary-btn" onClick={() => setPage("admin")}>
             <span className="home-btn-icon" aria-hidden="true"><ShieldUserIcon /></span>
-            Admin Panel
+            {DEMO_MODE ? "Explore Admin Panel" : "Admin Panel"}
           </button>
         </div>
 

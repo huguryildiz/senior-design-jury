@@ -315,7 +315,7 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
     tabHintRight,
     tabBarRef,
     updateTabHints,
-  } = useAdminTabs({ settingsDirtyRef });
+  } = useAdminTabs({ settingsDirtyRef, isDemoMode });
 
   // ── Data fetching, Realtime, trend, details ────────────────
   const {
@@ -533,6 +533,13 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
   return (
     <div className="admin-screen">
 
+      {/* ── Demo banner ───────────────────────────────────────── */}
+      {isDemoMode && (
+        <div className="demo-banner" role="status">
+          Demo Mode &mdash; Sample data, resets daily
+        </div>
+      )}
+
       {/* ── Premium Header ──────────────────────────────────── */}
       <header className="form-header premium-header">
 
@@ -701,6 +708,7 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
             <SettingsPage
               tenantId={tenantId}
               selectedSemesterId={selectedSemesterId}
+              isDemoMode={isDemoMode}
               onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
               onCurrentSemesterChange={(semesterId) => {
                 setSelectedSemesterId(semesterId);

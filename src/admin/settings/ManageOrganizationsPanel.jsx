@@ -80,6 +80,7 @@ export default function ManageOrganizationsPanel({
   handleUpdateTenantAdmin,
   handleDeleteTenantAdmin,
   isDirty,
+  isDemoMode = false,
 }) {
   const [showAll, setShowAll] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
@@ -300,7 +301,7 @@ export default function ManageOrganizationsPanel({
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <button className="manage-btn primary" type="button" onClick={openCreate}>
+              <button className="manage-btn primary" type="button" onClick={openCreate} disabled={isDemoMode}>
                 <span aria-hidden="true"><CirclePlusIcon className="manage-btn-icon" /></span>
                 Organization
               </button>
@@ -350,6 +351,7 @@ export default function ManageOrganizationsPanel({
                       type="button"
                       aria-label={`Edit ${org.shortLabel}`}
                       onClick={() => openEdit(org)}
+                      disabled={isDemoMode}
                     >
                       <PencilIcon />
                     </button>
@@ -360,6 +362,7 @@ export default function ManageOrganizationsPanel({
                       type="button"
                       aria-label={`Review admins for ${org.shortLabel}`}
                       onClick={() => setAdminsDialogOrg(org)}
+                      disabled={isDemoMode}
                     >
                       <UserStarIcon />
                     </button>
@@ -445,7 +448,7 @@ export default function ManageOrganizationsPanel({
                   <button
                     className="manage-btn primary"
                     type="button"
-                    disabled={!createCanSubmit}
+                    disabled={!createCanSubmit || isDemoMode}
                     onClick={handleCreateOrg}
                   >
                     Create
@@ -514,7 +517,7 @@ export default function ManageOrganizationsPanel({
                   <button
                     className="manage-btn primary"
                     type="button"
-                    disabled={!editCanSubmit}
+                    disabled={!editCanSubmit || isDemoMode}
                     onClick={handleUpdateOrg}
                   >
                     Save
@@ -572,7 +575,7 @@ export default function ManageOrganizationsPanel({
                                   className="manage-icon-btn"
                                   aria-label={`Edit admin ${admin.name || admin.email}`}
                                   onClick={() => openAdminEdit(adminsDialogOrg.id, admin)}
-                                  disabled={!admin.userId}
+                                  disabled={!admin.userId || isDemoMode}
                                 >
                                   <PencilIcon />
                                 </button>
@@ -588,7 +591,7 @@ export default function ManageOrganizationsPanel({
                                     name: admin.name,
                                     email: admin.email,
                                   })}
-                                  disabled={!admin.userId}
+                                  disabled={!admin.userId || isDemoMode}
                                 >
                                   <TrashIcon />
                                 </button>
@@ -639,7 +642,7 @@ export default function ManageOrganizationsPanel({
                               type="button"
                               className={`manage-btn primary${isApproveLoading ? " is-spinning" : ""}`}
                               onClick={() => handleApproveApplication(entry.applicationId)}
-                              disabled={isRowLoading}
+                              disabled={isRowLoading || isDemoMode}
                             >
                               {isApproveLoading && <span className="spinner" aria-hidden="true" />}
                               Approve
@@ -648,7 +651,7 @@ export default function ManageOrganizationsPanel({
                               type="button"
                               className={`manage-btn${isRejectLoading ? " is-spinning" : ""}`}
                               onClick={() => handleRejectApplication(entry.applicationId)}
-                              disabled={isRowLoading}
+                              disabled={isRowLoading || isDemoMode}
                             >
                               {isRejectLoading && <span className="spinner" aria-hidden="true" />}
                               Reject
@@ -668,6 +671,7 @@ export default function ManageOrganizationsPanel({
                     type="button"
                     className="manage-btn primary manage-org-admin-add-btn"
                     onClick={() => openAdminCreate(adminsDialogOrg)}
+                    disabled={isDemoMode}
                   >
                     <span aria-hidden="true"><CirclePlusIcon className="manage-btn-icon" /></span>
                     Add admin
@@ -728,7 +732,7 @@ export default function ManageOrganizationsPanel({
                     className="manage-btn primary"
                     type="button"
                     onClick={saveAdminCreate}
-                    disabled={adminCreateSaving}
+                    disabled={adminCreateSaving || isDemoMode}
                   >
                     Create
                   </button>
@@ -770,7 +774,7 @@ export default function ManageOrganizationsPanel({
                     className="manage-btn primary"
                     type="button"
                     onClick={saveAdminEdit}
-                    disabled={adminEditSaving}
+                    disabled={adminEditSaving || isDemoMode}
                   >
                     Save
                   </button>

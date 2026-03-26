@@ -54,7 +54,7 @@ function useMediaQuery(query) {
   return matches;
 }
 
-export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirtyChange, onCurrentSemesterChange }) {
+export default function SettingsPage({ tenantId, selectedSemesterId = "", isDemoMode = false, onDirtyChange, onCurrentSemesterChange }) {
   const { isSuper, activeTenant } = useAuth();
   const tenantCode = activeTenant?.code || "";
   const isMobile = useMediaQuery("(max-width: 900px)");
@@ -507,6 +507,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
                 isMobile={isMobile}
                 isOpen={openPanels.org}
                 onToggle={() => togglePanel("org")}
+                isDemoMode={isDemoMode}
                 {...org}
               />
             )}
@@ -518,6 +519,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
                 currentSemesterName={crud.currentSemesterLabel}
                 formatSemesterName={(n) => n || ""}
                 panelError={crud.panelErrors.semester}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.semester}
                 onToggle={() => togglePanel("semester")}
@@ -559,6 +561,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
                 currentSemesterId={crud.viewSemesterId}
                 semesterOptions={crud.semesterList}
                 panelError={crud.panelErrors.projects}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.projects}
                 onToggle={() => togglePanel("projects")}
@@ -581,6 +584,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
               <JurorSettingsPanel
                 jurors={crud.jurors}
                 panelError={crud.panelErrors.jurors}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.jurors}
                 onToggle={() => togglePanel("jurors")}
@@ -608,6 +612,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
                 currentSemesterId={crud.viewSemesterId}
                 currentSemesterName={crud.viewSemesterLabel}
                 evalLockError={crud.evalLockError}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.permissions}
                 onToggle={() => togglePanel("permissions")}
@@ -635,6 +640,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
                 currentSemesterId={crud.viewSemesterId}
                 semesterOptions={crud.semesterList}
                 panelError={crud.panelErrors.projects}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.projects}
                 onToggle={() => togglePanel("projects")}
@@ -657,6 +663,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
               <JurorSettingsPanel
                 jurors={crud.jurors}
                 panelError={crud.panelErrors.jurors}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.jurors}
                 onToggle={() => togglePanel("jurors")}
@@ -684,6 +691,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
                 currentSemesterId={crud.viewSemesterId}
                 currentSemesterName={crud.viewSemesterLabel}
                 evalLockError={crud.evalLockError}
+                isDemoMode={isDemoMode}
                 isMobile={isMobile}
                 isOpen={openPanels.permissions}
                 onToggle={() => togglePanel("permissions")}
@@ -698,6 +706,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
             )}
 
             <JuryEntryControlPanel
+              isDemoMode={isDemoMode}
               isMobile={isMobile}
               isOpen={openPanels.juryEntry}
               onToggle={() => togglePanel("juryEntry")}
@@ -746,6 +755,7 @@ export default function SettingsPage({ tenantId, selectedSemesterId = "", onDirt
             />
 
             <ExportBackupPanel
+              isDemoMode={isDemoMode}
               isMobile={isMobile}
               openPanels={openPanels}
               dbBackupMode={dbBackupMode}

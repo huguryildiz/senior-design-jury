@@ -42,6 +42,7 @@ function renderImportMessage(text) {
 export default function ManageJurorsPanel({
   jurors,
   panelError = "",
+  isDemoMode = false,
   isMobile,
   isOpen,
   onToggle,
@@ -346,6 +347,7 @@ export default function ManageJurorsPanel({
             <button
               className="manage-btn"
               type="button"
+              disabled={isDemoMode}
               onClick={() => {
                 setImportError("");
                 setImportWarning("");
@@ -360,6 +362,7 @@ export default function ManageJurorsPanel({
             <button
               className="manage-btn primary"
               type="button"
+              disabled={isDemoMode}
               onClick={() => {
                 setAddError("");
                 setShowAdd(true);
@@ -482,6 +485,7 @@ export default function ManageJurorsPanel({
                         <button
                           className={`manage-icon-btn${isLocked ? " is-warning" : ""}`}
                           type="button"
+                          disabled={isDemoMode}
                           aria-label={`Reset PIN for ${j.juryName || j.juror_name}`}
                           onClick={() => {
                             onResetPin?.({
@@ -498,6 +502,7 @@ export default function ManageJurorsPanel({
                         <button
                           className="manage-icon-btn"
                           type="button"
+                          disabled={isDemoMode}
                           aria-label={`Edit ${j.juryName || j.juror_name}`}
                           onClick={() => {
                             setEditTarget(j);
@@ -515,6 +520,7 @@ export default function ManageJurorsPanel({
                         ariaLabel={`Delete ${j.juryName || j.juror_name}`}
                         title="Delete juror"
                         showLabel={false}
+                        disabled={isDemoMode}
                         onClick={() => onDeleteJuror?.(j)}
                       />
                     </div>
@@ -583,7 +589,7 @@ export default function ManageJurorsPanel({
                   <button
                     className="manage-btn primary"
                     type="button"
-                    disabled={!canSubmit}
+                    disabled={!canSubmit || isDemoMode}
                     onClick={async () => {
                       const name = form.juror_name.trim();
                       const inst = form.juror_inst.trim();
@@ -650,7 +656,7 @@ export default function ManageJurorsPanel({
                   <button
                     className="manage-btn primary"
                     type="button"
-                    disabled={!canEdit || editSaving}
+                    disabled={!canEdit || editSaving || isDemoMode}
                     onClick={async () => {
                       setEditSaving(true);
                       await onEditJuror?.({

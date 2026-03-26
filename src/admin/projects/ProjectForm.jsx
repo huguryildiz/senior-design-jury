@@ -113,6 +113,7 @@ export default function ProjectForm({
   onCancel,
   onClearError,
   mode,
+  isDemoMode = false,
   semesterOptions,
 }) {
   const studentIds = form.group_students.map((_, idx) => `${mode}-${idx}`);
@@ -303,7 +304,7 @@ export default function ProjectForm({
           <button
             className={`manage-btn primary ${saveClass}`}
             type="button"
-            disabled={!canSubmit || saving}
+            disabled={!canSubmit || saving || isDemoMode}
             onClick={onSubmit}
           >
             {saving ? (isAdd ? "Creating…" : "Saving…") : (isAdd ? "Create" : "Save")}

@@ -50,7 +50,7 @@ ON CONFLICT ((lower(trim(code)))) DO NOTHING;
 -- Super-admin (global scope, tenant_id = NULL)
 INSERT INTO tenant_admin_memberships (id, tenant_id, user_id, role) VALUES
   ('e80b938a-4a87-4b3b-b449-62641a08deed', NULL,
-   '2596753a-90f1-42c3-9bd4-d8d239db945f', 'super_admin')
+   '5e08407a-ea71-47a1-a93b-00f3c7a1be0e', 'super_admin')
 ON CONFLICT DO NOTHING;
 
 -- Tenant admins (one per tenant)
@@ -86,7 +86,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO admin_profiles (user_id, display_name)
 SELECT v.uid, v.dname
 FROM (VALUES
-  ('2596753a-90f1-42c3-9bd4-d8d239db945f'::uuid, 'Prof. Leyla Keser (Super Admin)'),
+  ('5e08407a-ea71-47a1-a93b-00f3c7a1be0e'::uuid, 'Demo Admin'),
   ('ba34acd9-678b-4a40-bf86-cdf96b773cc7'::uuid, 'Dr. Selim Karataş (TEDU EE Admin)'),
   ('0ad71a4f-a424-4d68-8f37-d72df1f176a1'::uuid, 'Assoc. Prof. Dilan Yurt (TEDU CE Admin)'),
   ('97741fa5-430e-4421-85c1-8582e299ce97'::uuid, 'Prof. Cenk Akman (Boğaziçi CHEM Admin)'),
@@ -1237,7 +1237,7 @@ SELECT
     - interval '30 days'
     + (random() * interval '10 days')
     + (row_number() OVER (ORDER BY j.id) * interval '2 seconds'),
-  'admin', '2596753a-90f1-42c3-9bd4-d8d239db945f'::uuid,
+  'admin', '5e08407a-ea71-47a1-a93b-00f3c7a1be0e'::uuid,
   'juror_create', 'juror', j.id,
   format('Admin created juror %s.', j.juror_name),
   NULL,

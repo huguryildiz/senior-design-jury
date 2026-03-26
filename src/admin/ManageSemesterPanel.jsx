@@ -69,6 +69,7 @@ export default function ManageSemesterPanel({
   isLockedFn,
   externalUpdatedSemesterId,
   externalDeletedSemesterId,
+  isDemoMode = false,
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -315,6 +316,7 @@ export default function ManageSemesterPanel({
                 className="manage-select"
                 value={currentSemesterId || ""}
                 onChange={(e) => onSetCurrent(e.target.value)}
+                disabled={isDemoMode}
               >
                 {orderedSemesters.map((s) => (
                   <option key={s.id} value={s.id}>{formatSemesterName(s.semester_name)}</option>
@@ -338,7 +340,7 @@ export default function ManageSemesterPanel({
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <button className="manage-btn primary" type="button" onClick={() => setShowCreate(true)}>
+              <button className="manage-btn primary" type="button" onClick={() => setShowCreate(true)} disabled={isDemoMode}>
                 <span aria-hidden="true"><CirclePlusIcon className="manage-btn-icon" /></span>
                 Semester
               </button>
@@ -397,6 +399,7 @@ export default function ManageSemesterPanel({
                       className="manage-icon-btn"
                       type="button"
                       aria-label={`Edit ${s.semester_name}`}
+                      disabled={isDemoMode}
                       onClick={() => {
                         const normalizedDate = normalizeDateInput(s.poster_date);
                         setEditForm({
@@ -426,7 +429,7 @@ export default function ManageSemesterPanel({
                       ? "Cannot delete the current semester"
                       : "Delete semester"}
                     showLabel={false}
-                    disabled={s.id === currentSemesterId}
+                    disabled={s.id === currentSemesterId || isDemoMode}
                     onClick={() => onDeleteSemester?.(s)}
                   />
                 </div>
@@ -539,7 +542,7 @@ export default function ManageSemesterPanel({
                   <button
                     className="manage-btn primary"
                     type="button"
-                    disabled={!createMeta.canSubmit}
+                    disabled={!createMeta.canSubmit || isDemoMode}
                     onClick={async () => {
                       const trimmedName = createForm.semester_name.trim();
                       const duplicate = uniqueSemesters.some(
@@ -714,7 +717,7 @@ export default function ManageSemesterPanel({
                     <button
                       className="manage-btn primary"
                       type="button"
-                      disabled={!editMeta.canSubmit || staleSemester}
+                      disabled={!editMeta.canSubmit || staleSemester || isDemoMode}
                       title={staleSemester ? "Reload the page before saving — this semester was updated externally" : undefined}
                       onClick={async () => {
                         const res = await onUpdateSemester({

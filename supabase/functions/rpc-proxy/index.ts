@@ -75,6 +75,38 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Demo mode guard: only allow read-only RPCs.
+    const DEMO_MODE = Deno.env.get("DEMO_MODE") === "true";
+    if (DEMO_MODE) {
+      const DEMO_ALLOWED = new Set([
+        "rpc_admin_login",
+        "rpc_admin_security_state",
+        "rpc_admin_auth_get_session",
+        "rpc_admin_tenant_list_public",
+        "rpc_admin_application_get_mine",
+        "rpc_admin_application_list_pending",
+        "rpc_admin_tenant_list",
+        "rpc_admin_semester_list",
+        "rpc_admin_project_list",
+        "rpc_admin_scores_get",
+        "rpc_admin_juror_list",
+        "rpc_admin_project_summary",
+        "rpc_admin_outcome_trends",
+        "rpc_admin_delete_counts",
+        "rpc_admin_settings_get",
+        "rpc_admin_audit_list",
+        "rpc_admin_profile_get",
+        "rpc_admin_entry_token_status",
+        "rpc_admin_export_full",
+      ]);
+      if (!DEMO_ALLOWED.has(fn)) {
+        return new Response(
+          JSON.stringify({ error: "This action is disabled in demo mode." }),
+          { status: 403, headers: { ...headers, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Legacy v1 RPCs: password-based auth, service-role client + p_rpc_secret.
     const V1_LEGACY_RPCS = new Set([
       "rpc_admin_login",
@@ -103,13 +135,12 @@ Deno.serve(async (req: Request) => {
       // Tenant scoping enforced by RPCs via _assert_tenant_admin().
       const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
       const clientJwt = req.headers.get("authorization")?.replace("Bearer ", "") || "";
+      const globalHeaders = clientJwt
+        ? { Authorization: `Bearer ${clientJwt}` }
+        : undefined;
 
       supabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          headers: {
-            Authorization: `Bearer ${clientJwt}`,
-          },
-        },
+        global: globalHeaders ? { headers: globalHeaders } : undefined,
       });
     } else {
       // v1 legacy: service-role client + inject p_rpc_secret.

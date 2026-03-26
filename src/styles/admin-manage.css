@@ -1119,7 +1119,7 @@
   align-items: center;
   justify-content: center;
   color: currentColor;
-  background: var(--surface-bg, var(--card-bg));
+  background: transparent;
   pointer-events: none;
 }
 
@@ -1935,8 +1935,22 @@
 /* ── Organization item ───────────────────────────────────── */
 .manage-item--org .manage-item-title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  position: relative;
+  padding-right: 112px;
+}
+.manage-item--org .manage-item-title-row .manage-item-title {
+  flex: 1 1 auto;
+}
+.manage-item--org .manage-item-title-row .manage-pill {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin-left: 0;
+}
+.manage-item.manage-item--org .manage-item-title.is-overflowing::after {
+  background: #f8fbff;
 }
 .manage-item--org .manage-meta-icon svg {
   width: 14px;
@@ -2154,6 +2168,7 @@
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
     scrollbar-width: none;
+    padding-right: 18px;
   }
   .manage-org-admin-name.swipe-x::-webkit-scrollbar {
     display: none;
@@ -2166,9 +2181,15 @@
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
     scrollbar-width: none;
+    padding-right: 18px;
   }
   .manage-org-admin-email-text.swipe-x::-webkit-scrollbar {
     display: none;
+  }
+  .manage-org-admin-name.swipe-x.is-overflowing::after,
+  .manage-org-admin-email-text.swipe-x.is-overflowing::after {
+    display: flex;
+    background: #f8fbff;
   }
 }
 
@@ -2880,7 +2901,7 @@ textarea.manage-input--create {
   align-items: center;
   justify-content: center;
   color: currentColor;
-  background: var(--surface-bg, var(--card-bg));
+  background: transparent;
   pointer-events: none;
 }
 

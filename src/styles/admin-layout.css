@@ -6,6 +6,20 @@
    Imported by AdminPanel.jsx.
    ============================================================= */
 
+/* ── Demo banner ────────────────────────────────────────────── */
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  color: #fff;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 16px;
+  letter-spacing: 0.3px;
+}
+
 /* ── Screen shell ───────────────────────────────────────────── */
 .admin-screen {
   min-height: 100dvh;

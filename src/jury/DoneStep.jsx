@@ -7,7 +7,9 @@
 
 import { useMemo, useState } from "react";
 import { CRITERIA } from "../config";
-import { HomeIcon, ChevronDownIcon, PencilIcon, HistoryIcon } from "../shared/Icons";
+import { HomeIcon, ChevronDownIcon, PencilIcon, HistoryIcon, InfoIcon } from "../shared/Icons";
+
+const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 import { normalizeCriterion } from "../shared/criteriaHelpers";
 import { getCellState, getPartialTotal, jurorStatusMeta } from "../admin/scoreHelpers";
 import { GroupLabel, ProjectTitle, StudentNames } from "../components/EntityMeta";
@@ -83,6 +85,13 @@ export default function DoneStep({
             <span>{subtitleText}</span>
           </div>
         </div>
+
+        {isDemoMode && (
+          <div className="premium-info-strip" style={{ margin: "0 0 12px" }}>
+            <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
+            <span>This was a demo evaluation. In production, scores are final and visible to admins.</span>
+          </div>
+        )}
 
         <div className="done-summary spd-list">
           {(projects || []).map((p) => {

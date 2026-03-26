@@ -11,9 +11,11 @@
 
 import { useState } from "react";
 
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
+
 export function useJurorIdentity() {
-  const [juryName, setJuryName] = useState("");
-  const [juryDept, setJuryDept] = useState("");
+  const [juryName, setJuryName] = useState(DEMO_MODE ? "Demo Juror" : "");
+  const [juryDept, setJuryDept] = useState(DEMO_MODE ? "TEDU EE" : "");
   const [authError, setAuthError] = useState("");
 
   return {
