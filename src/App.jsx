@@ -39,6 +39,8 @@ import veraLogoHome from "./assets/vera_logo.png";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_ADMIN_EMAIL || "";
 const DEMO_PASS = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";
+const DEMO_SUPER_EMAIL = import.meta.env.VITE_DEMO_SUPERADMIN_EMAIL || "";
+const DEMO_SUPER_PASS = import.meta.env.VITE_DEMO_SUPERADMIN_PASSWORD || "";
 
 // Wrapper: wraps the app in AuthProvider
 export default function App() {
@@ -80,6 +82,12 @@ function AppInner() {
       const params = new URLSearchParams(window.location.search);
       return params.get("t") || "";
     } catch { return ""; }
+  });
+
+  const [demoSuperMode] = useState(() => {
+    try {
+      return DEMO_MODE && new URLSearchParams(window.location.search).get("super") === "1";
+    } catch { return false; }
   });
 
   // Admin auth sub-page: "login" | "register" | "forgot" | "reset"
@@ -242,8 +250,8 @@ function AppInner() {
                 onSwitchToRegister={() => { setAdminAuthPage("register"); setAdminAuthError(""); }}
                 onForgotPassword={() => { setAdminAuthPage("forgot"); setAdminAuthError(""); }}
                 error={adminAuthError}
-                initialEmail={DEMO_MODE ? DEMO_EMAIL : ""}
-                initialPassword={DEMO_MODE ? DEMO_PASS : ""}
+                initialEmail={DEMO_MODE ? (demoSuperMode ? DEMO_SUPER_EMAIL : DEMO_EMAIL) : ""}
+                initialPassword={DEMO_MODE ? (demoSuperMode ? DEMO_SUPER_PASS : DEMO_PASS) : ""}
               />
             )}
             {adminAuthPage === "login" && (
