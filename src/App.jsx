@@ -259,18 +259,7 @@ function AppInner() {
       );
     }
 
-    // Authenticated but no approved membership — pending gate
-    if (auth.isPending) {
-      return (
-        <PendingReviewGate
-          user={auth.user}
-          onSignOut={handleAdminSignOut}
-          onBack={() => setPage("home")}
-        />
-      );
-    }
-
-    // Google user needs to complete profile
+    // Google user needs to complete profile (check before isPending)
     if (auth.profileIncomplete) {
       return (
         <div className="premium-screen">
@@ -282,6 +271,17 @@ function AppInner() {
             />
           </div>
         </div>
+      );
+    }
+
+    // Authenticated but no approved membership — pending gate
+    if (auth.isPending) {
+      return (
+        <PendingReviewGate
+          user={auth.user}
+          onSignOut={handleAdminSignOut}
+          onBack={() => setPage("home")}
+        />
       );
     }
 
