@@ -383,25 +383,27 @@ export default function ManageOrganizationsPanel({
                     <LastActivity value={org.updated_at || null} />
                   </div>
                 </div>
-                <div className="manage-item-actions">
+                <div className="manage-card-actions-bar">
                   <Tooltip text="Edit organization">
                     <button
-                      className="manage-icon-btn"
+                      className="manage-icon-btn with-label"
                       type="button"
                       aria-label={`Edit ${org.shortLabel}`}
                       onClick={() => openEdit(org)}
                     >
                       <PencilIcon />
+                      <span className="manage-icon-btn-label">Edit</span>
                     </button>
                   </Tooltip>
                   <Tooltip text="Review admins">
                     <button
-                      className="manage-icon-btn"
+                      className="manage-icon-btn with-label"
                       type="button"
                       aria-label={`Review admins for ${org.shortLabel}`}
                       onClick={() => setAdminsDialogOrg(org)}
                     >
                       <UserStarIcon />
+                      <span className="manage-icon-btn-label">Admins</span>
                     </button>
                   </Tooltip>
                 </div>
@@ -458,7 +460,7 @@ export default function ManageOrganizationsPanel({
                     className="manage-input"
                     value={createForm.shortLabel}
                     onChange={(e) => setCreateForm((f) => ({ ...f, shortLabel: e.target.value }))}
-                    placeholder="TEDU EE"
+                    placeholder="EE"
                   />
 
                   <label className="manage-label">University</label>

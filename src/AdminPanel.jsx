@@ -349,7 +349,7 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
   // Diagnostic logging for demo environment
   useEffect(() => {
     if (isDemoMode) {
-      console.log("[AdminPanel] Demo mode active. Database: tedu-vera-demo");
+      console.log("[AdminPanel] Demo mode active. Database: vera-demo");
       console.log("[AdminPanel] Current adminTab:", adminTab);
     }
   }, [isDemoMode, adminTab]);

@@ -8,7 +8,7 @@ VERA's frontend is deployed as a static site via Vercel. The Supabase backend (d
 
 1. Log in to [vercel.com](https://vercel.com).
 2. Click **Add New → Project**.
-3. Import the `tedu-vera` GitHub repository.
+3. Import the `VERA` GitHub repository.
 4. Vercel auto-detects Vite. Accept the default framework preset.
 
 ---
@@ -63,7 +63,7 @@ If admin RPCs fail (403/401), verify the `rpc-proxy` Edge Function is deployed a
 
 If the browser shows a CORS error for `rpc-proxy`, also verify Supabase Edge Function secrets:
 
-- `ALLOWED_ORIGINS` includes your active Vercel URL (for example `https://tedu-vera-demo.vercel.app`)
+- `ALLOWED_ORIGINS` includes your active Vercel URL (for example `https://vera-demo.vercel.app`)
 - `ALLOW_WILDCARD_ORIGIN=false` in production
 
 ---

@@ -228,6 +228,6 @@ Project documentation is available in the `docs/` directory:
 | Product name | **VERA** |
 | Institutional deployment | **TEDU VERA** |
 | Full expansion | **VERA — Verdict & Evaluation Ranking Assistant** |
-| Suggested repo name | `tedu-vera` |
+| Suggested repo name | `VERA` |
 
 VERA is the product brand. TEDU VERA is the name used in institutional or formal contexts (reports, headers, documentation).

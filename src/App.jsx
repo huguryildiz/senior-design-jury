@@ -28,6 +28,7 @@ import { AuthProvider, useAuth } from "./shared/auth";
 import LoginForm from "./components/auth/LoginForm";
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
 import RegisterForm from "./components/auth/RegisterForm";
+import CompleteProfileForm from "./components/auth/CompleteProfileForm";
 import ResetPasswordCreateForm from "./components/auth/ResetPasswordCreateForm";
 import PendingReviewGate from "./admin/components/PendingReviewGate";
 import "./styles/home.css";
@@ -38,6 +39,8 @@ import veraLogoHome from "./assets/vera_logo.png";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_ADMIN_EMAIL || "";
 const DEMO_PASS = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";
+const DEMO_SUPER_EMAIL = import.meta.env.VITE_DEMO_SUPERADMIN_EMAIL || "";
+const DEMO_SUPER_PASS = import.meta.env.VITE_DEMO_SUPERADMIN_PASSWORD || "";
 
 // Wrapper: wraps the app in AuthProvider
 export default function App() {
@@ -57,6 +60,8 @@ function AppInner() {
       const params = new URLSearchParams(window.location.search);
       const urlToken = params.get("t");
       if (urlToken) return "jury_gate";
+      const urlPage = params.get("page");
+      if (urlPage === "admin") return "admin";
       if (pathname === "/jury-entry") {
         if (getJuryAccess()) return "jury";
         return "jury_gate";
@@ -77,6 +82,12 @@ function AppInner() {
       const params = new URLSearchParams(window.location.search);
       return params.get("t") || "";
     } catch { return ""; }
+  });
+
+  const [demoSuperMode] = useState(() => {
+    try {
+      return DEMO_MODE && new URLSearchParams(window.location.search).get("super") === "1";
+    } catch { return false; }
   });
 
   // Admin auth sub-page: "login" | "register" | "forgot" | "reset"
@@ -120,20 +131,15 @@ function AppInner() {
     } catch {}
   }, []);
 
-  // Demo mode: auto-sign-in
-  useEffect(() => {
-    if (!DEMO_MODE || !DEMO_EMAIL || !DEMO_PASS) return;
-    if (page !== "admin" || auth.user) return;
-    let active = true;
-    auth.signIn(DEMO_EMAIL, DEMO_PASS).catch(() => {
-      if (active) setAdminAuthError("Demo auto-login failed.");
-    });
-    return () => { active = false; };
-  }, [page, auth.user, auth]);
 
-  async function handleLogin(email, password) {
+  async function handleLogin(email, password, rememberMe) {
     setAdminAuthError("");
-    await auth.signIn(email, password);
+    await auth.signIn(email, password, rememberMe);
+  }
+
+  async function handleGoogleLogin(rememberMe) {
+    setAdminAuthError("");
+    await auth.signInWithGoogle(rememberMe);
   }
 
   async function handleRegister(email, password, metadata) {
@@ -240,9 +246,12 @@ function AppInner() {
             ) : (
               <LoginForm
                 onLogin={handleLogin}
+                onGoogleLogin={handleGoogleLogin}
                 onSwitchToRegister={() => { setAdminAuthPage("register"); setAdminAuthError(""); }}
                 onForgotPassword={() => { setAdminAuthPage("forgot"); setAdminAuthError(""); }}
                 error={adminAuthError}
+                initialEmail={DEMO_MODE ? (demoSuperMode ? DEMO_SUPER_EMAIL : DEMO_EMAIL) : ""}
+                initialPassword={DEMO_MODE ? (demoSuperMode ? DEMO_SUPER_PASS : DEMO_PASS) : ""}
               />
             )}
             {adminAuthPage === "login" && (
@@ -253,6 +262,21 @@ function AppInner() {
                 ← Return Home
               </button>
             )}
+          </div>
+        </div>
+      );
+    }
+
+    // Google user needs to complete profile (check before isPending)
+    if (auth.profileIncomplete) {
+      return (
+        <div className="premium-screen">
+          <div className="premium-card premium-card--auth-register">
+            <CompleteProfileForm
+              user={auth.user}
+              onComplete={auth.completeProfile}
+              onSignOut={handleAdminSignOut}
+            />
           </div>
         </div>
       );
@@ -297,7 +321,7 @@ function AppInner() {
       <div className="home-bg" />
       <div className="home-card">
         <div className="home-logo-wrap">
-          <img className="home-logo" src={veraLogoHome} alt="TEDU VERA" loading="eager" />
+          <img className="home-logo" src={veraLogoHome} alt="VERA" loading="eager" />
         </div>
 
         <p className="home-definition">

@@ -58,8 +58,8 @@ supabase secrets set NOTIFICATION_LOGO_URL="https://kmprsxrofnemmsryjhfj.supabas
 Optional CTA links used by the HTML template:
 
 ```bash
-supabase secrets set NOTIFICATION_REVIEW_URL="https://tedu-vera-demo.vercel.app/admin"
-supabase secrets set NOTIFICATION_APP_URL="https://tedu-vera-demo.vercel.app"
+supabase secrets set NOTIFICATION_REVIEW_URL="https://vera-demo.vercel.app/admin"
+supabase secrets set NOTIFICATION_APP_URL="https://vera-demo.vercel.app"
 ```
 
 ---
@@ -69,7 +69,7 @@ supabase secrets set NOTIFICATION_APP_URL="https://tedu-vera-demo.vercel.app"
 If you use multiple origins (Vercel + localhost + LAN), set:
 
 ```bash
-supabase secrets set ALLOWED_ORIGINS="http://192.168.68.105:5173,https://tedu-vera-demo.vercel.app,http://localhost:5173" ALLOW_WILDCARD_ORIGIN="false"
+supabase secrets set ALLOWED_ORIGINS="http://192.168.68.105:5173,https://vera-demo.vercel.app,http://localhost:5173" ALLOW_WILDCARD_ORIGIN="false"
 ```
 
 Notes:

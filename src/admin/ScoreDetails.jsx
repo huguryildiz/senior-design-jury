@@ -358,7 +358,7 @@ export default function ScoreDetails({
         filteredCount={filteredData.length}
         onExport={() => {
           exportXLSX(filteredData, {
-            semesterName: semesterName || "TEDU VERA",
+            semesterName: semesterName || "VERA",
             criteria: activeCriteria,
             summaryData,
             tenantCode,

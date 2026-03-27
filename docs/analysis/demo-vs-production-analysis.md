@@ -22,14 +22,14 @@
 ## Mimari Karar: 2 Vercel Projesi + 2 Supabase DB
 
 ```text
-GitHub Repo (tedu-vera) — tek repo, tek branch (main)
+GitHub Repo (VERA) — tek repo, tek branch (main)
   |
-  +-- Vercel: tedu-vera.vercel.app (PRODUCTION)
+  +-- Vercel: vera.vercel.app (PRODUCTION)
   |     VITE_SUPABASE_URL = https://prod-project.supabase.co
   |     VITE_SUPABASE_ANON_KEY = prod-key
   |     VITE_DEMO_MODE = (set edilmez)
   |
-  +-- Vercel: tedu-vera-demo.vercel.app (DEMO)
+  +-- Vercel: vera-demo.vercel.app (DEMO)
         VITE_SUPABASE_URL = https://demo-project.supabase.co
         VITE_SUPABASE_ANON_KEY = demo-key
         VITE_DEMO_MODE = true

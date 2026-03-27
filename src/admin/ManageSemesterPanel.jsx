@@ -393,10 +393,10 @@ export default function ManageSemesterPanel({
                     </span>
                   )}
                 </div>
-                <div className="manage-item-actions manage-item-actions--semester">
+                <div className="manage-card-actions-bar">
                   <Tooltip text="Edit semester">
                     <button
-                      className="manage-icon-btn"
+                      className="manage-icon-btn with-label"
                       type="button"
                       aria-label={`Edit ${s.semester_name}`}
                       onClick={() => {
@@ -420,6 +420,7 @@ export default function ManageSemesterPanel({
                       }}
                     >
                       <PencilIcon />
+                      <span className="manage-icon-btn-label">Edit</span>
                     </button>
                   </Tooltip>
                   <DangerIconButton

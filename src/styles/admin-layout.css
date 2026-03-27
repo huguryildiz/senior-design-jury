@@ -12,17 +12,17 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #162A66 0%, #0F1B4C 100%);
-  color: #94a3b8;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  color: #fff;
   font-size: 12.5px;
   font-weight: 400;
   padding: 8px 20px;
   letter-spacing: 0.3px;
   border-radius: 12px;
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 0 20px rgba(139, 92, 246, 0.3);
   white-space: nowrap;
   margin-bottom: 8px;
 }
@@ -32,7 +32,7 @@
   flex-shrink: 0;
 }
 .demo-banner-icon svg {
-  stroke: #c7d2fe;
+  stroke: #e0e7ff;
 }
 .demo-banner-text {
   display: flex;
@@ -40,13 +40,13 @@
   gap: 0;
 }
 .demo-banner-text strong {
-  font-weight: 600;
-  color: #c7d2fe;
+  font-weight: 700;
+  color: #fff;
   letter-spacing: 0.4px;
 }
 .demo-banner-sep {
   margin: 0 6px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.4);
   font-size: 11px;
 }
 

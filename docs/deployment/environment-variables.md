@@ -71,8 +71,8 @@ Required GitHub secrets:
 | `SUPABASE_PROJECT_REF_PROD` | Prod Supabase project ref |
 | `NOTIFICATION_REVIEW_URL_DEMO_LOCAL` | Demo review URL (local profile, e.g. `http://192.168.../?tab=applications`) |
 | `NOTIFICATION_APP_URL_DEMO_LOCAL` | Demo app URL (local profile, e.g. `http://192.168...`) |
-| `NOTIFICATION_REVIEW_URL_DEMO_VERCEL` | Demo review URL (vercel profile, e.g. `https://tedu-vera-demo.vercel.app/?tab=applications`) |
-| `NOTIFICATION_APP_URL_DEMO_VERCEL` | Demo app URL (vercel profile, e.g. `https://tedu-vera-demo.vercel.app`) |
+| `NOTIFICATION_REVIEW_URL_DEMO_VERCEL` | Demo review URL (vercel profile, e.g. `https://vera-demo.vercel.app/?tab=applications`) |
+| `NOTIFICATION_APP_URL_DEMO_VERCEL` | Demo app URL (vercel profile, e.g. `https://vera-demo.vercel.app`) |
 | `NOTIFICATION_REVIEW_URL_PROD` | Prod review URL |
 | `NOTIFICATION_APP_URL_PROD` | Prod app root URL |
 | `NOTIFICATION_FROM` | Sender identity for notification emails |
@@ -95,7 +95,7 @@ These are configured in Supabase Dashboard for the `rpc-proxy` function.
 | Secret | Required | Notes |
 | --- | --- | --- |
 | `RPC_SECRET` | Yes | Must match the DB-side `rpc_secret` (Vault) expected by admin RPCs. |
-| `ALLOWED_ORIGINS` | Yes (production) | Comma-separated origin allowlist, e.g. `https://tedu-vera-demo.vercel.app,https://vera.example.com,http://localhost:5173` |
+| `ALLOWED_ORIGINS` | Yes (production) | Comma-separated origin allowlist, e.g. `https://vera-demo.vercel.app,https://vera.example.com,http://localhost:5173` |
 | `ALLOW_WILDCARD_ORIGIN` | No | Keep `false` in production. Set `true` only in dev/staging if wildcard patterns in `ALLOWED_ORIGINS` are needed (e.g. `https://*.vercel.app`). |
 
 ---

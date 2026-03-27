@@ -479,6 +479,11 @@ export default function ManageJurorsPanel({
                         </span>
                       </span>
                     </div>
+                    {lastActivityAt && (
+                      <div className="manage-item-sub manage-meta-line manage-meta-line--juror-last">
+                        <LastActivity value={lastActivityAt} />
+                      </div>
+                    )}
                   </div>
                   {isLocked && (
                     <span className="manage-pin-lock-chip" aria-label="PIN Locked">
@@ -488,102 +493,95 @@ export default function ManageJurorsPanel({
                       <span className="manage-pin-lock-chip-text">PIN Locked</span>
                     </span>
                   )}
-                  <div className="manage-item-footer manage-item-footer--juror">
-                    {lastActivityAt ? (
-                      <div className="manage-item-sub manage-meta-line manage-meta-line--juror-last">
-                        <LastActivity value={lastActivityAt} />
-                      </div>
-                    ) : (
-                      <span />
+                  <div className="manage-card-actions-bar">
+                    {showEditControls && (editEnabled || isCompleted) && !evalLockActive && (
+                      <>
+                        {isPending && (
+                          <span className="manage-toggle-spinner manage-toggle-spinner--left" aria-hidden="true">
+                            <LoaderIcon />
+                          </span>
+                        )}
+                        {editEnabled && (
+                          <Tooltip text="Lock editing">
+                            <button
+                              type="button"
+                              className="manage-icon-btn with-label manage-cancel-edit-action"
+                              disabled={!canForceClose || isDemoMode}
+                              title="Lock editing and return juror to completed state."
+                              aria-label="Lock editing"
+                              onClick={() => canForceClose && handleForceCloseEditWithPending({ jurorId })}
+                            >
+                              <span aria-hidden="true"><LockIcon /></span>
+                              <span className="manage-icon-btn-label">Lock</span>
+                            </button>
+                          </Tooltip>
+                        )}
+                        {!editEnabled && isCompleted && (
+                          <Tooltip text="Unlock editing">
+                            <button
+                              type="button"
+                              className="manage-icon-btn with-label manage-enable-edit-action"
+                              disabled={!canEnableEdit || isDemoMode}
+                              title="Allow juror to reopen and resubmit the evaluation."
+                              aria-label="Unlock editing"
+                              onClick={() => canEnableEdit && handleToggleEditWithPending({ jurorId, enabled: true })}
+                            >
+                              <span aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                  className="lucide lucide-lock-open-icon lucide-lock-open">
+                                  <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                  <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                                </svg>
+                              </span>
+                              <span className="manage-icon-btn-label">Unlock</span>
+                            </button>
+                          </Tooltip>
+                        )}
+                      </>
                     )}
-                    <div className="manage-item-actions-row manage-item-actions-row--juror-actions">
-                      {showEditControls && (
-                        <>
-                          {isPending && (
-                            <span className="manage-toggle-spinner manage-toggle-spinner--left" aria-hidden="true">
-                              <LoaderIcon />
-                            </span>
-                          )}
-                          {editEnabled && !evalLockActive && (
-                            <Tooltip text="Lock editing">
-                              <button
-                                type="button"
-                                className="manage-icon-btn with-label manage-cancel-edit-action"
-                                disabled={!canForceClose || isDemoMode}
-                                title="Lock editing and return juror to completed state."
-                                aria-label="Lock editing"
-                                onClick={() => canForceClose && handleForceCloseEditWithPending({ jurorId })}
-                              >
-                                <span aria-hidden="true"><LockIcon /></span>
-                                <span className="manage-icon-btn-label">Lock</span>
-                              </button>
-                            </Tooltip>
-                          )}
-                          {!editEnabled && isCompleted && !evalLockActive && (
-                            <Tooltip text="Unlock editing">
-                              <button
-                                type="button"
-                                className="manage-icon-btn with-label manage-enable-edit-action"
-                                disabled={!canEnableEdit || isDemoMode}
-                                title="Allow juror to reopen and resubmit the evaluation."
-                                aria-label="Unlock editing"
-                                onClick={() => canEnableEdit && handleToggleEditWithPending({ jurorId, enabled: true })}
-                              >
-                                <span aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                    className="lucide lucide-lock-open-icon lucide-lock-open">
-                                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                                    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-                                  </svg>
-                                </span>
-                                <span className="manage-icon-btn-label">Unlock</span>
-                              </button>
-                            </Tooltip>
-                          )}
-                        </>
-                      )}
-                      <Tooltip text="Reset juror PIN">
-                        <button
-                          className={`manage-icon-btn${isLocked ? " is-warning" : ""}`}
-                          type="button"
-                          aria-label={`Reset PIN for ${j.juryName || j.juror_name}`}
-                          onClick={() => {
-                            onResetPin?.({
-                              jurorId: j.jurorId || j.juror_id,
-                              juror_name: j.juryName || j.juror_name || "",
-                              juror_inst: j.juryDept || j.juror_inst || "",
-                            });
-                          }}
-                        >
-                          <KeyRoundIcon />
-                        </button>
-                      </Tooltip>
-                      <Tooltip text="Edit juror">
-                        <button
-                          className="manage-icon-btn"
-                          type="button"
-                          aria-label={`Edit ${j.juryName || j.juror_name}`}
-                          onClick={() => {
-                            setEditTarget(j);
-                            setEditForm({
-                              juror_name: j.juryName || j.juror_name || "",
-                              juror_inst: j.juryDept || j.juror_inst || "",
-                            });
-                            setShowEdit(true);
-                          }}
-                        >
-                          <PencilIcon />
-                        </button>
-                      </Tooltip>
-                      <DangerIconButton
-                        ariaLabel={`Delete ${j.juryName || j.juror_name}`}
-                        title="Delete juror"
-                        showLabel={false}
-                        onClick={() => onDeleteJuror?.(j)}
-                      />
-                    </div>
+                    <Tooltip text="Reset juror PIN">
+                      <button
+                        className={`manage-icon-btn with-label${isLocked ? " is-warning" : ""}`}
+                        type="button"
+                        aria-label={`Reset PIN for ${j.juryName || j.juror_name}`}
+                        onClick={() => {
+                          onResetPin?.({
+                            jurorId: j.jurorId || j.juror_id,
+                            juror_name: j.juryName || j.juror_name || "",
+                            juror_inst: j.juryDept || j.juror_inst || "",
+                          });
+                        }}
+                      >
+                        <KeyRoundIcon />
+                        <span className="manage-icon-btn-label">PIN</span>
+                      </button>
+                    </Tooltip>
+                    <Tooltip text="Edit juror">
+                      <button
+                        className="manage-icon-btn with-label"
+                        type="button"
+                        aria-label={`Edit ${j.juryName || j.juror_name}`}
+                        onClick={() => {
+                          setEditTarget(j);
+                          setEditForm({
+                            juror_name: j.juryName || j.juror_name || "",
+                            juror_inst: j.juryDept || j.juror_inst || "",
+                          });
+                          setShowEdit(true);
+                        }}
+                      >
+                        <PencilIcon />
+                        <span className="manage-icon-btn-label">Edit</span>
+                      </button>
+                    </Tooltip>
+                    <DangerIconButton
+                      ariaLabel={`Delete ${j.juryName || j.juror_name}`}
+                      title="Delete juror"
+                      showLabel={false}
+                      onClick={() => onDeleteJuror?.(j)}
+                    />
                   </div>
                 </div>
               );

@@ -1,3 +1,8 @@
+---
+name: release
+description: Verify production readiness before an evaluation event.
+---
+
 # Skill: release
 
 ## When to Use

@@ -44,36 +44,33 @@ export default function ProjectCard({
               : "\u2014"}
           </span>
         </div>
-        <div className="manage-item-footer manage-item-footer--project">
-          <div className="manage-item-meta-block">
-            <div className="manage-item-sub manage-meta-line manage-meta-line--semester-chip">
-              <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
-                <CalendarClockIcon />
-              </span>
-              <span className="manage-item-semester-chip">{semesterName || "\u2014"}</span>
-            </div>
-            <div className="manage-item-sub manage-meta-line">
-              <LastActivity value={lastActivity} />
-            </div>
-          </div>
-          <div className="manage-item-actions manage-item-actions--project">
-            <Tooltip text="Edit group">
-              <button
-                className="manage-icon-btn"
-                type="button"
-                aria-label={`Edit Group ${groupLabel}`}
-                onClick={() => onEdit(p, groupLabel)}
-              >
-                <PencilIcon />
-              </button>
-            </Tooltip>
-            <DangerIconButton
-              ariaLabel={`Delete Group ${groupLabel}`}
-              title="Delete group"
-              showLabel={false}
-              onClick={() => onDelete(p, groupLabel)}
-            />
-          </div>
+        <div className="manage-item-sub manage-meta-line manage-meta-line--semester-chip">
+          <span className="manage-meta-icon manage-semester-date-icon" aria-hidden="true">
+            <CalendarClockIcon />
+          </span>
+          <span className="manage-item-semester-chip">{semesterName || "\u2014"}</span>
+        </div>
+        <div className="manage-item-sub manage-meta-line">
+          <LastActivity value={lastActivity} />
+        </div>
+        <div className="manage-card-actions-bar">
+          <Tooltip text="Edit group">
+            <button
+              className="manage-icon-btn with-label"
+              type="button"
+              aria-label={`Edit Group ${groupLabel}`}
+              onClick={() => onEdit(p, groupLabel)}
+            >
+              <PencilIcon />
+              <span className="manage-icon-btn-label">Edit</span>
+            </button>
+          </Tooltip>
+          <DangerIconButton
+            ariaLabel={`Delete Group ${groupLabel}`}
+            title="Delete group"
+            showLabel={false}
+            onClick={() => onDelete(p, groupLabel)}
+          />
         </div>
       </div>
     </div>

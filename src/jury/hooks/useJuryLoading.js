@@ -60,7 +60,7 @@ export function useJuryLoading() {
     const ctrl = new AbortController();
     const run = async () => {
       try {
-        // Demo mode: resolve semester via entry token so TEDU EE is always shown.
+        // Demo mode: resolve semester via entry token so demo tenant is always shown.
         if (DEMO_MODE && DEMO_ENTRY_TOKEN) {
           const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
           if (!alive) return;

@@ -5,15 +5,20 @@
 // ============================================================
 
 import { useState } from "react";
-import { EyeIcon, EyeOffIcon, ShieldUserIcon } from "../../shared/Icons";
+import { EyeIcon, EyeOffIcon, ShieldUserIcon, GoogleIcon } from "../../shared/Icons";
 import AlertCard from "../../shared/AlertCard";
+import { KEYS } from "../../shared/storage/keys";
 
-export default function LoginForm({ onLogin, onSwitchToRegister, onForgotPassword, error: externalError, loading: externalLoading }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+export default function LoginForm({ onLogin, onGoogleLogin, onSwitchToRegister, onForgotPassword, error: externalError, loading: externalLoading, initialEmail = "", initialPassword = "" }) {
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState(initialPassword);
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    try { return localStorage.getItem(KEYS.ADMIN_REMEMBER_ME) === "true"; }
+    catch { return false; }
+  });
 
   const isLoading = loading || externalLoading;
   const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
@@ -60,12 +65,25 @@ export default function LoginForm({ onLogin, onSwitchToRegister, onForgotPasswor
     setError("");
     setLoading(true);
     try {
-      await onLogin(email.trim(), password);
+      await onLogin(email.trim(), password, rememberMe);
     } catch (err) {
       const raw = extractErrorText(err);
       setError(normalizeLoginError(raw || "Login failed. Please try again."));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setError("");
+    try {
+      // Persist remember-me preference before redirect
+      try { localStorage.setItem(KEYS.ADMIN_REMEMBER_ME, String(rememberMe)); }
+      catch {}
+      await onGoogleLogin(rememberMe);
+    } catch (err) {
+      const raw = extractErrorText(err);
+      setError(raw || "Google sign-in failed. Please try again.");
     }
   }
 
@@ -121,8 +139,35 @@ export default function LoginForm({ onLogin, onSwitchToRegister, onForgotPasswor
         </div>
       </label>
 
+      <label className="admin-auth-remember">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => {
+            setRememberMe(e.target.checked);
+            try { localStorage.setItem(KEYS.ADMIN_REMEMBER_ME, String(e.target.checked)); }
+            catch {}
+          }}
+          disabled={isLoading}
+        />
+        <span>Remember me</span>
+        <span className="admin-auth-remember-hint">Session stays active for 30 days</span>
+      </label>
+
       <button type="submit" disabled={isLoading} className="admin-auth-submit">
         {isLoading ? "Signing in…" : "Sign In"}
+      </button>
+
+      <div className="admin-auth-divider"><span>or</span></div>
+
+      <button
+        type="button"
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="admin-auth-google"
+      >
+        <GoogleIcon />
+        Sign in with Google
       </button>
 
       {onForgotPassword && (

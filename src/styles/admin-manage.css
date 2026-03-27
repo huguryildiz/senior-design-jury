@@ -672,7 +672,7 @@
   gap: 6px;
   width: fit-content;
   max-width: 100%;
-  padding: 5px 12px;
+  padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid #dbeafe;
   background: #eef2ff;
@@ -688,14 +688,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
 }
 
 .manage-status-chip-icon svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .manage-status-chip-text {
@@ -1217,6 +1217,7 @@
 }
 
 .manage-item.manage-item--juror {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 12px;
@@ -1276,11 +1277,33 @@
   align-items: center;
 }
 
+/* ── Card bottom action bar (unified pattern for all card types) ── */
+
+/* Cards with bottom action bar must stack vertically */
+.manage-item:has(.manage-card-actions-bar) {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.manage-card-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  grid-column: 1 / -1;
+}
+
+.manage-card-actions-bar .manage-icon-btn.danger {
+  margin-left: auto;
+}
+
 .manage-item-actions-row--juror-actions {
   flex: 0 0 auto;
   justify-content: flex-end;
   align-self: center;
-  margin-top: -12px;
+  margin-top: 0;
 }
 
 .manage-item.manage-item--juror .manage-item-semesters {
