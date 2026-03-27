@@ -460,7 +460,7 @@ export default function ManageOrganizationsPanel({
                     className="manage-input"
                     value={createForm.shortLabel}
                     onChange={(e) => setCreateForm((f) => ({ ...f, shortLabel: e.target.value }))}
-                    placeholder="TEDU EE"
+                    placeholder="EE"
                   />
 
                   <label className="manage-label">University</label>

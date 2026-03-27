@@ -321,7 +321,7 @@ function AppInner() {
       <div className="home-bg" />
       <div className="home-card">
         <div className="home-logo-wrap">
-          <img className="home-logo" src={veraLogoHome} alt="TEDU VERA" loading="eager" />
+          <img className="home-logo" src={veraLogoHome} alt="VERA" loading="eager" />
         </div>
 
         <p className="home-definition">

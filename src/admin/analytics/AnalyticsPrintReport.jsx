@@ -32,7 +32,7 @@ export default function AnalyticsPrintReport({
     <div className="print-report">
       {/* Print-only header — appears above page 1 */}
       <div className="print-header">
-        <div className="print-header-title">TEDU VERA — TED University · Department of Electrical &amp; Electronics Engineering</div>
+        <div className="print-header-title">VERA — Evaluation Report</div>
         <div className="print-header-sub">EE 492 — Senior Project II · Poster Jury Evaluation Report · {semesterLabel} </div>
         <div className="print-header-meta">
           <div>Report Generated: {printDate}</div>

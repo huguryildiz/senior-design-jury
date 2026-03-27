@@ -50,8 +50,8 @@ function buildHtmlTemplate(params: {
   logoUrl?: string;
 }): string {
   const logo = params.logoUrl
-    ? `<img src="${escapeHtml(params.logoUrl)}" alt="TEDU VERA" width="160" style="display:block; margin:0 auto; height:auto;" />`
-    : `<div style="color:#fff; font-size:22px; font-weight:700; letter-spacing:0.6px;">TEDU VERA</div>`;
+    ? `<img src="${escapeHtml(params.logoUrl)}" alt="VERA" width="160" style="display:block; margin:0 auto; height:auto;" />`
+    : `<div style="color:#fff; font-size:22px; font-weight:700; letter-spacing:0.6px;">VERA</div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -71,7 +71,7 @@ function buildHtmlTemplate(params: {
           <tr><td align="center" style="padding:0 48px 20px;"><p style="margin:0; font-size:15px; line-height:1.7; color:#a0aec0;">${escapeHtml(params.intro)}</p></td></tr>
           <tr><td style="padding:0 48px 8px;"><p style="margin:0 0 8px; font-size:14px; line-height:1.7; color:#a0aec0;">${escapeHtml(params.body)}</p></td></tr>
           <tr><td style="padding:0 48px;"><div style="border-top:1px solid rgba(255,255,255,0.08); font-size:0;">&nbsp;</div></td></tr>
-          <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 TEDU VERA. All rights reserved.</p></td></tr>
+          <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 VERA. All rights reserved.</p></td></tr>
           <tr><td style="background:linear-gradient(90deg,#6c47ff,#a78bfa,#6c47ff); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
         </table>
       </td>
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const resendKey = Deno.env.get("RESEND_API_KEY") || "";
-    const fromAddr = Deno.env.get("NOTIFICATION_FROM") || "VERA <noreply@vera.dev>";
+    const fromAddr = Deno.env.get("NOTIFICATION_FROM") || "VERA <noreply@vera-eval.app>";
     const logoUrl = (Deno.env.get("NOTIFICATION_LOGO_URL") || "").trim();
 
     if (!supabaseUrl || !anonKey || !resendKey) {
