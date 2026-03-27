@@ -264,7 +264,7 @@ export default function AuthProvider({ children }) {
     await submitAdminApplication({
       tenantId,
       email: user.email,
-      password: "", // No password — Google auth user
+      password: crypto.randomUUID() + "Aa1!", // Random password — Google auth user never uses it
       name,
       university,
       department,
