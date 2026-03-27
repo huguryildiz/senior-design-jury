@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
       });
     } else {
       // v1 legacy: service-role client + inject p_rpc_secret.
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabaseServiceKey = Deno.env.get("SB_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const rpcSecret = Deno.env.get("RPC_SECRET")!;
 
       supabase = createClient(supabaseUrl, supabaseServiceKey);

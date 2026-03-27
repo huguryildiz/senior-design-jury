@@ -3,8 +3,12 @@ import { describe, expect, vi } from "vitest";
 import OverviewTab from "../OverviewTab";
 import { qaTest } from "../../test/qaTest.js";
 
-vi.mock("../JurorActivity", () => ({
+vi.mock("../overview/JurorActivityTable", () => ({
   default: () => <div data-testid="juror-activity" />,
+}));
+
+vi.mock("../overview/CriteriaProgress", () => ({
+  default: () => <div data-testid="criteria-progress" />,
 }));
 
 describe("OverviewTab", () => {

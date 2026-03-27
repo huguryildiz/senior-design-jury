@@ -1,11 +1,11 @@
 // src/admin/components/PendingReviewGate.jsx
-// ============================================================
-// Phase C.4: Full-screen "pending approval" message shown to
-// authenticated users who have no approved tenant membership.
-// ============================================================
+// Phase 6: Full-screen "pending approval" message with shadcn components.
 
 import { useEffect, useState } from "react";
-import { AlertCircleIcon, HomeIcon } from "../../shared/Icons";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Home } from "lucide-react";
 import { getMyApplications } from "../../shared/api";
 
 export default function PendingReviewGate({ user, onSignOut, onBack }) {
@@ -25,49 +25,56 @@ export default function PendingReviewGate({ user, onSignOut, onBack }) {
   const rejected = applications.filter((a) => a.status === "rejected");
 
   return (
-    <div className="pending-gate">
-      <div className="pending-gate-card">
-        <AlertCircleIcon size={48} />
-        <h2>Application Pending</h2>
-        <p>
-          Your account <strong>{user?.email}</strong> is not yet approved
-          for admin access.
-        </p>
-
-        {!loading && pending.length > 0 && (
-          <div className="pending-gate-apps">
-            <h3>Pending Applications</h3>
-            {pending.map((app) => (
-              <div key={app.id} className="pending-gate-app">
-                <span className="pending-gate-tenant">{app.tenant_name}</span>
-                <span className="pending-gate-status pending">Pending review</span>
-              </div>
-            ))}
+    <div className="pending-gate flex min-h-[60vh] items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="flex flex-col items-center gap-4 pt-8 pb-6 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+            <AlertCircle className="size-7" />
           </div>
-        )}
+          <h2 className="text-xl font-semibold">Application Pending</h2>
+          <p className="text-sm text-muted-foreground">
+            Your account <strong className="text-foreground">{user?.email}</strong> is not yet approved for admin access.
+          </p>
 
-        {!loading && rejected.length > 0 && (
-          <div className="pending-gate-apps">
-            <h3>Rejected Applications</h3>
-            {rejected.map((app) => (
-              <div key={app.id} className="pending-gate-app">
-                <span className="pending-gate-tenant">{app.tenant_name}</span>
-                <span className="pending-gate-status rejected">Not approved</span>
-              </div>
-            ))}
+          {!loading && pending.length > 0 && (
+            <div className="w-full space-y-2 text-left">
+              <h3 className="text-sm font-medium">Pending Applications</h3>
+              {pending.map((app) => (
+                <div key={app.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <span className="text-sm">{app.tenant_name}</span>
+                  <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 text-[11px]">
+                    Pending review
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && rejected.length > 0 && (
+            <div className="w-full space-y-2 text-left">
+              <h3 className="text-sm font-medium">Rejected Applications</h3>
+              {rejected.map((app) => (
+                <div key={app.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <span className="text-sm">{app.tenant_name}</span>
+                  <Badge variant="destructive" className="text-[11px]">
+                    Not approved
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <Button onClick={onBack} className="gap-2">
+              <Home className="size-4" />
+              Return Home
+            </Button>
+            <button type="button" onClick={onSignOut} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              Sign Out
+            </button>
           </div>
-        )}
-
-        <div className="pending-gate-actions">
-          <button onClick={onBack} className="admin-auth-submit" style={{ maxWidth: 200 }}>
-            <span aria-hidden="true"><HomeIcon /></span>
-            Return Home
-          </button>
-          <button onClick={onSignOut} className="admin-auth-home-link pending-gate-signout">
-            Sign Out
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

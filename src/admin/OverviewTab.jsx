@@ -1,22 +1,23 @@
 // src/admin/OverviewTab.jsx
+// Tremor-style overview dashboard with KPI cards,
+// criteria progress bars, and sortable juror activity table.
 
-import { FolderKanbanIcon, UserCheckIcon } from "../shared/Icons";
-import StatCard from "../shared/StatCard";
-import JurorActivity from "./JurorActivity";
+import { Users, FolderKanban } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import KpiCard from "./overview/KpiCard";
+import KpiGrid from "./overview/KpiGrid";
+import JurorActivityTable from "./overview/JurorActivityTable";
+import CriteriaProgress from "./overview/CriteriaProgress";
 
-function ringColor(pct) {
-  if (pct === 0) return "var(--ring-empty)";
-  if (pct <= 33) return "var(--ring-low)";
-  if (pct <= 66) return "var(--ring-mid)";
-  if (pct < 100) return "var(--ring-high)";
-  return "var(--ring-full)";
-}
-
-function clampPct(value) {
-  return Math.min(100, Math.max(0, value));
-}
-
-export default function OverviewTab({ jurorStats, groups, metrics, onGoToSettings }) {
+export default function OverviewTab({
+  jurorStats,
+  groups,
+  metrics,
+  rawScores,
+  criteriaTemplate,
+  onGoToSettings,
+}) {
   const {
     totalJurors = 0,
     completedJurors = 0,
@@ -30,19 +31,27 @@ export default function OverviewTab({ jurorStats, groups, metrics, onGoToSetting
   } = metrics ?? {};
   const totalGroups = groups?.length ?? 0;
 
-  const completedPct = clampPct(
+  const clamp = (v) => Math.min(100, Math.max(0, v));
+  const completedPct = clamp(
     totalJurors > 0 ? Math.round((completedJurors / totalJurors) * 100) : 0
   );
-  const scoredPct = clampPct(
-    totalEvaluations > 0 ? Math.round((scoredEvaluations / totalEvaluations) * 100) : 0
+  const scoredPct = clamp(
+    totalEvaluations > 0
+      ? Math.round((scoredEvaluations / totalEvaluations) * 100)
+      : 0
   );
   const completedHasData = totalJurors > 0;
   const scoredHasData = totalEvaluations > 0;
 
   const notStartedJurors = Math.max(
     0,
-    totalJurors - completedJurors - inProgressJurors - readyToSubmitJurors - editingJurors
+    totalJurors -
+      completedJurors -
+      inProgressJurors -
+      readyToSubmitJurors -
+      editingJurors
   );
+
   const completedMetaLines = [
     inProgressJurors > 0 && `${inProgressJurors} in progress`,
     readyToSubmitJurors > 0 && `${readyToSubmitJurors} ready to submit`,
@@ -55,67 +64,82 @@ export default function OverviewTab({ jurorStats, groups, metrics, onGoToSetting
     emptyEvaluations > 0 && `${emptyEvaluations} empty`,
   ].filter(Boolean);
 
-  // Show total count only when some evaluations are still unscored
   const scoredSub =
     totalEvaluations > 0 && scoredEvaluations < totalEvaluations
       ? `${totalEvaluations} total`
       : undefined;
-  const scoredValue = scoredHasData ? scoredEvaluations : "—";
-  const completedValue = completedHasData ? completedJurors : "—";
 
+  const scoredValue = scoredHasData ? scoredEvaluations : "\u2014";
+  const completedValue = completedHasData ? completedJurors : "\u2014";
 
   const isEmpty = totalJurors === 0 && totalGroups === 0;
 
   return (
-    <div className="overview-tab">
+    <div className="space-y-8">
+      {/* Empty state */}
       {isEmpty && (
-        <div className="overview-empty-state" role="status">
-          <span>No data yet. Go to </span>
-          <button
-            type="button"
-            className="overview-empty-settings-link"
-            onClick={() => onGoToSettings?.()}
-          >
-            Settings
-          </button>
-          <span> to add jurors and groups.</span>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="mb-3 text-sm text-muted-foreground" role="status">
+              No data yet. Add jurors and groups to get started.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onGoToSettings?.()}
+            >
+              Go to Settings
+            </Button>
+          </CardContent>
+        </Card>
       )}
-      <div className="stat-card-cluster overview-stat-cards">
-        <StatCard
+
+      {/* KPI Grid */}
+      <KpiGrid>
+        <KpiCard
           value={totalJurors}
           label="Jurors"
           sub="Total assigned"
-          icon={<UserCheckIcon className="overview-icon" />}
+          icon={<Users className="size-5" />}
         />
-        <StatCard
+        <KpiCard
           value={totalGroups}
           label="Groups"
           sub="Total groups"
-          icon={<FolderKanbanIcon className="overview-icon" />}
+          icon={<FolderKanban className="size-5" />}
         />
-        <StatCard
+        <KpiCard
           value={completedValue}
           label="Completed Jurors"
           tooltip="Jurors who have completed scoring for all assigned groups and submitted their evaluations."
           metaLines={completedMetaLines}
-          ring={completedHasData ? { pct: completedPct, color: ringColor(completedPct) } : null}
+          ring={completedHasData ? { pct: completedPct } : null}
         />
-        <StatCard
+        <KpiCard
           value={scoredValue}
           label="Scored Evaluations"
-          tooltip="Total group×juror score rows with at least one criterion filled"
+          tooltip="Total group\u00d7juror score rows with at least one criterion filled"
           sub={scoredSub}
           metaLines={scoredMetaLines}
-          ring={scoredHasData ? { pct: scoredPct, color: ringColor(scoredPct) } : null}
+          ring={scoredHasData ? { pct: scoredPct } : null}
         />
-      </div>
+      </KpiGrid>
 
-      <div className="admin-section-header overview-section-header">
-        <div className="section-label">Juror Activity</div>
-      </div>
+      {/* Criteria Progress — full width */}
+      <CriteriaProgress
+        rawScores={rawScores}
+        criteriaTemplate={criteriaTemplate}
+      />
 
-      <JurorActivity jurorStats={jurorStats} groups={groups} />
+      {/* Juror Activity — full width */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Juror Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <JurorActivityTable jurorStats={jurorStats} groups={groups} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

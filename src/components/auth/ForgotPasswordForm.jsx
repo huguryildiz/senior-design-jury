@@ -1,11 +1,12 @@
 // src/components/auth/ForgotPasswordForm.jsx
-// ============================================================
-// Phase C.4: Forgot-password form — sends a Supabase Auth
-// password reset email via resetPasswordForEmail().
-// ============================================================
+// Phase 6: Forgot-password form with shadcn components.
 
 import { useState } from "react";
-import { AlertCircleIcon, MailIcon, CheckCircle2Icon } from "../../shared/Icons";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function ForgotPasswordForm({ onResetPassword, onBackToLogin }) {
   const [email, setEmail] = useState("");
@@ -15,83 +16,71 @@ export default function ForgotPasswordForm({ onResetPassword, onBackToLogin }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
+    if (!email.trim()) { setError("Please enter your email address."); return; }
     setError("");
     setLoading(true);
-    try {
-      await onResetPassword(email.trim());
-      setSent(true);
-    } catch (err) {
-      setError(err?.message || "Failed to send reset link. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    try { await onResetPassword(email.trim()); setSent(true); }
+    catch (err) { setError(err?.message || "Failed to send reset link. Please try again."); }
+    finally { setLoading(false); }
   }
 
   if (sent) {
     return (
-      <div className="admin-auth-form">
-        <div className="admin-auth-header">
-          <div className="premium-icon-square premium-icon-square--success" aria-hidden="true">
-            <CheckCircle2Icon />
+      <Card className="mx-auto w-full max-w-md">
+        <CardContent className="flex flex-col items-center gap-4 pt-8 pb-6 text-center">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+            <CheckCircle2 className="size-6" />
           </div>
-          <h2 className="admin-auth-title">Check Your Email</h2>
-          <p className="admin-auth-subtitle">
-            We sent a password reset link to <strong>{email}</strong>.
+          <h2 className="text-xl font-semibold">Check Your Email</h2>
+          <p className="text-sm text-muted-foreground">
+            We sent a password reset link to <strong className="text-foreground">{email}</strong>.
             Check your inbox and follow the link to set a new password.
           </p>
-        </div>
-
-        <button type="button" onClick={onBackToLogin} className="admin-auth-submit">
-          Back to Sign In
-        </button>
-      </div>
+          <Button onClick={onBackToLogin} className="w-full max-w-[200px]">
+            Back to Sign In
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="admin-auth-form">
-      <div className="admin-auth-header">
-        <div className="premium-icon-square" aria-hidden="true"><MailIcon /></div>
-        <h2 className="admin-auth-title">Reset Password</h2>
-        <p className="admin-auth-subtitle">
-          Enter your email address and we&apos;ll send you a link to reset your password.
-        </p>
-      </div>
+    <Card className="mx-auto w-full max-w-md">
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="admin-auth-form space-y-4" noValidate>
+          <div className="flex flex-col items-center gap-2 pb-2">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Mail className="size-6" />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight">Reset Password</h2>
+            <p className="text-center text-sm text-muted-foreground">
+              Enter your email address and we&apos;ll send you a link to reset your password.
+            </p>
+          </div>
 
-      {error && (
-        <div className="admin-auth-error">
-          <AlertCircleIcon size={16} />
-          <span>{error}</span>
-        </div>
-      )}
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-      <label className="admin-auth-label">
-        Email
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@university.edu"
-          autoComplete="email"
-          autoFocus
-          disabled={loading}
-          className="admin-auth-input"
-        />
-      </label>
+          <div className="space-y-1.5">
+            <Label htmlFor="forgot-email">Email</Label>
+            <Input id="forgot-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@university.edu" autoComplete="email" autoFocus disabled={loading} />
+          </div>
 
-      <button type="submit" disabled={loading} className="admin-auth-submit">
-        {loading ? "Sending…" : "Send Reset Link"}
-      </button>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Sending\u2026" : "Send Reset Link"}
+          </Button>
 
-      <div className="admin-auth-forgot">
-        <button type="button" onClick={onBackToLogin} className="admin-auth-home-link">
-          ← Back to Sign In
-        </button>
-      </div>
-    </form>
+          <div className="text-center">
+            <button type="button" onClick={onBackToLogin} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+              \u2190 Back to Sign In
+            </button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

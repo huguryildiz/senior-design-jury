@@ -30,13 +30,15 @@ import SettingsPage from "./admin/SettingsPage";
 import AlertCard from "./shared/AlertCard";
 import { AdminLayout } from "./admin/layout/AdminLayout";
 import { AdminHeader } from "./admin/layout/AdminHeader";
-import "./styles/admin-layout.css";
-import "./styles/admin-summary.css";
+// Phase 8: Removed CSS files for pages restyled with Tailwind
+// admin-layout.css — sidebar replaced in Phase 2A
+// admin-summary.css — overview KPIs restyled in Phase 3
+// admin-jurors.css — juror activity restyled in Phase 3
+// admin-dashboard.css — charts wrapped in Phase 5A
+// admin-responsive.css — Tailwind responsive utilities replace breakpoints
+// Kept: admin-details.css, admin-matrix.css, admin-manage.css (deep restyle pending)
 import "./styles/admin-details.css";
-import "./styles/admin-jurors.css";
 import "./styles/admin-matrix.css";
-import "./styles/admin-dashboard.css";
-import "./styles/admin-responsive.css";
 import "./styles/admin-manage.css";
 
 const CRITERIA_LIST = CRITERIA.map((c) => ({
@@ -339,6 +341,8 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
               jurorStats={jurorStats}
               groups={groups}
               metrics={overviewMetrics}
+              rawScores={rawScores}
+              criteriaTemplate={activeCriteria}
               onGoToSettings={() => setAdminTab("settings")}
             />
           )}

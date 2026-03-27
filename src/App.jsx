@@ -31,8 +31,7 @@ import RegisterForm from "./components/auth/RegisterForm";
 import CompleteProfileForm from "./components/auth/CompleteProfileForm";
 import ResetPasswordCreateForm from "./components/auth/ResetPasswordCreateForm";
 import PendingReviewGate from "./admin/components/PendingReviewGate";
-import "./styles/home.css";
-import "./styles/admin-auth.css";
+// Phase 8: home.css and admin-auth.css removed — pages restyled with Tailwind in Phase 6
 
 import veraLogoHome from "./assets/vera_logo.png";
 
@@ -317,71 +316,76 @@ function AppInner() {
 
   // ── Home page ─────────────────────────────────────────────
   return (
-    <div id="main-content" className="home">
+    <div id="main-content" className="home flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="home-bg" />
-      <div className="home-card">
+      <div className="home-card relative z-10 flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-border bg-card p-8 shadow-lg sm:p-10">
         <div className="home-logo-wrap">
-          <img className="home-logo" src={veraLogoHome} alt="VERA" loading="eager" />
+          <img className="home-logo h-16 w-auto" src={veraLogoHome} alt="VERA" loading="eager" />
         </div>
 
-        <p className="home-definition">
-          Verdict &amp; Evaluation Ranking Assistant
-        </p>
-        <p className="home-tagline">
-          A smarter way to evaluate and rank capstone projects
-        </p>
+        <div className="text-center">
+          <p className="home-definition text-sm font-medium tracking-wide text-muted-foreground uppercase">
+            Verdict &amp; Evaluation Ranking Assistant
+          </p>
+          <p className="home-tagline mt-2 text-lg font-semibold text-foreground">
+            A smarter way to evaluate and rank capstone projects
+          </p>
+        </div>
 
         {DEMO_MODE && (
-          <p className="home-demo-desc">
-            ✨ Live demo · Sample data · Resets daily
+          <p className="home-demo-desc rounded-full bg-amber-500/10 px-4 py-1.5 text-sm font-medium text-amber-600">
+            Live demo · Sample data · Resets daily
           </p>
         )}
 
-        <div className="home-buttons">
+        <div className="home-buttons flex w-full flex-col gap-3">
           <button
-            className="btn-primary big home-primary-btn"
+            className="btn-primary big home-primary-btn inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             onClick={() => DEMO_MODE ? setPage("jury") : setPage("jury_gate")}
           >
             <span className="home-btn-icon" aria-hidden="true"><ClipboardIcon /></span>
             {DEMO_MODE ? "Try Jury Flow" : "Start Evaluation"}
           </button>
-          <button className="btn-outline big home-secondary-btn" onClick={() => setPage("admin")}>
+          <button
+            className="btn-outline big home-secondary-btn inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+            onClick={() => setPage("admin")}
+          >
             <span className="home-btn-icon" aria-hidden="true"><ShieldUserIcon /></span>
             {DEMO_MODE ? "Explore Admin Panel" : "Admin Panel"}
           </button>
         </div>
 
-        <div className="home-footer">
+        <div className="home-footer flex flex-col items-center gap-2 pt-2 text-center text-xs text-muted-foreground">
           <span>
-            © 2026 VERA &nbsp;·&nbsp; Developed by{" "}
+            &copy; 2026 VERA &nbsp;&middot;&nbsp; Developed by{" "}
             <a
-              className="home-footer-link"
+              className="home-footer-link font-medium text-foreground hover:underline"
               href="https://huguryildiz.com"
               target="_blank"
               rel="noopener noreferrer"
             >
               Huseyin Ugur Yildiz
             </a>
-            {" "}· v1.0
+            {" "}&middot; v1.0
           </span>
           {DEMO_MODE ? (
             <a
-              className="home-footer-cta"
+              className="home-footer-cta inline-flex items-center gap-1 font-medium text-foreground hover:underline"
               href="https://vera-eval.app"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <svg className="size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               Visit Production
             </a>
           ) : (
             <a
-              className="home-footer-cta"
+              className="home-footer-cta inline-flex items-center gap-1 font-medium text-foreground hover:underline"
               href="https://demo.vera-eval.app"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <svg className="size-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               Try Live Demo
             </a>
           )}

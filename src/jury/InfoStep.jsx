@@ -1,17 +1,11 @@
 // src/jury/InfoStep.jsx
-// ============================================================
-// Step 1 — Juror identity form.
-//
-// The juror enters their name and department, then clicks
-// "Start Evaluation". All cloud-state feedback (saved progress,
-// already submitted) is handled by SheetsProgressDialog which
-// is rendered as an overlay in JuryForm after PIN verification.
-//
-// This component is intentionally simple: it collects identity
-// and delegates everything else downstream.
-// ============================================================
+// Step 1 — Juror identity form. Presentation-only restyle (Phase 7).
 
-import { InfoIcon, UserRoundCheckIcon, AlertCircleIcon, LandmarkIcon, UniversityIcon } from "../shared/Icons";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { UserCheck, Info, AlertCircle, Landmark, GraduationCap, CalendarDays, FolderKanban } from "lucide-react";
 
 const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
@@ -26,14 +20,10 @@ export default function InfoStep({
 }) {
   const canStart = juryName.trim().length > 0 && juryDept.trim().length > 0;
   const formatLongDate = (value) => {
-    if (!value) return "—";
+    if (!value) return "\u2014";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   };
   const semesterLabel = currentSemester?.semester_name || "-";
   const infoDate = currentSemester?.poster_date;
@@ -42,149 +32,106 @@ export default function InfoStep({
     typeof activeProjectCount === "number"
       ? `${activeProjectCount} Project Group${activeProjectCount === 1 ? "" : "s"}`
       : "-";
-  const calendarIcon = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar-days-icon lucide-calendar-days">
-      <path d="M8 2v4" />
-      <path d="M16 2v4" />
-      <rect width="18" height="18" x="3" y="4" rx="2" />
-      <path d="M3 10h18" />
-      <path d="M8 14h.01" />
-      <path d="M12 14h.01" />
-      <path d="M16 14h.01" />
-      <path d="M8 18h.01" />
-      <path d="M12 18h.01" />
-      <path d="M16 18h.01" />
-    </svg>
-  );
-  const projectIcon = (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-folder-kanban-icon lucide-folder-kanban">
-      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
-      <path d="M8 10v4" />
-      <path d="M12 10v2" />
-      <path d="M16 10v6" />
-    </svg>
-  );
-  const calendarParts = [semesterLabel, infoDateLabel].filter(Boolean);
-  const infoSegments = [
-    ...calendarParts.map((label, index) => ({
-      key: `calendar-${index}`,
-      label,
-      icon: index === 0 ? calendarIcon : null,
-    })),
-    {
-      key: "projects",
-      label: projectCountLabel,
-      icon: projectIcon,
-    },
-  ];
 
   return (
-    <div className="premium-screen">
-      <div className="premium-card">
-        <div className="premium-header">
-          <div className="premium-icon-square" aria-hidden="true"><UserRoundCheckIcon /></div>
-          <div className="premium-title">Jury Information</div>
-          {(currentSemester?.university || currentSemester?.department) && (
-            <div
-              className="premium-subtitle"
-              style={{ fontSize: "0.95rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.2rem" }}
-            >
-              {currentSemester?.university && (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-                  <span className="premium-info-icon" aria-hidden="true"><UniversityIcon /></span>
-                  {currentSemester.university}
-                </span>
-              )}
-              {currentSemester?.department && (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-                  <span className="premium-info-icon" aria-hidden="true"><LandmarkIcon /></span>
-                  {currentSemester.department}
-                </span>
-              )}
+    <div className="premium-screen flex min-h-dvh items-center justify-center p-4">
+      <Card className="premium-card w-full max-w-lg">
+        <CardContent className="space-y-5 pt-6">
+          {/* Header */}
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <UserCheck className="size-6" />
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight">Jury Information</h1>
+            {(currentSemester?.university || currentSemester?.department) && (
+              <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
+                {currentSemester?.university && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <GraduationCap className="size-4" />
+                    {currentSemester.university}
+                  </span>
+                )}
+                {currentSemester?.department && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Landmark className="size-4" />
+                    {currentSemester.department}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground" aria-label="Jury schedule summary">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="size-3.5" />
+                {semesterLabel}
+              </span>
+              <span className="text-muted-foreground/40">&middot;</span>
+              <span>{infoDateLabel}</span>
+              <span className="text-muted-foreground/40">&middot;</span>
+              <span className="inline-flex items-center gap-1">
+                <FolderKanban className="size-3.5" />
+                {projectCountLabel}
+              </span>
+            </div>
+          </div>
+
+          {/* Info banner */}
+          <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-sm text-blue-700">
+            <Info className="mt-0.5 size-4 shrink-0" />
+            <span>Name and institution / department cannot be changed once evaluation starts.</span>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive" role="alert">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <div>
+                <div className="font-medium">Could not continue</div>
+                <div className="mt-0.5 text-destructive/80">{error}</div>
+              </div>
             </div>
           )}
-          <div className="premium-info-block" aria-label="Jury schedule summary">
-            <div className="premium-info-line">
-              {infoSegments.map((segment, index) => (
-                <span key={segment.key} className="premium-info-item">
-                  {index > 0 && <span className="premium-info-sep" aria-hidden="true">·</span>}
-                  {segment.icon && (
-                    <span className="premium-info-icon" aria-hidden="true">
-                      {segment.icon}
-                    </span>
-                  )}
-                  {segment.label}
-                </span>
-              ))}
+
+          {/* Form */}
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="jury-name">Full Name</Label>
+              <Input
+                id="jury-name"
+                value={juryName}
+                onChange={(e) => setJuryName(e.target.value)}
+                placeholder="e.g. Jane Smith"
+                autoComplete="name"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="jury-dept">Institution / Department</Label>
+              <Input
+                id="jury-dept"
+                value={juryDept}
+                onChange={(e) => setJuryDept(e.target.value)}
+                placeholder="e.g. TED University / EE"
+                onKeyDown={(e) => { if (e.key === "Enter" && canStart) onStart(); }}
+              />
             </div>
           </div>
-        </div>
 
-        <div className="premium-info-strip">
-          <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
-          <span className="premium-info-strip-text">
-            Name and institution / department cannot be changed once evaluation starts.
-          </span>
-        </div>
-
-        {error && (
-          <div className="premium-error-banner" role="alert">
-            <AlertCircleIcon />
-            <div>
-              <div className="premium-error-title">Could not continue</div>
-              <div className="premium-error-detail">{error}</div>
+          {isDemoMode && (
+            <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-sm text-blue-700">
+              <Info className="mt-0.5 size-4 shrink-0" />
+              <span>In production, jurors enter their real name and institution / department.</span>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="info-form">
-          <div className="field">
-            <label htmlFor="jury-name">Full Name</label>
-            <input
-              id="jury-name"
-              value={juryName}
-              onChange={(e) => setJuryName(e.target.value)}
-              placeholder="e.g. Jane Smith"
-              autoComplete="name"
-              autoFocus
-              className="premium-input"
-            />
-          </div>
-
-          <div className="field">
-            <label htmlFor="jury-dept">
-              Institution / Department
-            </label>
-            <input
-              id="jury-dept"
-              value={juryDept}
-              onChange={(e) => setJuryDept(e.target.value)}
-              placeholder="e.g. TED University / EE"
-              onKeyDown={(e) => { if (e.key === "Enter" && canStart) onStart(); }}
-              className="premium-input"
-            />
-          </div>
-        </div>
-
-        {isDemoMode && (
-          <div className="premium-info-strip demo">
-            <span className="info-strip-icon" aria-hidden="true"><InfoIcon /></span>
-            <span>In production, jurors enter their real name and institution / department.</span>
-          </div>
-        )}
-
-        <button
-          className="premium-btn-primary"
-          disabled={!canStart}
-          onClick={onStart}
-        >
-          Start Evaluation →
-        </button>
-        <button className="premium-btn-link" onClick={onBack} type="button">
-          <span aria-hidden="true">←</span>
-          Return Home
-        </button>
-      </div>
+          {/* Actions */}
+          <Button className="w-full" disabled={!canStart} onClick={onStart}>
+            Start Evaluation \u2192
+          </Button>
+          <button type="button" className="block w-full text-center text-sm text-muted-foreground hover:text-foreground hover:underline" onClick={onBack}>
+            \u2190 Return Home
+          </button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

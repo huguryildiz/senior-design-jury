@@ -3,7 +3,7 @@
 // View switching is handled by AdminPanel (sub-nav bar above content).
 
 import { lazy, Suspense } from "react";
-import RankingsTab from "./RankingsTab";
+import RankingsTable from "./scores/RankingsTable";
 const AnalyticsTab = lazy(() => import("./AnalyticsTab"));
 import ScoreDetails from "./ScoreDetails";
 import ScoreGrid from "./ScoreGrid";
@@ -47,7 +47,7 @@ export default function ScoresTab({
   return (
     <div className="scores-tab">
       {view === "rankings" && (
-        <RankingsTab ranked={ranked} semesterName={semesterName} criteriaTemplate={criteriaTemplate} />
+        <RankingsTable ranked={ranked} semesterName={semesterName} criteriaTemplate={criteriaTemplate} />
       )}
       {view === "analytics" && (
         <ErrorBoundary fallback={<AnalyticsFallback />}>

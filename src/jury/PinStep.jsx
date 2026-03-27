@@ -1,21 +1,12 @@
 // src/jury/PinStep.jsx
-// ============================================================
-// PIN authentication screen.
-// Jurors enter their 4-digit access PIN.
-//
-// Props:
-//   pinError    : string  — error message (empty = no error)
-//   pinErrorCode: string  — "invalid" | "locked" | "not_found" | "no_pin" | "network" | "session_expired" | ""
-//   pinAttemptsLeft: number
-//   pinLockedUntil: string (timestamptz)
-//   onPinSubmit : (pin: string) => void
-//   onBack      : () => void
-// ============================================================
+// PIN authentication screen. Phase 7 restyle.
 
 import { useState, useRef, useEffect, useId } from "react";
-import { KeyRoundIcon, TriangleAlertIcon, LockIcon } from "../shared/Icons";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { KeyRound, TriangleAlert, Lock, Info } from "lucide-react";
 
-// ── 4-box PIN input with explicit OK button ───────────────────
+// ── 4-box PIN input ─────────────────────────────────────────
 function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   const PIN_LEN = 4;
   const [digits, setDigits] = useState(Array.from({ length: PIN_LEN }, () => ""));
@@ -23,20 +14,18 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   const inputId = useId();
   const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
-  // Reset boxes whenever an error is shown so the user can retry cleanly.
   useEffect(() => {
     if (pinError) {
       setDigits(Array.from({ length: PIN_LEN }, () => ""));
       setTimeout(() => inputRefs[0].current?.focus(), 50);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinError]);
+  }, [pinError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(i, val) {
     if (disabled) return;
-    const d    = val.replace(/\D/g, "").slice(-1);
+    const d = val.replace(/\D/g, "").slice(-1);
     const next = [...digits];
-    next[i]    = d;
+    next[i] = d;
     setDigits(next);
     if (d && i < PIN_LEN - 1) inputRefs[i + 1].current?.focus();
   }
@@ -44,23 +33,12 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   function handleKeyDown(i, e) {
     if (disabled) return;
     if (e.key === "Backspace") {
-      if (digits[i] === "" && i > 0) {
-        const next  = [...digits];
-        next[i - 1] = "";
-        setDigits(next);
-        inputRefs[i - 1].current?.focus();
-      } else {
-        const next = [...digits];
-        next[i]    = "";
-        setDigits(next);
-      }
+      if (digits[i] === "" && i > 0) { const next = [...digits]; next[i - 1] = ""; setDigits(next); inputRefs[i - 1].current?.focus(); }
+      else { const next = [...digits]; next[i] = ""; setDigits(next); }
     }
-    if (e.key === "ArrowLeft"  && i > 0) inputRefs[i - 1].current?.focus();
+    if (e.key === "ArrowLeft" && i > 0) inputRefs[i - 1].current?.focus();
     if (e.key === "ArrowRight" && i < PIN_LEN - 1) inputRefs[i + 1].current?.focus();
-    if (e.key === "Enter") {
-      const pin = digits.join("");
-      if (pin.length === PIN_LEN) onSubmit(pin);
-    }
+    if (e.key === "Enter") { const pin = digits.join(""); if (pin.length === PIN_LEN) onSubmit(pin); }
   }
 
   function handlePaste(e) {
@@ -71,22 +49,14 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
     if (!stripped) return;
     const next = Array.from({ length: PIN_LEN }, (_, i) => stripped[i] || "");
     setDigits(next);
-    const focusIdx = Math.min(stripped.length, PIN_LEN - 1);
-    inputRefs[focusIdx].current?.focus();
-  }
-
-  function handleOk() {
-    if (disabled) return;
-    const pin = digits.join("");
-    if (pin.length === PIN_LEN) onSubmit(pin);
+    inputRefs[Math.min(stripped.length, PIN_LEN - 1)].current?.focus();
   }
 
   const isComplete = digits.every((d) => d !== "");
-  const isDisabled = disabled || !isComplete;
 
   return (
-    <div className={`pin-input-group${shake ? " pin-input-group--shake" : ""}`}>
-      <div className="pin-boxes-row" role="group" aria-label="4-digit PIN">
+    <div className={`pin-input-group space-y-4${shake ? " pin-input-group--shake" : ""}`}>
+      <div className="flex justify-center gap-3" role="group" aria-label="4-digit PIN">
         {digits.map((d, i) => (
           <input
             key={i}
@@ -109,21 +79,19 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={handlePaste}
-            className={`pin-box${pinError ? " pin-box--error" : ""}`}
+            className={`pin-box flex size-14 items-center justify-center rounded-lg border-2 text-center text-2xl font-bold tabular-nums font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+              pinError ? "border-destructive bg-destructive/5" : "border-border bg-muted"
+            }`}
             disabled={disabled}
           />
         ))}
       </div>
-      <button
-        className="premium-btn-primary pin-ok-btn"
-        onClick={handleOk}
-        disabled={isDisabled}
-      >
-        Verify PIN →
-      </button>
+      <Button className="w-full" onClick={() => { if (!disabled && isComplete) onSubmit(digits.join("")); }} disabled={disabled || !isComplete}>
+        Verify PIN &rarr;
+      </Button>
       <button
         type="button"
-        className="pin-show-toggle"
+        className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
         onClick={() => setShowPin((v) => !v)}
         aria-pressed={showPin}
         tabIndex={-1}
@@ -134,56 +102,36 @@ function PinBoxes({ onSubmit, pinError, shake, disabled }) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────
-export default function PinStep({
-  pinError,
-  pinErrorCode,
-  pinAttemptsLeft,
-  pinLockedUntil,
-  onPinSubmit,
-  onBack,
-}) {
-  const [shake,       setShake]       = useState(false);
+// ── Main component ──────────────────────────────────────────
+export default function PinStep({ pinError, pinErrorCode, pinAttemptsLeft, pinLockedUntil, onPinSubmit, onBack }) {
+  const [shake, setShake] = useState(false);
   const authActiveRef = useRef(false);
   const isLocked = pinErrorCode === "locked";
-  const isSessionExpired = pinErrorCode === "session_expired";
   const attemptsLeft = typeof pinAttemptsLeft === "number" ? Math.max(0, pinAttemptsLeft) : null;
   const errorTitle =
-    pinErrorCode === "session_expired"
-      ? "Oturum sona erdi"
-      : pinErrorCode === "locked"
-        ? "Too many login attempts"
-        : pinErrorCode === "network"
-          ? "Connection error"
-        : pinErrorCode === "not_found"
-          ? "Juror not found"
-          : pinErrorCode === "no_pin"
-            ? "PIN required"
-            : "Incorrect PIN";
+    pinErrorCode === "session_expired" ? "Oturum sona erdi"
+      : pinErrorCode === "locked" ? "Too many login attempts"
+        : pinErrorCode === "network" ? "Connection error"
+          : pinErrorCode === "not_found" ? "Juror not found"
+            : pinErrorCode === "no_pin" ? "PIN required"
+              : "Incorrect PIN";
   const lockedUntilText = (() => {
     if (!pinLockedUntil) return "";
     const d = new Date(pinLockedUntil);
     if (Number.isNaN(d.getTime())) return "";
     const pad = (v) => String(v).padStart(2, "0");
-    const day = pad(d.getDate());
-    const month = pad(d.getMonth() + 1);
-    const year = d.getFullYear();
-    const hour = pad(d.getHours());
-    const minute = pad(d.getMinutes());
-    return `${day}.${month}.${year} ${hour}:${minute}`;
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   })();
   const errorDetail =
-    pinErrorCode === "locked" && lockedUntilText
-      ? `You cannot login until ${lockedUntilText}`
-      : pinErrorCode === "invalid" && attemptsLeft !== null && attemptsLeft > 0
-        ? `Please try again. ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} remaining.`
-      : pinError;
+    pinErrorCode === "locked" && lockedUntilText ? `You cannot login until ${lockedUntilText}`
+      : pinErrorCode === "invalid" && attemptsLeft !== null && attemptsLeft > 0 ? `Please try again. ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} remaining.`
+        : pinError;
 
   useEffect(() => {
     if (!pinError) return;
     setShake(false);
     const raf = requestAnimationFrame(() => setShake(true));
-    const t   = setTimeout(() => setShake(false), 260);
+    const t = setTimeout(() => setShake(false), 260);
     try { if (navigator?.vibrate) navigator.vibrate([60, 40, 60]); } catch {}
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
   }, [pinError]);
@@ -191,91 +139,68 @@ export default function PinStep({
   const handleVerify = async (pin) => {
     if (authActiveRef.current) return;
     authActiveRef.current = true;
-    try {
-      await Promise.resolve(onPinSubmit(pin));
-    } catch {}
+    try { await Promise.resolve(onPinSubmit(pin)); } catch {}
     authActiveRef.current = false;
   };
 
   if (isLocked) {
     return (
-      <>
-        <div className="premium-screen">
-          <div className="premium-card">
-            <div className="premium-header">
-              <div className="premium-icon-square" aria-hidden="true">
-                <LockIcon />
+      <div className="premium-screen flex min-h-dvh items-center justify-center p-4">
+        <Card className="w-full max-w-lg">
+          <CardContent className="space-y-5 pt-6">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <Lock className="size-6" />
               </div>
-              <div className="premium-title">Too many login attempts</div>
-              <div className="premium-subtitle">This session has been temporarily locked for security reasons.</div>
+              <h1 className="text-xl font-semibold">Too many login attempts</h1>
+              <p className="text-sm text-muted-foreground">This session has been temporarily locked for security reasons.</p>
             </div>
-
-            <div className="premium-info-strip">
-              <span className="info-strip-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4" />
-                  <path d="M12 8h.01" />
-                </svg>
-              </span>
-              <div className="premium-info-strip-justify">
-                {lockedUntilText
-                  ? `You can try again after ${lockedUntilText}, or contact the administrator to reset your PIN.`
-                  : "Please try again later."}
-              </div>
+            <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-sm text-blue-700">
+              <Info className="mt-0.5 size-4 shrink-0" />
+              <span>{lockedUntilText ? `You can try again after ${lockedUntilText}, or contact the administrator to reset your PIN.` : "Please try again later."}</span>
             </div>
-
             {onBack && (
-              <button className="premium-btn-link" type="button" onClick={onBack}
-                style={{ marginTop: 4 }}>
-                ← Return Home
+              <button type="button" className="block w-full text-center text-sm text-muted-foreground hover:text-foreground hover:underline" onClick={onBack}>
+                &larr; Return Home
               </button>
             )}
-          </div>
-        </div>
-      </>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="premium-screen">
-        <div className={`premium-card${shake ? " premium-card--shake" : ""}`}>
-          <div className="premium-header">
-            <div className="premium-icon-square" aria-hidden="true">
-              <KeyRoundIcon />
+    <div className="premium-screen flex min-h-dvh items-center justify-center p-4">
+      <Card className="w-full max-w-lg">
+        <CardContent className="space-y-5 pt-6">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <KeyRound className="size-6" />
             </div>
-            <div className="premium-title">Enter your access PIN</div>
-            <div className="premium-subtitle">Enter your 4-digit PIN to continue.</div>
+            <h1 className="text-xl font-semibold tracking-tight">Enter your access PIN</h1>
+            <p className="text-sm text-muted-foreground">Enter your 4-digit PIN to continue.</p>
           </div>
 
           {(pinError || pinErrorCode) && (
-            <div className="premium-error-banner pin-error-banner">
-              <TriangleAlertIcon />
-              <div className="pin-error-copy">
-                <div className="premium-error-title">{errorTitle}</div>
-                {errorDetail ? <div className="premium-error-detail">{errorDetail}</div> : null}
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive" role="alert">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+              <div>
+                <div className="font-medium">{errorTitle}</div>
+                {errorDetail && <div className="mt-0.5 opacity-80">{errorDetail}</div>}
               </div>
             </div>
           )}
 
-          <PinBoxes
-            onSubmit={handleVerify}
-            pinError={pinError}
-            shake={shake}
-            disabled={isLocked}
-          />
+          <PinBoxes onSubmit={handleVerify} pinError={pinError} shake={shake} disabled={isLocked} />
 
           {onBack && (
-            <button className="premium-btn-link" type="button" onClick={onBack}
-              style={{ marginTop: 16 }}>
-              ← Return Home
+            <button type="button" className="block w-full text-center text-sm text-muted-foreground hover:text-foreground hover:underline" onClick={onBack}>
+              &larr; Return Home
             </button>
           )}
-        </div>
-      </div>
-    </>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

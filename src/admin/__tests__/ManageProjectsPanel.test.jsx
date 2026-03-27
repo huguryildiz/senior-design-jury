@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, vi } from "vitest";
 import ManageProjectsPanel from "../ManageProjectsPanel";
 import { qaTest } from "../../test/qaTest.js";
@@ -168,8 +168,11 @@ describe("ManageProjectsPanel — edit modal safety", () => {
         onEditGroup={onEditGroup}
       />
     );
-    // Open edit modal
-    fireEvent.click(screen.getByLabelText(/edit group 1/i));
+    // Open actions dropdown then click Edit
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /edit/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /edit/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument());
     // Click save
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
@@ -236,7 +239,7 @@ describe("ManageProjectsPanel — import flow hardening", () => {
 describe("ManageProjectsPanel — delete guard", () => {
   beforeEach(() => localStorage.clear());
 
-  qaTest("groups.delete.02", () => {
+  qaTest("groups.delete.02", async () => {
     const onDeleteProject = vi.fn();
     render(
       <ManageProjectsPanel
@@ -246,7 +249,11 @@ describe("ManageProjectsPanel — delete guard", () => {
         onDeleteProject={onDeleteProject}
       />
     );
-    fireEvent.click(screen.getByLabelText(/delete group 1/i));
+    // Open actions dropdown then click Delete
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /delete/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /delete/i }));
     // onDeleteProject must NOT be called when id is missing
     expect(onDeleteProject).not.toHaveBeenCalled();
     // Panel error must appear
@@ -257,13 +264,17 @@ describe("ManageProjectsPanel — delete guard", () => {
 describe("ManageProjectsPanel — CRUD smoke tests", () => {
   beforeEach(() => localStorage.clear());
 
-  qaTest("groups.crud.01", () => {
+  qaTest("groups.crud.01", async () => {
     const project = { id: "p1", group_no: 1, project_title: "Project A", group_students: "Alice" };
     const onDeleteProject = vi.fn();
     render(
       <ManageProjectsPanel {...DEFAULT_PROPS} projects={[project]} onDeleteProject={onDeleteProject} />
     );
-    fireEvent.click(screen.getByLabelText(/delete group 1/i));
+    // Open actions dropdown then click Delete
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /delete/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /delete/i }));
     expect(onDeleteProject).toHaveBeenCalledTimes(1);
     expect(onDeleteProject).toHaveBeenCalledWith(
       expect.objectContaining({ id: "p1" }),
@@ -288,8 +299,11 @@ describe("ManageProjectsPanel — stale edit conflict", () => {
     const { rerender } = render(
       <ManageProjectsPanel {...DEFAULT_PROPS} projects={[project]} onEditGroup={onEditGroup} />
     );
-    // Open edit modal
-    fireEvent.click(screen.getByLabelText(/edit group 1/i));
+    // Open actions dropdown then click Edit
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /edit/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /edit/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument());
     // Simulate external update: project updated_at changes while modal is open
     const updatedProject = { ...project, updated_at: "2024-01-02T00:00:00Z" };
@@ -319,8 +333,11 @@ describe("ManageProjectsPanel — external delete during edit", () => {
     const { rerender } = render(
       <ManageProjectsPanel {...DEFAULT_PROPS} projects={[project]} />
     );
-    // Open edit modal
-    fireEvent.click(screen.getByLabelText(/edit group 1/i));
+    // Open actions dropdown then click Edit
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /edit/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /edit/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument());
     // Simulate external delete: project disappears from list
     await act(async () => {

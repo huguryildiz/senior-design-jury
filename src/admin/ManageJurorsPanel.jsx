@@ -6,23 +6,13 @@ import {
   UploadIcon,
   FileUpIcon,
   CloudUploadIcon,
-  LandmarkIcon,
-  UserCheckIcon,
-  LockIcon,
-  KeyRoundIcon,
-  PencilIcon,
-  SearchIcon,
   UserCogIcon,
   CirclePlusIcon,
-  CircleDotIcon,
-  LoaderIcon,
+  PencilIcon,
 } from "../shared/Icons";
-import DangerIconButton from "../components/admin/DangerIconButton";
-import LastActivity from "./LastActivity";
-import { jurorStatusMeta } from "./scoreHelpers";
-import { buildTimestampSearchText, formatTs, parseCsv } from "./utils";
+import { parseCsv } from "./utils";
 import AlertCard from "../shared/AlertCard";
-import Tooltip from "../shared/Tooltip";
+import JurorsTable from "./jurors/JurorsTable";
 
 function normalizeKey(name, inst) {
   const norm = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -57,7 +47,6 @@ export default function ManageJurorsPanel({
   const panelRef = useRef(null);
   const fileRef = useRef(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ juror_name: "", juror_inst: "" });
   const [addError, setAddError] = useState("");
   const [showEdit, setShowEdit] = useState(false);
@@ -70,9 +59,7 @@ export default function ManageJurorsPanel({
   const [importError, setImportError] = useState("");
   const [importWarning, setImportWarning] = useState("");
   const [isImporting, setIsImporting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [pendingEdits, setPendingEdits] = useState(() => new Set());
-  const PREVIEW_JUROR_COUNT = 4;
 
   const isDirty =
     (showAdd && (form.juror_name.trim() !== "" || form.juror_inst.trim() !== "")) ||
@@ -89,35 +76,8 @@ export default function ManageJurorsPanel({
     onToggle();
   };
 
-  const updateScrollState = (el) => {
-    if (!el) return;
-    const isOverflowing = el.scrollWidth > el.clientWidth + 1;
-    el.classList.toggle("is-overflowing", isOverflowing);
-    el.classList.toggle("is-scrolled", el.scrollLeft > 0);
-  };
-  const handleMetaScroll = (e) => updateScrollState(e.currentTarget);
-
-  // ── Permission helpers (ported from ManagePermissionsPanel) ──
+  // ── Permission helpers ──
   const toBool = (v) => v === true || v === "true" || v === "t" || v === 1;
-  const formatProgressLabel = (label, completed, total) => `${label} (${completed}/${total})`;
-  const getProgressMeta = (j) => {
-    const safeTotal = Math.max(0, Number(j.overviewTotalProjects ?? j.totalProjects ?? j.total_projects ?? 0) || 0);
-    const scoredProjectsRaw = Number(j.overviewScoredProjects ?? j.completedProjects ?? j.completed_projects ?? 0) || 0;
-    const startedProjectsRaw = Number(j.overviewStartedProjects ?? scoredProjectsRaw) || 0;
-    const displayCompleted = safeTotal > 0 ? Math.min(Math.max(scoredProjectsRaw, 0), safeTotal) : Math.max(scoredProjectsRaw, 0);
-    const startedProjects = Math.max(startedProjectsRaw, displayCompleted);
-    const editEnabled = toBool(j.editEnabled ?? j.edit_enabled);
-    const isCompleted = Boolean(j.finalSubmittedAt ?? j.final_submitted_at);
-    const hasGroups = safeTotal > 0;
-    const hasStartedAny = startedProjects > 0;
-    const isReadyToSubmit = hasGroups && !editEnabled && !isCompleted && displayCompleted >= safeTotal;
-    const statusKey = j.overviewStatus
-      || (editEnabled ? "editing"
-        : (isCompleted ? "completed"
-          : (isReadyToSubmit ? "ready_to_submit"
-            : (hasStartedAny ? "in_progress" : "not_started"))));
-    return { safeTotal, displayCompleted, editEnabled, isCompleted, hasGroups, hasStartedAny, isReadyToSubmit, statusKey };
-  };
   const evalLockActive = toBool(settings?.evalLockActive);
   const hasActiveSemester = !!currentSemesterId;
 
@@ -146,86 +106,11 @@ export default function ManageJurorsPanel({
 
   const canSubmit = form.juror_name.trim() && form.juror_inst.trim();
   const canEdit = editForm.juror_name.trim() && editForm.juror_inst.trim();
-  const isJurorLocked = (j) => {
-    const lockedUntil = j.locked_until || j.lockedUntil;
-    if (typeof j.is_locked === "boolean") return j.is_locked;
-    if (typeof j.is_locked === "string") {
-      return j.is_locked.toLowerCase() === "true" || j.is_locked.toLowerCase() === "t";
-    }
-    if (!lockedUntil) return false;
-    const d = new Date(lockedUntil);
-    return !Number.isNaN(d.getTime()) && d > new Date();
-  };
-  const orderedJurors = [...jurors].sort((a, b) => {
-    const aLocked = isJurorLocked(a);
-    const bLocked = isJurorLocked(b);
-    if (aLocked !== bLocked) return Number(bLocked) - Number(aLocked);
-    const aName = (a.juryName || a.juror_name || "").toLowerCase();
-    const bName = (b.juryName || b.juror_name || "").toLowerCase();
-    return aName.localeCompare(bName);
-  });
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredJurors = normalizedSearch
-    ? orderedJurors.filter((j) => {
-      const name = j.juryName || j.juror_name || "";
-      const inst = j.juryDept || j.juror_inst || "";
-      const { safeTotal, displayCompleted, editEnabled, isCompleted, hasStartedAny, statusKey } = getProgressMeta(j);
-      const statusTokens = statusKey === "completed"
-        ? "completed tamamlandi tamamlandı"
-        : statusKey === "ready_to_submit"
-          ? "ready to submit hazır hazir"
-        : statusKey === "in_progress"
-            ? "in progress devam ediyor"
-            : statusKey === "editing"
-              ? "editing düzenleme"
-              : "not started baslamadi başlamadı";
-      const actionTokens = editEnabled
-        ? "lock editing"
-        : (isCompleted ? "unlock editing" : "");
-      const progressLabel = safeTotal > 0
-        ? formatProgressLabel(
-            statusKey === "editing" ? "Editing"
-              : statusKey === "ready_to_submit" ? "Ready to submit"
-              : isCompleted ? "Completed"
-              : hasStartedAny ? "In progress" : "Not started",
-            displayCompleted, safeTotal)
-        : "";
-      const lastActivity =
-        j.lastActivityAt || j.last_activity_at || j.lastSeenAt || j.last_seen_at || j.updatedAt || j.updated_at || "";
-      const lastActivitySearch = buildTimestampSearchText(lastActivity);
-      const formattedActivity = lastActivity ? formatTs(lastActivity) : "";
-      const haystack = [
-        name, inst, statusTokens, actionTokens, progressLabel, lastActivitySearch, formattedActivity,
-      ].join(" ").toLowerCase();
-      const actionQuery = normalizedSearch.replace(/\s+/g, " ").trim();
-      if (actionQuery === "lock editing") return editEnabled;
-      if (actionQuery === "unlock editing") return !editEnabled && isCompleted;
-      return haystack.includes(normalizedSearch);
-    })
-    : orderedJurors;
-  const visibleJurors = normalizedSearch
-    ? filteredJurors
-    : (showAll ? orderedJurors : orderedJurors.slice(0, PREVIEW_JUROR_COUNT));
   const existingJurorKeys = new Set(
     (jurors || []).map((j) =>
       normalizeKey(j.juryName || j.juror_name, j.juryDept || j.juror_inst)
     )
   );
-
-  useEffect(() => {
-    const root = panelRef.current;
-    if (!root) return;
-    const updateAll = () => {
-      root.querySelectorAll(".manage-meta-scroll").forEach((el) => updateScrollState(el));
-    };
-    const raf = requestAnimationFrame(updateAll);
-    window.addEventListener("resize", updateAll);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", updateAll);
-    };
-  }, [visibleJurors, showAll, searchTerm, isOpen, isMobile]);
-
 
   const MAX_CSV_BYTES = 2 * 1024 * 1024; // 2MB
 
@@ -408,201 +293,22 @@ export default function ManageJurorsPanel({
             </button>
           </div>
 
-          <div className="manage-list">
-            <div className="manage-search">
-              <span className="manage-search-icon" aria-hidden="true"><SearchIcon /></span>
-              <input
-                className="manage-input manage-search-input"
-                type="text"
-                placeholder="Search jurors"
-                aria-label="Search jurors"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {isMobile && (
-              <div className="manage-hint manage-hint-inline">Swipe horizontally on text to view full content.</div>
-            )}
-            {visibleJurors.map((j) => {
-              const isLocked = isJurorLocked(j);
-              const jurorId = j.jurorId || j.juror_id;
-              const lastActivityAt =
-                j.lastActivityAt || j.last_activity_at || j.lastSeenAt || j.last_seen_at || j.updatedAt || j.updated_at || "";
-              const { safeTotal, displayCompleted, editEnabled, isCompleted, hasGroups, statusKey } = getProgressMeta(j);
-              const completionStatusKey = hasGroups ? statusKey : "not_started";
-              const meta = jurorStatusMeta[completionStatusKey] || jurorStatusMeta.not_started;
-              const StatusIcon = meta.icon;
-              const chipClass = [
-                "manage-item-completion", "manage-status-chip",
-                completionStatusKey === "completed" ? "is-complete"
-                  : completionStatusKey === "ready_to_submit" ? "is-ready-to-submit"
-                  : completionStatusKey === "in_progress" ? "is-in-progress"
-                  : completionStatusKey === "editing" ? "is-editing"
-                  : "is-not-started",
-              ].join(" ");
-              const isPending = pendingEdits.has(jurorId);
-              const canEnableEdit = hasActiveSemester && !evalLockActive && !editEnabled && isCompleted && !isPending;
-              const canForceClose = hasActiveSemester && editEnabled && !isPending;
-              const showEditControls = editEnabled || (isCompleted && !evalLockActive);
-              return (
-                <div
-                  key={jurorId}
-                  className={`manage-item manage-item--juror${isLocked ? " is-pin-locked" : ""}`}
-                >
-                  <div className="manage-item-main--juror">
-                    <div className="manage-item-title">
-                      <span className="manage-item-juror-name">
-                        <span className="manage-item-icon" aria-hidden="true">
-                          <UserCheckIcon />
-                        </span>
-                        <span className="manage-item-text manage-meta-scroll" onScroll={handleMetaScroll}>
-                          {j.juryName || j.juror_name}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="manage-item-sub manage-item-juror-inst">
-                      <span className="manage-item-icon" aria-hidden="true">
-                        <LandmarkIcon />
-                      </span>
-                      <span className="manage-item-text manage-meta-scroll" onScroll={handleMetaScroll}>
-                        {j.juryDept || j.juror_inst}
-                      </span>
-                    </div>
-                    <div className="manage-item-sub manage-meta-line manage-meta-line--status">
-                      <span className="manage-meta-icon manage-status-dot-icon" aria-hidden="true">
-                        <CircleDotIcon />
-                      </span>
-                      <span className={chipClass}>
-                        <span className="manage-status-chip-icon" aria-hidden="true"><StatusIcon /></span>
-                        <span className="manage-status-chip-text">
-                          {hasGroups ? formatProgressLabel(meta.label, displayCompleted, safeTotal) : "No groups assigned"}
-                        </span>
-                      </span>
-                    </div>
-                    {lastActivityAt && (
-                      <div className="manage-item-sub manage-meta-line manage-meta-line--juror-last">
-                        <LastActivity value={lastActivityAt} />
-                      </div>
-                    )}
-                  </div>
-                  {isLocked && (
-                    <span className="manage-pin-lock-chip" aria-label="PIN Locked">
-                      <span className="manage-pin-lock-chip-icon" aria-hidden="true">
-                        <LockIcon />
-                      </span>
-                      <span className="manage-pin-lock-chip-text">PIN Locked</span>
-                    </span>
-                  )}
-                  <div className="manage-card-actions-bar">
-                    {showEditControls && (editEnabled || isCompleted) && !evalLockActive && (
-                      <>
-                        {isPending && (
-                          <span className="manage-toggle-spinner manage-toggle-spinner--left" aria-hidden="true">
-                            <LoaderIcon />
-                          </span>
-                        )}
-                        {editEnabled && (
-                          <Tooltip text="Lock editing">
-                            <button
-                              type="button"
-                              className="manage-icon-btn with-label manage-cancel-edit-action"
-                              disabled={!canForceClose || isDemoMode}
-                              title="Lock editing and return juror to completed state."
-                              aria-label="Lock editing"
-                              onClick={() => canForceClose && handleForceCloseEditWithPending({ jurorId })}
-                            >
-                              <span aria-hidden="true"><LockIcon /></span>
-                              <span className="manage-icon-btn-label">Lock</span>
-                            </button>
-                          </Tooltip>
-                        )}
-                        {!editEnabled && isCompleted && (
-                          <Tooltip text="Unlock editing">
-                            <button
-                              type="button"
-                              className="manage-icon-btn with-label manage-enable-edit-action"
-                              disabled={!canEnableEdit || isDemoMode}
-                              title="Allow juror to reopen and resubmit the evaluation."
-                              aria-label="Unlock editing"
-                              onClick={() => canEnableEdit && handleToggleEditWithPending({ jurorId, enabled: true })}
-                            >
-                              <span aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                  className="lucide lucide-lock-open-icon lucide-lock-open">
-                                  <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                                  <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-                                </svg>
-                              </span>
-                              <span className="manage-icon-btn-label">Unlock</span>
-                            </button>
-                          </Tooltip>
-                        )}
-                      </>
-                    )}
-                    <Tooltip text="Reset juror PIN">
-                      <button
-                        className={`manage-icon-btn with-label${isLocked ? " is-warning" : ""}`}
-                        type="button"
-                        aria-label={`Reset PIN for ${j.juryName || j.juror_name}`}
-                        onClick={() => {
-                          onResetPin?.({
-                            jurorId: j.jurorId || j.juror_id,
-                            juror_name: j.juryName || j.juror_name || "",
-                            juror_inst: j.juryDept || j.juror_inst || "",
-                          });
-                        }}
-                      >
-                        <KeyRoundIcon />
-                        <span className="manage-icon-btn-label">PIN</span>
-                      </button>
-                    </Tooltip>
-                    <Tooltip text="Edit juror">
-                      <button
-                        className="manage-icon-btn with-label"
-                        type="button"
-                        aria-label={`Edit ${j.juryName || j.juror_name}`}
-                        onClick={() => {
-                          setEditTarget(j);
-                          setEditForm({
-                            juror_name: j.juryName || j.juror_name || "",
-                            juror_inst: j.juryDept || j.juror_inst || "",
-                          });
-                          setShowEdit(true);
-                        }}
-                      >
-                        <PencilIcon />
-                        <span className="manage-icon-btn-label">Edit</span>
-                      </button>
-                    </Tooltip>
-                    <DangerIconButton
-                      ariaLabel={`Delete ${j.juryName || j.juror_name}`}
-                      title="Delete juror"
-                      showLabel={false}
-                      onClick={() => onDeleteJuror?.(j)}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            {!normalizedSearch && jurors.length === 0 && (
-              <div className="manage-empty">No jurors found.</div>
-            )}
-            {normalizedSearch && filteredJurors.length === 0 && (
-              <div className="manage-empty manage-empty-search">No results.</div>
-            )}
-          </div>
-
-          {!normalizedSearch && jurors.length > PREVIEW_JUROR_COUNT && (
-            <button
-              className="manage-btn ghost"
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-            >
-              {showAll ? "Show fewer jurors" : `Show all jurors (${jurors.length})`}
-            </button>
-          )}
+          <JurorsTable
+            jurors={jurors}
+            isDemoMode={isDemoMode}
+            evalLockActive={evalLockActive}
+            hasActiveSemester={hasActiveSemester}
+            pendingEdits={pendingEdits}
+            onEdit={({ jurorId, juror_name, juror_inst }) => {
+              setEditTarget({ jurorId, juror_name, juror_inst });
+              setEditForm({ juror_name, juror_inst });
+              setShowEdit(true);
+            }}
+            onDelete={(j) => onDeleteJuror?.(j)}
+            onResetPin={(j) => onResetPin?.(j)}
+            onToggleEdit={handleToggleEditWithPending}
+            onForceCloseEdit={handleForceCloseEditWithPending}
+          />
 
           {showAdd && (
             <div className="manage-modal">

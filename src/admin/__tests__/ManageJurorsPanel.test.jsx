@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, vi } from "vitest";
 import ManageJurorsPanel from "../ManageJurorsPanel";
 import { qaTest } from "../../test/qaTest.js";
@@ -103,11 +103,15 @@ describe("ManageJurorsPanel — CSV import validation", () => {
 });
 
 describe("ManageJurorsPanel — PIN reset", () => {
-  qaTest("jurors.pin.01", () => {
+  qaTest("jurors.pin.01", async () => {
     const juror = { juror_id: "j1", juror_name: "Alice", juror_inst: "EE" };
     const onResetPin = vi.fn();
     render(<ManageJurorsPanel {...DEFAULT_PROPS} jurors={[juror]} onResetPin={onResetPin} />);
-    fireEvent.click(screen.getByLabelText(/reset pin for alice/i));
+    // Open actions dropdown within table
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /reset pin/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /reset pin/i }));
     expect(onResetPin).toHaveBeenCalledTimes(1);
     expect(onResetPin).toHaveBeenCalledWith(
       expect.objectContaining({ jurorId: "j1", juror_name: "Alice" })
@@ -116,13 +120,17 @@ describe("ManageJurorsPanel — PIN reset", () => {
 });
 
 describe("ManageJurorsPanel — CRUD smoke tests", () => {
-  qaTest("jurors.crud.01", () => {
+  qaTest("jurors.crud.01", async () => {
     const juror = { juror_id: "j1", juror_name: "Alice", juror_inst: "EE" };
     const onDeleteJuror = vi.fn();
     render(
       <ManageJurorsPanel {...DEFAULT_PROPS} jurors={[juror]} onDeleteJuror={onDeleteJuror} />
     );
-    fireEvent.click(screen.getByLabelText(/delete alice/i));
+    // Open actions dropdown within table
+    const table = screen.getByRole("table");
+    fireEvent.click(within(table).getByRole("button", { name: "Actions" }));
+    await waitFor(() => screen.getByRole("menuitem", { name: /delete/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /delete/i }));
     expect(onDeleteJuror).toHaveBeenCalledTimes(1);
     expect(onDeleteJuror).toHaveBeenCalledWith(expect.objectContaining({ juror_id: "j1" }));
   });

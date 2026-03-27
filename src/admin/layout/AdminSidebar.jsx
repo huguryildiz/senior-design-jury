@@ -68,8 +68,11 @@ import {
   ChevronsUpDown,
   LogOut,
   Building2,
+  Sun,
+  Moon,
 } from "lucide-react";
 import veraLogo from "../../assets/vera_logo.png";
+import { useTheme } from "../../shared/theme/ThemeProvider";
 
 // ---------------------------------------------------------------------------
 // Navigation configuration
@@ -250,15 +253,27 @@ function ScoresCollapsible({ adminTab, scoresView, onNavigate, onScoresViewChang
   );
 }
 
-/** User profile footer with avatar, name, and logout. */
+/** User profile footer with avatar, name, theme toggle, and logout. */
 function SidebarUserFooter({ user, displayName, onLogout }) {
   const email = user?.email || "";
   const initials = getInitials(displayName, email);
-  const label = displayName || email;
+  const { theme, setTheme } = useTheme();
 
   return (
     <SidebarFooter>
       <SidebarMenu>
+        {/* Theme toggle */}
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            tooltip={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <Sun /> : <Moon />}
+            <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {/* User menu */}
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-2 text-sm ring-sidebar-ring outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2">
