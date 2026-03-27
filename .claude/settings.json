@@ -36,7 +36,9 @@
       "Bash(git replace:*)",
       "Bash(git filter-branch:*)",
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --tag-name-filter cat -- HEAD)",
-      "Bash(grep -E \"\\\\.jsx$|\\\\.js$\")"
+      "Bash(grep -E \"\\\\.jsx$|\\\\.js$\")",
+      "Bash(ls /Users/huguryildiz/Documents/GitHub/VERA/postcss.config.*)",
+      "Bash(ls /Users/huguryildiz/Documents/GitHub/VERA/tailwind.config.*)"
     ]
   }
 }
