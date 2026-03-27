@@ -73,8 +73,8 @@ describe("ManageOrganizationsPanel", () => {
 
     expect(screen.getByText("Alice Smith")).toBeInTheDocument();
     expect(screen.getByText("Bob Jones")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /alice@tedu\.edu/i })).toHaveAttribute("href", "mailto:alice@tedu.edu");
-    expect(screen.getByRole("link", { name: /bob@tedu\.edu/i })).toHaveAttribute("href", "mailto:bob@tedu.edu");
+    expect(screen.getByRole("button", { name: /alice@tedu\.edu/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bob@tedu\.edu/i })).toBeInTheDocument();
     expect(screen.getAllByText("Approved").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Pending approval").length).toBeGreaterThan(0);
   });

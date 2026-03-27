@@ -12,8 +12,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Disable IPv6 (GitHub runners lack IPv6 connectivity)
-        run: sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+      - name: Force IPv4 DNS resolution (GitHub runners lack IPv6 connectivity)
+        run: |
+          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+          echo 'precedence ::ffff:0:0/96 100' | sudo tee -a /etc/gai.conf
 
       - name: Run seed SQL against demo database
         env:
