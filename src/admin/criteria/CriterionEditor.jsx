@@ -13,6 +13,7 @@ import {
   ChevronUpIcon,
   GraduationCapIcon,
   ListChecksIcon,
+  LockIcon,
 } from "../../shared/Icons";
 import { RUBRIC_EDITOR_TEXT } from "../../config";
 import {
@@ -254,23 +255,31 @@ export default function CriterionEditor({
             </div>
 
             {/* Max */}
-            <div className="criterion-field criterion-field--max">
+            <div className="criterion-field criterion-field--max relative">
               <label className="criteria-manager-cell-label">Max</label>
-              <input
-                className={cn(
-                  "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring",
-                  (saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] && "border-destructive"
+              <div className="relative">
+                <input
+                  className={cn(
+                    "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring",
+                    fullyLocked && "opacity-60 cursor-not-allowed",
+                    (saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] && "border-destructive"
+                  )}
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={row.max}
+                  onChange={(e) => setRow(i, "max", e.target.value)}
+                  onBlur={() => markTouched(i, "max")}
+                  placeholder="30"
+                  disabled={fullyLocked}
+                  aria-label={`Criterion ${i + 1} max score`}
+                />
+                {fullyLocked && (
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-muted-foreground">
+                    <LockIcon className="size-4" />
+                  </div>
                 )}
-                type="number"
-                min="1"
-                max="100"
-                value={row.max}
-                onChange={(e) => setRow(i, "max", e.target.value)}
-                onBlur={() => markTouched(i, "max")}
-                placeholder="30"
-                disabled={fullyLocked}
-                aria-label={`Criterion ${i + 1} max score`}
-              />
+              </div>
               {(saveAttempted || row._fieldTouched?.max) && errors[`max_${i}`] && (
                 <div className="text-xs text-destructive">{errors[`max_${i}`]}</div>
               )}
@@ -397,13 +406,15 @@ export default function CriterionEditor({
                 </div>
               )}
               {row._rubricOpen && (
-                <RubricBandEditor
-                  bands={row.rubric}
-                  onChange={(next) => setRow(i, "rubric", next)}
-                  disabled={fullyLocked}
-                  criterionMax={row.max}
-                  rubricErrors={(row._rubricTouched || saveAttempted) ? rubricErrorsByCriterion[i] : null}
-                />
+                <div className={fullyLocked ? "opacity-60 cursor-not-allowed" : ""}>
+                  <RubricBandEditor
+                    bands={row.rubric}
+                    onChange={(next) => setRow(i, "rubric", next)}
+                    disabled={fullyLocked}
+                    criterionMax={row.max}
+                    rubricErrors={(row._rubricTouched || saveAttempted) ? rubricErrorsByCriterion[i] : null}
+                  />
+                </div>
               )}
             </div>
           </div>

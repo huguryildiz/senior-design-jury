@@ -31,7 +31,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CirclePlusIcon } from "../../shared/Icons";
+import { CirclePlusIcon, LockIcon } from "../../shared/Icons";
 import { CSS } from "@dnd-kit/utilities";
 import { getCriterionDisplayName } from "./criteriaFormHelpers";
 import { useCriteriaForm } from "./useCriteriaForm";
@@ -118,6 +118,13 @@ export default function CriteriaManager({
         <AlertCard variant="warning">
           Evaluation template locked — scoring has started for this semester. No criteria changes are allowed.
         </AlertCard>
+      )}
+
+      {isLocked && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <LockIcon className="size-4 shrink-0" />
+          <span>Scores exist for this period — criteria weights and rubric ranges are locked to preserve result integrity.</span>
+        </div>
       )}
 
       <DndContext
