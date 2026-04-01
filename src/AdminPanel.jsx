@@ -344,6 +344,7 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
               metrics={overviewMetrics}
               rawScores={rawScores}
               criteriaTemplate={activeCriteria}
+              semester={selectedSemester}
               onGoToSettings={() => setAdminTab("settings")}
             />
           )}

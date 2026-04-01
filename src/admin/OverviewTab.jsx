@@ -10,6 +10,7 @@ import KpiGrid from "./overview/KpiGrid";
 import JurorActivityTable from "./overview/JurorActivityTable";
 import CriteriaProgress from "./overview/CriteriaProgress";
 import NeedsAttentionCard from "./overview/NeedsAttentionCard";
+import PeriodSnapshotCard from "./overview/PeriodSnapshotCard";
 import { computeNeedsAttention } from "./selectors/overviewMetrics";
 
 export default function OverviewTab({
@@ -18,6 +19,7 @@ export default function OverviewTab({
   metrics,
   rawScores,
   criteriaTemplate,
+  semester,
   onGoToSettings,
 }) {
   const {
@@ -143,8 +145,8 @@ export default function OverviewTab({
         />
       </KpiGrid>
 
-      {/* Criteria Progress + Needs Attention */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Criteria Progress + Needs Attention + Period Snapshot */}
+      <div className="grid gap-6 lg:grid-cols-3">
         <CriteriaProgress rawScores={rawScores} criteriaTemplate={criteriaTemplate} />
         <NeedsAttentionCard
           staleJurors={needsAttention.staleJurors}
@@ -153,6 +155,11 @@ export default function OverviewTab({
             // Stub for now — could scroll or navigate to details view
             console.log("[stub] View Details clicked");
           }}
+        />
+        <PeriodSnapshotCard
+          semester={semester}
+          metrics={metrics}
+          criteriaTemplate={criteriaTemplate}
         />
       </div>
 
