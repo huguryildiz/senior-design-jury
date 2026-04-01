@@ -1711,6 +1711,50 @@
     "severity": "normal"
   },
   {
+    "id": "overview.needs-attention.01",
+    "module": "Admin / Overview",
+    "area": "Needs Attention Card",
+    "story": "computeNeedsAttention function",
+    "scenario": "empty inputs produce empty arrays (no stale jurors, no incomplete projects)",
+    "whyItMatters": "The selector must handle null/undefined inputs gracefully without crashing.",
+    "risk": "Unsafe array access could cause runtime errors when data is missing.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "overview.needs-attention.02",
+    "module": "Admin / Overview",
+    "area": "Needs Attention Card",
+    "story": "computeNeedsAttention detects not-started jurors",
+    "scenario": "jurors with progress=0 or status='not_started' are included in staleJurors",
+    "whyItMatters": "Admins must see which jurors haven't started evaluating so they can follow up.",
+    "risk": "Missing not-started jurors from the report makes it impossible to identify evaluations that need a reminder.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "overview.needs-attention.03",
+    "module": "Admin / Overview",
+    "area": "Needs Attention Card",
+    "story": "computeNeedsAttention excludes started jurors",
+    "scenario": "jurors with progress > 0 are excluded from staleJurors",
+    "whyItMatters": "Only jurors with zero progress should be flagged; those in-progress or completed should not clutter the list.",
+    "risk": "Including all jurors would make the Needs Attention card useless.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "overview.needs-attention.04",
+    "module": "Admin / Overview",
+    "area": "Needs Attention Card",
+    "story": "computeNeedsAttention detects incomplete projects",
+    "scenario": "projects where completedEvals < totalJurors are included in incompleteProjects",
+    "whyItMatters": "Admins need to see which projects don't have full juror coverage to identify evaluation gaps.",
+    "risk": "Missing incomplete projects would hide projects that need more evaluations.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
     "id": "retry.network.01",
     "module": "Shared / API",
     "area": "Network Resilience — Retry",

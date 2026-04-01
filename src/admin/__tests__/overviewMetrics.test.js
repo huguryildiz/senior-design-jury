@@ -6,6 +6,7 @@
 
 import { describe, expect } from "vitest";
 import { computeOverviewMetrics } from "../scoreHelpers";
+import { computeNeedsAttention } from "../selectors/overviewMetrics";
 import { qaTest } from "../../test/qaTest.js";
 
 // Helpers to build minimal test fixtures
@@ -84,5 +85,51 @@ describe("computeOverviewMetrics", () => {
     const result = computeOverviewMetrics(scores, [juror], 1);
     expect(result.emptyEvaluations).toBe(0);
     expect(result.emptyEvaluations).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("computeNeedsAttention", () => {
+  qaTest("overview.needs-attention.01", () => {
+    // Empty inputs produce empty arrays
+    const result = computeNeedsAttention([], [], {});
+    expect(result.staleJurors).toEqual([]);
+    expect(result.incompleteProjects).toEqual([]);
+  });
+
+  qaTest("overview.needs-attention.02", () => {
+    // Jurors with progress=0 are included
+    const jurors = [
+      { key: "j1", name: "Alice", progress: 0 },
+      { key: "j2", name: "Bob", progress: 0 },
+      { key: "j3", name: "Carol", progress: 50 },
+    ];
+    const result = computeNeedsAttention(jurors, [], {});
+    expect(result.staleJurors).toHaveLength(2);
+    expect(result.staleJurors[0].key).toBe("j1");
+    expect(result.staleJurors[1].key).toBe("j2");
+  });
+
+  qaTest("overview.needs-attention.03", () => {
+    // Jurors with progress > 0 are excluded
+    const jurors = [
+      { key: "j1", name: "Alice", progress: 1 },
+      { key: "j2", name: "Bob", progress: 50 },
+      { key: "j3", name: "Carol", progress: 100 },
+    ];
+    const result = computeNeedsAttention(jurors, [], {});
+    expect(result.staleJurors).toHaveLength(0);
+  });
+
+  qaTest("overview.needs-attention.04", () => {
+    // Projects with completedEvals < totalJurors are incomplete
+    const groups = [
+      { id: "g1", title: "Project A", completedEvals: 2 },
+      { id: "g2", title: "Project B", completedEvals: 5 },
+      { id: "g3", title: "Project C", completedEvals: 5 },
+    ];
+    const metrics = { totalJurors: 5 };
+    const result = computeNeedsAttention([], groups, metrics);
+    expect(result.incompleteProjects).toHaveLength(1);
+    expect(result.incompleteProjects[0].id).toBe("g1");
   });
 });

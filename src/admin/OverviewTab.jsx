@@ -1,6 +1,7 @@
 // src/admin/OverviewTab.jsx
 // Overview dashboard following shadcn-studio dashboard-shell-01 layout pattern.
 
+import { useMemo } from "react";
 import { Users, FolderKanban, PenLine, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import KpiCard from "./overview/KpiCard";
 import KpiGrid from "./overview/KpiGrid";
 import JurorActivityTable from "./overview/JurorActivityTable";
 import CriteriaProgress from "./overview/CriteriaProgress";
+import NeedsAttentionCard from "./overview/NeedsAttentionCard";
+import { computeNeedsAttention } from "./selectors/overviewMetrics";
 
 export default function OverviewTab({
   jurorStats,
@@ -29,6 +32,29 @@ export default function OverviewTab({
     emptyEvaluations = 0,
   } = metrics ?? {};
   const totalGroups = groups?.length ?? 0;
+
+  // Compute needs attention items
+  const enrichedJurorStats = useMemo(() => {
+    return (jurorStats ?? []).map((stat) => ({
+      ...stat,
+      progress: stat.rows?.filter((r) => r.total != null).length ?? 0,
+    }));
+  }, [jurorStats]);
+
+  const enrichedGroups = useMemo(() => {
+    return (groups ?? []).map((group) => ({
+      ...group,
+      completedEvals: rawScores?.filter(
+        (score) => score.projectId === group.id && score.total != null
+      ).length ?? 0,
+      totalJurors,
+    }));
+  }, [groups, rawScores, totalJurors]);
+
+  const needsAttention = useMemo(
+    () => computeNeedsAttention(enrichedJurorStats, enrichedGroups, metrics),
+    [enrichedJurorStats, enrichedGroups, metrics]
+  );
 
   const clamp = (v) => Math.min(100, Math.max(0, v));
   const completedPct = clamp(
@@ -117,9 +143,17 @@ export default function OverviewTab({
         />
       </KpiGrid>
 
-      {/* Criteria Progress */}
+      {/* Criteria Progress + Needs Attention */}
       <div className="grid gap-6 lg:grid-cols-2">
         <CriteriaProgress rawScores={rawScores} criteriaTemplate={criteriaTemplate} />
+        <NeedsAttentionCard
+          staleJurors={needsAttention.staleJurors}
+          incompleteProjects={needsAttention.incompleteProjects}
+          onViewDetails={() => {
+            // Stub for now — could scroll or navigate to details view
+            console.log("[stub] View Details clicked");
+          }}
+        />
       </div>
 
       {/* Juror Activity */}

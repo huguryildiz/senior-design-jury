@@ -11,6 +11,10 @@ vi.mock("../overview/CriteriaProgress", () => ({
   default: () => <div data-testid="criteria-progress" />,
 }));
 
+vi.mock("../overview/NeedsAttentionCard", () => ({
+  default: () => <div data-testid="needs-attention-card" />,
+}));
+
 describe("OverviewTab", () => {
   qaTest("overview.01", () => {
     render(<OverviewTab jurorStats={[]} groups={[]} metrics={{ totalJurors: 0, totalEvaluations: 0 }} />);
