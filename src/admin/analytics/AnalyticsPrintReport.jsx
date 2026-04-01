@@ -174,8 +174,8 @@ export default function AnalyticsPrintReport({
           <thead>
             <tr>
               <th>Group</th>
-              <th>Project Title</th>
-              <th>Students</th>
+              <th>Title</th>
+              <th>Team Members</th>
             </tr>
           </thead>
           <tbody>

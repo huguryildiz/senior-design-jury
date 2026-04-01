@@ -170,7 +170,7 @@ export default function ProjectsTable({
             <TableRow className="hover:bg-transparent">
               <SortHead id="groupNo" className="w-20">Group</SortHead>
               <SortHead id="title">Title</SortHead>
-              <SortHead id="students" className="hidden md:table-cell">Students</SortHead>
+              <SortHead id="students" className="hidden md:table-cell">Team Members</SortHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>

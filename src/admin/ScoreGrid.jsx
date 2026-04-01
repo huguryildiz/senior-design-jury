@@ -867,15 +867,15 @@ function ScoreGridInner({ data, jurors, groups, semesterName = "", criteriaTempl
         ) : null}
       >
         <label htmlFor="juror-filter-input" className="sr-only">
-          Filter jurors by name or Institution / Department
+          Filter jurors by name or Affiliation
         </label>
         <div className="col-filter-search-wrap">
           <span className="col-filter-search-icon" aria-hidden="true"><SearchIcon /></span>
           <input
             id="juror-filter-input"
             autoFocus={!useSheetFilters}
-            placeholder="Search juror or Institution / Department"
-            aria-label="Filter jurors by name or Institution / Department"
+            placeholder="Search juror or Affiliation"
+            aria-label="Filter jurors by name or Affiliation"
             value={jurorFilter}
             onChange={(e) => setJurorFilter(e.target.value)}
             className={`col-filter-search-input${isJurorFilterActive ? " filter-input-active" : ""}`}

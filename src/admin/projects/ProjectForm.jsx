@@ -219,9 +219,9 @@ export default function ProjectForm({
             </>
           )}
           <label className="text-xs font-semibold text-muted-foreground">
-            Students{" "}
+            Team Members{" "}
             <span className="font-medium text-muted-foreground/60">
-              (one student per line item)
+              (one team member per line item)
             </span>
           </label>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

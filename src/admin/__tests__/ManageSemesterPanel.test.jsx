@@ -130,7 +130,7 @@ describe("ManageSemesterPanel smoke tests", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Semester" }));
     fireEvent.change(screen.getByPlaceholderText("2026 Spring"), { target: { value: "2026 Summer" } });
-    const createModal = screen.getByText("Create Semester").closest('[data-testid="modal-card"]');
+    const createModal = screen.getByText("Create Period").closest('[data-testid="modal-card"]');
     const dateInput = createModal?.querySelector('input[type="date"]');
     expect(dateInput).not.toBeNull();
     fireEvent.change(dateInput, { target: { value: "2026-07-01" } });
@@ -161,7 +161,7 @@ describe("ManageSemesterPanel smoke tests", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Semester" }));
     fireEvent.change(screen.getByPlaceholderText("2026 Spring"), { target: { value: "2025 Fall" } });
-    const createModal = screen.getByText("Create Semester").closest('[data-testid="modal-card"]');
+    const createModal = screen.getByText("Create Period").closest('[data-testid="modal-card"]');
     const dateInput = createModal?.querySelector('input[type="date"]');
     expect(dateInput).not.toBeNull();
     fireEvent.change(dateInput, { target: { value: "2026-06-01" } });
@@ -182,7 +182,7 @@ describe("ManageSemesterPanel smoke tests", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Semester" }));
     fireEvent.change(screen.getByPlaceholderText("2026 Spring"), { target: { value: "2027 Spring" } });
-    const createModal = screen.getByText("Create Semester").closest('[data-testid="modal-card"]');
+    const createModal = screen.getByText("Create Period").closest('[data-testid="modal-card"]');
     const dateInput = createModal?.querySelector('input[type="date"]');
     expect(dateInput).not.toBeNull();
     fireEvent.change(dateInput, { target: { value: "2027-05-20" } });
@@ -233,7 +233,7 @@ describe("ManageSemesterPanel smoke tests", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Evaluation Criteria" }));
     fireEvent.click(screen.getByRole("button", { name: "Add Criterion" }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Semester Settings/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Period Settings/i }));
 
     expect(onToggle).not.toHaveBeenCalled();
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
@@ -273,13 +273,13 @@ describe("ManageSemesterPanel — Realtime DELETE", () => {
 
     // Open edit modal for 2026 Spring
     fireEvent.click(screen.getByLabelText("Edit 2026 Spring"));
-    expect(screen.getByText("Edit Semester")).toBeInTheDocument();
+    expect(screen.getByText("Edit Period")).toBeInTheDocument();
 
     // Simulate Realtime DELETE arriving for the semester being edited
     rerender(<ManageSemesterPanel {...props} externalDeletedSemesterId="s2" />);
 
     // Edit modal should be closed
-    expect(screen.queryByText("Edit Semester")).not.toBeInTheDocument();
+    expect(screen.queryByText("Edit Period")).not.toBeInTheDocument();
     // Banner should be visible
     expect(screen.getByText(/deleted in another session/i)).toBeInTheDocument();
   });

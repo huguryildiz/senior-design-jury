@@ -1,0 +1,2655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Form Surfaces Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-page:#f8fafc;--bg-card:#ffffff;--surface-1:#f1f5f9;--surface-2:#e2e8f0;
+  --border:#e2e8f0;--border-strong:#cbd5e1;
+  --text-primary:#0f172a;--text-secondary:#475569;--text-tertiary:#94a3b8;--text-quaternary:#cbd5e1;
+  --accent:#3b82f6;--accent-dark:#2563eb;--accent-soft:rgba(59,130,246,0.08);--accent-ring:rgba(59,130,246,0.15);
+  --success:#16a34a;--success-soft:rgba(22,163,74,0.08);--success-ring:rgba(22,163,74,0.12);
+  --warning:#d97706;--warning-soft:rgba(217,119,6,0.08);--warning-ring:rgba(217,119,6,0.12);
+  --danger:#e11d48;--danger-soft:rgba(225,29,72,0.06);--danger-ring:rgba(225,29,72,0.10);
+  --radius:10px;--radius-sm:6px;--radius-lg:14px;--radius-xl:16px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card:0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-elevated:0 8px 24px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.06);
+  --shadow-drawer:0 0 48px rgba(0,0,0,0.15),-4px 0 24px rgba(0,0,0,0.08);
+  --font:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --field-h:36px;
+  --field-px:12px;
+  --field-radius:8px;
+  --field-border:var(--border);
+  --field-bg:var(--bg-card);
+  --field-focus-ring:0 0 0 3px var(--accent-ring);
+  --field-error-ring:0 0 0 3px var(--danger-ring);
+  --field-success-ring:0 0 0 3px var(--success-ring);
+}
+html{font-size:13px;line-height:1.5}
+body{font-family:var(--font);color:var(--text-primary);background:var(--bg-page);-webkit-font-smoothing:antialiased;min-height:100vh}
+
+/* ═══════════════════════════════════════════════════
+   SHOWCASE LAYOUT
+   ═══════════════════════════════════════════════════ */
+.showcase{max-width:1200px;margin:0 auto;padding:40px 32px}
+.showcase-header{text-align:center;margin-bottom:36px}
+.showcase-header h1{font-size:26px;font-weight:800;letter-spacing:-1px;margin-bottom:6px}
+.showcase-header p{color:var(--text-secondary);font-size:13px;max-width:480px;margin:0 auto;line-height:1.6}
+.showcase-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:32px}
+.showcase-nav button{padding:7px 16px;border-radius:99px;border:1px solid var(--border);background:var(--bg-card);font-family:var(--font);font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .15s}
+.showcase-nav button:hover{border-color:var(--accent);color:var(--accent)}
+.showcase-nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.showcase-section{display:none}
+.showcase-section.active{display:block}
+.section-title{font-size:16px;font-weight:700;letter-spacing:-0.4px;margin-bottom:4px}
+.section-desc{font-size:12.5px;color:var(--text-secondary);margin-bottom:20px;line-height:1.55}
+.demo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:20px}
+.demo-trigger{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);font-family:var(--font);font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;transition:all .15s;box-shadow:var(--shadow-sm)}
+.demo-trigger:hover{border-color:var(--accent);color:var(--accent);box-shadow:var(--shadow-card)}
+.demo-trigger svg{width:15px;height:15px;color:var(--text-tertiary)}
+.demo-trigger.demo-state{font-weight:500;color:var(--text-secondary);border-style:dashed}
+.inline-preview{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;display:flex;align-items:flex-start;justify-content:center;min-height:200px}
+.example-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-tertiary);margin-bottom:8px;margin-top:20px}
+.example-label:first-child{margin-top:0}
+
+/* ═══════════════════════════════════════════════════
+   OVERLAY
+   ═══════════════════════════════════════════════════ */
+.fs-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.35);backdrop-filter:blur(2px);z-index:300;display:none;animation:fs-fade-in .15s ease-out}
+.fs-overlay.show{display:block}
+@keyframes fs-fade-in{from{opacity:0}to{opacity:1}}
+
+/* ═══════════════════════════════════════════════════
+   DRAWER — Right slide panel
+   ═══════════════════════════════════════════════════ */
+.fs-drawer{
+  position:fixed;top:0;right:0;bottom:0;width:460px;max-width:92vw;
+  background:var(--bg-card);box-shadow:var(--shadow-drawer);z-index:301;
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+}
+.fs-drawer.show{transform:translateX(0)}
+
+.fs-drawer-header{
+  padding:18px 24px 14px;border-bottom:1px solid var(--border);
+  display:flex;flex-direction:column;gap:2px;position:relative;flex-shrink:0;
+}
+.fs-drawer-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.fs-icon{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.fs-icon svg{width:17px;height:17px}
+.fs-icon.accent{background:var(--accent-soft);color:var(--accent)}
+.fs-icon.muted{background:var(--surface-1);color:var(--text-secondary)}
+.fs-icon.danger{background:var(--danger-soft);color:var(--danger)}
+.fs-icon.warning{background:var(--warning-soft);color:var(--warning)}
+.fs-icon.success{background:var(--success-soft);color:var(--success)}
+.fs-title-group{flex:1;min-width:0}
+.fs-title{font-size:15px;font-weight:700;letter-spacing:-0.3px;color:var(--text-primary);line-height:1.3}
+.fs-subtitle{font-size:12px;color:var(--text-tertiary);line-height:1.45;margin-top:1px}
+.fs-close{
+  width:28px;height:28px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--bg-card);cursor:pointer;display:grid;place-items:center;
+  color:var(--text-tertiary);transition:all .12s;flex-shrink:0;
+}
+.fs-close:hover{background:var(--surface-1);color:var(--text-secondary);border-color:var(--border-strong)}
+.fs-close svg{width:14px;height:14px}
+
+.fs-drawer-body{flex:1;overflow-y:auto;padding:18px 24px 24px;display:flex;flex-direction:column;gap:0}
+
+.fs-drawer-footer{
+  padding:12px 24px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;
+  background:var(--surface-1);flex-shrink:0;
+}
+.fs-footer-meta{flex:1;font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:4px}
+.fs-footer-meta svg{width:12px;height:12px;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════
+   MODAL — Centered dialog
+   ═══════════════════════════════════════════════════ */
+.fs-modal-wrap{
+  position:fixed;inset:0;z-index:301;display:none;
+  align-items:center;justify-content:center;padding:24px;
+}
+.fs-modal-wrap.show{display:flex}
+.fs-modal{
+  background:var(--bg-card);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-elevated);width:100%;
+  max-height:85vh;display:flex;flex-direction:column;
+  animation:fs-modal-in .2s cubic-bezier(.4,0,.2,1);
+}
+.fs-modal.sm{max-width:400px}
+.fs-modal.md{max-width:480px}
+.fs-modal.lg{max-width:560px}
+.fs-modal.xl{max-width:680px}
+@keyframes fs-modal-in{from{opacity:0;transform:scale(0.96) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.fs-modal-header{
+  padding:18px 24px 14px;border-bottom:1px solid var(--border);
+  display:flex;flex-direction:column;gap:2px;position:relative;flex-shrink:0;
+}
+.fs-modal-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.fs-modal-icon{
+  width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;
+  margin:0 auto 10px;
+}
+.fs-modal-icon.danger{background:var(--danger-soft);color:var(--danger)}
+.fs-modal-icon.warning{background:var(--warning-soft);color:var(--warning)}
+.fs-modal-icon.accent{background:var(--accent-soft);color:var(--accent)}
+.fs-modal-icon.success{background:var(--success-soft);color:var(--success)}
+.fs-modal-icon svg{width:20px;height:20px}
+.fs-modal-body{flex:1;overflow-y:auto;padding:18px 24px}
+.fs-modal-footer{
+  padding:12px 24px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;
+  background:var(--surface-1);border-radius:0 0 var(--radius-xl) var(--radius-xl);
+  flex-shrink:0;
+}
+/* Centered modal (for confirmations) */
+.fs-modal-centered .fs-modal-header{text-align:center;border-bottom:none;padding-bottom:0}
+.fs-modal-centered .fs-modal-body{text-align:center;padding-top:6px}
+.fs-modal-centered .fs-modal-footer{justify-content:center;background:transparent;border-top:none;padding-top:2px}
+
+/* ═══════════════════════════════════════════════════
+   FORM SECTIONS
+   ═══════════════════════════════════════════════════ */
+.fs-section{margin-bottom:18px}
+.fs-section:last-child{margin-bottom:0}
+.fs-section-header{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:7px;
+  border-bottom:1px solid var(--surface-1);
+}
+.fs-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary)}
+.fs-section-badge{font-size:10px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--surface-1);color:var(--text-tertiary)}
+
+/* ═══════════════════════════════════════════════════
+   FORM FIELDS
+   ═══════════════════════════════════════════════════ */
+.fs-field{margin-bottom:12px}
+.fs-field:last-child{margin-bottom:0}
+.fs-field-label{
+  display:flex;align-items:center;gap:4px;
+  font-size:11.5px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;
+}
+.fs-field-req{color:var(--danger);font-size:10px;line-height:1}
+.fs-field-opt{font-size:10.5px;font-weight:500;color:var(--text-quaternary);margin-left:2px}
+
+.fs-input{
+  width:100%;height:var(--field-h);padding:0 var(--field-px);
+  border:1px solid var(--field-border);border-radius:var(--field-radius);
+  font-family:var(--font);font-size:13px;color:var(--text-primary);
+  background:var(--field-bg);outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.fs-input:focus{border-color:var(--accent);box-shadow:var(--field-focus-ring)}
+.fs-input::placeholder{color:var(--text-quaternary)}
+.fs-input:disabled,.fs-input.locked{background:var(--surface-1);color:var(--text-tertiary);cursor:not-allowed;border-color:var(--border)}
+.fs-input.error{border-color:rgba(225,29,72,0.4);box-shadow:var(--field-error-ring)}
+.fs-input.success{border-color:rgba(22,163,74,0.35);box-shadow:var(--field-success-ring)}
+
+.fs-select{
+  width:100%;height:var(--field-h);padding:0 32px 0 var(--field-px);
+  border:1px solid var(--field-border);border-radius:var(--field-radius);
+  font-family:var(--font);font-size:13px;color:var(--text-primary);
+  background:var(--field-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") right 10px center no-repeat;
+  outline:none;appearance:none;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;
+}
+.fs-select:focus{border-color:var(--accent);box-shadow:var(--field-focus-ring)}
+.fs-select.error{border-color:rgba(225,29,72,0.4);box-shadow:var(--field-error-ring)}
+
+.fs-textarea{
+  width:100%;padding:8px var(--field-px);min-height:64px;resize:vertical;
+  border:1px solid var(--field-border);border-radius:var(--field-radius);
+  font-family:var(--font);font-size:13px;color:var(--text-primary);
+  background:var(--field-bg);outline:none;line-height:1.5;
+  transition:border-color .15s,box-shadow .15s;
+}
+.fs-textarea:focus{border-color:var(--accent);box-shadow:var(--field-focus-ring)}
+.fs-textarea::placeholder{color:var(--text-quaternary)}
+
+.fs-field-helper{
+  display:flex;align-items:flex-start;gap:4px;margin-top:3px;
+  font-size:11px;line-height:1.4;
+}
+.fs-field-helper svg{flex-shrink:0;width:11px;height:11px;margin-top:1px}
+.fs-field-helper.hint{color:var(--text-tertiary)}
+.fs-field-helper.error{color:var(--danger)}
+.fs-field-helper.success{color:var(--success)}
+.fs-field-helper.warning{color:var(--warning)}
+
+.fs-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fs-field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* ═══════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════ */
+.fs-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 16px;border-radius:var(--radius-sm);
+  font-family:var(--font);font-size:12.5px;font-weight:600;
+  border:none;cursor:pointer;transition:all .15s;white-space:nowrap;line-height:1.3;
+}
+.fs-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fs-btn:disabled{opacity:0.45;cursor:not-allowed;pointer-events:none}
+.fs-btn svg{width:14px;height:14px}
+.fs-btn-primary{background:var(--accent);color:#fff}
+.fs-btn-primary:hover{background:var(--accent-dark)}
+.fs-btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}
+.fs-btn-secondary:hover{background:var(--surface-1);border-color:var(--border-strong);color:var(--text-primary)}
+.fs-btn-ghost{background:transparent;color:var(--text-secondary);border:none}
+.fs-btn-ghost:hover{background:var(--surface-1);color:var(--text-primary)}
+.fs-btn-danger{background:var(--danger);color:#fff}
+.fs-btn-danger:hover{background:#be123c}
+.fs-btn-danger-outline{background:transparent;border:1px solid rgba(225,29,72,0.2);color:var(--danger)}
+.fs-btn-danger-outline:hover{background:var(--danger-soft);border-color:rgba(225,29,72,0.3)}
+.fs-btn-sm{padding:6px 12px;font-size:11.5px}
+.fs-btn-xs{padding:4px 10px;font-size:11px}
+.fs-btn-icon{padding:6px;width:32px;height:32px}
+
+/* ═══════════════════════════════════════════════════
+   ALERTS
+   ═══════════════════════════════════════════════════ */
+.fs-alert{
+  display:flex;align-items:flex-start;gap:10px;padding:11px 13px;
+  border-radius:var(--radius);border:1px solid;position:relative;
+  font-size:12px;line-height:1.5;margin-bottom:12px;
+}
+.fs-alert:last-child{margin-bottom:0}
+.fs-alert::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--radius) 0 0 var(--radius)}
+.fs-alert-icon{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;flex-shrink:0}
+.fs-alert-icon svg{width:13px;height:13px}
+.fs-alert-body{flex:1;min-width:0}
+.fs-alert-title{font-weight:600;line-height:1.3;margin-bottom:1px}
+.fs-alert-desc{opacity:0.85;font-size:11.5px;text-align:justify}
+
+.fs-alert.danger{background:var(--danger-soft);border-color:var(--danger-ring);color:#be123c}
+.fs-alert.danger::before{background:var(--danger)}
+.fs-alert.danger .fs-alert-icon{background:rgba(225,29,72,0.1)}
+.fs-alert.danger .fs-alert-icon svg{stroke:var(--danger)}
+
+.fs-alert.warning{background:var(--warning-soft);border-color:var(--warning-ring);color:#92400e}
+.fs-alert.warning::before{background:var(--warning)}
+.fs-alert.warning .fs-alert-icon{background:rgba(217,119,6,0.1)}
+.fs-alert.warning .fs-alert-icon svg{stroke:var(--warning)}
+
+.fs-alert.info{background:var(--accent-soft);border-color:var(--accent-ring);color:#1e40af}
+.fs-alert.info::before{background:var(--accent)}
+.fs-alert.info .fs-alert-icon{background:rgba(59,130,246,0.1)}
+.fs-alert.info .fs-alert-icon svg{stroke:var(--accent)}
+
+.fs-alert.success{background:var(--success-soft);border-color:var(--success-ring);color:#166534}
+.fs-alert.success::before{background:var(--success)}
+.fs-alert.success .fs-alert-icon{background:rgba(22,163,74,0.1)}
+.fs-alert.success .fs-alert-icon svg{stroke:var(--success)}
+
+/* ═══════════════════════════════════════════════════
+   DYNAMIC LIST
+   ═══════════════════════════════════════════════════ */
+.fs-list-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.fs-list-row:last-child{margin-bottom:0}
+.fs-list-handle{
+  width:26px;height:26px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--bg-card);display:grid;place-items:center;cursor:grab;
+  color:var(--text-quaternary);transition:all .12s;flex-shrink:0;
+}
+.fs-list-handle:hover{background:var(--surface-1);color:var(--text-tertiary)}
+.fs-list-handle svg{width:13px;height:13px}
+.fs-list-row .fs-input{flex:1}
+.fs-list-num{width:22px;font-size:10px;font-weight:600;color:var(--text-quaternary);text-align:center;flex-shrink:0;font-family:var(--mono)}
+.fs-list-remove{
+  width:26px;height:26px;border-radius:var(--radius-sm);border:1px solid rgba(225,29,72,0.12);
+  background:transparent;display:grid;place-items:center;cursor:pointer;
+  color:var(--danger);opacity:0.5;transition:all .12s;flex-shrink:0;
+}
+.fs-list-remove:hover{opacity:1;background:var(--danger-soft);border-color:rgba(225,29,72,0.2)}
+.fs-list-remove svg{width:13px;height:13px}
+.fs-list-add{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 11px;
+  border-radius:99px;border:1px solid rgba(59,130,246,0.18);
+  background:rgba(59,130,246,0.03);color:var(--accent);
+  font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;
+  transition:all .12s;margin-top:4px;
+}
+.fs-list-add:hover{background:var(--accent-soft);border-color:rgba(59,130,246,0.28)}
+.fs-list-add svg{width:11px;height:11px}
+
+/* ═══════════════════════════════════════════════════
+   UPLOAD ZONE
+   ═══════════════════════════════════════════════════ */
+.fs-upload{
+  border:2px dashed var(--border);border-radius:var(--radius);
+  padding:24px 20px;text-align:center;cursor:pointer;
+  transition:all .15s;background:var(--bg-card);
+}
+.fs-upload:hover{border-color:var(--accent);background:rgba(59,130,246,0.02)}
+.fs-upload-icon{
+  width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  margin:0 auto 8px;background:var(--surface-1);color:var(--text-tertiary);
+}
+.fs-upload-icon svg{width:18px;height:18px}
+.fs-upload-title{font-size:12.5px;font-weight:600;color:var(--text-primary);margin-bottom:2px}
+.fs-upload-desc{font-size:11px;color:var(--text-tertiary);line-height:1.4}
+.fs-upload-desc strong{color:var(--accent);font-weight:600;cursor:pointer}
+/* File selected state */
+.fs-upload-file{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface-1);margin-bottom:12px;
+}
+.fs-upload-file-icon{width:32px;height:32px;border-radius:7px;background:var(--bg-card);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-tertiary);flex-shrink:0}
+.fs-upload-file-icon svg{width:15px;height:15px}
+.fs-upload-file-info{flex:1;min-width:0}
+.fs-upload-file-name{font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fs-upload-file-meta{font-size:10.5px;color:var(--text-tertiary)}
+
+/* ═══════════════════════════════════════════════════
+   PREVIEW TABLE
+   ═══════════════════════════════════════════════════ */
+.fs-preview-table{width:100%;border-collapse:collapse;font-size:12px}
+.fs-preview-table th{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;
+  color:var(--text-tertiary);padding:6px 10px;background:var(--surface-1);
+  border-bottom:1px solid var(--border);text-align:left;
+}
+.fs-preview-table td{padding:6px 10px;border-bottom:1px solid var(--surface-1);color:var(--text-primary)}
+.fs-preview-table tr:last-child td{border-bottom:none}
+.fs-preview-table tbody tr:hover{background:rgba(0,0,0,0.01)}
+.fs-preview-table tr.row-error{background:rgba(225,29,72,0.02)}
+.fs-preview-table tr.row-error td{color:var(--danger)}
+.fs-preview-table tr.row-skip{background:rgba(217,119,6,0.02)}
+.fs-preview-table tr.row-skip td{color:var(--warning)}
+.row-status{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px}
+.row-status.ok{background:var(--success-soft);color:var(--success)}
+.row-status.skip{background:var(--warning-soft);color:var(--warning)}
+.row-status.err{background:var(--danger-soft);color:var(--danger)}
+
+/* ═══════════════════════════════════════════════════
+   DANGER ZONE
+   ═══════════════════════════════════════════════════ */
+.fs-danger-zone{
+  padding:12px;border-radius:var(--radius);
+  border:1px solid rgba(225,29,72,0.1);
+  background:rgba(225,29,72,0.015);
+}
+.fs-danger-zone-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--danger);margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.fs-danger-zone-title svg{width:11px;height:11px}
+.fs-danger-zone-desc{font-size:11.5px;color:var(--text-secondary);line-height:1.45;margin-bottom:8px}
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════ */
+.fs-toast-container{position:fixed;bottom:24px;right:24px;z-index:400;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
+.fs-toast{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-radius:12px;font-size:13px;font-weight:500;pointer-events:auto;
+  min-width:300px;max-width:380px;position:relative;overflow:hidden;
+  background:#151c2e;border:1px solid #1e293b;
+  box-shadow:0 8px 24px rgba(0,0,0,0.25),0 2px 8px rgba(0,0,0,0.12);
+  animation:toast-in .35s cubic-bezier(.21,1.02,.73,1);
+}
+.fs-toast::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:12px 0 0 12px}
+.fs-toast.t-success::before{background:#22c55e}
+.fs-toast.t-danger::before{background:var(--danger)}
+.fs-toast.t-warning::before{background:var(--warning)}
+@keyframes toast-in{from{opacity:0;transform:translateX(24px) scale(0.95)}to{opacity:1;transform:translateX(0) scale(1)}}
+.fs-toast-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fs-toast-icon svg{width:14px;height:14px}
+.fs-toast.t-success .fs-toast-icon{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.18)}
+.fs-toast.t-success .fs-toast-icon svg{stroke:#4ade80}
+.fs-toast.t-danger .fs-toast-icon{background:rgba(225,29,72,0.08);border:1px solid rgba(225,29,72,0.15)}
+.fs-toast.t-danger .fs-toast-icon svg{stroke:#fb7185}
+.fs-toast.t-warning .fs-toast-icon{background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.15)}
+.fs-toast.t-warning .fs-toast-icon svg{stroke:#fbbf24}
+.fs-toast-body{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}
+.fs-toast-title{font-size:12px;font-weight:600;color:#f1f5f9;line-height:1.3}
+.fs-toast-desc{font-size:10.5px;font-weight:400;color:#94a3b8;line-height:1.4}
+.fs-toast-close{
+  background:none;border:1px solid #1e293b;color:#64748b;cursor:pointer;padding:0;
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;flex-shrink:0;transition:all .12s;font-size:12px;
+}
+.fs-toast-close:hover{color:#94a3b8;border-color:#334155;background:rgba(255,255,255,0.04)}
+.fs-toast-progress{position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.03)}
+.fs-toast-progress-bar{height:100%;border-radius:0 0 12px 12px;animation:toast-progress 4s linear forwards}
+.fs-toast.t-success .fs-toast-progress-bar{background:linear-gradient(90deg,rgba(34,197,94,0.3),rgba(34,197,94,0.05))}
+.fs-toast.t-danger .fs-toast-progress-bar{background:linear-gradient(90deg,rgba(225,29,72,0.3),rgba(225,29,72,0.05))}
+@keyframes toast-progress{from{width:100%}to{width:0%}}
+
+/* ═══════════════════════════════════════════════════
+   TYPED CONFIRMATION
+   ═══════════════════════════════════════════════════ */
+.fs-typed-field{margin:12px 0 4px}
+.fs-typed-label{font-size:12px;color:var(--text-secondary);margin-bottom:5px;line-height:1.5}
+.fs-typed-label strong{font-weight:700;color:var(--text-primary);font-family:var(--mono);letter-spacing:0.3px;font-size:11.5px}
+.fs-typed-input{
+  width:100%;height:var(--field-h);padding:0 var(--field-px);text-align:center;
+  border:1px solid var(--border);border-radius:var(--field-radius);
+  font-family:var(--mono);font-size:13px;color:var(--text-primary);
+  background:var(--field-bg);outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.fs-typed-input:focus{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-ring)}
+
+/* ═══════════════════════════════════════════════════
+   IMPACT SUMMARY
+   ═══════════════════════════════════════════════════ */
+.fs-impact{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--border);border-radius:var(--radius);overflow:hidden;margin:12px 0;
+}
+.fs-impact-item{background:var(--bg-card);padding:9px 10px;text-align:center}
+.fs-impact-value{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--text-primary);letter-spacing:-0.5px}
+.fs-impact-label{font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.3px;margin-top:1px}
+
+/* ═══════════════════════════════════════════════════
+   STEP INDICATOR
+   ═══════════════════════════════════════════════════ */
+.fs-steps{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.fs-step{display:flex;align-items:center;gap:5px}
+.fs-step-dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;border:2px solid var(--border);color:var(--text-tertiary);background:var(--bg-card)}
+.fs-step.active .fs-step-dot{border-color:var(--accent);background:var(--accent);color:#fff}
+.fs-step.done .fs-step-dot{border-color:var(--success);background:var(--success);color:#fff}
+.fs-step-label{font-size:11px;font-weight:600;color:var(--text-tertiary)}
+.fs-step.active .fs-step-label{color:var(--text-primary)}
+.fs-step.done .fs-step-label{color:var(--success)}
+.fs-step-line{flex:1;height:2px;background:var(--border);min-width:16px}
+
+/* ═══════════════════════════════════════════════════
+   INFO ROW
+   ═══════════════════════════════════════════════════ */
+.fs-info-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--surface-1)}
+.fs-info-row:last-child{border-bottom:none}
+.fs-info-row-label{font-size:11.5px;color:var(--text-tertiary);font-weight:500}
+.fs-info-row-value{font-size:11.5px;font-weight:600;color:var(--text-primary)}
+
+/* ═══════════════════════════════════════════════════
+   BADGE
+   ═══════════════════════════════════════════════════ */
+.fs-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.fs-badge.green{background:var(--success-soft);color:var(--success);border-color:var(--success-ring)}
+.fs-badge.amber{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-ring)}
+.fs-badge.red{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-ring)}
+.fs-badge.blue{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-ring)}
+.fs-badge.neutral{background:var(--surface-1);color:var(--text-tertiary);border-color:var(--border)}
+
+/* ═══════════════════════════════════════════════════
+   CRITERIA CARD
+   ═══════════════════════════════════════════════════ */
+.fs-crit-card{border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;background:var(--bg-card);transition:border-color .12s}
+.fs-crit-card.has-error{border-color:rgba(225,29,72,0.3)}
+.fs-crit-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.fs-crit-card-header .label{display:flex;align-items:center;gap:7px}
+.fs-crit-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.fs-crit-card-header .name{font-weight:700;font-size:12.5px}
+.fs-crit-card-header .pts{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-tertiary);padding:1px 6px;border-radius:4px;background:var(--surface-1)}
+.fs-crit-card-toggle{
+  display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+  padding:0;background:none;border:none;color:var(--text-tertiary);cursor:pointer;flex-shrink:0;
+  transition:color .12s
+}
+.fs-crit-card-toggle:hover{color:var(--text-secondary)}
+.fs-crit-card-toggle svg{display:none}
+.fs-crit-card-toggle::before{
+  content:'';
+  width:6px;height:10px;flex-shrink:0;
+  background:currentColor;
+  clip-path:polygon(0 0, 100% 50%, 0 100%);
+  transition:transform .15s;
+}
+.fs-crit-card-toggle.open::before{transform:rotate(90deg)}
+
+/* Criterion subsection (rubric, MÜDEK) */
+.fs-crit-sub{margin-top:10px;border-top:1px solid var(--surface-1);padding-top:8px}
+.fs-crit-sub-toggle{
+  display:flex;align-items:center;gap:6px;width:100%;padding:5px 0;
+  background:none;border:none;cursor:pointer;font-family:var(--font);
+  font-size:11px;font-weight:600;color:var(--text-tertiary);transition:color .12s;
+}
+.fs-crit-sub-toggle:hover{color:var(--text-secondary)}
+.fs-crit-sub-toggle svg{display:none}
+.fs-crit-sub-toggle::before{
+  content:'';
+  width:6px;height:10px;flex-shrink:0;
+  background:currentColor;
+  clip-path:polygon(0 0, 100% 50%, 0 100%);
+  transition:transform .15s;
+}
+.fs-crit-sub-toggle.open::before{transform:rotate(90deg)}
+.fs-crit-sub-toggle .count{font-weight:500;margin-left:auto;font-size:10px;opacity:0.7}
+.fs-crit-sub-body{padding-top:8px}
+
+/* Rubric band row */
+.fs-band{
+  display:flex;align-items:stretch;gap:1px;margin-bottom:6px;
+  border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);
+}
+.fs-band:last-child{margin-bottom:0}
+.fs-band-color{width:4px;flex-shrink:0}
+.fs-band-content{flex:1;padding:7px 10px;background:var(--bg-card);display:flex;flex-direction:column;gap:3px}
+.fs-band-header{display:flex;align-items:center;justify-content:space-between}
+.fs-band-level{font-size:11.5px;font-weight:700}
+.fs-band-range{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-tertiary);padding:1px 6px;border-radius:3px;background:var(--surface-1)}
+.fs-band-desc{font-size:10.5px;color:var(--text-secondary);line-height:1.4}
+
+/* MÜDEK pill */
+.fs-pill-grid{display:flex;flex-wrap:wrap;gap:4px}
+.fs-mudek-pill{
+  display:inline-flex;align-items:center;gap:3px;padding:2px 8px;
+  border-radius:99px;font-size:10px;font-weight:600;
+  border:1px solid;cursor:default;
+}
+.fs-mudek-pill .code{font-family:var(--mono);font-weight:700}
+.fs-mudek-pill.selected{background:rgba(59,130,246,0.06);border-color:rgba(59,130,246,0.2);color:var(--accent)}
+.fs-mudek-pill.available{background:var(--surface-1);border-color:var(--border);color:var(--text-tertiary);cursor:pointer}
+.fs-mudek-pill.available:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+/* MÜDEK outcome row (for manager) */
+.fs-outcome-row{
+  display:flex;align-items:flex-start;gap:8px;padding:10px 12px;
+  border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;
+  background:var(--bg-card);
+}
+.fs-outcome-code{
+  font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);
+  min-width:32px;padding-top:1px;
+}
+.fs-outcome-body{flex:1;min-width:0}
+.fs-outcome-desc{font-size:11px;color:var(--text-secondary);line-height:1.4}
+.fs-outcome-desc .lang{font-size:9px;margin-right:3px}
+
+/* WEIGHT BAR */
+.fs-weight-bar{
+  display:flex;align-items:center;gap:8px;padding:9px 12px;
+  background:var(--surface-1);border-radius:var(--radius);border:1px solid var(--border);
+  margin-bottom:14px;
+}
+.fs-weight-bar-info{flex:1}
+.fs-weight-bar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-tertiary)}
+.fs-weight-bar-value{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text-primary);letter-spacing:-0.5px;line-height:1.2}
+.fs-weight-bar-value span{font-size:11px;font-weight:500;color:var(--text-tertiary);margin-left:1px}
+.fs-weight-bar-track{flex:0 0 120px;height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.fs-weight-bar-fill{height:100%;border-radius:99px;transition:width .3s}
+
+/* PROFILE CARD */
+.fs-profile{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--surface-1)}
+.fs-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
+.fs-profile-info .name{font-weight:700;font-size:13.5px}
+.fs-profile-info .meta{font-size:11.5px;color:var(--text-tertiary);display:flex;align-items:center;gap:6px}
+
+/* ═══════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════ */
+.fs-drawer-body::-webkit-scrollbar,.fs-modal-body::-webkit-scrollbar{width:4px}
+.fs-drawer-body::-webkit-scrollbar-track,.fs-modal-body::-webkit-scrollbar-track{background:transparent}
+.fs-drawer-body::-webkit-scrollbar-thumb,.fs-modal-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+.fs-drawer-body::-webkit-scrollbar-thumb:hover,.fs-modal-body::-webkit-scrollbar-thumb:hover{background:var(--border-strong)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     SHOWCASE SHELL
+     ═══════════════════════════════════════════════════ -->
+<div class="showcase">
+  <div class="showcase-header">
+    <h1>VERA Form Surfaces</h1>
+    <p>Ortak drawer, modal ve form dili. Tum yonetim yuzeylerinde tutarli, rafine ve urun seviyesinde.</p>
+  </div>
+
+  <div class="showcase-nav" id="nav">
+    <button class="active" data-target="sec-projects">Project Groups</button>
+    <button data-target="sec-jurors">Jurors</button>
+    <button data-target="sec-semesters">Semesters &amp; Criteria</button>
+    <button data-target="sec-access">Access &amp; Security</button>
+    <button data-target="sec-import">Import</button>
+    <button data-target="sec-confirm">Destructive Flows</button>
+  </div>
+
+  <!-- ═══════ PROJECT GROUPS ═══════ -->
+  <div class="showcase-section active" id="sec-projects">
+    <div class="section-title">Project Groups</div>
+    <div class="section-desc">Create and edit capstone project groups with students and metadata.</div>
+    <div class="demo-grid">
+      <button class="demo-trigger" onclick="openDrawer('add-project')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        New Project Group
+      </button>
+      <button class="demo-trigger demo-state" onclick="openDrawer('add-project-error')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+        With Validation Errors
+      </button>
+      <button class="demo-trigger" onclick="openDrawer('edit-project')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Edit Project Group
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ JURORS ═══════ -->
+  <div class="showcase-section" id="sec-jurors">
+    <div class="section-title">Juror Management</div>
+    <div class="section-desc">Add, view and update juror profiles, access controls and scoring status.</div>
+    <div class="demo-grid">
+      <button class="demo-trigger" onclick="openDrawer('add-juror')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Add Juror
+      </button>
+      <button class="demo-trigger" onclick="openDrawer('edit-juror')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Edit Juror
+      </button>
+      <button class="demo-trigger" onclick="openModal('reset-pin')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Reset PIN
+      </button>
+      <button class="demo-trigger demo-state" onclick="openModal('pin-result')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        PIN Result + Send Email
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ SEMESTERS & CRITERIA ═══════ -->
+  <div class="showcase-section" id="sec-semesters">
+    <div class="section-title">Semesters &amp; Evaluation Criteria</div>
+    <div class="section-desc">Manage evaluation periods and configure scoring criteria with weight constraints.</div>
+    <div class="demo-grid">
+      <button class="demo-trigger" onclick="openDrawer('add-semester')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4m8-4v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M12 14v4m-2-2h4"/></svg>
+        New Semester
+      </button>
+      <button class="demo-trigger" onclick="openDrawer('edit-semester')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Edit Semester
+      </button>
+      <button class="demo-trigger demo-state" onclick="openDrawer('edit-semester-locked')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Edit &mdash; Scoring Active
+      </button>
+      <button class="demo-trigger" onclick="openDrawer('edit-criteria')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+        Evaluation Criteria
+      </button>
+      <button class="demo-trigger demo-state" onclick="openDrawer('edit-criteria-error')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+        Criteria &mdash; Invalid Total
+      </button>
+      <button class="demo-trigger" onclick="openDrawer('mudek-manager')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        M&Uuml;DEK Outcomes
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ ACCESS & SECURITY ═══════ -->
+  <div class="showcase-section" id="sec-access">
+    <div class="section-title">Access &amp; Security</div>
+    <div class="section-desc">Entry tokens, QR codes and session management for jury evaluation access.</div>
+    <div class="demo-grid">
+      <button class="demo-trigger" onclick="openModal('entry-token')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/></svg>
+        Entry Token &amp; QR
+      </button>
+      <button class="demo-trigger" onclick="openModal('revoke-token')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+        Revoke Token
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ IMPORT ═══════ -->
+  <div class="showcase-section" id="sec-import">
+    <div class="section-title">Import &amp; Bulk Operations</div>
+    <div class="section-desc">CSV import with validation, preview and controlled result reporting.</div>
+    <div class="demo-grid">
+      <button class="demo-trigger" onclick="openModal('import-csv')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import Project Groups
+      </button>
+      <button class="demo-trigger" onclick="openModal('import-jurors')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Import Jurors
+      </button>
+      <button class="demo-trigger demo-state" onclick="openModal('import-result')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Import Result
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ DESTRUCTIVE FLOWS ═══════ -->
+  <div class="showcase-section" id="sec-confirm">
+    <div class="section-title">Destructive Confirmations</div>
+    <div class="section-desc">Delete, remove and revoke flows with impact summary and typed confirmation for high-stakes actions.</div>
+    <div class="demo-grid">
+      <button class="demo-trigger" onclick="openModal('delete-criterion')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Delete Criterion
+      </button>
+      <button class="demo-trigger" onclick="openModal('delete-group')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        Delete Project Group
+      </button>
+      <button class="demo-trigger" onclick="openModal('remove-juror')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Remove Juror
+      </button>
+      <button class="demo-trigger" onclick="openModal('delete-semester')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4m8-4v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M10 16h4"/></svg>
+        Delete Semester
+      </button>
+      <button class="demo-trigger" onclick="openModal('restore-backup')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M21 21v-5h-5"/></svg>
+        Restore Backup
+      </button>
+      <button class="demo-trigger demo-state" onclick="openModal('unsaved-changes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+        Unsaved Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="fs-overlay" id="overlay" onclick="closeAll()"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: NEW PROJECT GROUP (clean state)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-add-project">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">New Project Group</div>
+          <div class="fs-subtitle">Add a project group and assign students to EE 492.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Group Details</div></div>
+      <div class="fs-field-row">
+        <div class="fs-field">
+          <div class="fs-field-label">Group Number <span class="fs-field-req">*</span></div>
+          <input class="fs-input" type="text" inputmode="numeric" placeholder="7" style="font-family:var(--mono)">
+        </div>
+        <div class="fs-field">
+          <div class="fs-field-label">Project Title <span class="fs-field-req">*</span></div>
+          <input class="fs-input" type="text" placeholder="Smart Traffic AI">
+        </div>
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Supervisor <span class="fs-field-opt">(optional)</span></div>
+        <input class="fs-input" type="text" placeholder="Prof. Dr. Mehmet Yildiz">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" placeholder="Brief project description..." style="min-height:52px"></textarea>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header">
+        <div class="fs-section-title">Students <span class="fs-field-req">*</span></div>
+        <div class="fs-section-badge">0 members</div>
+      </div>
+      <div class="fs-list-row">
+        <div class="fs-list-num">1</div>
+        <input class="fs-input" type="text" placeholder="Student name">
+        <div class="fs-list-remove" style="opacity:0.2;pointer-events:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <button class="fs-list-add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        Add Student
+      </button>
+      <div class="fs-field-helper hint" style="margin-top:6px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        Paste multiple names separated by newlines to auto-split.
+      </div>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Create Group</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: NEW PROJECT GROUP — WITH VALIDATION ERRORS
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-add-project-error">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">New Project Group</div>
+          <div class="fs-subtitle">Add a project group and assign students to EE 492.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-alert danger">
+      <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></div>
+      <div class="fs-alert-body">
+        <div class="fs-alert-title">Cannot create group</div>
+        <div class="fs-alert-desc">Fix the errors below before saving.</div>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Group Details</div></div>
+      <div class="fs-field-row">
+        <div class="fs-field">
+          <div class="fs-field-label">Group Number <span class="fs-field-req">*</span></div>
+          <input class="fs-input error" type="text" value="5" style="font-family:var(--mono)">
+          <div class="fs-field-helper error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+            Group 5 already exists in this semester.
+          </div>
+        </div>
+        <div class="fs-field">
+          <div class="fs-field-label">Project Title <span class="fs-field-req">*</span></div>
+          <input class="fs-input" type="text" value="Drone Navigation System">
+        </div>
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Supervisor <span class="fs-field-opt">(optional)</span></div>
+        <input class="fs-input" type="text" value="Prof. Dr. Ayse Kara">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" placeholder="Brief project description..." style="min-height:52px"></textarea>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header">
+        <div class="fs-section-title">Students <span class="fs-field-req">*</span></div>
+        <div class="fs-section-badge">1 member</div>
+      </div>
+      <div class="fs-list-row">
+        <div class="fs-list-num">1</div>
+        <input class="fs-input" type="text" value="Can Ertugrul">
+        <div class="fs-list-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="fs-list-row">
+        <div class="fs-list-num">2</div>
+        <input class="fs-input error" type="text" value="">
+        <div class="fs-list-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="fs-field-helper error" style="margin-top:2px;margin-left:28px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+        Student name cannot be empty. Remove the row or enter a name.
+      </div>
+      <button class="fs-list-add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        Add Student
+      </button>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary" disabled>Create Group</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: EDIT PROJECT GROUP
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-edit-project">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Edit Group 3 &mdash; Solar Tracker</div>
+          <div class="fs-subtitle">Update project details and student roster.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Group Details</div></div>
+      <div class="fs-field-row">
+        <div class="fs-field">
+          <div class="fs-field-label">Group Number <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-quaternary)"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <input class="fs-input locked" type="text" value="3" disabled style="font-family:var(--mono)">
+          <div class="fs-field-helper hint">Group number is locked after creation.</div>
+        </div>
+        <div class="fs-field">
+          <div class="fs-field-label">Project Title <span class="fs-field-req">*</span></div>
+          <input class="fs-input" type="text" value="Solar Tracker v2">
+        </div>
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Supervisor <span class="fs-field-opt">(optional)</span></div>
+        <input class="fs-input" type="text" value="Doc. Dr. Burak Kaya">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" placeholder="Brief project description..." style="min-height:52px">Solar-powered dual-axis tracking system with IoT-based remote monitoring and efficiency optimization.</textarea>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header">
+        <div class="fs-section-title">Students <span class="fs-field-req">*</span></div>
+        <div class="fs-section-badge">2 members</div>
+      </div>
+      <div class="fs-list-row">
+        <div class="fs-list-handle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>
+        <input class="fs-input" type="text" value="Burak Korkmaz">
+        <div class="fs-list-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <div class="fs-list-row">
+        <div class="fs-list-handle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg></div>
+        <input class="fs-input" type="text" value="Zeynep Aksoy">
+        <div class="fs-list-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+      </div>
+      <button class="fs-list-add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        Add Student
+      </button>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Save Changes</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: ADD JUROR
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-add-juror">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Add Juror</div>
+          <div class="fs-subtitle">Register a new evaluator for 2025-26 Spring.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Identity</div></div>
+      <div class="fs-field">
+        <div class="fs-field-label">Full Name <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" placeholder="Prof. Dr. Sevgi Kahraman">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Affiliation <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" placeholder="TED University">
+        <div class="fs-field-helper hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          University, company or research institution.
+        </div>
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Email <span class="fs-field-opt">(optional)</span></div>
+        <input class="fs-input" type="email" placeholder="juror@university.edu">
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Access</div></div>
+      <div class="fs-alert info" style="margin-bottom:0">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">PIN auto-generated</div>
+          <div class="fs-alert-desc">A unique 4-digit PIN will be assigned automatically. You can reset it later from the juror profile.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Add Juror</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: EDIT JUROR
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-edit-juror">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Juror Profile</div>
+          <div class="fs-subtitle">View and update juror details for the active semester.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-profile">
+      <div class="fs-avatar" style="background:#2563eb">HG</div>
+      <div class="fs-profile-info">
+        <div class="name">Prof. Dr. Hasan G&ouml;kta&#351;</div>
+        <div class="meta">TED University</div>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Identity</div></div>
+      <div class="fs-field">
+        <div class="fs-field-label">Full Name <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" value="Prof. Dr. Hasan G&ouml;kta&#351;">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Affiliation <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" value="TED University">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Email <span class="fs-field-opt">(optional)</span></div>
+        <input class="fs-input" type="email" value="hgoktas@tedu.edu.tr">
+        <div class="fs-field-helper hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Used to send PIN and evaluation QR code via email.
+        </div>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Evaluation Progress</div></div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Progress</span>
+        <span class="fs-badge green">3 / 3 groups scored</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Mean Score</span>
+        <span class="fs-info-row-value" style="font-family:var(--mono);font-weight:700">78.4</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Last Activity</span>
+        <span class="fs-info-row-value">2h 15m ago</span>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Security &amp; Access</div></div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-top:-6px;margin-bottom:10px;line-height:1.4">PIN-based authentication for the jury evaluation form. Manage access credentials and session control.</div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Current PIN</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="fs-info-row-value" style="font-family:var(--mono);letter-spacing:2px">4 7 2 1</span>
+          <button class="fs-btn fs-btn-ghost fs-btn-xs" style="color:var(--text-tertiary);padding:2px 6px">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Session Status</span>
+        <span class="fs-badge neutral">No active session</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Email</span>
+        <span class="fs-info-row-value" style="font-size:11px">hgoktas@tedu.edu.tr</span>
+      </div>
+
+      <!-- Danger zone nested inside Security -->
+      <div class="fs-danger-zone" style="margin-top:12px">
+        <div class="fs-danger-zone-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          Irreversible Actions
+        </div>
+        <div class="fs-danger-zone-desc">Resetting the PIN invalidates the current one. Removing the juror permanently deletes all their scores for this semester.</div>
+        <div style="display:flex;gap:6px">
+          <button class="fs-btn fs-btn-danger-outline fs-btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Reset PIN
+          </button>
+          <button class="fs-btn fs-btn-danger-outline fs-btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            Remove Juror
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Save Changes</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: NEW SEMESTER
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-add-semester">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon accent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4m8-4v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M12 14v4m-2-2h4"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">New Semester</div>
+          <div class="fs-subtitle">Create an evaluation period with criteria and scoring settings.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Semester Details</div></div>
+      <div class="fs-field">
+        <div class="fs-field-label">Semester Name <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" placeholder="2025-26 Spring">
+        <div class="fs-field-helper hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Convention: &ldquo;Year Spring/Fall&rdquo;
+        </div>
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" placeholder="e.g. Senior Design Project poster evaluation, Spring term..." style="min-height:48px"></textarea>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Scoring Setup</div></div>
+      <div class="fs-alert info">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">Default criteria will be applied</div>
+          <div class="fs-alert-desc">Technical (30), Design (30), Delivery (30), Teamwork (10). Customize after creation.</div>
+        </div>
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Copy Criteria From <span class="fs-field-opt">(optional)</span></div>
+        <select class="fs-select">
+          <option value="" selected>Start fresh &mdash; default criteria</option>
+          <option>2024-25 Fall (4 criteria, 4 outcomes)</option>
+          <option>2024-25 Spring (4 criteria, 6 outcomes)</option>
+        </select>
+        <div class="fs-field-helper hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          Copies criteria, rubric bands and M&Uuml;DEK outcome mappings.
+        </div>
+      </div>
+      <div class="fs-field-row">
+        <div class="fs-field">
+          <div class="fs-field-label">Evaluation Lock</div>
+          <select class="fs-select">
+            <option selected>Unlocked &mdash; jurors can score</option>
+            <option>Locked &mdash; read-only</option>
+          </select>
+        </div>
+        <div class="fs-field">
+          <div class="fs-field-label">Visibility</div>
+          <select class="fs-select">
+            <option selected>Visible</option>
+            <option>Hidden from jurors</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Create Semester</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: EDIT SEMESTER — Pre-scoring (criteria editable)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-edit-semester">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Edit Semester</div>
+          <div class="fs-subtitle">Update settings for 2025-26 Spring.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Semester Details</div></div>
+      <div class="fs-field">
+        <div class="fs-field-label">Semester Name <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" value="2025-26 Spring">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" placeholder="e.g. Senior Design Project poster evaluation..." style="min-height:48px">EE 492 Senior Design Project — poster session evaluation for Spring 2026 term.</textarea>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Evaluation Settings</div></div>
+      <div class="fs-field-row">
+        <div class="fs-field">
+          <div class="fs-field-label">Evaluation Lock</div>
+          <select class="fs-select">
+            <option selected>Unlocked &mdash; jurors can score</option>
+            <option>Locked &mdash; read-only</option>
+          </select>
+        </div>
+        <div class="fs-field">
+          <div class="fs-field-label">Visibility</div>
+          <select class="fs-select">
+            <option selected>Visible</option>
+            <option>Hidden from jurors</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Scoring Criteria</div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#3b82f6"></div>
+          <span style="font-weight:600">Technical</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">30</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#8b5cf6"></div>
+          <span style="font-weight:600">Design</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">30</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#f59e0b"></div>
+          <span style="font-weight:600">Delivery</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">30</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#22c55e"></div>
+          <span style="font-weight:600">Teamwork</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">10</span>
+        </div>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-tertiary);margin-bottom:10px">4 criteria &middot; 100 pts total &middot; 4 rubric bands each &middot; 10 M&Uuml;DEK outcomes mapped</div>
+      <button class="fs-btn fs-btn-secondary fs-btn-sm" onclick="closeAll();setTimeout(()=>openDrawer('edit-criteria'),200)">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Edit Criteria &amp; Rubrics
+      </button>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Overview</div></div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Project Groups</span>
+        <span class="fs-info-row-value">12</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Jurors</span>
+        <span class="fs-info-row-value">8</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Scores Recorded</span>
+        <span class="fs-info-row-value" style="font-family:var(--mono);font-weight:700">0</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Created</span>
+        <span class="fs-info-row-value">Feb 15, 2026</span>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-danger-zone">
+        <div class="fs-danger-zone-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          Irreversible Actions
+        </div>
+        <div class="fs-danger-zone-desc">Deleting the semester permanently removes all project groups, juror assignments and scores.</div>
+        <button class="fs-btn fs-btn-danger-outline fs-btn-sm">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Delete Semester
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Save Changes</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: EDIT SEMESTER — Scoring active (criteria locked)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-edit-semester-locked">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon warning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Edit Semester</div>
+          <div class="fs-subtitle">2025-26 Spring &middot; Scoring in progress.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-alert info" style="margin-bottom:14px">
+      <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+      <div class="fs-alert-body">
+        <div class="fs-alert-title">Evaluation is active</div>
+        <div class="fs-alert-desc">8 jurors have scored 96 evaluations. Name, description and visibility can still be changed. Criteria and lock settings are restricted.</div>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Semester Details</div></div>
+      <div class="fs-field">
+        <div class="fs-field-label">Semester Name <span class="fs-field-req">*</span></div>
+        <input class="fs-input" type="text" value="2025-26 Spring">
+      </div>
+      <div class="fs-field">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" placeholder="e.g. Senior Design Project poster evaluation..." style="min-height:48px">EE 492 Senior Design Project — poster session evaluation for Spring 2026 term.</textarea>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Evaluation Settings</div></div>
+      <div class="fs-field-row">
+        <div class="fs-field">
+          <div class="fs-field-label">Evaluation Lock <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-quaternary)"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <select class="fs-select" disabled>
+            <option selected>Unlocked &mdash; jurors can score</option>
+          </select>
+          <div class="fs-field-helper hint">Cannot lock while jurors are actively scoring.</div>
+        </div>
+        <div class="fs-field">
+          <div class="fs-field-label">Visibility</div>
+          <select class="fs-select">
+            <option selected>Visible</option>
+            <option>Hidden from jurors</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Scoring Criteria</div></div>
+      <div class="fs-alert warning" style="margin-bottom:10px">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">Criteria locked &mdash; scoring has started</div>
+          <div class="fs-alert-desc">Criteria, rubric bands and M&Uuml;DEK mappings cannot be modified while scores exist.</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#3b82f6"></div>
+          <span style="font-weight:600">Technical</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">30</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#8b5cf6"></div>
+          <span style="font-weight:600">Design</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">30</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#f59e0b"></div>
+          <span style="font-weight:600">Delivery</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">30</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);font-size:11px">
+          <div style="width:5px;height:5px;border-radius:50%;background:#22c55e"></div>
+          <span style="font-weight:600">Teamwork</span>
+          <span style="color:var(--text-tertiary);font-family:var(--mono);font-size:10px">10</span>
+        </div>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-tertiary)">4 criteria &middot; 100 pts total &middot; 4 rubric bands each &middot; 10 M&Uuml;DEK outcomes mapped</div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-section-header"><div class="fs-section-title">Overview</div></div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Project Groups</span>
+        <span class="fs-info-row-value">12</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Jurors</span>
+        <span class="fs-info-row-value">8</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Scores Recorded</span>
+        <span class="fs-info-row-value" style="font-family:var(--mono);font-weight:700">96</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Created</span>
+        <span class="fs-info-row-value">Feb 15, 2026</span>
+      </div>
+    </div>
+    <div class="fs-section">
+      <div class="fs-danger-zone">
+        <div class="fs-danger-zone-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          Irreversible Actions
+        </div>
+        <div class="fs-danger-zone-desc">Deleting the semester permanently removes all project groups, juror assignments and scores.</div>
+        <button class="fs-btn fs-btn-danger-outline fs-btn-sm">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Delete Semester
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Save Changes</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: EVALUATION CRITERIA — VALID STATE
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-edit-criteria">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Evaluation Criteria</div>
+          <div class="fs-subtitle">2025-26 Spring &middot; Scoring weights and labels.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-weight-bar">
+      <div class="fs-weight-bar-info">
+        <div class="fs-weight-bar-label">Total Weight</div>
+        <div class="fs-weight-bar-value">100<span>/ 100</span></div>
+      </div>
+      <div class="fs-weight-bar-track"><div class="fs-weight-bar-fill" style="width:100%;background:var(--success)"></div></div>
+      <span class="fs-badge green">Valid</span>
+    </div>
+
+    <!-- Criterion 1: EXPANDED with collapsed rubric + MÜDEK -->
+    <div class="fs-crit-card" style="border-color:rgba(59,130,246,0.25);border-left:3px solid #3b82f6">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#3b82f6"></div><span class="name">Technical Quality</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">30 pts</div>
+          <button class="fs-crit-card-toggle open" type="button" aria-label="Collapse Technical Quality">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Technical Quality" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="TQ" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="30" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div class="fs-field" style="margin-top:8px;margin-bottom:0">
+        <div class="fs-field-label">Description <span class="fs-field-opt">(optional)</span></div>
+        <textarea class="fs-textarea" style="min-height:40px;font-size:11.5px">Evaluate the engineering depth, methodology, analysis rigor, and technical correctness of the project.</textarea>
+      </div>
+
+      <!-- MÜDEK Outcomes subsection -->
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">4 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none">
+        </div>
+      </div>
+
+      <!-- Rubric Bands subsection -->
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Criterion 2: collapsed -->
+    <div class="fs-crit-card">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#8b5cf6"></div><span class="name">Design Quality</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">30 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Design Quality">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Design Quality" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="DQ" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="30" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <!-- Collapsed previews -->
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">1.1</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">4</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">5</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">3 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Criterion 3: collapsed -->
+    <div class="fs-crit-card">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#f59e0b"></div><span class="name">Delivery</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">30 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Delivery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Delivery" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="DL" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="30" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">6</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">7</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">2 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Criterion 4: collapsed -->
+    <div class="fs-crit-card">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#22c55e"></div><span class="name">Teamwork</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">10 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Teamwork">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Teamwork" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="TW" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="10" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">8</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">9</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">2 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+    </div>
+
+    <button class="fs-list-add">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+      Add Criterion
+    </button>
+  </div>
+  <div class="fs-drawer-footer">
+    <div class="fs-footer-meta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      4 criteria &middot; 100 pts
+    </div>
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Save Criteria</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: EVALUATION CRITERIA — INVALID TOTAL
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-edit-criteria-error">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">Evaluation Criteria</div>
+          <div class="fs-subtitle">2025-26 Spring &middot; Scoring weights and labels.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-weight-bar" style="border-color:rgba(225,29,72,0.2)">
+      <div class="fs-weight-bar-info">
+        <div class="fs-weight-bar-label">Total Weight</div>
+        <div class="fs-weight-bar-value" style="color:var(--danger)">85<span>/ 100</span></div>
+      </div>
+      <div class="fs-weight-bar-track"><div class="fs-weight-bar-fill" style="width:85%;background:var(--danger)"></div></div>
+      <span class="fs-badge red">-15 pts</span>
+    </div>
+
+    <div class="fs-alert danger">
+      <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></div>
+      <div class="fs-alert-body">
+        <div class="fs-alert-title">Weights must total 100</div>
+        <div class="fs-alert-desc">Current total is 85. Add 15 points across criteria to save.</div>
+      </div>
+    </div>
+
+    <div class="fs-crit-card">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#3b82f6"></div><span class="name">Technical Quality</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">30 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Technical Quality">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Technical Quality" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="TQ" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="30" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">1.1</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">1.2</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">2.1</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">3 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+    </div>
+    <div class="fs-crit-card has-error">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#8b5cf6"></div><span class="name">Design Quality</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">20 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Design Quality">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Design Quality" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="" style="font-family:var(--mono);font-size:12px;text-transform:uppercase" class="fs-input error" placeholder="Required"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="20" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">4.1</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">4.2</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">5.1</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">3 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-field-helper error" style="margin-top:4px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+        Short label is required for score grid display.
+      </div>
+    </div>
+    <div class="fs-crit-card">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#f59e0b"></div><span class="name">Delivery</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">25 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Delivery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Delivery" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="DL" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="25" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">6</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">7</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">2 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+    </div>
+    <div class="fs-crit-card">
+      <div class="fs-crit-card-header">
+        <div class="label"><div class="fs-crit-dot" style="background:#22c55e"></div><span class="name">Teamwork</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="pts">10 pts</div>
+          <button class="fs-crit-card-toggle" type="button" aria-label="Expand Teamwork">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-field-row-3">
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Label</div><input class="fs-input" value="Teamwork" style="font-size:12px"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Short</div><input class="fs-input" value="TW" style="font-family:var(--mono);font-size:12px;text-transform:uppercase"></div>
+        <div class="fs-field" style="margin:0"><div class="fs-field-label">Weight</div><input class="fs-input" type="number" value="10" style="font-family:var(--mono);font-size:12px"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">8</span></span>
+        <span class="fs-mudek-pill selected" style="font-size:9px;padding:1px 6px"><span class="code">9</span></span>
+        <span style="font-size:9px;color:var(--text-quaternary);padding:1px 4px">&middot;</span>
+        <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(22,163,74,0.06);color:#16a34a;font-weight:600">4 bands</span>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          M&Uuml;DEK Outcomes
+          <span class="count">2 mapped</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+      <div class="fs-crit-sub">
+        <button class="fs-crit-sub-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          Rubric Bands
+          <span class="count">4 levels</span>
+        </button>
+        <div class="fs-crit-sub-body" style="display:none"></div>
+      </div>
+    </div>
+
+    <button class="fs-list-add">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+      Add Criterion
+    </button>
+  </div>
+  <div class="fs-drawer-footer">
+    <div class="fs-footer-meta" style="color:var(--danger)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+      85 / 100 pts &middot; 2 issues
+    </div>
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary" disabled>Save Criteria</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: RESET PIN
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-reset-pin">
+  <div class="fs-modal sm">
+    <div class="fs-modal-header">
+      <div class="fs-modal-header-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="fs-icon accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div class="fs-title-group">
+            <div class="fs-title">Reset Juror PIN</div>
+            <div class="fs-subtitle">Generate a new 4-digit access PIN.</div>
+          </div>
+        </div>
+        <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="fs-modal-body">
+      <div class="fs-steps">
+        <div class="fs-step active"><div class="fs-step-dot">1</div><div class="fs-step-label">Confirm</div></div>
+        <div class="fs-step-line"></div>
+        <div class="fs-step"><div class="fs-step-dot">2</div><div class="fs-step-label">New PIN</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-1);border-radius:var(--radius);margin-bottom:12px">
+        <div class="fs-avatar" style="background:#2563eb;width:34px;height:34px;font-size:12px">HG</div>
+        <div>
+          <div style="font-weight:600;font-size:12.5px">Prof. Dr. Hasan G&ouml;kta&#351;</div>
+          <div style="font-size:10.5px;color:var(--text-tertiary)">TED University &middot; Current PIN: ****</div>
+        </div>
+      </div>
+      <div class="fs-alert warning" style="margin:0">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">Current PIN will stop working</div>
+          <div class="fs-alert-desc">The juror must use the new PIN to continue scoring.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+      <button class="fs-btn fs-btn-primary">Reset PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: PIN RESULT — Step 2 with Send via Email
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-pin-result">
+  <div class="fs-modal sm">
+    <div class="fs-modal-header">
+      <div class="fs-modal-header-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="fs-icon success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="fs-title-group">
+            <div class="fs-title">PIN Reset Complete</div>
+            <div class="fs-subtitle">New PIN generated successfully.</div>
+          </div>
+        </div>
+        <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="fs-modal-body">
+      <div class="fs-steps">
+        <div class="fs-step done"><div class="fs-step-dot"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="fs-step-label">Confirm</div></div>
+        <div class="fs-step-line" style="background:var(--success)"></div>
+        <div class="fs-step active"><div class="fs-step-dot">2</div><div class="fs-step-label">New PIN</div></div>
+      </div>
+
+      <!-- Juror card -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-1);border-radius:var(--radius);margin-bottom:12px">
+        <div class="fs-avatar" style="background:#2563eb;width:34px;height:34px;font-size:12px">HG</div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:12.5px">Prof. Dr. Hasan G&ouml;kta&#351;</div>
+          <div style="font-size:10.5px;color:var(--text-tertiary)">TED University</div>
+        </div>
+      </div>
+
+      <!-- New PIN display -->
+      <div style="text-align:center;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);margin-bottom:6px">New PIN</div>
+        <div style="font-family:var(--mono);font-size:32px;font-weight:800;letter-spacing:8px;color:var(--text-primary)">8 3 0 5</div>
+        <button class="fs-btn fs-btn-ghost fs-btn-xs" style="margin-top:6px;color:var(--text-tertiary);transition:all .2s" onclick="copyPin(this)">
+          <svg class="copy-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <svg class="check-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <span class="copy-label">Copy PIN</span>
+        </button>
+      </div>
+
+      <!-- Send via Email -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:var(--bg-card)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          <span style="font-size:12px;font-weight:600;color:var(--text-primary)">Send PIN via Email</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <input class="fs-input" value="hgoktas@tedu.edu.tr" style="font-size:11.5px;flex:1" readonly>
+          <button class="fs-btn fs-btn-primary fs-btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/><path d="m22 2-11 11"/></svg>
+            Send
+          </button>
+        </div>
+        <!-- Include QR option -->
+        <label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;padding:8px 10px;background:var(--surface-1);border-radius:var(--radius-sm)">
+          <input type="checkbox" checked style="accent-color:var(--accent);width:14px;height:14px;margin-top:1px;flex-shrink:0">
+          <div>
+            <div style="font-size:11.5px;font-weight:600;color:var(--text-primary);line-height:1.3">Include evaluation QR code</div>
+            <div style="font-size:10.5px;color:var(--text-tertiary);line-height:1.35;margin-top:1px">Juror can scan the QR to go directly to the evaluation form — no token URL needed.</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="fs-alert info" style="margin-top:10px;margin-bottom:0">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">No email on file?</div>
+          <div class="fs-alert-desc">Add the juror's email in their profile to enable PIN delivery.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: ENTRY TOKEN
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-entry-token">
+  <div class="fs-modal sm">
+    <div class="fs-modal-header">
+      <div class="fs-modal-header-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="fs-icon success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/></svg>
+          </div>
+          <div class="fs-title-group">
+            <div class="fs-title">Jury Entry Token</div>
+            <div class="fs-subtitle">Share this link or QR code for evaluation access.</div>
+          </div>
+        </div>
+        <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="fs-modal-body">
+      <div style="width:160px;height:160px;margin:0 auto 14px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);display:grid;place-items:center;color:var(--text-quaternary)">
+        <div style="text-align:center">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:4px"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/></svg>
+          <div style="font-size:10px">QR Code</div>
+        </div>
+      </div>
+      <div class="fs-field" style="margin-bottom:10px">
+        <div class="fs-field-label">Token URL</div>
+        <div style="display:flex;gap:6px">
+          <input class="fs-input" value="https://vera-eval.app/?t=abc123xyz" readonly style="font-family:var(--mono);font-size:10.5px;background:var(--surface-1)">
+          <button class="fs-btn fs-btn-secondary fs-btn-icon" title="Copy" style="flex-shrink:0;width:36px;height:36px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Expires</span>
+        <span class="fs-info-row-value">in 23h 42m</span>
+      </div>
+      <div class="fs-info-row">
+        <span class="fs-info-row-label">Active Sessions</span>
+        <span class="fs-badge green" style="font-size:9px">3 jurors connected</span>
+      </div>
+      <!-- Share QR via Email -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:var(--bg-card);margin-top:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          <span style="font-size:12px;font-weight:600;color:var(--text-primary)">Share via Email</span>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-tertiary);margin-bottom:8px;line-height:1.4">
+          Send the QR code and token link to a colleague — useful for printing or distributing before poster day.
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="fs-input" placeholder="recipient@university.edu" style="font-size:11.5px;flex:1">
+          <button class="fs-btn fs-btn-primary fs-btn-sm">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/><path d="m22 2-11 11"/></svg>
+            Send
+          </button>
+        </div>
+      </div>
+
+      <div class="fs-alert warning" style="margin-top:10px;margin-bottom:0">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">Token expires in under 24h</div>
+          <div class="fs-alert-desc">Revoking generates a new token with a fresh 24h window.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer">
+      <button class="fs-btn fs-btn-danger-outline fs-btn-sm">Revoke &amp; Regenerate</button>
+      <div style="flex:1"></div>
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: REVOKE TOKEN
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-revoke-token">
+  <div class="fs-modal sm fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Revoke Entry Token?</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">The QR code and token link will stop working immediately.</div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:4px">
+      <div class="fs-alert warning" style="margin:0;text-align:left">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">3 jurors are currently scoring</div>
+          <div class="fs-alert-desc">Their active sessions will end. Unsaved scores will be lost.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()" style="flex:1">Keep Token</button>
+      <button class="fs-btn fs-btn-danger" style="flex:1">Revoke &amp; Regenerate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: DELETE PROJECT GROUP
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-delete-group">
+  <div class="fs-modal sm fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Delete Group 5?</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">This will permanently remove the project group, all student assignments, and every score recorded by jurors for this group.</div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:2px">
+      <div class="fs-impact">
+        <div class="fs-impact-item"><div class="fs-impact-value">3</div><div class="fs-impact-label">Students</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">8</div><div class="fs-impact-label">Scores</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">4</div><div class="fs-impact-label">Evaluations</div></div>
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()" style="flex:1">Cancel</button>
+      <button class="fs-btn fs-btn-danger" style="flex:1">Delete Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: REMOVE JUROR
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-remove-juror">
+  <div class="fs-modal sm fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Remove Juror?</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">
+        <strong style="color:var(--text-primary)">Prof. Dr. Hasan G&ouml;kta&#351;</strong> will be permanently removed from 2025-26 Spring.
+      </div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:2px">
+      <!-- Juror card -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-1);border-radius:var(--radius);margin-bottom:12px">
+        <div class="fs-avatar" style="background:#2563eb;width:34px;height:34px;font-size:12px">HG</div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:12px">Prof. Dr. Hasan G&ouml;kta&#351;</div>
+          <div style="font-size:10.5px;color:var(--text-tertiary)">TED University</div>
+        </div>
+        <span class="fs-badge green" style="font-size:9px">Scored 3/3</span>
+      </div>
+
+      <div class="fs-impact">
+        <div class="fs-impact-item"><div class="fs-impact-value">3</div><div class="fs-impact-label">Scores</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">3</div><div class="fs-impact-label">Groups Affected</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">78.4</div><div class="fs-impact-label">Avg Score</div></div>
+      </div>
+
+      <div class="fs-alert danger" style="margin:0;text-align:left">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">All scores will be permanently deleted</div>
+          <div class="fs-alert-desc">This juror's evaluations for all 3 project groups will be removed. Rankings and analytics for these groups will be recalculated without this juror's input.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()" style="flex:1">Keep Juror</button>
+      <button class="fs-btn fs-btn-danger" style="flex:1">Remove Juror</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: DELETE SEMESTER (typed confirmation)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-delete-semester">
+  <div class="fs-modal md fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2v4m8-4v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M10 16h4"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Delete Entire Semester?</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">This will permanently delete <strong style="color:var(--text-primary)">2025-26 Spring</strong> including all project groups, juror assignments, scores and evaluation history. This action cannot be undone.</div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:2px">
+      <div class="fs-impact">
+        <div class="fs-impact-item"><div class="fs-impact-value">12</div><div class="fs-impact-label">Projects</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">8</div><div class="fs-impact-label">Jurors</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">96</div><div class="fs-impact-label">Scores</div></div>
+      </div>
+      <div class="fs-typed-field">
+        <div class="fs-typed-label">Type <strong>2025-26 Spring</strong> to confirm.</div>
+        <input class="fs-typed-input" type="text" placeholder="2025-26 Spring">
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()" style="flex:1">Cancel</button>
+      <button class="fs-btn fs-btn-danger" disabled style="flex:1">Delete Semester</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: IMPORT PROJECT GROUPS
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-import-csv">
+  <div class="fs-modal xl">
+    <div class="fs-modal-header">
+      <div class="fs-modal-header-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="fs-icon accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="fs-title-group">
+            <div class="fs-title">Import Project Groups</div>
+            <div class="fs-subtitle">Upload a CSV with group numbers, titles and student names.</div>
+          </div>
+        </div>
+        <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="fs-modal-body">
+      <!-- File selected state -->
+      <div class="fs-upload-file">
+        <div class="fs-upload-file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></div>
+        <div class="fs-upload-file-info">
+          <div class="fs-upload-file-name">projects_spring26_ee492.csv</div>
+          <div class="fs-upload-file-meta">12.4 KB &middot; 10 rows detected &middot; <span style="color:var(--accent);cursor:pointer;font-weight:500">Replace file</span></div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11.5px;font-weight:600;color:var(--text-secondary)">Preview</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="fs-badge green">8 valid</span>
+          <span class="fs-badge amber">1 duplicate</span>
+          <span class="fs-badge red">1 error</span>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <table class="fs-preview-table">
+          <thead><tr><th style="width:36px">Row</th><th style="width:50px">Group</th><th>Title</th><th>Students</th><th style="width:76px">Status</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:var(--mono);color:var(--text-tertiary);font-size:10px">1</td><td style="font-family:var(--mono)">7</td><td>Smart Traffic AI</td><td style="color:var(--text-secondary)">Ali Y., Ayse D., Mehmet C.</td><td><span class="row-status ok">Valid</span></td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--text-tertiary);font-size:10px">2</td><td style="font-family:var(--mono)">8</td><td>Solar Tracker</td><td style="color:var(--text-secondary)">Burak K., Zeynep A.</td><td><span class="row-status ok">Valid</span></td></tr>
+            <tr class="row-skip"><td style="font-family:var(--mono);font-size:10px">3</td><td style="font-family:var(--mono)">5</td><td>Drone Nav</td><td>Can E.</td><td><span class="row-status skip">Duplicate</span></td></tr>
+            <tr class="row-error"><td style="font-family:var(--mono);font-size:10px">4</td><td style="font-family:var(--mono)">&mdash;</td><td>Missing Group</td><td>Deniz T.</td><td><span class="row-status err">No group #</span></td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--text-tertiary);font-size:10px">5</td><td style="font-family:var(--mono)">9</td><td>IoT Greenhouse</td><td style="color:var(--text-secondary)">Elif S., Fatma G.</td><td><span class="row-status ok">Valid</span></td></tr>
+          </tbody>
+        </table>
+        <div style="padding:6px 10px;background:var(--surface-1);font-size:10px;color:var(--text-tertiary);border-top:1px solid var(--border)">Showing 5 of 10 rows</div>
+      </div>
+
+      <div class="fs-alert warning" style="margin-top:10px;margin-bottom:0">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">1 row will be skipped, 1 row has errors</div>
+          <div class="fs-alert-desc">Row 3: Group 5 already exists (will be skipped). Row 4: missing group number (cannot import).</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer">
+      <div class="fs-footer-meta">8 of 10 rows ready</div>
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+      <button class="fs-btn fs-btn-primary">Import 8 Groups</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: IMPORT JURORS
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-import-jurors">
+  <div class="fs-modal xl">
+    <div class="fs-modal-header">
+      <div class="fs-modal-header-row">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="fs-icon accent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="fs-title-group">
+            <div class="fs-title">Import Jurors</div>
+            <div class="fs-subtitle">Upload a CSV with juror names, affiliations and contact details.</div>
+          </div>
+        </div>
+        <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="fs-modal-body">
+      <!-- File selected state -->
+      <div class="fs-upload-file">
+        <div class="fs-upload-file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></div>
+        <div class="fs-upload-file-info">
+          <div class="fs-upload-file-name">jurors_spring26_ee492.csv</div>
+          <div class="fs-upload-file-meta">8.1 KB &middot; 12 rows detected &middot; <span style="color:var(--accent);cursor:pointer;font-weight:500">Replace file</span></div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11.5px;font-weight:600;color:var(--text-secondary)">Preview</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="fs-badge green">10 valid</span>
+          <span class="fs-badge amber">1 duplicate</span>
+          <span class="fs-badge red">1 error</span>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <table class="fs-preview-table">
+          <thead><tr><th style="width:36px">Row</th><th>Name</th><th>Affiliation</th><th style="width:76px">Status</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:var(--mono);color:var(--text-tertiary);font-size:10px">1</td><td>Prof. Dr. Sevgi Kahraman</td><td style="color:var(--text-secondary)">TED University</td><td><span class="row-status ok">Valid</span></td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--text-tertiary);font-size:10px">2</td><td>Do&ccedil;. Dr. Burak Kaya</td><td style="color:var(--text-secondary)">METU</td><td><span class="row-status ok">Valid</span></td></tr>
+            <tr class="row-skip"><td style="font-family:var(--mono);font-size:10px">3</td><td>Prof. Dr. Hasan G&ouml;kta&#351;</td><td>TED University</td><td><span class="row-status skip">Duplicate</span></td></tr>
+            <tr class="row-error"><td style="font-family:var(--mono);font-size:10px">4</td><td>&mdash;</td><td>Bilkent University</td><td><span class="row-status err">No name</span></td></tr>
+            <tr><td style="font-family:var(--mono);color:var(--text-tertiary);font-size:10px">5</td><td>Dr. Elif Sar&#305;</td><td style="color:var(--text-secondary)">Hacettepe University</td><td><span class="row-status ok">Valid</span></td></tr>
+          </tbody>
+        </table>
+        <div style="padding:6px 10px;background:var(--surface-1);font-size:10px;color:var(--text-tertiary);border-top:1px solid var(--border)">Showing 5 of 12 rows</div>
+      </div>
+
+      <div class="fs-alert warning" style="margin-top:10px;margin-bottom:0">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">1 duplicate, 1 error</div>
+          <div class="fs-alert-desc">Row 3: Prof. Dr. Hasan G&ouml;kta&#351; already exists in this semester (will be skipped). Row 4: juror name is missing (cannot import).</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer">
+      <div class="fs-footer-meta">10 of 12 jurors ready</div>
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+      <button class="fs-btn fs-btn-primary">Import 10 Jurors</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: IMPORT RESULT
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-import-result">
+  <div class="fs-modal md fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon success">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Import Complete</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">Project groups added to 2025-26 Spring.</div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:2px">
+      <div class="fs-impact">
+        <div class="fs-impact-item"><div class="fs-impact-value" style="color:var(--success)">8</div><div class="fs-impact-label">Imported</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value" style="color:var(--warning)">1</div><div class="fs-impact-label">Skipped</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value" style="color:var(--danger)">1</div><div class="fs-impact-label">Failed</div></div>
+      </div>
+      <div class="fs-alert info" style="margin:0;text-align:left">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">What to do next</div>
+          <div class="fs-alert-desc">Review imported groups in the Projects tab. Fix row 4 manually or re-import a corrected CSV.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-primary" onclick="closeAll()" style="min-width:140px">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: DELETE CRITERION (lightweight confirmation)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-delete-criterion">
+  <div class="fs-modal sm fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Remove Criterion?</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">
+        <strong style="color:var(--text-primary)">Design Quality</strong> (30 pts) will be removed from this semester's evaluation criteria.
+      </div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:4px">
+      <div class="fs-alert warning" style="margin:0;text-align:left">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">Existing scores will be affected</div>
+          <div class="fs-alert-desc">4 jurors have already submitted scores for this criterion. Their Design Quality scores will be permanently deleted.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()" style="flex:1">Keep Criterion</button>
+      <button class="fs-btn fs-btn-danger" style="flex:1">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: RESTORE BACKUP (typed confirmation)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-restore-backup">
+  <div class="fs-modal md fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M21 21v-5h-5"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Restore Database Backup?</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">This will <strong style="color:var(--danger)">overwrite all current data</strong> with the contents of the selected backup file. Every project group, juror, score and setting will be replaced.</div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:4px">
+      <!-- Backup file info -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-1);border-radius:var(--radius);margin-bottom:12px">
+        <div style="width:32px;height:32px;border-radius:7px;background:var(--bg-card);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-tertiary);flex-shrink:0">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text-primary)">vera_backup_2026-03-28.json</div>
+          <div style="font-size:10.5px;color:var(--text-tertiary)">284 KB &middot; Exported Mar 28, 2026 at 14:32</div>
+        </div>
+      </div>
+
+      <div class="fs-alert danger" style="text-align:left">
+        <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></div>
+        <div class="fs-alert-body">
+          <div class="fs-alert-title">Current data will be permanently lost</div>
+          <div class="fs-alert-desc">Export a backup of current data first if you haven't already. There is no undo for this operation.</div>
+        </div>
+      </div>
+
+      <div class="fs-impact">
+        <div class="fs-impact-item"><div class="fs-impact-value">12</div><div class="fs-impact-label">Projects</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">8</div><div class="fs-impact-label">Jurors</div></div>
+        <div class="fs-impact-item"><div class="fs-impact-value">96</div><div class="fs-impact-label">Scores</div></div>
+      </div>
+
+      <div class="fs-typed-field">
+        <div class="fs-typed-label">Type <strong>RESTORE</strong> to confirm overwrite.</div>
+        <input class="fs-typed-input" type="text" placeholder="RESTORE">
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-secondary" onclick="closeAll()" style="flex:1">Cancel</button>
+      <button class="fs-btn fs-btn-danger" disabled style="flex:1">Restore Backup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: UNSAVED CHANGES (cross-cutting pattern)
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-modal-wrap" id="modal-unsaved-changes">
+  <div class="fs-modal sm fs-modal-centered">
+    <div class="fs-modal-header">
+      <div class="fs-modal-icon warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+      </div>
+      <div class="fs-title" style="text-align:center">Unsaved Changes</div>
+      <div class="fs-subtitle" style="text-align:center;margin-top:4px">You have unsaved changes in the criteria editor. Leaving now will discard your edits.</div>
+    </div>
+    <div class="fs-modal-body" style="padding-top:2px">
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:4px">
+        <div style="padding:8px 12px;background:var(--surface-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);border-bottom:1px solid var(--border)">Pending Changes</div>
+        <div style="padding:8px 12px;font-size:11.5px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:5px;height:5px;border-radius:50%;background:var(--warning);flex-shrink:0"></div>
+            Design Quality weight changed: 30 &rarr; 25
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:5px;height:5px;border-radius:50%;background:var(--warning);flex-shrink:0"></div>
+            Delivery weight changed: 30 &rarr; 35
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>
+            New criterion added: &ldquo;Innovation&rdquo;
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fs-modal-footer" style="justify-content:center;background:transparent;border-top:none;padding-top:0">
+      <button class="fs-btn fs-btn-danger-outline" onclick="closeAll()" style="flex:1">Discard Changes</button>
+      <button class="fs-btn fs-btn-primary" onclick="closeAll()" style="flex:1">Continue Editing</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DRAWER: MÜDEK OUTCOMES MANAGER
+     ═══════════════════════════════════════════════════ -->
+<div class="fs-drawer" id="drawer-mudek-manager">
+  <div class="fs-drawer-header">
+    <div class="fs-drawer-header-row">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="fs-icon muted">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <div class="fs-title-group">
+          <div class="fs-title">M&Uuml;DEK Program Outcomes</div>
+          <div class="fs-subtitle">Define accreditation outcomes that can be mapped to evaluation criteria.</div>
+        </div>
+      </div>
+      <button class="fs-close" onclick="closeAll()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+  </div>
+  <div class="fs-drawer-body">
+    <div class="fs-alert info" style="margin-bottom:14px">
+      <div class="fs-alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+      <div class="fs-alert-body">
+        <div class="fs-alert-title">Shared outcome template</div>
+        <div class="fs-alert-desc">These outcomes are available for all criteria in this semester. Changes here affect every criterion's mapping options.</div>
+      </div>
+    </div>
+
+    <div class="fs-outcome-row">
+      <div class="fs-outcome-code">1.1</div>
+      <div class="fs-outcome-body">
+        <div class="fs-outcome-desc"><span class="lang">&#x1F1EC;&#x1F1E7;</span> Knowledge in mathematics, science and engineering fundamentals</div>
+        <div class="fs-outcome-desc" style="margin-top:2px"><span class="lang">&#x1F1F9;&#x1F1F7;</span> Matematik, fen bilimleri ve m&uuml;hendislik temellerinde bilgi</div>
+      </div>
+    </div>
+    <div class="fs-outcome-row">
+      <div class="fs-outcome-code">1.2</div>
+      <div class="fs-outcome-body">
+        <div class="fs-outcome-desc"><span class="lang">&#x1F1EC;&#x1F1E7;</span> Ability to apply knowledge of math, science and engineering</div>
+        <div class="fs-outcome-desc" style="margin-top:2px"><span class="lang">&#x1F1F9;&#x1F1F7;</span> Matematik, fen ve m&uuml;hendislik bilgilerini uygulayabilme becerisi</div>
+      </div>
+    </div>
+    <div class="fs-outcome-row">
+      <div class="fs-outcome-code">2</div>
+      <div class="fs-outcome-body">
+        <div class="fs-outcome-desc"><span class="lang">&#x1F1EC;&#x1F1E7;</span> Ability to identify, formulate and solve engineering problems</div>
+        <div class="fs-outcome-desc" style="margin-top:2px"><span class="lang">&#x1F1F9;&#x1F1F7;</span> M&uuml;hendislik problemlerini tan&iacute;mlama, form&uuml;le etme ve &ccedil;&ouml;zme becerisi</div>
+      </div>
+    </div>
+    <div class="fs-outcome-row">
+      <div class="fs-outcome-code">3.1</div>
+      <div class="fs-outcome-body">
+        <div class="fs-outcome-desc"><span class="lang">&#x1F1EC;&#x1F1E7;</span> Ability to design a system, component or process to meet needs</div>
+        <div class="fs-outcome-desc" style="margin-top:2px"><span class="lang">&#x1F1F9;&#x1F1F7;</span> &Idot;htiya&ccedil;lara y&ouml;nelik sistem, bile&#351;en veya s&uuml;re&ccedil; tasarlama becerisi</div>
+      </div>
+    </div>
+    <div class="fs-outcome-row">
+      <div class="fs-outcome-code">3.2</div>
+      <div class="fs-outcome-body">
+        <div class="fs-outcome-desc"><span class="lang">&#x1F1EC;&#x1F1E7;</span> Ability to design and conduct experiments, analyze and interpret data</div>
+        <div class="fs-outcome-desc" style="margin-top:2px"><span class="lang">&#x1F1F9;&#x1F1F7;</span> Deney tasarlama, y&uuml;r&uuml;tme, veri analiz ve yorumlama becerisi</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding:8px 0;border-top:1px dashed var(--border)">
+      <span style="font-size:10px;color:var(--text-quaternary)">+13 more outcomes</span>
+      <span style="flex:1"></span>
+      <button class="fs-list-add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        Add Outcome
+      </button>
+    </div>
+  </div>
+  <div class="fs-drawer-footer">
+    <div class="fs-footer-meta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      18 outcomes defined
+    </div>
+    <button class="fs-btn fs-btn-secondary" onclick="closeAll()">Cancel</button>
+    <button class="fs-btn fs-btn-primary">Save Outcomes</button>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="fs-toast-container" id="toast-container"></div>
+
+<script>
+document.querySelectorAll('.showcase-nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.showcase-nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.showcase-section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.target).classList.add('active');
+  });
+});
+
+const overlay = document.getElementById('overlay');
+function openDrawer(id) {
+  closeAll();
+  overlay.classList.add('show');
+  const d = document.getElementById('drawer-' + id);
+  if (d) setTimeout(() => d.classList.add('show'), 10);
+}
+function openModal(id) {
+  closeAll();
+  overlay.classList.add('show');
+  const m = document.getElementById('modal-' + id);
+  if (m) setTimeout(() => m.classList.add('show'), 10);
+}
+function closeAll() {
+  overlay.classList.remove('show');
+  document.querySelectorAll('.fs-drawer').forEach(d => d.classList.remove('show'));
+  document.querySelectorAll('.fs-modal-wrap').forEach(m => m.classList.remove('show'));
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
+
+function copyPin(btn) {
+  navigator.clipboard.writeText('8305').catch(() => {});
+  const copyIcon = btn.querySelector('.copy-icon');
+  const checkIcon = btn.querySelector('.check-icon');
+  const label = btn.querySelector('.copy-label');
+  copyIcon.style.display = 'none';
+  checkIcon.style.display = '';
+  label.textContent = 'Copied!';
+  btn.style.color = 'var(--success)';
+  setTimeout(() => {
+    copyIcon.style.display = '';
+    checkIcon.style.display = 'none';
+    label.textContent = 'Copy PIN';
+    btn.style.color = '';
+  }, 2000);
+}
+
+function showToast(type, title, desc) {
+  const container = document.getElementById('toast-container');
+  const icons = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    danger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>'
+  };
+  const toast = document.createElement('div');
+  toast.className = `fs-toast t-${type}`;
+  toast.innerHTML = `<div class="fs-toast-icon">${icons[type]}</div><div class="fs-toast-body"><div class="fs-toast-title">${title}</div><div class="fs-toast-desc">${desc}</div></div><button class="fs-toast-close" onclick="this.parentElement.remove()">&times;</button><div class="fs-toast-progress"><div class="fs-toast-progress-bar"></div></div>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4500);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Premium Elevated (Light)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-page:        #f8fafc;
+    --bg-white:       #ffffff;
+
+    --surface-0:      #ffffff;
+    --surface-1:      #f1f5f9;
+    --surface-2:      #e2e8f0;
+    --surface-3:      #cbd5e1;
+
+    --border-subtle:  #e2e8f0;
+    --border-medium:  #cbd5e1;
+    --border-bright:  #94a3b8;
+
+    --text-primary:   #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary:  #94a3b8;
+
+    --accent:         #3b82f6;
+    --accent-soft:    rgba(59, 130, 246, 0.08);
+    --accent-glow:    rgba(59, 130, 246, 0.15);
+    --accent-hover:   #2563eb;
+
+    --green:          #16a34a;
+    --green-soft:     rgba(22, 163, 74, 0.08);
+    --amber:          #d97706;
+    --amber-soft:     rgba(217, 119, 6, 0.08);
+    --rose:           #e11d48;
+    --rose-soft:      rgba(225, 29, 72, 0.06);
+    --blue:           #2563eb;
+    --blue-soft:      rgba(37, 99, 235, 0.08);
+
+    --sidebar-bg:     #0f172a;
+    --sidebar-text:   #94a3b8;
+    --sidebar-active: rgba(59, 130, 246, 0.15);
+
+    --radius-sm:  8px;
+    --radius-md:  12px;
+    --radius-lg:  16px;
+    --radius-xl:  20px;
+
+    --font-sans:  'Plus Jakarta Sans', -apple-system, sans-serif;
+    --font-mono:  'JetBrains Mono', monospace;
+
+    --shadow-card:
+      0 0 0 1px var(--border-subtle),
+      0 1px 3px rgba(0,0,0,0.04),
+      0 6px 24px rgba(0,0,0,0.03);
+    --shadow-elevated:
+      0 0 0 1px var(--border-medium),
+      0 4px 12px rgba(0,0,0,0.06),
+      0 16px 40px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Layout ─── */
+  .app-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── Sidebar (stays dark) ─── */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 12px;
+    background: var(--sidebar-bg);
+    color: white;
+    overflow-y: auto;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .sidebar-brand .logo {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 14px;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+  .sidebar-brand span {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar-tenant {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 0 0 16px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+    color: var(--sidebar-text);
+  }
+  .sidebar-tenant:hover {
+    background: rgba(255,255,255,0.10);
+    color: white;
+  }
+  .sidebar-tenant .tenant-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34,197,94,0.4);
+  }
+  .sidebar-tenant .chevron {
+    margin-left: auto;
+    opacity: 0.4;
+    font-size: 10px;
+  }
+
+  .cmd-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 0 0 20px;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .cmd-hint:hover { background: rgba(255,255,255,0.08); }
+  .cmd-hint .search-icon { font-size: 13px; color: #64748b; }
+  .cmd-hint .search-text { font-size: 13px; color: #64748b; flex: 1; }
+  .cmd-hint kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #64748b;
+    line-height: 1.3;
+  }
+
+  .sidebar-section { margin-bottom: 4px; }
+  .sidebar-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #475569;
+    padding: 12px 12px 6px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .sidebar-item:hover { color: white; background: rgba(255,255,255,0.06); }
+  .sidebar-item.active {
+    color: white;
+    background: var(--sidebar-active);
+  }
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 18px;
+    border-radius: 0 3px 3px 0;
+    background: #3b82f6;
+  }
+  .sidebar-item .icon {
+    width: 18px;
+    text-align: center;
+    opacity: 0.7;
+    font-size: 14px;
+  }
+  .sidebar-item.active .icon { opacity: 1; }
+  .sidebar-item .badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: rgba(59,130,246,0.2);
+    color: #60a5fa;
+  }
+
+  .sidebar-sub {
+    padding-left: 28px;
+    border-left: 1.5px solid rgba(255,255,255,0.08);
+    margin-left: 23px;
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+  .sidebar-sub .sidebar-item {
+    font-size: 13px;
+    padding: 6px 12px;
+    font-weight: 400;
+    color: #64748b;
+  }
+  .sidebar-sub .sidebar-item:hover { color: white; }
+  .sidebar-sub .sidebar-item.active {
+    color: #60a5fa;
+    background: none;
+    font-weight: 500;
+  }
+  .sidebar-sub .sidebar-item.active::before { display: none; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sidebar-footer:hover { background: rgba(255,255,255,0.06); }
+  .sidebar-footer .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f472b6, #c084fc);
+    display: grid;
+    place-items: center;
+    font-weight: 600;
+    font-size: 13px;
+    color: white;
+  }
+  .sidebar-footer .user-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .sidebar-footer .user-role {
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  /* ─── Main (Light) ─── */
+  .main {
+    padding: 32px 40px;
+    overflow-y: auto;
+  }
+
+  .page-header {
+    margin-bottom: 32px;
+    animation: fadeUp 0.5s ease both;
+  }
+  .page-header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+  }
+  .page-header p {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* ─── KPI Cards ─── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .kpi-card {
+    position: relative;
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    background: var(--bg-white);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+    transition: all 0.25s ease;
+    cursor: default;
+  }
+  .kpi-card:hover {
+    border-color: var(--border-medium);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .kpi-card .kpi-icon {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    margin-bottom: 14px;
+  }
+  .kpi-card .kpi-icon.blue   { background: var(--accent-soft); color: var(--accent); }
+  .kpi-card .kpi-icon.green  { background: var(--green-soft); color: var(--green); }
+  .kpi-card .kpi-icon.amber  { background: var(--amber-soft); color: var(--amber); }
+  .kpi-card .kpi-icon.indigo { background: rgba(99,102,241,0.08); color: #6366f1; }
+
+  .kpi-card .kpi-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .kpi-card .kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+  .kpi-card .kpi-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .kpi-delta.up   { background: var(--green-soft); color: var(--green); }
+  .kpi-delta.down { background: var(--rose-soft); color: var(--rose); }
+
+  /* ─── Glass Card (Light) ─── */
+  .glass-card {
+    border-radius: var(--radius-xl);
+    background: var(--bg-white);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .glass-card .card-header {
+    padding: 20px 24px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .glass-card .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--text-primary);
+  }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-white);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    background: var(--surface-1);
+    border-color: var(--border-medium);
+    color: var(--text-primary);
+  }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 1px 3px rgba(59,130,246,0.3);
+  }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: white;
+  }
+
+  /* ─── Layout Grid ─── */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+  }
+
+  /* ─── Activity Table ─── */
+  .activity-table { width: 100%; }
+  .activity-table th {
+    text-align: left;
+    padding: 10px 24px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-tertiary);
+    background: var(--surface-1);
+  }
+  .activity-table td {
+    padding: 14px 24px;
+    font-size: 13.5px;
+    border-top: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  .activity-table tbody tr {
+    transition: background 0.15s;
+  }
+  .activity-table tbody tr:hover {
+    background: var(--surface-1);
+  }
+
+  .juror-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .juror-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+  .juror-name {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .juror-dept {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .status-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .status-pill.active   { background: var(--green-soft); color: var(--green); }
+  .status-pill.active .dot { background: var(--green); }
+  .status-pill.pending  { background: var(--amber-soft); color: var(--amber); }
+  .status-pill.pending .dot { background: var(--amber); }
+  .status-pill.done     { background: var(--blue-soft); color: var(--blue); }
+  .status-pill.done .dot { background: var(--blue); }
+
+  .score-mono {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  /* ─── Live Feed ─── */
+  .live-feed .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(22,163,74,0.4);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .feed-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--border-subtle);
+    transition: background 0.15s;
+  }
+  .feed-item:hover { background: var(--surface-1); }
+
+  .feed-icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .feed-icon.score   { background: var(--accent-soft); color: var(--accent); }
+  .feed-icon.session { background: var(--green-soft); color: var(--green); }
+  .feed-icon.alert   { background: var(--rose-soft); color: var(--rose); }
+  .feed-icon.lock    { background: var(--amber-soft); color: var(--amber); }
+
+  .feed-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .feed-text strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .feed-time {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    font-family: var(--font-mono);
+  }
+
+  /* ─── Progress Bars ─── */
+  .progress-row {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .progress-label span:first-child {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .progress-label span:last-child {
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .progress-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+  .progress-fill.blue  { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+  .progress-fill.green { background: linear-gradient(90deg, #16a34a, #22c55e); }
+  .progress-fill.amber { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+  /* ─── Animations ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .kpi-grid .kpi-card:nth-child(1) { animation: fadeUp 0.4s ease both 0.05s; }
+  .kpi-grid .kpi-card:nth-child(2) { animation: fadeUp 0.4s ease both 0.10s; }
+  .kpi-grid .kpi-card:nth-child(3) { animation: fadeUp 0.4s ease both 0.15s; }
+  .kpi-grid .kpi-card:nth-child(4) { animation: fadeUp 0.4s ease both 0.20s; }
+  .content-grid > *:nth-child(1) { animation: fadeUp 0.4s ease both 0.25s; }
+  .content-grid > *:nth-child(2) { animation: fadeUp 0.4s ease both 0.30s; }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Sidebar (dark) -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">V</div>
+      <span>VERA</span>
+    </div>
+
+    <div class="sidebar-tenant">
+      <span class="tenant-dot"></span>
+      TEDU Electrical Eng.
+      <span class="chevron">&#9662;</span>
+    </div>
+
+    <div class="cmd-hint">
+      <span class="search-icon">&#x1F50D;</span>
+      <span class="search-text">Search...</span>
+      <kbd>&#8984;K</kbd>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-item active">
+        <span class="icon">&#9632;</span> Overview
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Scores</div>
+      <div class="sidebar-sub">
+        <div class="sidebar-item">Rankings</div>
+        <div class="sidebar-item">Analytics</div>
+        <div class="sidebar-item">Score Grid</div>
+        <div class="sidebar-item">Details</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Manage</div>
+      <div class="sidebar-sub">
+        <div class="sidebar-item">Jurors <span class="badge">12</span></div>
+        <div class="sidebar-item">Projects</div>
+        <div class="sidebar-item">Semesters</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">System</div>
+      <div class="sidebar-sub">
+        <div class="sidebar-item">Entry Control</div>
+        <div class="sidebar-item">Audit Log</div>
+        <div class="sidebar-item">Export</div>
+        <div class="sidebar-item">Settings</div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar">HY</div>
+      <div>
+        <div class="user-name">Hugur Yildiz</div>
+        <div class="user-role">Tenant Admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main (Light) -->
+  <main class="main">
+    <div class="page-header">
+      <h1>Overview</h1>
+      <p>EE 491/492 — Spring 2026 evaluation day</p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon blue">&#9881;</div>
+        <div class="kpi-label">Projects</div>
+        <div class="kpi-value">24</div>
+        <div class="kpi-delta up">&#8593; 4 vs last sem.</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon green">&#9733;</div>
+        <div class="kpi-label">Active Jurors</div>
+        <div class="kpi-value">12</div>
+        <div class="kpi-delta up">&#8593; 2 online now</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon amber">&#9998;</div>
+        <div class="kpi-label">Scores Entered</div>
+        <div class="kpi-value">187</div>
+        <div class="kpi-delta up">65% complete</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon indigo">&#9878;</div>
+        <div class="kpi-label">Avg. Score</div>
+        <div class="kpi-value">72.4</div>
+        <div class="kpi-delta down">&#8595; 1.2 vs mid-sem</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <!-- Juror Activity -->
+      <div class="glass-card">
+        <div class="card-header">
+          <span class="card-title">Juror Activity</span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn">&#8681; Export</button>
+            <button class="btn btn-primary">View All</button>
+          </div>
+        </div>
+        <table class="activity-table">
+          <thead>
+            <tr>
+              <th>Juror</th>
+              <th>Status</th>
+              <th>Scored</th>
+              <th>Avg.</th>
+              <th>Last Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="juror-cell">
+                  <div class="juror-avatar" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">AK</div>
+                  <div>
+                    <div class="juror-name">Prof. Aydin Kaya</div>
+                    <div class="juror-dept">Power Systems</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status-pill active"><span class="dot"></span>Scoring</span></td>
+              <td class="score-mono">18 / 24</td>
+              <td class="score-mono">76.2</td>
+              <td style="color:var(--text-tertiary); font-size:13px">2 min ago</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="juror-cell">
+                  <div class="juror-avatar" style="background:linear-gradient(135deg,#f472b6,#c084fc)">SE</div>
+                  <div>
+                    <div class="juror-name">Dr. Selin Erdem</div>
+                    <div class="juror-dept">Signal Processing</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status-pill active"><span class="dot"></span>Scoring</span></td>
+              <td class="score-mono">12 / 24</td>
+              <td class="score-mono">71.8</td>
+              <td style="color:var(--text-tertiary); font-size:13px">5 min ago</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="juror-cell">
+                  <div class="juror-avatar" style="background:linear-gradient(135deg,#60a5fa,#818cf8)">MT</div>
+                  <div>
+                    <div class="juror-name">Prof. Murat Tekir</div>
+                    <div class="juror-dept">Microelectronics</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status-pill done"><span class="dot"></span>Complete</span></td>
+              <td class="score-mono">24 / 24</td>
+              <td class="score-mono">68.5</td>
+              <td style="color:var(--text-tertiary); font-size:13px">42 min ago</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="juror-cell">
+                  <div class="juror-avatar" style="background:linear-gradient(135deg,#34d399,#2dd4bf)">BY</div>
+                  <div>
+                    <div class="juror-name">Dr. Baris Yilmaz</div>
+                    <div class="juror-dept">Control Systems</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status-pill pending"><span class="dot"></span>Idle</span></td>
+              <td class="score-mono">6 / 24</td>
+              <td class="score-mono">74.1</td>
+              <td style="color:var(--text-tertiary); font-size:13px">1 hr ago</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="juror-cell">
+                  <div class="juror-avatar" style="background:linear-gradient(135deg,#fbbf24,#f97316)">DO</div>
+                  <div>
+                    <div class="juror-name">Prof. Deniz Ozer</div>
+                    <div class="juror-dept">Telecommunications</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="status-pill active"><span class="dot"></span>Scoring</span></td>
+              <td class="score-mono">20 / 24</td>
+              <td class="score-mono">79.3</td>
+              <td style="color:var(--text-tertiary); font-size:13px">8 min ago</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Right Column -->
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <!-- Live Feed -->
+        <div class="glass-card live-feed">
+          <div class="card-header">
+            <span class="card-title">Live Feed</span>
+            <span class="live-dot"></span>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon score">&#9733;</div>
+            <div>
+              <div class="feed-text"><strong>Prof. Kaya</strong> scored <strong>Team Artemis</strong> — 82/100</div>
+              <div class="feed-time">2 min ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon session">&#9654;</div>
+            <div>
+              <div class="feed-text"><strong>Dr. Erdem</strong> started Group C evaluation</div>
+              <div class="feed-time">5 min ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon score">&#9733;</div>
+            <div>
+              <div class="feed-text"><strong>Prof. Ozer</strong> scored <strong>Team Helios</strong> — 91/100</div>
+              <div class="feed-time">8 min ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon alert">&#9888;</div>
+            <div>
+              <div class="feed-text"><strong>Dr. Yilmaz</strong> has been idle for 1 hour</div>
+              <div class="feed-time">12 min ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon lock">&#9211;</div>
+            <div>
+              <div class="feed-text"><strong>Prof. Tekir</strong> completed all evaluations</div>
+              <div class="feed-time">42 min ago</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Completion -->
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title">Completion</span>
+          </div>
+          <div class="progress-row">
+            <div class="progress-label">
+              <span>Group A</span>
+              <span>92%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill blue" style="width:92%"></div>
+            </div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-label">
+              <span>Group B</span>
+              <span>78%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill green" style="width:78%"></div>
+            </div>
+          </div>
+          <div class="progress-row">
+            <div class="progress-label">
+              <span>Group C</span>
+              <span>45%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill amber" style="width:45%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

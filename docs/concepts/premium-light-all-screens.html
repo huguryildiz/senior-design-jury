@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — All Screens (Hibrit Light)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 48px 40px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h2 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+
+  .screen-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b;
+    margin-bottom: 16px;
+    margin-top: 56px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .screen-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #1e293b;
+  }
+  .screen-label:first-of-type { margin-top: 0; }
+
+  /* ─── Frame ─── */
+  .frame {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .frame-bar {
+    background: #1e293b;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #64748b;
+  }
+  .frame-bar .dots {
+    display: flex; gap: 5px; margin-right: 12px;
+  }
+  .frame-bar .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .frame-bar .dot.r { background: #ef4444; }
+  .frame-bar .dot.y { background: #eab308; }
+  .frame-bar .dot.g { background: #22c55e; }
+
+  .frame-body {
+    min-height: 500px;
+  }
+
+  /* Mobile frame */
+  .mobile-wrap {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+  }
+  .mobile-frame {
+    width: 375px;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .mobile-bar {
+    background: #1e293b;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  /* ─── Shared tokens ─── */
+  .dark-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+  .light-bg { background: #f8fafc; }
+
+  /* ─── Two-up layout ─── */
+  .two-up {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+</style>
+</head>
+<body>
+
+<h2>VERA — Hibrit Tasarim Konsepti</h2>
+<p class="subtitle">Koyu kabuk (Home, Auth) + Acik iceri alan (Admin, Jury)</p>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- HOME PAGE (Dark) -->
+<!-- ══════════════════════════════════════════ -->
+<div class="screen-label">1. Home Page (Dark)</div>
+<div class="frame">
+  <div class="frame-bar">
+    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+    vera-eval.app
+  </div>
+  <div class="frame-body dark-bg" style="display:flex; flex-direction:column; min-height:520px; color:white;">
+    <!-- Nav -->
+    <div style="display:flex; align-items:center; padding:16px 32px; border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:30px; height:30px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:8px; display:grid; place-items:center; font-weight:800; font-size:13px; color:white;">V</div>
+        <span style="font-weight:700; font-size:16px; letter-spacing:-0.3px;">VERA</span>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:20px; font-size:13px;">
+        <span style="color:#94a3b8;">Features</span>
+        <span style="color:#94a3b8;">Docs</span>
+        <div style="background:white; color:#0f172a; padding:7px 18px; border-radius:8px; font-weight:600; font-size:13px;">Sign in</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px 24px; position:relative;">
+      <!-- Glow -->
+      <div style="position:absolute; top:0; left:50%; transform:translateX(-50%); width:500px; height:300px; background:radial-gradient(ellipse, rgba(59,130,246,0.1) 0%, transparent 70%); pointer-events:none;"></div>
+
+      <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); padding:5px 14px; border-radius:20px; font-size:12px; color:#94a3b8; margin-bottom:24px; position:relative;">
+        <span style="color:#3b82f6;">&#9679;</span> Multi-tenant evaluation platform
+      </div>
+
+      <div style="font-size:48px; font-weight:800; letter-spacing:-1.5px; line-height:1.05; margin-bottom:16px; position:relative;">
+        Academic Jury<br>Evaluation Platform
+      </div>
+      <div style="color:#94a3b8; font-size:16px; max-width:440px; line-height:1.6; margin-bottom:32px;">
+        Configure criteria, manage jurors, collect scores, and analyze results — all in one place.
+      </div>
+      <div style="display:flex; gap:12px;">
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); padding:12px 28px; border-radius:10px; font-weight:600; font-size:14px; box-shadow:0 4px 16px rgba(59,130,246,0.3);">Start Evaluation</div>
+        <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:12px 28px; border-radius:10px; font-size:14px; font-weight:500;">Admin Login</div>
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div style="display:flex; justify-content:center; gap:48px; padding:24px 32px; border-top:1px solid rgba(255,255,255,0.06); font-size:13px;">
+      <div style="text-align:center;">
+        <div style="font-size:24px; font-weight:800; letter-spacing:-0.5px;">6</div>
+        <div style="color:#64748b; font-size:12px; margin-top:2px;">Universities</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; font-weight:800; letter-spacing:-0.5px;">2,400+</div>
+        <div style="color:#64748b; font-size:12px; margin-top:2px;">Evaluations</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:24px; font-weight:800; letter-spacing:-0.5px;">120+</div>
+        <div style="color:#64748b; font-size:12px; margin-top:2px;">Jurors</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SIGN IN (Dark shell, glass card) -->
+<!-- ══════════════════════════════════════════ -->
+<div class="screen-label">2. Sign In (Dark + Glassmorphism)</div>
+<div class="frame">
+  <div class="frame-bar">
+    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+    vera-eval.app/admin
+  </div>
+  <div class="frame-body dark-bg" style="display:flex; align-items:center; justify-content:center; min-height:560px; color:white; position:relative;">
+    <!-- Decorative glow -->
+    <div style="position:absolute; top:20%; left:30%; width:400px; height:400px; background:radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); pointer-events:none;"></div>
+    <div style="position:absolute; bottom:20%; right:25%; width:350px; height:350px; background:radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%); pointer-events:none;"></div>
+
+    <div style="width:400px; position:relative;">
+      <!-- Logo -->
+      <div style="text-align:center; margin-bottom:32px;">
+        <div style="width:44px; height:44px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:12px; display:inline-grid; place-items:center; font-weight:800; font-size:18px; color:white; margin-bottom:12px;">V</div>
+        <div style="font-size:20px; font-weight:700; letter-spacing:-0.3px;">Welcome back</div>
+        <div style="color:#64748b; font-size:13px; margin-top:4px;">Sign in to your tenant dashboard</div>
+      </div>
+
+      <!-- Card -->
+      <div style="background:rgba(255,255,255,0.05); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:32px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <!-- Email -->
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Email</label>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">admin@tedu.edu.tr</div>
+        </div>
+
+        <!-- Password -->
+        <div style="margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <label style="font-size:13px; font-weight:500; color:#94a3b8;">Password</label>
+            <span style="font-size:12px; color:#3b82f6; cursor:pointer;">Forgot?</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</div>
+        </div>
+
+        <!-- Remember me -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+          <div style="width:16px; height:16px; border-radius:4px; border:1.5px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.04);"></div>
+          <span style="font-size:13px; color:#94a3b8;">Remember me for 30 days</span>
+        </div>
+
+        <!-- Sign in button -->
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); padding:12px; border-radius:10px; font-size:14px; font-weight:600; text-align:center; cursor:pointer; box-shadow:0 4px 16px rgba(59,130,246,0.3);">Sign in</div>
+
+        <!-- Divider -->
+        <div style="display:flex; align-items:center; gap:12px; margin:20px 0;">
+          <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+          <span style="font-size:12px; color:#475569;">or</span>
+          <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+        </div>
+
+        <!-- Google -->
+        <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; font-size:14px; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.15s;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </div>
+      </div>
+
+      <!-- Register link -->
+      <div style="text-align:center; margin-top:20px; font-size:13px; color:#64748b;">
+        Don't have an account? <span style="color:#3b82f6; font-weight:500; cursor:pointer;">Apply for access</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- REGISTER / APPLY (Dark shell) -->
+<!-- ══════════════════════════════════════════ -->
+<div class="screen-label">3. Tenant Application (Dark + Glassmorphism)</div>
+<div class="frame">
+  <div class="frame-bar">
+    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+    vera-eval.app/register
+  </div>
+  <div class="frame-body dark-bg" style="display:flex; align-items:center; justify-content:center; min-height:580px; color:white; position:relative;">
+    <div style="position:absolute; top:15%; right:20%; width:400px; height:400px; background:radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%); pointer-events:none;"></div>
+
+    <div style="width:420px;">
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="width:44px; height:44px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:12px; display:inline-grid; place-items:center; font-weight:800; font-size:18px; color:white; margin-bottom:12px;">V</div>
+        <div style="font-size:20px; font-weight:700;">Apply for Access</div>
+        <div style="color:#64748b; font-size:13px; margin-top:4px;">Register your department to start evaluating</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.05); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:32px;">
+        <!-- Name row -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div>
+            <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">First name</label>
+            <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">Hugur</div>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Last name</label>
+            <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">Yildiz</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Work email</label>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">hugur@tedu.edu.tr</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">University / Organization</label>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:white; display:flex; align-items:center; justify-content:space-between;">
+            TED University
+            <span style="font-size:10px; color:#64748b;">&#9662;</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Department</label>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">Electrical & Electronics Engineering</div>
+        </div>
+
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); padding:12px; border-radius:10px; font-size:14px; font-weight:600; text-align:center; box-shadow:0 4px 16px rgba(59,130,246,0.3);">Submit Application</div>
+      </div>
+
+      <div style="text-align:center; margin-top:20px; font-size:13px; color:#64748b;">
+        Already have an account? <span style="color:#3b82f6; font-weight:500;">Sign in</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- JURY FLOW — MOBILE -->
+<!-- ══════════════════════════════════════════ -->
+<div class="screen-label">4. Jury Flow — Mobile (Light)</div>
+
+<div class="mobile-wrap">
+  <!-- Identity Step -->
+  <div>
+    <div style="text-align:center; color:#64748b; font-size:12px; font-weight:600; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Identity Step</div>
+    <div class="mobile-frame">
+      <div class="mobile-bar">vera-eval.app/?t=abc123</div>
+      <div style="background:#f8fafc; min-height:600px; padding:24px 20px; color:#0f172a;">
+        <!-- Top -->
+        <div style="text-align:center; margin-bottom:32px;">
+          <div style="width:48px; height:48px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; display:inline-grid; place-items:center; font-weight:800; font-size:20px; color:white; margin-bottom:12px;">V</div>
+          <div style="font-size:18px; font-weight:700; letter-spacing:-0.3px;">Welcome, Juror</div>
+          <div style="color:#94a3b8; font-size:13px; margin-top:4px;">Enter your information to begin</div>
+        </div>
+
+        <!-- Card -->
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:16px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#0f172a; margin-bottom:6px;">Full Name</label>
+            <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 14px; font-size:14px; color:#0f172a;">Prof. Aydin Kaya</div>
+          </div>
+          <div style="margin-bottom:20px;">
+            <label style="display:block; font-size:13px; font-weight:600; color:#0f172a; margin-bottom:6px;">Department</label>
+            <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:12px 14px; font-size:14px; color:#0f172a; display:flex; justify-content:space-between; align-items:center;">
+              Power Systems
+              <span style="color:#94a3b8; font-size:10px;">&#9662;</span>
+            </div>
+          </div>
+          <div style="background:#3b82f6; padding:13px; border-radius:10px; font-size:14px; font-weight:600; text-align:center; color:white; box-shadow:0 2px 8px rgba(59,130,246,0.25);">Continue</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIN Step -->
+  <div>
+    <div style="text-align:center; color:#64748b; font-size:12px; font-weight:600; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">PIN Step</div>
+    <div class="mobile-frame">
+      <div class="mobile-bar">vera-eval.app/?t=abc123</div>
+      <div style="background:#f8fafc; min-height:600px; padding:24px 20px; color:#0f172a; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="width:48px; height:48px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; display:grid; place-items:center; font-weight:800; font-size:20px; color:white; margin-bottom:16px;">V</div>
+        <div style="font-size:18px; font-weight:700; margin-bottom:4px;">Enter PIN</div>
+        <div style="color:#94a3b8; font-size:13px; margin-bottom:32px;">4-digit personal PIN</div>
+
+        <!-- PIN boxes -->
+        <div style="display:flex; gap:12px; margin-bottom:32px;">
+          <div style="width:56px; height:64px; background:white; border:2px solid #3b82f6; border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; box-shadow:0 0 0 4px rgba(59,130,246,0.1);">3</div>
+          <div style="width:56px; height:64px; background:white; border:2px solid #3b82f6; border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; box-shadow:0 0 0 4px rgba(59,130,246,0.1);">7</div>
+          <div style="width:56px; height:64px; background:white; border:2px solid #e2e8f0; border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; color:#cbd5e1;">_</div>
+          <div style="width:56px; height:64px; background:white; border:2px solid #e2e8f0; border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; color:#cbd5e1;">_</div>
+        </div>
+
+        <div style="color:#94a3b8; font-size:12px;">Signing in as <strong style="color:#0f172a;">Prof. Aydin Kaya</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eval Step -->
+  <div>
+    <div style="text-align:center; color:#64748b; font-size:12px; font-weight:600; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Evaluation Step</div>
+    <div class="mobile-frame">
+      <div class="mobile-bar">vera-eval.app/?t=abc123</div>
+      <div style="background:#f8fafc; min-height:600px; color:#0f172a; display:flex; flex-direction:column;">
+        <!-- Sticky header -->
+        <div style="background:white; border-bottom:1px solid #e2e8f0; padding:14px 16px; position:sticky; top:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:11px; color:#94a3b8;">Group B &middot; 4/8</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></div>
+              <span style="font-size:11px; color:#94a3b8;">Saved</span>
+            </div>
+          </div>
+          <div style="font-size:16px; font-weight:700; letter-spacing:-0.2px; margin-bottom:10px;">Team Artemis</div>
+          <!-- Progress bar -->
+          <div style="height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;">
+            <div style="width:50%; height:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6); border-radius:2px;"></div>
+          </div>
+          <!-- Group nav -->
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <div style="padding:5px 12px; border-radius:6px; background:#f1f5f9; font-size:12px; color:#64748b;">&#8592;</div>
+            <div style="flex:1; padding:5px 12px; border-radius:6px; background:#f1f5f9; font-size:12px; color:#0f172a; text-align:center; font-weight:500;">Group B</div>
+            <div style="padding:5px 12px; border-radius:6px; background:#f1f5f9; font-size:12px; color:#64748b;">&#8594;</div>
+          </div>
+        </div>
+
+        <!-- Score cards -->
+        <div style="padding:16px; flex:1; display:flex; flex-direction:column; gap:12px;">
+          <!-- Technical -->
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:4px; height:20px; border-radius:2px; background:#f59e0b;"></div>
+                <span style="font-size:13px; font-weight:600;">Technical</span>
+              </div>
+              <span style="font-size:12px; color:#94a3b8;">0–30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center;">25</div>
+              <div style="flex:1;">
+                <div style="height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden;">
+                  <div style="width:83%; height:100%; background:linear-gradient(90deg,#f59e0b,#fbbf24); border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Written -->
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:4px; height:20px; border-radius:2px; background:#22c55e;"></div>
+                <span style="font-size:13px; font-weight:600;">Written</span>
+              </div>
+              <span style="font-size:12px; color:#94a3b8;">0–30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center;">22</div>
+              <div style="flex:1;">
+                <div style="height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden;">
+                  <div style="width:73%; height:100%; background:linear-gradient(90deg,#16a34a,#22c55e); border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Oral -->
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:4px; height:20px; border-radius:2px; background:#3b82f6;"></div>
+                <span style="font-size:13px; font-weight:600;">Oral</span>
+              </div>
+              <span style="font-size:12px; color:#94a3b8;">0–30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:#f8fafc; border:1.5px solid #3b82f6; border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center; box-shadow:0 0 0 3px rgba(59,130,246,0.1);">28</div>
+              <div style="flex:1;">
+                <div style="height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden;">
+                  <div style="width:93%; height:100%; background:linear-gradient(90deg,#2563eb,#3b82f6); border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teamwork -->
+          <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:4px; height:20px; border-radius:2px; background:#ef4444;"></div>
+                <span style="font-size:13px; font-weight:600;">Teamwork</span>
+              </div>
+              <span style="font-size:12px; color:#94a3b8;">0–10</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center;">8</div>
+              <div style="flex:1;">
+                <div style="height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden;">
+                  <div style="width:80%; height:100%; background:linear-gradient(90deg,#dc2626,#ef4444); border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total -->
+          <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; padding:16px; display:flex; align-items:center; justify-content:space-between; color:white; margin-top:4px;">
+            <span style="font-size:14px; font-weight:600;">Total Score</span>
+            <span style="font-size:28px; font-weight:800; letter-spacing:-1px;">83<span style="font-size:16px; font-weight:500; opacity:0.7;"> / 100</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- DONE STEP — MOBILE -->
+<!-- ══════════════════════════════════════════ -->
+<div class="screen-label">5. Done Step — Mobile (Light)</div>
+
+<div class="mobile-wrap">
+  <div>
+    <div style="text-align:center; color:#64748b; font-size:12px; font-weight:600; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Submission Complete</div>
+    <div class="mobile-frame">
+      <div class="mobile-bar">vera-eval.app/?t=abc123</div>
+      <div style="background:#f8fafc; min-height:600px; padding:24px 20px; color:#0f172a; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+        <!-- Success icon -->
+        <div style="width:72px; height:72px; background:rgba(34,197,94,0.1); border-radius:50%; display:grid; place-items:center; margin-bottom:20px;">
+          <div style="width:48px; height:48px; background:#22c55e; border-radius:50%; display:grid; place-items:center; color:white; font-size:24px; box-shadow:0 4px 16px rgba(34,197,94,0.3);">&#10003;</div>
+        </div>
+        <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px; margin-bottom:6px;">All Done!</div>
+        <div style="color:#64748b; font-size:14px; margin-bottom:28px;">Your evaluations have been submitted</div>
+
+        <!-- Summary card -->
+        <div style="width:100%; background:white; border:1px solid #e2e8f0; border-radius:16px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.04); text-align:left; margin-bottom:20px;">
+          <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:#0f172a;">Summary</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
+            <span style="color:#64748b;">Projects scored</span>
+            <span style="font-weight:600;">24 / 24</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
+            <span style="color:#64748b;">Average score</span>
+            <span style="font-weight:600;">76.2</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;">
+            <span style="color:#64748b;">Time taken</span>
+            <span style="font-weight:600;">1h 24m</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex; gap:10px; width:100%;">
+          <div style="flex:1; padding:12px; border-radius:10px; border:1px solid #e2e8f0; background:white; font-size:13px; font-weight:500; text-align:center; color:#64748b;">Review Scores</div>
+          <div style="flex:1; padding:12px; border-radius:10px; background:#0f172a; font-size:13px; font-weight:600; text-align:center; color:white;">Home</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SUMMARY -->
+<!-- ══════════════════════════════════════════ -->
+<div style="margin-top:64px; padding:24px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.12); border-radius:16px; max-width:720px; margin-left:auto; margin-right:auto;">
+  <div style="font-size:16px; font-weight:700; margin-bottom:12px; color:white;">Tasarim Kurallari</div>
+  <div style="font-size:13px; line-height:1.8; color:#94a3b8;">
+    <div style="display:grid; grid-template-columns:auto 1fr; gap:6px 12px;">
+      <span style="color:#3b82f6; font-weight:600;">Home + Auth:</span>
+      <span>Koyu zemin (#0f172a), glassmorphism kartlar, gradient butonlar</span>
+      <span style="color:#3b82f6; font-weight:600;">Admin Panel:</span>
+      <span>Koyu sidebar + acik content (#f8fafc), beyaz kartlar, ince border</span>
+      <span style="color:#3b82f6; font-weight:600;">Jury Flow:</span>
+      <span>Tamamen acik (#f8fafc), beyaz kartlar, criterion renkli sol bar</span>
+      <span style="color:#3b82f6; font-weight:600;">Accent:</span>
+      <span>#3b82f6 → #8b5cf6 gradient (logo, CTA, progress)</span>
+      <span style="color:#3b82f6; font-weight:600;">Font:</span>
+      <span>Plus Jakarta Sans (800 baslik, 500 body), JetBrains Mono (sayilar)</span>
+      <span style="color:#3b82f6; font-weight:600;">Radius:</span>
+      <span>10–16px kartlar, 8–10px inputlar, 20px pill/badge</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -144,7 +144,7 @@ export default function SemestersPage({
 
   return (
     <PageShell
-      title="Semesters"
+      title="Evaluation Periods"
       description="Manage evaluation periods, criteria, and MÜDEK outcomes"
     >
       <ConfirmDialog

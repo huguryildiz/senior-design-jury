@@ -24,14 +24,14 @@ import { cn } from "@/lib/utils";
 // ── 3-tab bar ────────────────────────────────────────────────
 
 const TAB_LABELS = {
-  semester: "Semester",
+  semester: "Period",
   criteria: "Evaluation Criteria",
   mudek:    "MÜDEK Outcomes",
 };
 
 function SemesterEditorTabs({ activeTab, onTab, dirtyTabs = {} }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-muted p-1.5" role="tablist" aria-label="Semester editor tabs">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-muted p-1.5" role="tablist" aria-label="Period editor tabs">
       {["semester", "criteria", "mudek"].map((t) => (
         <button
           key={t}
@@ -289,18 +289,18 @@ export default function ManageSemesterPanel({
               <circle cx="18" cy="18" r="3" />
             </svg>
           </span>
-          <span className="section-label">Semester Settings</span>
+          <span className="section-label">Period Settings</span>
         </div>
       </button>
 
       {isOpen && (
         <div className="flex flex-col gap-3 max-w-full min-w-0">
-          <div className="text-xs text-muted-foreground -mt-0.5 text-justify text-left leading-relaxed w-full">Manage semesters, dates, and the system-wide active term.</div>
+          <div className="text-xs text-muted-foreground -mt-0.5 text-justify text-left leading-relaxed w-full">Manage evaluation periods, dates, and the system-wide active term.</div>
           {panelError && <AlertCard variant="error">{panelError}</AlertCard>}
 
           {deletedWhileEditing && (
             <AlertCard variant="warning">
-              This semester was deleted in another session.{" "}
+              This period was deleted in another session.{" "}
               <button
                 className="inline-flex items-center gap-1.5 rounded-full border border-input bg-muted px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:-translate-y-px hover:border-border hover:shadow-md"
                 onClick={() => setDeletedWhileEditing(false)}
@@ -310,11 +310,11 @@ export default function ManageSemesterPanel({
             </AlertCard>
           )}
 
-          {/* Current semester selector */}
+          {/* Current period selector */}
           <div className="flex flex-col gap-1.5 rounded-xl border bg-muted/40 p-3">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Set Current Semester</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Set Current Period</label>
             <div className="text-xs text-muted-foreground">
-              The jury form opens for the selected semester and its groups.
+              The jury form opens for the selected period and its groups.
             </div>
             <div>
               <select
@@ -332,15 +332,15 @@ export default function ManageSemesterPanel({
 
           {/* Semester list */}
           <div className="flex flex-col gap-2 max-w-full min-w-0 overflow-x-hidden">
-            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">All Semesters</div>
+            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">All Periods</div>
             <div className="flex items-center justify-between gap-2.5">
               <div className="relative flex-1 min-w-0" style={{ width: "min(360px, 100%)" }}>
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none [&_svg]:size-4" aria-hidden="true"><SearchIcon /></span>
                 <input
                   className="h-9 w-full rounded-md border border-input bg-background pl-[34px] pr-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring"
                   type="text"
-                  placeholder="Search semesters"
-                  aria-label="Search semesters"
+                  placeholder="Search periods"
+                  aria-label="Search periods"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -374,7 +374,7 @@ export default function ManageSemesterPanel({
                           <circle cx="16" cy="16" r="6" />
                         </svg>
                       </span>
-                      <span>Current Semester</span>
+                      <span>Current Period</span>
                     </span>
                   )}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
@@ -434,10 +434,10 @@ export default function ManageSemesterPanel({
                   <DangerIconButton
                     ariaLabel={`Delete ${s.semester_name}`}
                     title={s.id === currentSemesterId
-                      ? "Cannot delete the current semester"
-                      : "Delete semester"}
+                      ? "Cannot delete the current period"
+                      : "Delete period"}
                     showLabel={true}
-                    label="Delete Semester"
+                    label="Delete Period"
                     labelClassName="max-md:hidden"
                     disabled={s.id === currentSemesterId}
                     onClick={() => onDeleteSemester?.(s)}
@@ -467,7 +467,7 @@ export default function ManageSemesterPanel({
               <div data-testid="modal-card" className="w-[min(520px,92vw)] max-w-[100vw] max-h-[90vh] rounded-2xl border bg-card shadow-lg flex flex-col gap-3 relative overflow-hidden min-w-[min(320px,90vw)] min-h-[min(200px,80vh)]">
                 <div className="flex items-center gap-2.5 text-foreground mb-0.5 px-5 pt-5">
                   <span className="inline-flex items-center justify-center size-9 rounded-xl bg-muted text-muted-foreground border border-input [&_svg]:size-[18px]" aria-hidden="true"><CirclePlusIcon /></span>
-                  <div className="text-lg font-bold tracking-tight">Create Semester</div>
+                  <div className="text-lg font-bold tracking-tight">Create Period</div>
                 </div>
 
                 <div className="px-5">
@@ -478,7 +478,7 @@ export default function ManageSemesterPanel({
                   {/* Tab 1: Semester metadata */}
                   {createTab === "semester" && (
                     <>
-                      <label className="text-sm font-medium">Semester name</label>
+                      <label className="text-sm font-medium">Period name</label>
                       <input
                         className={cn(
                           "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring",
@@ -599,7 +599,7 @@ export default function ManageSemesterPanel({
               <div className="w-[min(520px,92vw)] max-w-[100vw] max-h-[90vh] rounded-2xl border bg-card shadow-lg flex flex-col gap-3 relative overflow-hidden min-w-[min(320px,90vw)] min-h-[min(200px,80vh)]">
                 <div className="flex items-center gap-2.5 text-foreground mb-0.5 px-5 pt-5">
                   <span className="inline-flex items-center justify-center size-9 rounded-xl bg-muted text-muted-foreground border border-input [&_svg]:size-[18px]" aria-hidden="true"><PencilIcon /></span>
-                  <div className="text-lg font-bold tracking-tight">Edit Semester</div>
+                  <div className="text-lg font-bold tracking-tight">Edit Period</div>
                 </div>
 
                 <div className="px-5">
@@ -608,7 +608,7 @@ export default function ManageSemesterPanel({
 
                 {staleSemester && (
                   <AlertCard variant="warning">
-                    This semester was updated in another session. Reload before saving to avoid overwriting newer changes.
+                    This period was updated in another session. Reload before saving to avoid overwriting newer changes.
                   </AlertCard>
                 )}
 
@@ -616,7 +616,7 @@ export default function ManageSemesterPanel({
                   {/* Tab 1: Semester metadata */}
                   {editTab === "semester" && (
                     <>
-                      <label className="text-sm font-medium">Semester name</label>
+                      <label className="text-sm font-medium">Period name</label>
                       <input
                         className={cn(
                           "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring",
@@ -748,7 +748,7 @@ export default function ManageSemesterPanel({
                       className="inline-flex items-center gap-1.5 rounded-full bg-primary border-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:shadow-lg disabled:pointer-events-none disabled:opacity-60"
                       type="button"
                       disabled={!editMeta.canSubmit || staleSemester || isDemoMode}
-                      title={staleSemester ? "Reload the page before saving — this semester was updated externally" : undefined}
+                      title={staleSemester ? "Reload the page before saving — this period was updated externally" : undefined}
                       onClick={async () => {
                         const res = await onUpdateSemester({
                           id: editForm.id,

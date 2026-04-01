@@ -330,7 +330,7 @@ export default function ManageJurorsPanel({
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium">Institution / Department</label>
+                  <label className="text-sm font-medium">Affiliation</label>
                   <input
                     className={cn(
                       "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring",
@@ -399,7 +399,7 @@ export default function ManageJurorsPanel({
                   value={editForm.juror_name}
                   onChange={(e) => setEditForm((f) => ({ ...f, juror_name: e.target.value }))}
                 />
-                <label className="text-sm font-medium">Institution / Department</label>
+                <label className="text-sm font-medium">Affiliation</label>
                 <input
                   className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:ring-2 focus:ring-ring"
                   value={editForm.juror_inst}

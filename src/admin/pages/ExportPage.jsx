@@ -61,7 +61,7 @@ export default function ExportPage({ tenantId, isDemoMode = false }) {
       }),
     );
     const XLSX = await import("xlsx-js-style");
-    const headers = ["Semester", "Group No", "Project Title", "Students"];
+    const headers = ["Period", "Group No", "Title", "Team Members"];
     const data = projectsBySemester.flatMap(({ semesterName, rows }) =>
       (rows || []).map((p) => [
         semesterName,

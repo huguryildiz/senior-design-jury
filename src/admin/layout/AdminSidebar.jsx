@@ -86,7 +86,7 @@ const NAV_SECTIONS = [
     items: [
       { id: "jurors", label: "Jurors", icon: Users },
       { id: "projects", label: "Projects", icon: FolderKanban },
-      { id: "semesters", label: "Semesters", icon: Calendar },
+      { id: "semesters", label: "Periods", icon: Calendar },
     ],
   },
   {
@@ -121,7 +121,7 @@ function SidebarBrand() {
 }
 
 function SidebarTenantSwitcher({ activeTenant, tenants, onTenantSwitch, isSuper }) {
-  const tenantLabel = activeTenant?.short_label || activeTenant?.name || "No tenant";
+  const tenantLabel = activeTenant?.short_label || activeTenant?.name || "No organization";
 
   if (!isSuper || !tenants || tenants.length <= 1) {
     return (
@@ -145,7 +145,7 @@ function SidebarTenantSwitcher({ activeTenant, tenants, onTenantSwitch, isSuper 
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="start" sideOffset={8} className="min-w-48">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Switch organization</DropdownMenuLabel>
+          <DropdownMenuLabel>Switch Organization</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {tenants
             .filter((t) => t.id != null)

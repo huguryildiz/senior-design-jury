@@ -75,7 +75,7 @@ export function buildColumns({
     },
     {
       id: "projectTitle",
-      label: "Project Title",
+      label: "Title",
       sortKey: "projectTitle",
       filter: {
         type: "text",
@@ -120,13 +120,13 @@ export function buildColumns({
     },
     {
       id: "dept",
-      label: "Institution / Department",
+      label: "Affiliation",
       sortKey: "juryDept",
       filter: {
         type: "text",
         value: filterDept,
         setValue: setFilterDept,
-        placeholder: "Search Institution / Department",
+        placeholder: "Search Affiliation",
         isActive: isDeptFilterActive,
         clear: () => setFilterDept(""),
       },

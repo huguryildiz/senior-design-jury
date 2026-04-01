@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Complete UI (Hibrit Light)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-page: #f8fafc;
+    --bg-white: #ffffff;
+    --surface-1: #f1f5f9;
+    --surface-2: #e2e8f0;
+    --border: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --text-1: #0f172a;
+    --text-2: #475569;
+    --text-3: #94a3b8;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --accent-soft: rgba(59,130,246,0.08);
+    --green: #16a34a;
+    --green-soft: rgba(22,163,74,0.08);
+    --amber: #d97706;
+    --amber-soft: rgba(217,119,6,0.08);
+    --rose: #e11d48;
+    --rose-soft: rgba(225,29,72,0.06);
+    --indigo: #6366f1;
+    --indigo-soft: rgba(99,102,241,0.08);
+
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px var(--border);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.06), 0 0 0 1px var(--border-hover);
+    --font: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 48px 32px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; text-align: center; margin-bottom: 8px; }
+  .page-subtitle { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 56px; }
+
+  .screen-label {
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    color: #64748b; margin: 56px 0 16px; display: flex; align-items: center; gap: 10px;
+  }
+  .screen-label:first-of-type { margin-top: 0; }
+  .screen-label::after { content:''; flex:1; height:1px; background:#1e293b; }
+
+  .frame {
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid #1e293b;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .frame-bar {
+    background: #1e293b; padding: 10px 16px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #64748b;
+  }
+  .frame-bar .dots { display: flex; gap: 5px; margin-right: 12px; }
+  .frame-bar .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .frame-bar .dot.r { background: #ef4444; }
+  .frame-bar .dot.y { background: #eab308; }
+  .frame-bar .dot.g { background: #22c55e; }
+
+  /* ─── Admin Shell ─── */
+  .admin-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 620px;
+    background: var(--bg-page);
+    color: var(--text-1);
+    font-size: 13px;
+  }
+  .admin-main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ─── Dark Sidebar (shared) ─── */
+  .sb {
+    background: #0f172a;
+    color: white;
+    padding: 16px 10px;
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    border-right: 1px solid #1e293b;
+  }
+  .sb-brand { display: flex; align-items: center; gap: 8px; padding: 6px 10px; margin-bottom: 10px; }
+  .sb-brand .logo {
+    width: 28px; height: 28px; background: linear-gradient(135deg,#3b82f6,#8b5cf6);
+    border-radius: 7px; display: grid; place-items: center; font-weight: 800; font-size: 12px; color: white;
+  }
+  .sb-brand span { font-weight: 700; font-size: 14px; letter-spacing: -0.3px; }
+
+  .sb-tenant {
+    display: flex; align-items: center; gap: 6px; padding: 7px 10px; margin-bottom: 14px;
+    border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px; color: #94a3b8;
+  }
+  .sb-tenant .td { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+  .sb-tenant .ch { margin-left: auto; font-size: 9px; opacity: .4; }
+
+  .sb-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #475569; padding: 10px 10px 4px;
+  }
+  .sb-item {
+    padding: 7px 10px; border-radius: 7px; color: #64748b;
+    display: flex; align-items: center; gap: 8px; font-size: 12.5px;
+  }
+  .sb-item.active {
+    background: rgba(59,130,246,0.15); color: #93c5fd;
+  }
+  .sb-sub {
+    margin-left: 20px; padding-left: 10px; border-left: 1.5px solid rgba(255,255,255,0.06);
+  }
+  .sb-sub .sb-item { font-size: 12px; padding: 5px 10px; }
+
+  .sb-footer {
+    margin-top: auto; padding: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .sb-footer .av {
+    width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#f472b6,#c084fc);
+    display: grid; place-items: center; font-size: 11px; font-weight: 600; color: white;
+  }
+  .sb-footer .nm { font-size: 12px; font-weight: 600; }
+  .sb-footer .rl { font-size: 10px; color: #64748b; }
+
+  /* ─── Header Bar ─── */
+  .header-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 24px; height: 48px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-white);
+    font-size: 13px;
+  }
+  .header-bar .hb-trigger {
+    width: 20px; height: 20px; display: grid; place-items: center;
+    color: var(--text-3); cursor: pointer; border-radius: 4px;
+  }
+  .header-bar .hb-trigger:hover { background: var(--surface-1); }
+  .header-bar .hb-sep {
+    width: 1px; height: 20px; background: var(--border);
+  }
+  .header-bar .hb-title {
+    font-size: 14px; font-weight: 600; color: var(--text-1);
+  }
+  .header-bar .hb-subtitle {
+    font-size: 13px; color: var(--text-3); margin-left: 4px;
+  }
+  .header-bar .hb-right {
+    margin-left: auto; display: flex; align-items: center; gap: 10px;
+  }
+  .semester-select {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 28px 5px 10px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg-white);
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    color: var(--text-1); cursor: pointer;
+    appearance: none; position: relative;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+  .semester-select:hover { background-color: var(--surface-1); }
+  .refresh-btn {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: grid; place-items: center;
+    border: none; background: none; color: var(--text-3);
+    cursor: pointer; font-size: 14px;
+  }
+  .refresh-btn:hover { background: var(--surface-1); color: var(--text-1); }
+  .hb-time { font-size: 11px; color: var(--text-3); }
+
+  /* ─── Content Area ─── */
+  .ct { padding: 28px 32px; overflow: hidden; }
+
+  .ct-title { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; color: var(--text-1); }
+  .ct-desc { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+  .ct-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .ct-actions { display: flex; gap: 8px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--bg-white); color: var(--text-2);
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--surface-1); }
+  .btn-p { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* Cards */
+  .card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi {
+    padding: 16px; background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .kpi-label { font-size: 11px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .kpi-val { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .kpi-sub { font-size: 11px; margin-top: 4px; font-weight: 500; }
+  .kpi-sub.green { color: var(--green); }
+  .kpi-sub.amber { color: var(--amber); }
+  .kpi-sub.blue { color: var(--accent); }
+
+  /* Tables */
+  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl th {
+    text-align: left; padding: 9px 16px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-3);
+    background: var(--surface-1); border-bottom: 1px solid var(--border);
+  }
+  .tbl td {
+    padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--surface-1);
+    vertical-align: middle;
+  }
+  .tbl tbody tr:hover { background: var(--surface-1); }
+
+  /* Pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  }
+  .pill.green { background: var(--green-soft); color: var(--green); }
+  .pill.amber { background: var(--amber-soft); color: var(--amber); }
+  .pill.blue  { background: var(--accent-soft); color: var(--accent); }
+  .pill.rose  { background: var(--rose-soft); color: var(--rose); }
+  .pill.gray  { background: var(--surface-1); color: var(--text-3); }
+
+  .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .mono { font-family: var(--mono); font-size: 12px; }
+
+  /* Avatar */
+  .av-sm {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-grid; place-items: center; font-size: 10px; font-weight: 600; color: white;
+    flex-shrink: 0;
+  }
+  .juror-cell { display: flex; align-items: center; gap: 8px; }
+  .juror-nm { font-weight: 500; }
+  .juror-dept { font-size: 11px; color: var(--text-3); }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 2px; background: var(--surface-1);
+    border-radius: var(--radius-sm); padding: 3px; margin-bottom: 20px; width: fit-content;
+  }
+  .tab {
+    padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    color: var(--text-3); cursor: pointer;
+  }
+  .tab.active { background: var(--bg-white); color: var(--text-1); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+  /* Search */
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--bg-white);
+    font-size: 13px; color: var(--text-3); width: 240px;
+  }
+
+  /* Score Grid */
+  .grid-cell {
+    width: 40px; height: 28px; border-radius: 4px;
+    display: inline-grid; place-items: center; font-size: 11px; font-weight: 500;
+  }
+  .gc-high { background: rgba(22,163,74,0.12); color: #16a34a; }
+  .gc-mid  { background: rgba(59,130,246,0.1); color: #3b82f6; }
+  .gc-low  { background: rgba(217,119,6,0.1); color: #d97706; }
+  .gc-none { background: var(--surface-1); color: var(--text-3); }
+
+  /* Project cards */
+  .proj-card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+  }
+  .proj-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .proj-meta { font-size: 12px; color: var(--text-3); }
+  .proj-students { font-size: 12px; color: var(--text-2); margin-top: 8px; line-height: 1.6; }
+
+  /* Semester card */
+  .sem-card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sem-name { font-weight: 600; font-size: 14px; }
+  .sem-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+  /* Audit row */
+  .audit-row { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--surface-1); align-items: flex-start; }
+  .audit-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: grid; place-items: center; font-size: 12px; flex-shrink: 0;
+  }
+  .audit-text { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+  .audit-text strong { color: var(--text-1); font-weight: 600; }
+  .audit-time { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+
+  /* Token card */
+  .token-card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .token-code {
+    font-family: var(--mono); font-size: 18px; font-weight: 700;
+    letter-spacing: 2px; color: var(--text-1);
+    background: var(--surface-1); padding: 10px 18px; border-radius: var(--radius-sm);
+  }
+
+  /* QR placeholder */
+  .qr-box {
+    width: 140px; height: 140px; background: white;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    display: grid; place-items: center; color: var(--text-3); font-size: 11px;
+  }
+
+  /* Export cards */
+  .export-card {
+    background: var(--bg-white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+  }
+  .export-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .export-card p { font-size: 12px; color: var(--text-3); margin-bottom: 14px; }
+
+  /* Chart placeholder */
+  .chart-placeholder {
+    height: 180px; background: var(--surface-1); border-radius: var(--radius-sm);
+    display: flex; align-items: flex-end; padding: 16px; gap: 8px;
+  }
+  .chart-bar {
+    flex: 1; border-radius: 4px 4px 0 0; min-width: 20px;
+  }
+</style>
+</head>
+<body>
+
+<h1>VERA — Tum Ekranlar</h1>
+<p class="page-subtitle">Home → Auth → Admin (11 sayfa) → Jury Flow (6 adim). Hibrit tasarim, gercek veri.</p>
+
+<div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:48px; font-size:12px;">
+  <span class="pill" style="background:rgba(139,92,246,0.15); color:#a78bfa;">Home</span>
+  <span class="pill" style="background:rgba(139,92,246,0.15); color:#a78bfa;">Sign In</span>
+  <span class="pill" style="background:rgba(139,92,246,0.15); color:#a78bfa;">Register</span>
+  <span style="color:#475569;">→</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Overview</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Rankings</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Analytics</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Grid</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Details</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Jurors</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Projects</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Semesters</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Entry Control</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Audit Log</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Export</span>
+  <span class="pill" style="background:rgba(59,130,246,0.15); color:#60a5fa;">Settings</span>
+  <span style="color:#475569;">→</span>
+  <span class="pill" style="background:rgba(34,197,94,0.15); color:#4ade80;">Jury Gate</span>
+  <span class="pill" style="background:rgba(34,197,94,0.15); color:#4ade80;">Identity</span>
+  <span class="pill" style="background:rgba(34,197,94,0.15); color:#4ade80;">PIN</span>
+  <span class="pill" style="background:rgba(34,197,94,0.15); color:#4ade80;">Eval</span>
+  <span class="pill" style="background:rgba(34,197,94,0.15); color:#4ade80;">Done</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 0A. HOME PAGE -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">0A. Home Page (Dark)</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app</div>
+  <div style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height:520px; color:white; display:flex; flex-direction:column;">
+    <div style="display:flex; align-items:center; padding:16px 32px; border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:30px; height:30px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:8px; display:grid; place-items:center; font-weight:800; font-size:13px; color:white;">V</div>
+        <span style="font-weight:700; font-size:16px; letter-spacing:-0.3px;">VERA</span>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:20px; font-size:13px;">
+        <span style="color:#94a3b8;">Features</span>
+        <span style="color:#94a3b8;">Docs</span>
+        <div style="background:white; color:#0f172a; padding:7px 18px; border-radius:8px; font-weight:600; font-size:13px;">Sign in</div>
+      </div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px 24px; position:relative;">
+      <div style="position:absolute; top:0; left:50%; transform:translateX(-50%); width:500px; height:300px; background:radial-gradient(ellipse, rgba(59,130,246,0.1) 0%, transparent 70%); pointer-events:none;"></div>
+      <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); padding:5px 14px; border-radius:20px; font-size:12px; color:#94a3b8; margin-bottom:24px; position:relative;">
+        <span style="color:#3b82f6;">&#9679;</span> Multi-tenant evaluation platform
+      </div>
+      <div style="font-size:48px; font-weight:800; letter-spacing:-1.5px; line-height:1.05; margin-bottom:16px; position:relative;">Academic Jury<br>Evaluation Platform</div>
+      <div style="color:#94a3b8; font-size:16px; max-width:440px; line-height:1.6; margin-bottom:32px;">Configure criteria, manage jurors, collect scores, and analyze results — all in one place.</div>
+      <div style="display:flex; gap:12px;">
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); padding:12px 28px; border-radius:10px; font-weight:600; font-size:14px; box-shadow:0 4px 16px rgba(59,130,246,0.3);">Start Evaluation</div>
+        <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:12px 28px; border-radius:10px; font-size:14px;">Admin Login</div>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:center; gap:48px; padding:24px; border-top:1px solid rgba(255,255,255,0.06); font-size:13px;">
+      <div style="text-align:center;"><div style="font-size:24px; font-weight:800;">6</div><div style="color:#64748b; font-size:12px;">Universities</div></div>
+      <div style="text-align:center;"><div style="font-size:24px; font-weight:800;">2,400+</div><div style="color:#64748b; font-size:12px;">Evaluations</div></div>
+      <div style="text-align:center;"><div style="font-size:24px; font-weight:800;">120+</div><div style="color:#64748b; font-size:12px;">Jurors</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 0B. SIGN IN -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">0B. Sign In (Dark + Glass)</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin</div>
+  <div style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height:560px; color:white; display:flex; align-items:center; justify-content:center; position:relative;">
+    <div style="position:absolute; top:20%; left:30%; width:400px; height:400px; background:radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); pointer-events:none;"></div>
+    <div style="position:absolute; bottom:20%; right:25%; width:350px; height:350px; background:radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%); pointer-events:none;"></div>
+    <div style="width:400px; position:relative;">
+      <div style="text-align:center; margin-bottom:32px;">
+        <div style="width:44px; height:44px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:12px; display:inline-grid; place-items:center; font-weight:800; font-size:18px; color:white; margin-bottom:12px;">V</div>
+        <div style="font-size:20px; font-weight:700;">Welcome back</div>
+        <div style="color:#64748b; font-size:13px; margin-top:4px;">Sign in to your tenant dashboard</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.05); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:32px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Email</label>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">admin@tedu.edu.tr</div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <label style="font-size:13px; font-weight:500; color:#94a3b8;">Password</label>
+            <span style="font-size:12px; color:#3b82f6;">Forgot?</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+          <div style="width:16px; height:16px; border-radius:4px; border:1.5px solid rgba(255,255,255,0.15);"></div>
+          <span style="font-size:13px; color:#94a3b8;">Remember me for 30 days</span>
+        </div>
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); padding:12px; border-radius:10px; font-size:14px; font-weight:600; text-align:center; box-shadow:0 4px 16px rgba(59,130,246,0.3);">Sign in</div>
+        <div style="display:flex; align-items:center; gap:12px; margin:20px 0;">
+          <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+          <span style="font-size:12px; color:#475569;">or</span>
+          <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; font-size:14px; text-align:center; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:20px; font-size:13px; color:#64748b;">Don't have an account? <span style="color:#3b82f6; font-weight:500;">Apply for access</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 0C. REGISTER -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">0C. Tenant Application (Dark + Glass)</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/register</div>
+  <div style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height:540px; color:white; display:flex; align-items:center; justify-content:center; position:relative;">
+    <div style="position:absolute; top:15%; right:20%; width:400px; height:400px; background:radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%); pointer-events:none;"></div>
+    <div style="width:420px;">
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="width:44px; height:44px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:12px; display:inline-grid; place-items:center; font-weight:800; font-size:18px; color:white; margin-bottom:12px;">V</div>
+        <div style="font-size:20px; font-weight:700;">Apply for Access</div>
+        <div style="color:#64748b; font-size:13px; margin-top:4px;">Register your department to start evaluating</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.05); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:32px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+          <div><label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">First name</label><div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">Hugur</div></div>
+          <div><label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Last name</label><div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">Yildiz</div></div>
+        </div>
+        <div style="margin-bottom:16px;"><label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Work email</label><div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">hugur@tedu.edu.tr</div></div>
+        <div style="margin-bottom:16px;"><label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">University</label><div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:white; display:flex; justify-content:space-between;">TED University<span style="color:#64748b; font-size:10px;">&#9662;</span></div></div>
+        <div style="margin-bottom:20px;"><label style="display:block; font-size:13px; font-weight:500; color:#94a3b8; margin-bottom:6px;">Department</label><div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px 14px; font-size:14px; color:#64748b;">Electrical & Electronics Engineering</div></div>
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb); padding:12px; border-radius:10px; font-size:14px; font-weight:600; text-align:center; box-shadow:0 4px 16px rgba(59,130,246,0.3);">Submit Application</div>
+      </div>
+      <div style="text-align:center; margin-top:20px; font-size:13px; color:#64748b;">Already have an account? <span style="color:#3b82f6; font-weight:500;">Sign in</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 1. OVERVIEW -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">1. Overview</div>
+<div class="frame">
+  <div class="frame-bar">
+    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+    vera-eval.app/admin — Overview
+  </div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU Electrical Eng.<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Analytics</div>
+      <div class="sb-item active">&#9632; Overview</div>
+      <div class="sb-item">&#9632; Scores</div>
+      <div class="sb-label">Manage</div>
+      <div class="sb-item">&#9632; Jurors</div>
+      <div class="sb-item">&#9632; Projects</div>
+      <div class="sb-item">&#9632; Semesters</div>
+      <div class="sb-label">System</div>
+      <div class="sb-item">&#9632; Entry Control</div>
+      <div class="sb-item">&#9632; Audit Log</div>
+      <div class="sb-item">&#9632; Export</div>
+      <div class="sb-item">&#9632; Settings</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Overview</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Overview</div><div class="ct-desc">EE 491/492 — Spring 2026 evaluation day</div></div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">Jurors</div>
+          <div class="kpi-val">12</div>
+          <div class="kpi-sub green">&#8593; 8 scoring, 2 idle, 2 not started</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Groups</div>
+          <div class="kpi-val">3</div>
+          <div class="kpi-sub blue">A (8), B (8), C (8) projects</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Scored</div>
+          <div class="kpi-val">187</div>
+          <div class="kpi-sub amber">of 288 total &middot; 65%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Avg. Score</div>
+          <div class="kpi-val">72.4</div>
+          <div class="kpi-sub blue">&#8595; 1.2 vs mid-semester</div>
+        </div>
+      </div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Juror</th><th>Status</th><th>Scored</th><th>Avg.</th><th>Last Active</th></tr></thead>
+          <tbody>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">AK</div><div><div class="juror-nm">Prof. Aydin Kaya</div><div class="juror-dept">Power Systems</div></div></div></td><td><span class="pill green"><span class="dot"></span>Scoring</span></td><td class="mono">18/24</td><td class="mono">76.2</td><td style="color:var(--text-3)">2m ago</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#f472b6,#c084fc)">SE</div><div><div class="juror-nm">Dr. Selin Erdem</div><div class="juror-dept">Signal Processing</div></div></div></td><td><span class="pill green"><span class="dot"></span>Scoring</span></td><td class="mono">12/24</td><td class="mono">71.8</td><td style="color:var(--text-3)">5m ago</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#60a5fa,#818cf8)">MT</div><div><div class="juror-nm">Prof. Murat Tekir</div><div class="juror-dept">Microelectronics</div></div></div></td><td><span class="pill blue"><span class="dot"></span>Complete</span></td><td class="mono">24/24</td><td class="mono">68.5</td><td style="color:var(--text-3)">42m ago</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#34d399,#2dd4bf)">BY</div><div><div class="juror-nm">Dr. Baris Yilmaz</div><div class="juror-dept">Control Systems</div></div></div></td><td><span class="pill amber"><span class="dot"></span>Idle</span></td><td class="mono">6/24</td><td class="mono">74.1</td><td style="color:var(--text-3)">1h ago</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#fbbf24,#f97316)">DO</div><div><div class="juror-nm">Prof. Deniz Ozer</div><div class="juror-dept">Telecom</div></div></div></td><td><span class="pill green"><span class="dot"></span>Scoring</span></td><td class="mono">20/24</td><td class="mono">79.3</td><td style="color:var(--text-3)">8m ago</td></tr>
+          </tbody>
+        </table>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 2. SCORES — RANKINGS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">2. Scores — Rankings</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Rankings</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Analytics</div>
+      <div class="sb-item">&#9632; Overview</div>
+      <div class="sb-item active">&#9632; Scores</div>
+      <div class="sb-sub">
+        <div class="sb-item" style="color:#93c5fd;">Rankings</div>
+        <div class="sb-item">Analytics</div>
+        <div class="sb-item">Grid</div>
+        <div class="sb-item">Details</div>
+      </div>
+      <div class="sb-label">Manage</div>
+      <div class="sb-item">&#9632; Jurors</div>
+      <div class="sb-item">&#9632; Projects</div>
+      <div class="sb-item">&#9632; Semesters</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Rankings</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Rankings</div><div class="ct-desc">Spring 2026 — sorted by total average</div></div>
+        <div class="ct-actions"><button class="btn">&#8681; Excel</button></div>
+      </div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Project</th><th>Technical</th><th>Written</th><th>Oral</th><th>Teamwork</th><th>Total</th></tr></thead>
+          <tbody>
+            <tr><td class="mono" style="font-weight:700; color:var(--amber);">1</td><td><strong>Team Helios</strong><br><span style="font-size:11px;color:var(--text-3)">Solar Tracker System</span></td><td class="mono">26.4</td><td class="mono">25.1</td><td class="mono">27.8</td><td class="mono">8.9</td><td class="mono" style="font-weight:700;">88.2</td></tr>
+            <tr><td class="mono" style="font-weight:700; color:#94a3b8;">2</td><td><strong>Team Artemis</strong><br><span style="font-size:11px;color:var(--text-3)">Autonomous Drone Nav</span></td><td class="mono">25.7</td><td class="mono">24.3</td><td class="mono">25.9</td><td class="mono">8.1</td><td class="mono" style="font-weight:700;">84.0</td></tr>
+            <tr><td class="mono" style="font-weight:700; color:#b45309;">3</td><td><strong>Team Volterra</strong><br><span style="font-size:11px;color:var(--text-3)">Smart Grid Monitor</span></td><td class="mono">24.2</td><td class="mono">23.8</td><td class="mono">24.5</td><td class="mono">8.4</td><td class="mono" style="font-weight:700;">80.9</td></tr>
+            <tr><td class="mono">4</td><td><strong>Team Photon</strong><br><span style="font-size:11px;color:var(--text-3)">LiDAR Mapping</span></td><td class="mono">23.1</td><td class="mono">22.6</td><td class="mono">23.9</td><td class="mono">7.8</td><td class="mono" style="font-weight:700;">77.4</td></tr>
+            <tr><td class="mono">5</td><td><strong>Team Ohm</strong><br><span style="font-size:11px;color:var(--text-3)">IoT Power Meter</span></td><td class="mono">22.0</td><td class="mono">21.5</td><td class="mono">22.8</td><td class="mono">7.2</td><td class="mono" style="font-weight:700;">73.5</td></tr>
+          </tbody>
+        </table>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 3. SCORES — ANALYTICS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">3. Scores — Analytics</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Analytics</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Analytics</div>
+      <div class="sb-item">&#9632; Overview</div>
+      <div class="sb-item active">&#9632; Scores</div>
+      <div class="sb-sub">
+        <div class="sb-item">Rankings</div>
+        <div class="sb-item" style="color:#93c5fd;">Analytics</div>
+        <div class="sb-item">Grid</div>
+        <div class="sb-item">Details</div>
+      </div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Analytics</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Analytics</div><div class="ct-desc">Score distribution and trends</div></div>
+      </div>
+      <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);">
+        <div class="kpi"><div class="kpi-label">Avg. Technical</div><div class="kpi-val" style="color:#f59e0b;">23.8</div><div class="kpi-sub blue">/ 30</div></div>
+        <div class="kpi"><div class="kpi-label">Avg. Written</div><div class="kpi-val" style="color:#22c55e;">22.1</div><div class="kpi-sub blue">/ 30</div></div>
+        <div class="kpi"><div class="kpi-label">Avg. Oral</div><div class="kpi-val" style="color:#3b82f6;">24.5</div><div class="kpi-sub blue">/ 30</div></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="card" style="padding:20px;">
+          <div style="font-size:14px; font-weight:700; margin-bottom:16px;">Score Distribution</div>
+          <div class="chart-placeholder">
+            <div class="chart-bar" style="height:20%; background:#e2e8f0;"></div>
+            <div class="chart-bar" style="height:35%; background:#cbd5e1;"></div>
+            <div class="chart-bar" style="height:55%; background:#94a3b8;"></div>
+            <div class="chart-bar" style="height:85%; background:#3b82f6;"></div>
+            <div class="chart-bar" style="height:95%; background:#2563eb;"></div>
+            <div class="chart-bar" style="height:70%; background:#3b82f6;"></div>
+            <div class="chart-bar" style="height:45%; background:#94a3b8;"></div>
+            <div class="chart-bar" style="height:25%; background:#cbd5e1;"></div>
+            <div class="chart-bar" style="height:10%; background:#e2e8f0;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-3); margin-top:6px; padding:0 4px;"><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span></div>
+        </div>
+        <div class="card" style="padding:20px;">
+          <div style="font-size:14px; font-weight:700; margin-bottom:16px;">Criteria Averages by Group</div>
+          <div class="chart-placeholder" style="align-items:flex-end; gap:4px;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px; align-items:stretch;">
+              <div style="font-size:9px; text-align:center; color:var(--text-3); margin-bottom:4px;">Group A</div>
+              <div style="height:70px; background:#f59e0b; border-radius:3px 3px 0 0; opacity:.8;"></div>
+              <div style="height:60px; background:#22c55e; border-radius:3px 3px 0 0; opacity:.8;"></div>
+              <div style="height:75px; background:#3b82f6; border-radius:3px 3px 0 0; opacity:.8;"></div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px; align-items:stretch;">
+              <div style="font-size:9px; text-align:center; color:var(--text-3); margin-bottom:4px;">Group B</div>
+              <div style="height:65px; background:#f59e0b; border-radius:3px 3px 0 0; opacity:.8;"></div>
+              <div style="height:55px; background:#22c55e; border-radius:3px 3px 0 0; opacity:.8;"></div>
+              <div style="height:68px; background:#3b82f6; border-radius:3px 3px 0 0; opacity:.8;"></div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px; align-items:stretch;">
+              <div style="font-size:9px; text-align:center; color:var(--text-3); margin-bottom:4px;">Group C</div>
+              <div style="height:58px; background:#f59e0b; border-radius:3px 3px 0 0; opacity:.8;"></div>
+              <div style="height:50px; background:#22c55e; border-radius:3px 3px 0 0; opacity:.8;"></div>
+              <div style="height:62px; background:#3b82f6; border-radius:3px 3px 0 0; opacity:.8;"></div>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+    </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 4. SCORES — GRID -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">4. Scores — Grid</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Score Grid</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Analytics</div>
+      <div class="sb-item active">&#9632; Scores</div>
+      <div class="sb-sub"><div class="sb-item">Rankings</div><div class="sb-item">Analytics</div><div class="sb-item" style="color:#93c5fd;">Grid</div><div class="sb-item">Details</div></div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Score Grid</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Score Grid</div><div class="ct-desc">Jurors × Projects matrix — Technical scores</div></div>
+        <div class="tabs"><div class="tab active">Technical</div><div class="tab">Written</div><div class="tab">Oral</div><div class="tab">Teamwork</div></div>
+      </div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="tbl" style="min-width:700px;">
+          <thead><tr><th>Juror</th><th style="text-align:center">Helios</th><th style="text-align:center">Artemis</th><th style="text-align:center">Volterra</th><th style="text-align:center">Photon</th><th style="text-align:center">Ohm</th><th style="text-align:center">Faraday</th><th style="text-align:center">Tesla</th><th style="text-align:center">Gauss</th></tr></thead>
+          <tbody>
+            <tr><td class="juror-nm">Prof. Kaya</td><td style="text-align:center"><div class="grid-cell gc-high">28</div></td><td style="text-align:center"><div class="grid-cell gc-high">26</div></td><td style="text-align:center"><div class="grid-cell gc-mid">24</div></td><td style="text-align:center"><div class="grid-cell gc-mid">22</div></td><td style="text-align:center"><div class="grid-cell gc-low">19</div></td><td style="text-align:center"><div class="grid-cell gc-high">27</div></td><td style="text-align:center"><div class="grid-cell gc-mid">23</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td></tr>
+            <tr><td class="juror-nm">Dr. Erdem</td><td style="text-align:center"><div class="grid-cell gc-high">27</div></td><td style="text-align:center"><div class="grid-cell gc-high">25</div></td><td style="text-align:center"><div class="grid-cell gc-mid">23</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-mid">24</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td></tr>
+            <tr><td class="juror-nm">Prof. Tekir</td><td style="text-align:center"><div class="grid-cell gc-mid">25</div></td><td style="text-align:center"><div class="grid-cell gc-high">26</div></td><td style="text-align:center"><div class="grid-cell gc-high">25</div></td><td style="text-align:center"><div class="grid-cell gc-mid">24</div></td><td style="text-align:center"><div class="grid-cell gc-mid">23</div></td><td style="text-align:center"><div class="grid-cell gc-high">26</div></td><td style="text-align:center"><div class="grid-cell gc-mid">22</div></td><td style="text-align:center"><div class="grid-cell gc-mid">21</div></td></tr>
+            <tr><td class="juror-nm">Dr. Yilmaz</td><td style="text-align:center"><div class="grid-cell gc-mid">24</div></td><td style="text-align:center"><div class="grid-cell gc-low">20</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td></tr>
+            <tr><td class="juror-nm">Prof. Ozer</td><td style="text-align:center"><div class="grid-cell gc-high">29</div></td><td style="text-align:center"><div class="grid-cell gc-high">27</div></td><td style="text-align:center"><div class="grid-cell gc-high">26</div></td><td style="text-align:center"><div class="grid-cell gc-mid">24</div></td><td style="text-align:center"><div class="grid-cell gc-mid">23</div></td><td style="text-align:center"><div class="grid-cell gc-high">28</div></td><td style="text-align:center"><div class="grid-cell gc-high">25</div></td><td style="text-align:center"><div class="grid-cell gc-none">—</div></td></tr>
+          </tbody>
+        </table>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 5. JURORS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">5. Manage — Jurors</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Jurors</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Manage</div>
+      <div class="sb-item active">&#9632; Jurors</div>
+      <div class="sb-item">&#9632; Projects</div>
+      <div class="sb-item">&#9632; Semesters</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Jurors</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Jurors</div><div class="ct-desc">12 jurors in Spring 2026</div></div>
+        <div class="ct-actions">
+          <div class="search-bar">&#128269; Search jurors...</div>
+          <button class="btn">&#8681; Import CSV</button>
+          <button class="btn btn-p">+ Add Juror</button>
+        </div>
+      </div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Juror</th><th>PIN</th><th>Edit Mode</th><th>Submitted</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">AK</div><div><div class="juror-nm">Prof. Aydin Kaya</div><div class="juror-dept">Power Systems</div></div></div></td><td class="mono">3749</td><td><span class="pill gray">Off</span></td><td><span class="pill green">&#10003; Yes</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#8635; &nbsp; &#128465;</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#f472b6,#c084fc)">SE</div><div><div class="juror-nm">Dr. Selin Erdem</div><div class="juror-dept">Signal Processing</div></div></div></td><td class="mono">8412</td><td><span class="pill amber">On</span></td><td><span class="pill gray">No</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#8635; &nbsp; &#128465;</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#60a5fa,#818cf8)">MT</div><div><div class="juror-nm">Prof. Murat Tekir</div><div class="juror-dept">Microelectronics</div></div></div></td><td class="mono">5561</td><td><span class="pill gray">Off</span></td><td><span class="pill green">&#10003; Yes</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#8635; &nbsp; &#128465;</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#34d399,#2dd4bf)">BY</div><div><div class="juror-nm">Dr. Baris Yilmaz</div><div class="juror-dept">Control Systems</div></div></div></td><td class="mono">2208</td><td><span class="pill gray">Off</span></td><td><span class="pill gray">No</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#8635; &nbsp; &#128465;</td></tr>
+            <tr><td><div class="juror-cell"><div class="av-sm" style="background:linear-gradient(135deg,#fbbf24,#f97316)">DO</div><div><div class="juror-nm">Prof. Deniz Ozer</div><div class="juror-dept">Telecom</div></div></div></td><td class="mono">9173</td><td><span class="pill gray">Off</span></td><td><span class="pill green">&#10003; Yes</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#8635; &nbsp; &#128465;</td></tr>
+          </tbody>
+        </table>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 6. PROJECTS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">6. Manage — Projects</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Projects</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Manage</div>
+      <div class="sb-item">&#9632; Jurors</div>
+      <div class="sb-item active">&#9632; Projects</div>
+      <div class="sb-item">&#9632; Semesters</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Projects</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Projects</div><div class="ct-desc">24 projects in 3 groups — Spring 2026</div></div>
+        <div class="ct-actions">
+          <button class="btn">&#8681; Import</button>
+          <button class="btn btn-p">+ Add Project</button>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+        <div class="proj-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="pill blue">Group A</span><span class="mono" style="color:var(--text-3);">#1</span></div><div class="proj-title">Team Helios</div><div class="proj-meta">Solar Tracker System</div><div class="proj-students">Ahmet Yilmaz, Elif Demir, Can Aksoy</div></div>
+        <div class="proj-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="pill blue">Group A</span><span class="mono" style="color:var(--text-3);">#2</span></div><div class="proj-title">Team Artemis</div><div class="proj-meta">Autonomous Drone Navigation</div><div class="proj-students">Zeynep Kara, Burak Celik, Ayse Tan</div></div>
+        <div class="proj-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="pill blue">Group A</span><span class="mono" style="color:var(--text-3);">#3</span></div><div class="proj-title">Team Volterra</div><div class="proj-meta">Smart Grid Monitor</div><div class="proj-students">Mehmet Sahin, Selin Aydin, Kaan Polat</div></div>
+        <div class="proj-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="pill green">Group B</span><span class="mono" style="color:var(--text-3);">#4</span></div><div class="proj-title">Team Photon</div><div class="proj-meta">LiDAR Mapping</div><div class="proj-students">Ece Yildiz, Ali Korkmaz, Deniz Erdogan</div></div>
+        <div class="proj-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="pill green">Group B</span><span class="mono" style="color:var(--text-3);">#5</span></div><div class="proj-title">Team Ohm</div><div class="proj-meta">IoT Power Meter</div><div class="proj-students">Emre Arslan, Tugce Dogan, Berk Ozturk</div></div>
+        <div class="proj-card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span class="pill amber">Group C</span><span class="mono" style="color:var(--text-3);">#6</span></div><div class="proj-title">Team Faraday</div><div class="proj-meta">Wireless Power Transfer</div><div class="proj-students">Yusuf Kilic, Melis Ucar, Onur Balik</div></div>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 7. SEMESTERS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">7. Manage — Semesters</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Semesters</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Manage</div>
+      <div class="sb-item">&#9632; Jurors</div>
+      <div class="sb-item">&#9632; Projects</div>
+      <div class="sb-item active">&#9632; Semesters</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Semesters</span>
+        <div class="hb-right">
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Semesters</div><div class="ct-desc">Evaluation periods and criteria templates</div></div>
+        <div class="ct-actions"><button class="btn btn-p">+ New Semester</button></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="sem-card" style="border-left:3px solid var(--accent);">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;"><div class="sem-name">Spring 2026</div><span class="pill blue">Current</span></div>
+            <div class="sem-meta">Created Mar 1, 2026 &middot; 4 criteria &middot; 5 MUDEK outcomes &middot; 24 projects &middot; 12 jurors</div>
+          </div>
+          <div class="ct-actions"><button class="btn">&#9998; Edit</button><button class="btn" style="color:var(--rose);">&#128274; Lock</button></div>
+        </div>
+        <div class="sem-card">
+          <div>
+            <div class="sem-name">Fall 2025</div>
+            <div class="sem-meta">Sep 5, 2025 &middot; 4 criteria &middot; 5 MUDEK &middot; 20 projects &middot; 10 jurors</div>
+          </div>
+          <div class="ct-actions"><span class="pill gray">&#128274; Locked</span><button class="btn">View</button></div>
+        </div>
+        <div class="sem-card">
+          <div>
+            <div class="sem-name">Spring 2025</div>
+            <div class="sem-meta">Feb 15, 2025 &middot; 4 criteria &middot; 5 MUDEK &middot; 18 projects &middot; 9 jurors</div>
+          </div>
+          <div class="ct-actions"><span class="pill gray">&#128274; Locked</span><button class="btn">View</button></div>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 8. ENTRY CONTROL -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">8. System — Entry Control</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Entry Control</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">System</div>
+      <div class="sb-item active">&#9632; Entry Control</div>
+      <div class="sb-item">&#9632; Audit Log</div>
+      <div class="sb-item">&#9632; Export</div>
+      <div class="sb-item">&#9632; Settings</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Entry Control</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Entry Control</div><div class="ct-desc">Manage jury entry tokens and QR access</div></div>
+        <div class="ct-actions"><button class="btn btn-p">+ Generate Token</button></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+        <div class="card" style="padding:24px;">
+          <div style="font-size:14px; font-weight:700; margin-bottom:4px;">Active Entry Token</div>
+          <div style="font-size:12px; color:var(--text-3); margin-bottom:16px;">Share this link or QR with jurors</div>
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div class="qr-box" style="font-size:40px; color:#0f172a;">&#9641;</div>
+            <div>
+              <div class="token-code">XK7-M2P</div>
+              <div style="font-size:12px; color:var(--text-3); margin-top:8px;">vera-eval.app/?t=xk7m2p</div>
+              <div style="display:flex; gap:8px; margin-top:12px;">
+                <button class="btn" style="font-size:12px; padding:5px 10px;">&#128203; Copy</button>
+                <button class="btn" style="font-size:12px; padding:5px 10px; color:var(--rose);">Revoke</button>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+        <div class="card" style="padding:24px;">
+          <div style="font-size:14px; font-weight:700; margin-bottom:4px;">Token Status</div>
+          <div style="font-size:12px; color:var(--text-3); margin-bottom:16px;">Current session statistics</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div><div style="font-size:11px; color:var(--text-3); text-transform:uppercase;">Active Sessions</div><div style="font-size:22px; font-weight:700; color:var(--green);">8</div></div>
+            <div><div style="font-size:11px; color:var(--text-3); text-transform:uppercase;">Expired</div><div style="font-size:22px; font-weight:700; color:var(--text-3);">3</div></div>
+            <div><div style="font-size:11px; color:var(--text-3); text-transform:uppercase;">Created</div><div style="font-size:12px; color:var(--text-2); margin-top:2px;">Today 09:15</div></div>
+            <div><div style="font-size:11px; color:var(--text-3); text-transform:uppercase;">Expires</div><div style="font-size:12px; color:var(--amber); margin-top:2px;">Today 09:15 +24h</div></div>
+    </div>
+    </div>
+  </div>
+</div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Token</th><th>Created</th><th>Status</th><th>Sessions</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td class="mono" style="font-weight:600;">XK7-M2P</td><td style="color:var(--text-3)">Mar 28, 09:15</td><td><span class="pill green"><span class="dot"></span>Active</span></td><td class="mono">8</td><td style="color:var(--text-3)">&#128203; Revoke</td></tr>
+            <tr><td class="mono">P3R-N8W</td><td style="color:var(--text-3)">Mar 27, 08:30</td><td><span class="pill gray">Expired</span></td><td class="mono">11</td><td style="color:var(--text-3)">—</td></tr>
+            <tr><td class="mono">Q9T-K4L</td><td style="color:var(--text-3)">Mar 26, 14:00</td><td><span class="pill rose">Revoked</span></td><td class="mono">5</td><td style="color:var(--text-3)">—</td></tr>
+          </tbody>
+        </table>
+    </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 9. AUDIT LOG -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">9. System — Audit Log</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Audit Log</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">System</div>
+      <div class="sb-item">&#9632; Entry Control</div>
+      <div class="sb-item active">&#9632; Audit Log</div>
+      <div class="sb-item">&#9632; Export</div>
+      <div class="sb-item">&#9632; Settings</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Audit Log</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Audit Log</div><div class="ct-desc">Administrative actions and security events</div></div>
+        <div class="ct-actions">
+          <div class="search-bar">&#128269; Filter...</div>
+          <button class="btn">&#8681; Export</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--green-soft); color:var(--green);">+</div>
+          <div><div class="audit-text"><strong>Hugur Yildiz</strong> created entry token <strong>XK7-M2P</strong></div><div class="audit-time">Mar 28, 09:15:32</div></div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--accent-soft); color:var(--accent);">&#8635;</div>
+          <div><div class="audit-text"><strong>Hugur Yildiz</strong> reset PIN for <strong>Dr. Selin Erdem</strong></div><div class="audit-time">Mar 28, 09:12:05</div></div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--amber-soft); color:var(--amber);">&#9998;</div>
+          <div><div class="audit-text"><strong>Hugur Yildiz</strong> enabled edit mode for <strong>Dr. Selin Erdem</strong></div><div class="audit-time">Mar 28, 09:11:48</div></div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--green-soft); color:var(--green);">+</div>
+          <div><div class="audit-text"><strong>Hugur Yildiz</strong> added juror <strong>Prof. Deniz Ozer</strong> — Telecom</div><div class="audit-time">Mar 28, 08:55:17</div></div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--rose-soft); color:var(--rose);">&#128465;</div>
+          <div><div class="audit-text"><strong>Hugur Yildiz</strong> deleted project <strong>Team Omega</strong> from Group C</div><div class="audit-time">Mar 27, 16:42:09</div></div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--rose-soft); color:var(--rose);">&#10005;</div>
+          <div><div class="audit-text"><strong>Hugur Yildiz</strong> revoked entry token <strong>Q9T-K4L</strong> — 5 active sessions terminated</div><div class="audit-time">Mar 26, 15:30:22</div></div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-icon" style="background:var(--indigo-soft); color:var(--indigo);">&#128274;</div>
+          <div><div class="audit-text"><strong>System</strong> locked semester <strong>Fall 2025</strong> — all evaluations finalized</div><div class="audit-time">Mar 20, 18:00:00</div></div>
+    </div>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 10. EXPORT -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">10. System — Export & Backup</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Export</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">System</div>
+      <div class="sb-item">&#9632; Entry Control</div>
+      <div class="sb-item">&#9632; Audit Log</div>
+      <div class="sb-item active">&#9632; Export</div>
+      <div class="sb-item">&#9632; Settings</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Export & Backup</span>
+        <div class="hb-right">
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Export & Backup</div><div class="ct-desc">Download data and manage backups</div></div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <div style="font-size:14px; font-weight:700; margin-bottom:12px;">Data Export</div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+          <div class="export-card">
+            <h4>&#128202; Scores</h4>
+            <p>All scores as XLSX — criteria columns, totals, averages per project</p>
+            <button class="btn btn-p" style="width:100%; justify-content:center;">Download .xlsx</button>
+          </div>
+          <div class="export-card">
+            <h4>&#128101; Jurors</h4>
+            <p>Juror list with department, assignment status, PIN</p>
+            <button class="btn" style="width:100%; justify-content:center;">Download .xlsx</button>
+          </div>
+          <div class="export-card">
+            <h4>&#128218; Projects</h4>
+            <p>All groups with project titles, students, group assignments</p>
+            <button class="btn" style="width:100%; justify-content:center;">Download .xlsx</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:14px; font-weight:700; margin-bottom:12px;">Database Backup</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="export-card">
+            <h4>&#128190; Full Export</h4>
+            <p>Complete database snapshot as JSON — semesters, jurors, projects, scores</p>
+            <button class="btn" style="width:100%; justify-content:center;">Export Backup</button>
+          </div>
+          <div class="export-card" style="border-color:var(--amber); border-style:dashed;">
+            <h4>&#128228; Restore from Backup</h4>
+            <p>Upload a JSON backup file to restore — requires typed confirmation</p>
+            <div style="border:2px dashed var(--border); border-radius:var(--radius-sm); padding:24px; text-align:center; color:var(--text-3); font-size:13px; margin-top:4px;">
+              Drop .json file here or <span style="color:var(--accent); font-weight:500;">browse</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 11. SETTINGS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">11. System — Settings</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Settings</div>
+  <div class="admin-shell" style="min-height:480px;">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">System</div>
+      <div class="sb-item">&#9632; Entry Control</div>
+      <div class="sb-item">&#9632; Audit Log</div>
+      <div class="sb-item">&#9632; Export</div>
+      <div class="sb-item active">&#9632; Settings</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Super Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Settings</span>
+        <div class="hb-right">
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Settings</div><div class="ct-desc">Organization management (super-admin)</div></div>
+        <div class="ct-actions"><button class="btn btn-p">+ New Organization</button></div>
+      </div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Organization</th><th>Domain</th><th>Admins</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">TEDU Electrical Eng.</td><td class="mono" style="color:var(--text-3)">tedu.edu.tr</td><td class="mono">2</td><td><span class="pill green"><span class="dot"></span>Active</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#128465;</td></tr>
+            <tr><td style="font-weight:600;">METU Computer Eng.</td><td class="mono" style="color:var(--text-3)">metu.edu.tr</td><td class="mono">3</td><td><span class="pill green"><span class="dot"></span>Active</span></td><td style="color:var(--text-3)">&#9998; &nbsp; &#128465;</td></tr>
+            <tr><td style="font-weight:600;">Bilkent Industrial Eng.</td><td class="mono" style="color:var(--text-3)">bilkent.edu.tr</td><td class="mono">1</td><td><span class="pill amber"><span class="dot"></span>Pending</span></td><td style="color:var(--text-3)">&#10003; &nbsp; &#10005;</td></tr>
+            <tr><td style="font-weight:600;">Hacettepe BME</td><td class="mono" style="color:var(--text-3)">hacettepe.edu.tr</td><td class="mono">1</td><td><span class="pill gray">Archived</span></td><td style="color:var(--text-3)">&#8635;</td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- 4B. SCORES — DETAILS -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="screen-label">4B. Scores — Details</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/admin — Score Details</div>
+  <div class="admin-shell">
+    <div class="sb">
+      <div class="sb-brand"><div class="logo">V</div><span>VERA</span></div>
+      <div class="sb-tenant"><span class="td"></span>TEDU EE<span class="ch">&#9662;</span></div>
+      <div class="sb-label">Analytics</div>
+      <div class="sb-item">&#9632; Overview</div>
+      <div class="sb-item active">&#9632; Scores</div>
+      <div class="sb-sub"><div class="sb-item">Rankings</div><div class="sb-item">Analytics</div><div class="sb-item">Grid</div><div class="sb-item" style="color:#93c5fd;">Details</div></div>
+      <div class="sb-label">Manage</div>
+      <div class="sb-item">&#9632; Jurors</div>
+      <div class="sb-item">&#9632; Projects</div>
+      <div class="sb-item">&#9632; Semesters</div>
+      <div class="sb-label">System</div>
+      <div class="sb-item">&#9632; Entry Control</div>
+      <div class="sb-item">&#9632; Audit Log</div>
+      <div class="sb-item">&#9632; Export</div>
+      <div class="sb-item">&#9632; Settings</div>
+      <div class="sb-footer"><div class="av">HY</div><div><div class="nm">Hugur Yildiz</div><div class="rl">Tenant Admin</div></div></div>
+    </div>
+    <div class="admin-main">
+      <div class="header-bar">
+        <div class="hb-trigger">&#9776;</div>
+        <div class="hb-sep"></div>
+        <span class="hb-title">Score Details</span>
+        <div class="hb-right">
+          <select class="semester-select">
+            <option selected>Summer 2026</option>
+            <option>Spring 2026</option>
+            <option>Fall 2025</option>
+          </select>
+          <button class="refresh-btn">&#8635;</button>
+          <span class="hb-time">2:34 PM</span>
+        </div>
+      </div>
+      <div class="ct">
+      <div class="ct-header">
+        <div><div class="ct-title">Score Details</div><div class="ct-desc">Individual juror evaluations — filterable, sortable</div></div>
+        <div class="ct-actions">
+          <div class="search-bar">&#128269; Filter by juror or project...</div>
+          <button class="btn">&#8681; Export</button>
+        </div>
+      </div>
+      <!-- Filter pills -->
+      <div style="display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;">
+        <span class="pill blue" style="cursor:pointer; padding:4px 12px;">All</span>
+        <span class="pill gray" style="cursor:pointer; padding:4px 12px;">Group A</span>
+        <span class="pill gray" style="cursor:pointer; padding:4px 12px;">Group B</span>
+        <span class="pill gray" style="cursor:pointer; padding:4px 12px;">Group C</span>
+      </div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Juror</th><th>Project</th><th style="text-align:center">Technical<br><span style="font-weight:400; font-size:9px;">/30</span></th><th style="text-align:center">Written<br><span style="font-weight:400; font-size:9px;">/30</span></th><th style="text-align:center">Oral<br><span style="font-weight:400; font-size:9px;">/30</span></th><th style="text-align:center">Teamwork<br><span style="font-weight:400; font-size:9px;">/10</span></th><th style="text-align:center">Total</th><th>Comment</th></tr></thead>
+          <tbody>
+            <tr><td class="juror-nm">Prof. Kaya</td><td><strong>Team Helios</strong></td><td class="mono" style="text-align:center">28</td><td class="mono" style="text-align:center">25</td><td class="mono" style="text-align:center">27</td><td class="mono" style="text-align:center">9</td><td class="mono" style="text-align:center; font-weight:700;">89</td><td style="font-size:12px; color:var(--text-3); max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Excellent technical depth, very...</td></tr>
+            <tr><td class="juror-nm">Prof. Kaya</td><td><strong>Team Artemis</strong></td><td class="mono" style="text-align:center">26</td><td class="mono" style="text-align:center">24</td><td class="mono" style="text-align:center">26</td><td class="mono" style="text-align:center">8</td><td class="mono" style="text-align:center; font-weight:700;">84</td><td style="font-size:12px; color:var(--text-3);">Good drone nav approach</td></tr>
+            <tr><td class="juror-nm">Dr. Erdem</td><td><strong>Team Helios</strong></td><td class="mono" style="text-align:center">27</td><td class="mono" style="text-align:center">26</td><td class="mono" style="text-align:center">28</td><td class="mono" style="text-align:center">9</td><td class="mono" style="text-align:center; font-weight:700;">90</td><td style="font-size:12px; color:var(--text-3);">Outstanding presentation</td></tr>
+            <tr><td class="juror-nm">Dr. Erdem</td><td><strong>Team Volterra</strong></td><td class="mono" style="text-align:center">23</td><td class="mono" style="text-align:center">22</td><td class="mono" style="text-align:center">24</td><td class="mono" style="text-align:center">8</td><td class="mono" style="text-align:center; font-weight:700;">77</td><td style="font-size:12px; color:var(--text-3);">Needs more analysis</td></tr>
+            <tr><td class="juror-nm">Prof. Tekir</td><td><strong>Team Photon</strong></td><td class="mono" style="text-align:center">24</td><td class="mono" style="text-align:center">23</td><td class="mono" style="text-align:center">22</td><td class="mono" style="text-align:center">7</td><td class="mono" style="text-align:center; font-weight:700;">76</td><td style="font-size:12px; color:var(--text-3);">LiDAR calibration weak</td></tr>
+            <tr><td class="juror-nm">Prof. Ozer</td><td><strong>Team Helios</strong></td><td class="mono" style="text-align:center">29</td><td class="mono" style="text-align:center">26</td><td class="mono" style="text-align:center">28</td><td class="mono" style="text-align:center">9</td><td class="mono" style="text-align:center; font-weight:700;">92</td><td style="font-size:12px; color:var(--text-3);">Best project this semester</td></tr>
+          </tbody>
+        </table>
+        <!-- Pagination -->
+        <div style="padding:12px 16px; border-top:1px solid var(--surface-1); display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--text-3);">
+          <span>Showing 1–6 of 187 scores</span>
+          <div style="display:flex; gap:4px;">
+            <span class="pill gray" style="padding:4px 10px; cursor:pointer;">&#8592;</span>
+            <span class="pill blue" style="padding:4px 10px;">1</span>
+            <span class="pill gray" style="padding:4px 10px; cursor:pointer;">2</span>
+            <span class="pill gray" style="padding:4px 10px; cursor:pointer;">3</span>
+            <span class="pill gray" style="padding:4px 10px; cursor:pointer;">&#8230;</span>
+            <span class="pill gray" style="padding:4px 10px; cursor:pointer;">32</span>
+            <span class="pill gray" style="padding:4px 10px; cursor:pointer;">&#8594;</span>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- JURY FLOW -->
+<!-- ═══════════════════════════════════════════════════ -->
+
+<!-- 12. JURY GATE -->
+<div class="screen-label">12. Jury Gate — QR/Token Entry (Light)</div>
+<div class="frame">
+  <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app/?t=xk7m2p</div>
+  <div style="background:var(--bg-page); min-height:480px; display:flex; align-items:center; justify-content:center; color:var(--text-1);">
+    <div style="text-align:center; width:360px;">
+      <div style="width:56px; height:56px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:16px; display:inline-grid; place-items:center; font-weight:800; font-size:22px; color:white; margin-bottom:16px;">V</div>
+      <div style="font-size:20px; font-weight:800; letter-spacing:-0.3px; margin-bottom:6px;">Verifying Access...</div>
+      <div style="color:var(--text-3); font-size:14px; margin-bottom:32px;">Checking your entry token</div>
+      <!-- Spinner -->
+      <div style="width:40px; height:40px; border:3px solid var(--surface-2); border-top-color:var(--accent); border-radius:50%; margin:0 auto 24px; animation:spin 0.8s linear infinite;"></div>
+      <div style="color:var(--text-3); font-size:12px;">Token: <span style="font-family:'JetBrains Mono',monospace; color:var(--text-2);">XK7-M2P</span></div>
+    </div>
+  </div>
+</div>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+<!-- 13. JURY — IDENTITY -->
+<div class="screen-label">13. Jury — Identity Step (Light, Mobile)</div>
+<div style="display:flex; gap:32px; justify-content:center;">
+  <div style="width:375px;">
+    <div class="frame">
+      <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app — Identity</div>
+      <div style="background:var(--bg-page); min-height:560px; padding:32px 24px; color:var(--text-1);">
+        <div style="text-align:center; margin-bottom:32px;">
+          <div style="width:48px; height:48px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; display:inline-grid; place-items:center; font-weight:800; font-size:20px; color:white; margin-bottom:12px;">V</div>
+          <div style="font-size:18px; font-weight:700;">Welcome, Juror</div>
+          <div style="color:var(--text-3); font-size:13px; margin-top:4px;">Enter your information to begin</div>
+        </div>
+        <div style="background:white; border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow);">
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Full Name</label>
+            <div style="background:var(--bg-page); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px;">Prof. Aydin Kaya</div>
+          </div>
+          <div style="margin-bottom:20px;">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Department</label>
+            <div style="background:var(--bg-page); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; display:flex; justify-content:space-between;">Power Systems<span style="color:var(--text-3); font-size:10px;">&#9662;</span></div>
+          </div>
+          <div style="background:var(--accent); padding:13px; border-radius:10px; font-size:14px; font-weight:600; text-align:center; color:white; box-shadow:0 2px 8px rgba(59,130,246,0.25);">Continue</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14. PIN STEP -->
+  <div style="width:375px;">
+    <div class="frame">
+      <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app — PIN</div>
+      <div style="background:var(--bg-page); min-height:560px; padding:32px 24px; color:var(--text-1); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="width:48px; height:48px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; display:grid; place-items:center; font-weight:800; font-size:20px; color:white; margin-bottom:16px;">V</div>
+        <div style="font-size:18px; font-weight:700; margin-bottom:4px;">Enter PIN</div>
+        <div style="color:var(--text-3); font-size:13px; margin-bottom:32px;">4-digit personal PIN</div>
+        <div style="display:flex; gap:12px; margin-bottom:32px;">
+          <div style="width:56px; height:64px; background:white; border:2px solid var(--accent); border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; box-shadow:0 0 0 4px var(--accent-soft);">3</div>
+          <div style="width:56px; height:64px; background:white; border:2px solid var(--accent); border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; box-shadow:0 0 0 4px var(--accent-soft);">7</div>
+          <div style="width:56px; height:64px; background:white; border:2px solid var(--border); border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; color:var(--surface-3);">_</div>
+          <div style="width:56px; height:64px; background:white; border:2px solid var(--border); border-radius:12px; display:grid; place-items:center; font-size:24px; font-weight:700; color:var(--surface-3);">_</div>
+        </div>
+        <div style="color:var(--text-3); font-size:12px;">Signing in as <strong style="color:var(--text-1);">Prof. Aydin Kaya</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 15. JURY — EVAL STEP -->
+<div class="screen-label">15. Jury — Evaluation (Light, Mobile)</div>
+<div style="display:flex; gap:32px; justify-content:center;">
+  <div style="width:375px;">
+    <div class="frame">
+      <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app — Scoring</div>
+      <div style="background:var(--bg-page); min-height:680px; color:var(--text-1); display:flex; flex-direction:column;">
+        <!-- Sticky header -->
+        <div style="background:white; border-bottom:1px solid var(--border); padding:14px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:11px; color:var(--text-3);">Group B &middot; 4/8</span>
+            <div style="display:flex; align-items:center; gap:6px;"><div style="width:6px; height:6px; border-radius:50%; background:var(--green);"></div><span style="font-size:11px; color:var(--text-3);">Saved</span></div>
+          </div>
+          <div style="font-size:16px; font-weight:700; letter-spacing:-0.2px; margin-bottom:10px;">Team Artemis</div>
+          <div style="height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden;">
+            <div style="width:50%; height:100%; background:linear-gradient(90deg,#3b82f6,#8b5cf6); border-radius:2px;"></div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <div style="padding:5px 12px; border-radius:6px; background:var(--surface-1); font-size:12px; color:var(--text-3);">&#8592;</div>
+            <div style="flex:1; padding:5px 12px; border-radius:6px; background:var(--surface-1); font-size:12px; color:var(--text-1); text-align:center; font-weight:500;">Group B</div>
+            <div style="padding:5px 12px; border-radius:6px; background:var(--surface-1); font-size:12px; color:var(--text-3);">&#8594;</div>
+          </div>
+        </div>
+        <!-- Score cards -->
+        <div style="padding:16px; flex:1; display:flex; flex-direction:column; gap:12px;">
+          <!-- Technical -->
+          <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;"><div style="width:4px; height:20px; border-radius:2px; background:#f59e0b;"></div><span style="font-size:13px; font-weight:600;">Technical</span></div>
+              <span style="font-size:12px; color:var(--text-3);">0–30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:var(--bg-page); border:1.5px solid var(--border); border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center;">25</div>
+              <div style="flex:1;"><div style="height:8px; background:var(--surface-1); border-radius:4px; overflow:hidden;"><div style="width:83%; height:100%; background:linear-gradient(90deg,#f59e0b,#fbbf24); border-radius:4px;"></div></div></div>
+            </div>
+          </div>
+          <!-- Written -->
+          <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;"><div style="width:4px; height:20px; border-radius:2px; background:#22c55e;"></div><span style="font-size:13px; font-weight:600;">Written</span></div>
+              <span style="font-size:12px; color:var(--text-3);">0–30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:var(--bg-page); border:1.5px solid var(--border); border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center;">22</div>
+              <div style="flex:1;"><div style="height:8px; background:var(--surface-1); border-radius:4px; overflow:hidden;"><div style="width:73%; height:100%; background:linear-gradient(90deg,#16a34a,#22c55e); border-radius:4px;"></div></div></div>
+            </div>
+          </div>
+          <!-- Oral -->
+          <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;"><div style="width:4px; height:20px; border-radius:2px; background:#3b82f6;"></div><span style="font-size:13px; font-weight:600;">Oral</span></div>
+              <span style="font-size:12px; color:var(--text-3);">0–30</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:var(--bg-page); border:1.5px solid var(--accent); border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center; box-shadow:0 0 0 3px var(--accent-soft);">28</div>
+              <div style="flex:1;"><div style="height:8px; background:var(--surface-1); border-radius:4px; overflow:hidden;"><div style="width:93%; height:100%; background:linear-gradient(90deg,#2563eb,#3b82f6); border-radius:4px;"></div></div></div>
+            </div>
+          </div>
+          <!-- Teamwork -->
+          <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px;"><div style="width:4px; height:20px; border-radius:2px; background:#ef4444;"></div><span style="font-size:13px; font-weight:600;">Teamwork</span></div>
+              <span style="font-size:12px; color:var(--text-3);">0–10</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:72px; background:var(--bg-page); border:1.5px solid var(--border); border-radius:10px; padding:10px; font-size:22px; font-weight:700; text-align:center;">8</div>
+              <div style="flex:1;"><div style="height:8px; background:var(--surface-1); border-radius:4px; overflow:hidden;"><div style="width:80%; height:100%; background:linear-gradient(90deg,#dc2626,#ef4444); border-radius:4px;"></div></div></div>
+            </div>
+          </div>
+          <!-- Total -->
+          <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6); border-radius:14px; padding:16px; display:flex; align-items:center; justify-content:space-between; color:white;">
+            <span style="font-size:14px; font-weight:600;">Total Score</span>
+            <span style="font-size:28px; font-weight:800; letter-spacing:-1px;">83<span style="font-size:16px; font-weight:500; opacity:0.7;"> / 100</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16. DONE STEP -->
+  <div style="width:375px;">
+    <div class="frame">
+      <div class="frame-bar"><div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>vera-eval.app — Done</div>
+      <div style="background:var(--bg-page); min-height:680px; padding:32px 24px; color:var(--text-1); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+        <!-- Success -->
+        <div style="width:72px; height:72px; background:var(--green-soft); border-radius:50%; display:grid; place-items:center; margin-bottom:20px;">
+          <div style="width:48px; height:48px; background:var(--green); border-radius:50%; display:grid; place-items:center; color:white; font-size:24px; box-shadow:0 4px 16px rgba(22,163,74,0.3);">&#10003;</div>
+        </div>
+        <div style="font-size:22px; font-weight:800; letter-spacing:-0.3px; margin-bottom:6px;">All Done!</div>
+        <div style="color:var(--text-3); font-size:14px; margin-bottom:28px;">Your evaluations have been submitted</div>
+
+        <!-- Summary -->
+        <div style="width:100%; background:white; border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); text-align:left; margin-bottom:20px;">
+          <div style="font-size:13px; font-weight:600; margin-bottom:12px;">Summary</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--surface-1); font-size:13px;"><span style="color:var(--text-3);">Projects scored</span><span style="font-weight:600;">24 / 24</span></div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--surface-1); font-size:13px;"><span style="color:var(--text-3);">Average score</span><span style="font-weight:600;">76.2</span></div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;"><span style="color:var(--text-3);">Time taken</span><span style="font-weight:600;">1h 24m</span></div>
+        </div>
+
+        <!-- Group breakdown -->
+        <div style="width:100%; background:white; border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); text-align:left; margin-bottom:20px;">
+          <div style="font-size:13px; font-weight:600; margin-bottom:12px;">Group Breakdown</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--surface-1); font-size:13px;"><span>Group A <span style="color:var(--text-3);">(8 projects)</span></span><span style="font-weight:600;">Avg. 78.4</span></div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--surface-1); font-size:13px;"><span>Group B <span style="color:var(--text-3);">(8 projects)</span></span><span style="font-weight:600;">Avg. 74.1</span></div>
+          <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;"><span>Group C <span style="color:var(--text-3);">(8 projects)</span></span><span style="font-weight:600;">Avg. 76.0</span></div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex; gap:10px; width:100%;">
+          <div style="flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:white; font-size:13px; font-weight:500; text-align:center; color:var(--text-3);">Review Scores</div>
+          <div style="flex:1; padding:12px; border-radius:10px; background:#0f172a; font-size:13px; font-weight:600; text-align:center; color:white;">Home</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- SUMMARY -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div style="margin-top:64px; padding:24px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.12); border-radius:16px; max-width:800px; margin-left:auto; margin-right:auto;">
+  <div style="font-size:16px; font-weight:700; margin-bottom:12px; color:white;">Tasarim Ozeti — 19 Ekran</div>
+  <div style="font-size:13px; line-height:2; color:#94a3b8;">
+    <div style="display:grid; grid-template-columns:auto 1fr; gap:4px 16px;">
+      <span style="color:#a78bfa; font-weight:600;">Dark (3):</span>
+      <span>Home, Sign In, Register — gradient bg, glassmorphism kartlar</span>
+      <span style="color:#60a5fa; font-weight:600;">Admin (12):</span>
+      <span>Overview, Rankings, Analytics, Grid, Details, Jurors, Projects, Semesters, Entry Control, Audit Log, Export, Settings — koyu sidebar + acik content</span>
+      <span style="color:#4ade80; font-weight:600;">Jury (4):</span>
+      <span>Gate, Identity, PIN, Eval, Done — tamamen acik, beyaz kartlar, mobil oncelikli</span>
+      <span style="color:#3b82f6; font-weight:600;">Accent:</span>
+      <span>#3b82f6 → #8b5cf6 gradient &middot; Plus Jakarta Sans 800/500 &middot; JetBrains Mono (sayilar)</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

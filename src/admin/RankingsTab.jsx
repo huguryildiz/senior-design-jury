@@ -19,7 +19,7 @@ const MEDALS = [medalFirst, medalSecond, medalThird];
 const SORT_OPTIONS = [
   { value: "totalAvg", label: "Total Avg" },
   { value: "groupNo", label: "Group No" },
-  { value: "projectTitle", label: "Project Title" },
+  { value: "projectTitle", label: "Title" },
   ...CRITERIA_LIST.map((c) => ({ value: c.id, label: `${c.shortLabel || c.label} Avg` })),
 ];
 const VIRTUAL_THRESHOLD = 40;
@@ -237,7 +237,7 @@ export default function RankingsTab({ ranked, semesterName = "", criteriaTemplat
   const sortOptions = useMemo(() => [
     { value: "totalAvg", label: "Total Avg" },
     { value: "groupNo", label: "Group No" },
-    { value: "projectTitle", label: "Project Title" },
+    { value: "projectTitle", label: "Title" },
     ...criteriaList.map((c) => ({ value: c.id, label: `${c.shortLabel || c.label} Avg` })),
   ], [criteriaList]);
   const [isExporting, setIsExporting] = useState(false);

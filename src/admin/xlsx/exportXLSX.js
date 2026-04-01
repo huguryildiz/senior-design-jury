@@ -149,12 +149,12 @@ export async function exportXLSX(rows, { semesterName = "", summaryData = [], ju
 
   const criteriaHeaders = activeCriteria.map((c) => `${c.shortLabel || c.label} / ${c.max}`);
   const headers = [
-    "Semester",
+    "Period",
     "Group No",
-    "Project Title",
-    "Students",
+    "Title",
+    "Team Members",
     "Juror",
-    "Institution / Department",
+    "Affiliation",
     "Score Status",
     "Juror Status",
     ...criteriaHeaders,
@@ -285,7 +285,7 @@ export async function exportGridXLSX(exportRows, groups, { semesterName = "", te
 export async function exportRankingsXLSX(ranked, criteria, { semesterName = "", tenantCode = "" } = {}) {
   const XLSX = await import("xlsx-js-style");
   const headers = [
-    "Rank", "Group", "Project Title", "Students",
+    "Rank", "Group", "Title", "Team Members",
     ...criteria.flatMap((c) => [`${c.shortLabel} Avg`, `${c.shortLabel} Max`]),
     "Total Avg",
   ];

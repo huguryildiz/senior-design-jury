@@ -1,0 +1,356 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - navigation [ref=e5]:
+        - generic [ref=e6]:
+          - img "V" [ref=e8]
+          - generic [ref=e9]: VERA
+        - generic [ref=e10]:
+          - generic [ref=e11] [cursor=pointer]: Features
+          - generic [ref=e12] [cursor=pointer]: How it works
+          - button "Sign In" [ref=e13] [cursor=pointer]:
+            - text: Sign In
+            - img [ref=e14]
+      - generic [ref=e16]:
+        - img "VERA" [ref=e18]
+        - generic [ref=e19]:
+          - generic [ref=e20]: Visual Evaluation
+          - generic [ref=e21]: ·
+          - generic [ref=e22]: Reporting
+          - generic [ref=e23]: ·
+          - generic [ref=e24]: Analytics
+        - heading "A smarter way to evaluate projects and exhibitions" [level=1] [ref=e25]:
+          - text: A smarter way to evaluate
+          - emphasis [ref=e26]: projects and exhibitions
+        - paragraph [ref=e27]: Configure evaluation criteria, run live jury sessions, and generate outcome reports — purpose-built for academic poster days and capstone exhibitions.
+        - generic [ref=e28]:
+          - button "Experience Demo" [ref=e29] [cursor=pointer]:
+            - generic [ref=e30]:
+              - img [ref=e31]
+              - text: Experience Demo
+          - button "Explore Admin Panel" [ref=e33] [cursor=pointer]:
+            - img [ref=e34]
+            - text: Explore Admin Panel
+        - paragraph [ref=e39]: Guided jury and admin walkthrough with sample data.
+        - region "VERA platform product showcase carousel" [ref=e41]:
+          - generic [ref=e44]:
+            - group "1 of 6" [ref=e45]:
+              - generic [ref=e46]:
+                - generic [ref=e47]:
+                  - generic [ref=e48]: Control Tower
+                  - heading "Overview Dashboard" [level=3] [ref=e50]
+                  - paragraph [ref=e51]: Operational visibility across every jury and project session.
+                - generic [ref=e53]:
+                  - generic [ref=e59]: Overview Dashboard
+                  - generic [ref=e60]:
+                    - generic [ref=e61]:
+                      - generic [ref=e62]:
+                        - generic [ref=e63]: Jurors
+                        - generic [ref=e64]: "24"
+                      - generic [ref=e65]:
+                        - generic [ref=e66]: Projects
+                        - generic [ref=e67]: "41"
+                      - generic [ref=e68]:
+                        - generic [ref=e69]: Live Scores
+                        - generic [ref=e70]: 1,284
+                      - generic [ref=e71]:
+                        - generic [ref=e72]: Completion
+                        - generic [ref=e73]: 92%
+                    - generic [ref=e74]:
+                      - generic [ref=e77]: Live
+                      - generic [ref=e82]: Review
+                      - generic [ref=e87]: Live
+            - group [ref=e90]:
+              - generic [ref=e91]:
+                - generic [ref=e92]:
+                  - generic [ref=e93]: Live Scoring
+                  - heading [level=3] [ref=e95]: Jury Scoring Workflow
+                  - paragraph [ref=e96]: Run structured evaluations with clarity and zero submission friction.
+                - generic [ref=e98]:
+                  - generic [ref=e104]: Scoring Session
+                  - generic [ref=e105]:
+                    - generic [ref=e106]:
+                      - generic [ref=e107]: Criteria Set Locked
+                      - generic [ref=e108]: Auto-Save Enabled
+                      - generic [ref=e109]: Live Consensus
+                    - generic [ref=e110]:
+                      - generic [ref=e113]: "89.2"
+                      - generic [ref=e118]: "84.7"
+                      - generic [ref=e123]: "92.4"
+                    - generic [ref=e126]:
+                      - generic [ref=e127]:
+                        - generic [ref=e128]: Rounds
+                        - generic [ref=e129]: "03"
+                      - generic [ref=e130]:
+                        - generic [ref=e131]: Disputes
+                        - generic [ref=e132]: "02"
+                      - generic [ref=e133]:
+                        - generic [ref=e134]: Saved
+                        - generic [ref=e135]: 100%
+            - group [ref=e136]:
+              - generic [ref=e137]:
+                - generic [ref=e138]:
+                  - generic [ref=e139]: People Operations
+                  - heading [level=3] [ref=e141]: Juror Management
+                  - paragraph [ref=e142]: Coordinate jurors, access windows, and scoring health in one view.
+                - generic [ref=e144]:
+                  - generic [ref=e150]: Juror Operations
+                  - generic [ref=e151]:
+                    - generic [ref=e152]:
+                      - generic [ref=e153]:
+                        - generic [ref=e154]: HG
+                        - generic [ref=e156]: Completed
+                      - generic [ref=e157]:
+                        - generic [ref=e158]: SD
+                        - generic [ref=e160]: Pending
+                      - generic [ref=e161]:
+                        - generic [ref=e162]: MC
+                        - generic [ref=e164]: Completed
+                      - generic [ref=e165]:
+                        - generic [ref=e166]: ZE
+                        - generic [ref=e168]: Invited
+                    - generic [ref=e169]:
+                      - generic [ref=e170]:
+                        - generic [ref=e171]: Active Jurors
+                        - generic [ref=e172]: "31"
+                      - generic [ref=e173]:
+                        - generic [ref=e174]: Access Pins
+                        - generic [ref=e175]: 100%
+                      - generic [ref=e176]:
+                        - generic [ref=e177]: Last Sync
+                        - generic [ref=e178]: Now
+            - group [ref=e179]:
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - generic [ref=e182]: Program Operations
+                  - heading [level=3] [ref=e184]: Project & Period Management
+                  - paragraph [ref=e185]: Manage evaluation periods, jurors, and projects with confident operational control.
+                - generic [ref=e187]:
+                  - generic [ref=e193]: Period Operations
+                  - generic [ref=e194]:
+                    - generic [ref=e195]:
+                      - generic [ref=e196]:
+                        - generic [ref=e197]: Stage 1
+                        - generic [ref=e198]: Period Setup
+                      - generic [ref=e199]:
+                        - generic [ref=e200]: Stage 2
+                        - generic [ref=e201]: Juror Assignment
+                      - generic [ref=e202]:
+                        - generic [ref=e203]: Stage 3
+                        - generic [ref=e204]: Live Evaluation
+                    - generic [ref=e205]:
+                      - generic [ref=e208]: Q2 2026
+                      - generic [ref=e213]: Q1 2026
+                      - generic [ref=e218]: Q4 2025
+            - group [ref=e221]:
+              - generic [ref=e222]:
+                - generic [ref=e223]:
+                  - generic [ref=e224]: Decision Intelligence
+                  - heading [level=3] [ref=e226]: Rankings & Analytics
+                  - paragraph [ref=e227]: Turn scoring into rankings and performance signals you can defend.
+                - generic [ref=e229]:
+                  - generic [ref=e235]: Analytics & Rankings
+                  - generic [ref=e243]:
+                    - generic [ref=e244]:
+                      - generic [ref=e245]: Median Score
+                      - generic [ref=e246]: "88.7"
+                    - generic [ref=e247]:
+                      - generic [ref=e248]: Consistency
+                      - generic [ref=e249]: High
+                    - generic [ref=e250]:
+                      - generic [ref=e251]: Top Spread
+                      - generic [ref=e252]: "6.4"
+            - group [ref=e253]:
+              - generic [ref=e254]:
+                - generic [ref=e255]:
+                  - generic [ref=e256]: Compliance Layer
+                  - heading [level=3] [ref=e258]: Reporting & Governance
+                  - paragraph [ref=e259]: From live evaluation flow to final reporting, exports, and audit readiness.
+                - generic [ref=e261]:
+                  - generic [ref=e267]: Reporting & Governance
+                  - generic [ref=e269]:
+                    - generic [ref=e270]:
+                      - generic [ref=e271]: Executive Summary
+                      - generic [ref=e272]: Ready
+                      - generic [ref=e273]: One-click PDF
+                    - generic [ref=e274]:
+                      - generic [ref=e275]: Detailed Export
+                      - generic [ref=e276]: XLSX
+                      - generic [ref=e277]: Per jury breakdown
+                    - generic [ref=e278]:
+                      - generic [ref=e279]: Audit Trail
+                      - generic [ref=e280]: 100%
+                      - generic [ref=e281]: Action-level history
+                    - generic [ref=e282]:
+                      - generic [ref=e283]: Governance
+                      - generic [ref=e284]: Enabled
+                      - generic [ref=e285]: Role-based controls
+          - generic [ref=e286]:
+            - generic [ref=e287]:
+              - button "Previous slide" [ref=e288] [cursor=pointer]:
+                - img [ref=e289]
+              - button "Next slide" [ref=e291] [cursor=pointer]:
+                - img [ref=e292]
+            - tablist "Product showcase slides" [ref=e294]:
+              - 'tab "Show slide 1: Overview Dashboard" [selected] [ref=e295] [cursor=pointer]'
+              - 'tab "Show slide 2: Jury Scoring Workflow" [ref=e296] [cursor=pointer]'
+              - 'tab "Show slide 3: Juror Management" [ref=e297] [cursor=pointer]'
+              - 'tab "Show slide 4: Project & Period Management" [ref=e298] [cursor=pointer]'
+              - 'tab "Show slide 5: Rankings & Analytics" [ref=e299] [cursor=pointer]'
+              - 'tab "Show slide 6: Reporting & Governance" [ref=e300] [cursor=pointer]'
+            - generic [ref=e301]:
+              - generic [ref=e302]: 01 / 06
+              - generic [ref=e303]: Overview Dashboard
+      - generic [ref=e304]:
+        - generic [ref=e305]:
+          - generic [ref=e306]: Trusted by departments across Turkey
+          - generic [ref=e307]:
+            - generic [ref=e308]: TED University
+            - generic [ref=e309]: ·
+            - generic [ref=e310]: Bogazici University
+            - generic [ref=e311]: ·
+            - generic [ref=e312]: METU
+        - generic [ref=e314]:
+          - generic [ref=e315]:
+            - generic [ref=e316]: "6"
+            - generic [ref=e317]: Departments
+          - generic [ref=e318]:
+            - generic [ref=e319]: 2,094
+            - generic [ref=e320]: Evaluations
+          - generic [ref=e321]:
+            - generic [ref=e322]: "113"
+            - generic [ref=e323]: Jurors
+          - generic [ref=e324]:
+            - generic [ref=e325]: "177"
+            - generic [ref=e326]: Projects Scored
+      - generic [ref=e327]:
+        - generic [ref=e328]:
+          - img [ref=e329]
+          - text: How it works
+        - generic [ref=e332]:
+          - generic [ref=e333]:
+            - generic [ref=e334]: "1"
+            - img [ref=e336]
+            - heading "Scan QR Code" [level=4] [ref=e339]
+            - paragraph [ref=e340]: Admin generates a time-limited entry token. Jurors scan the QR code on poster day to begin scoring.
+          - img [ref=e342]
+          - generic [ref=e344]:
+            - generic [ref=e345]: "2"
+            - img [ref=e347]
+            - heading "Score Projects" [level=4] [ref=e349]
+            - paragraph [ref=e350]: Rate each project on configurable criteria. Scores auto-save as you go — no submit button anxiety.
+          - img [ref=e352]
+          - generic [ref=e354]:
+            - generic [ref=e355]: "3"
+            - img [ref=e357]
+            - heading "Analyze Results" [level=4] [ref=e360]
+            - paragraph [ref=e361]: Rankings, score grids, analytics charts, and XLSX exports — available instantly as jurors submit.
+      - generic [ref=e362]:
+        - generic [ref=e363]:
+          - img [ref=e364]
+          - text: Built for evaluation day
+        - generic [ref=e366]:
+          - generic [ref=e367]:
+            - img [ref=e369]
+            - heading "Configurable Criteria" [level=3] [ref=e373]
+            - paragraph [ref=e374]: Define custom rubrics per evaluation period. Technical, design, delivery, teamwork — or any domain-specific criteria your department needs.
+          - generic [ref=e375]:
+            - img [ref=e377]
+            - heading "Real-Time Scoring" [level=3] [ref=e379]
+            - paragraph [ref=e380]: Jurors score on their phones during poster day. Scores auto-save on blur and sync instantly. No paper forms, no data entry.
+          - generic [ref=e381]:
+            - img [ref=e383]
+            - heading "Multi-Organization Analytics" [level=3] [ref=e386]
+            - paragraph [ref=e387]: Each department gets isolated data, rankings, and exports. Super-admins see the cross-organization overview.
+      - generic [ref=e389]:
+        - heading "Ready to evaluate smarter?" [level=2] [ref=e390]
+        - paragraph [ref=e391]: Start with a free demo. No sign-up required.
+        - generic [ref=e392]:
+          - button "Try Demo" [ref=e393]:
+            - img [ref=e394]
+            - text: Try Demo
+          - button "Sign In" [ref=e396]:
+            - text: Sign In
+            - img [ref=e397]
+      - generic [ref=e399]: © 2026 VERA · Developed by Huseyin Ugur Yildiz
+    - text: ✓ ✓ ✓ Target Target Target Target Target Target Target Target ↕ ↕ ↕ ↕ ↕ ↕ ↕ ↕ ↕ ↕ ↕ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+    - generic:
+      - generic:
+        - generic: Step 1 of 3
+        - heading "Rubric Guide" [level=4]
+        - paragraph: Click here to see detailed scoring criteria and band descriptions for each criterion.
+        - generic:
+          - button "Skip tour"
+          - button "Next →"
+  - option "Summer 2026 (current)" [selected]
+  - option "Spring 2026"
+  - option "Fall 2025"
+  - option "All future periods"
+  - option "12 hours"
+  - option "24 hours" [selected]
+  - option "48 hours"
+  - option "7 days"
+  - option "0–100 (Percentage)" [selected]
+  - option "0–30 (Weighted)"
+  - option "1–5 (Likert)"
+  - option "Resend" [selected]
+  - option "SendGrid"
+  - option "AWS SES"
+  - option "Disabled"
+  - option "All Events" [selected]
+  - option "Authentication"
+  - option "Organization Changes"
+  - option "Admin Actions"
+  - option "Score Modifications"
+  - option "All Organizations" [selected]
+  - option "TEDU-EE"
+  - option "BOUN-CHEM"
+  - option "METU-IE"
+  - option "All Organizations" [selected]
+  - option "TEDU-EE"
+  - option "BOUN-CHEM"
+  - option "METU-IE"
+  - option "Full Database Backup" [selected]
+  - option "Scores Only"
+  - option "User & Membership Data"
+  - option "Audit Logs"
+  - option "Configuration"
+  - option "30 minutes"
+  - option "1 hour" [selected]
+  - option "2 hours"
+  - option "4 hours"
+  - option "Until manually lifted"
+  - option "All Organizations" [selected]
+  - option "TEDU-EE only"
+  - option "BOUN-CHEM only"
+  - option "METU-IE only"
+  - option "Active" [selected]
+  - option "Limited"
+  - option "Disabled"
+  - option "Archived"
+  - generic:
+    - generic:
+      - generic:
+        - img
+      - generic: Preparing your workspace
+      - generic:
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Authenticating
+            - generic: Verifying demo credentials
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Loading organization
+            - generic: TED University · Electrical Engineering
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Syncing evaluation data
+            - generic: 15 projects · 28 jurors · Spring 2026
+  - button "Screen Navigator" [ref=e401]:
+    - img [ref=e402]

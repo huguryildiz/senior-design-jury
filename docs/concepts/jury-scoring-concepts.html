@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>VERA — Jury Scoring Form Concepts</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-deep:#0a0f1e;
+  --bg-card:rgba(15,23,42,0.75);
+  --bg-surface:rgba(30,41,59,0.4);
+  --bg-surface-2:rgba(30,41,59,0.6);
+  --bg-input:rgba(15,23,42,0.5);
+  --border:rgba(148,163,184,0.08);
+  --border-hover:rgba(148,163,184,0.15);
+  --border-accent:rgba(59,130,246,0.3);
+  --accent:#3b82f6;
+  --accent-soft:rgba(59,130,246,0.12);
+  --accent-glow:rgba(59,130,246,0.08);
+  --text-primary:#f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-tertiary:#64748b;
+  --text-muted:#475569;
+  --success:#22c55e;
+  --success-soft:rgba(34,197,94,0.1);
+  --warning:#f59e0b;
+  --warning-soft:rgba(245,158,11,0.08);
+  --danger:#ef4444;
+  --danger-soft:rgba(239,68,68,0.1);
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono','SF Mono','Fira Code',monospace;
+  --radius:12px;
+  --radius-sm:8px;
+  --radius-lg:16px;
+  --shadow:0 8px 32px rgba(0,0,0,0.3),0 0 0 1px rgba(148,163,184,0.04) inset;
+  --shadow-sm:0 2px 8px rgba(0,0,0,0.2);
+  --c-tech:#f59e0b;
+  --c-writ:#22c55e;
+  --c-oral:#3b82f6;
+  --c-team:#a855f7;
+  --nav-h:46px;
+  --bottom-h:56px;
+}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap');
+
+html{font-family:var(--font);background:var(--bg-deep);color:var(--text-primary);-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{min-height:100vh;background:var(--bg-deep);overflow-x:hidden}
+input,textarea,button,select{font-family:inherit}
+
+/* ── Blooms ── */
+.bloom{position:fixed;pointer-events:none;z-index:0}
+.bloom-1{top:10%;left:45%;width:500px;height:500px;background:radial-gradient(circle,rgba(59,130,246,0.06) 0%,transparent 70%)}
+.bloom-2{bottom:10%;right:15%;width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,0.04) 0%,transparent 70%)}
+
+/* ── Concept Nav (top bar for switching between mockup pages) ── */
+.concept-nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;gap:2px;padding:4px 8px;background:rgba(10,15,30,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:var(--nav-h)}
+.concept-nav .brand{font-size:14px;font-weight:800;letter-spacing:-0.5px;margin-right:8px;flex-shrink:0}
+.concept-nav .brand span{background:linear-gradient(135deg,#60a5fa,#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.concept-nav .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex:1}
+.concept-nav .tabs::-webkit-scrollbar{display:none}
+.concept-tab{padding:6px 10px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--text-tertiary);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.concept-tab:hover{background:var(--bg-surface);color:var(--text-secondary)}
+.concept-tab.active{background:var(--accent-soft);color:#93c5fd;border-color:var(--border-accent)}
+.concept-tab .num{font-family:var(--mono);font-size:9px;opacity:.6;margin-right:3px}
+@media(max-width:480px){.concept-nav .brand{display:none}}
+
+/* ── Sections ── */
+.concept-section{display:none;min-height:100vh;padding-top:var(--nav-h)}
+.concept-section.active{display:block}
+
+/* ── Concept Label ── */
+.concept-label{padding:16px 16px 8px;text-align:center}
+.concept-label h2{font-size:17px;font-weight:800;letter-spacing:-0.5px;margin-bottom:3px}
+.concept-label h2 span{background:linear-gradient(135deg,#60a5fa,#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.concept-label p{font-size:11px;color:var(--text-secondary);max-width:420px;margin:0 auto;line-height:1.5}
+
+/* ═══════════════════════════════════════════════
+   FINAL HYBRID — Refined Card Stack
+   Card stack + sticky bottom bar + rubric sheet
+   + layered state system + group nav
+   ═══════════════════════════════════════════════ */
+.f-page{max-width:500px;margin:0 auto;padding:0 12px;padding-bottom:calc(var(--bottom-h) + 20px);position:relative;z-index:1}
+
+/* ── Header: group nav ── */
+.f-header{display:flex;align-items:center;justify-content:space-between;padding:8px 0;gap:6px}
+.f-header-left{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.f-header-name{font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:5px}
+.f-header-name svg{width:14px;height:14px;color:var(--accent);flex-shrink:0}
+.f-header-dept{font-size:10px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f-header-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.f-save{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;color:#86efac;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.15)}
+.f-save::before{content:'';width:5px;height:5px;border-radius:50%;background:#86efac}
+.f-home{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);display:grid;place-items:center;cursor:pointer;font-size:13px;flex-shrink:0;transition:all .12s}
+.f-home:hover{background:var(--accent-soft);border-color:var(--border-accent);color:#93c5fd}
+
+/* ── Group bar with nav ── */
+.f-group{display:flex;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);margin-bottom:10px;gap:8px;cursor:pointer;transition:all .12s}
+.f-group:hover{border-color:var(--border-hover)}
+.f-group:active{transform:scale(0.99)}
+.f-group-info{flex:1;min-width:0}
+.f-group-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-group-sub{font-size:10px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-group-nav{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.f-nav-btn{height:30px;padding:0 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer;transition:all .12s;flex-shrink:0;display:grid;place-items:center}
+.f-nav-btn:hover{background:var(--accent-soft);border-color:var(--border-accent)}
+.f-nav-btn:active{transform:scale(0.93)}
+.f-nav-btn:disabled{opacity:.25;cursor:not-allowed;transform:none}
+.f-group-num{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-secondary);padding:0 3px;flex-shrink:0}
+.f-group-chevron{color:var(--text-muted);font-size:11px;flex-shrink:0;margin-left:2px}
+
+/* ── Progress bar ── */
+.f-progress{display:flex;align-items:center;gap:8px;padding:2px 0 10px}
+.f-progress-track{flex:1;height:5px;border-radius:99px;background:rgba(148,163,184,0.08);overflow:hidden}
+.f-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#6366f1);transition:width .4s}
+.f-progress-pct{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-secondary);min-width:28px;text-align:right}
+
+/* ── Criterion Card ── */
+.f-crit{border-radius:12px;border:1px solid var(--border);padding:12px 14px;background:rgba(30,41,59,0.25);margin-bottom:8px;position:relative;transition:all .2s}
+.f-crit:hover{border-color:var(--border-hover);background:rgba(30,41,59,0.35)}
+/* Color stripe */
+.f-crit::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px}
+.f-crit.tech::before{background:var(--c-tech)}
+.f-crit.writ::before{background:var(--c-writ)}
+.f-crit.oral::before{background:var(--c-oral)}
+.f-crit.team::before{background:var(--c-team)}
+
+.f-crit-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}
+.f-crit-name{font-size:13px;font-weight:700;letter-spacing:-0.2px}
+.f-crit-meta{font-size:9.5px;color:var(--text-tertiary);font-weight:500;margin-bottom:6px}
+.f-crit-score-row{display:flex;align-items:center;gap:8px}
+.f-score-input{width:60px;height:42px;border:1.5px solid rgba(148,163,184,0.12);border-radius:10px;background:var(--bg-input);color:var(--text-primary);font-family:var(--mono);font-size:18px;font-weight:800;text-align:center;outline:none;transition:all .15s;letter-spacing:-0.5px;flex-shrink:0}
+.f-score-input:focus{border-color:rgba(59,130,246,0.5);box-shadow:0 0 0 3px var(--accent-soft),0 0 16px var(--accent-glow);transform:scale(1.03)}
+.f-score-input::placeholder{color:var(--text-muted);font-weight:600}
+.f-score-bar{flex:1;height:5px;border-radius:99px;background:rgba(148,163,184,0.06);overflow:hidden;min-width:40px}
+.f-score-bar-fill{height:100%;border-radius:99px;transition:width .4s cubic-bezier(0.34,1.56,0.64,1)}
+.f-score-frac{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-muted);min-width:36px;text-align:right;flex-shrink:0}
+
+/* Rubric button */
+.f-rubric-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);font-size:10px;font-weight:600;cursor:pointer;transition:all .12s;flex-shrink:0}
+.f-rubric-btn:hover,.f-rubric-btn.open{background:var(--accent-soft);border-color:var(--border-accent);color:#60a5fa}
+.f-rubric-btn:active{transform:scale(0.95)}
+
+/* ── State: Scored ── */
+.f-crit.scored{border-color:rgba(34,197,94,0.15)}
+.f-crit.scored .f-score-input{border-color:rgba(34,197,94,0.25)}
+.f-crit.scored .f-crit-name::after{content:'✓';margin-left:6px;font-size:10px;color:var(--success)}
+
+/* ── State: Skipped (visited, no score) ── */
+.f-crit.skipped{border-color:rgba(245,158,11,0.2);background:rgba(245,158,11,0.02)}
+.f-crit.skipped .f-score-input{border-color:rgba(245,158,11,0.3)}
+.f-crit.skipped .f-crit-name::after{content:'⚠';margin-left:6px;font-size:10px;color:var(--warning)}
+
+/* ── State: Submit fail (pulse) ── */
+.f-crit.submit-fail{border-color:rgba(239,68,68,0.3);animation:f-shake .4s ease}
+.f-crit.submit-fail .f-score-input{border-color:rgba(239,68,68,0.4);box-shadow:0 0 0 2px rgba(239,68,68,0.12)}
+
+@keyframes f-shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-4px)}
+  40%{transform:translateX(4px)}
+  60%{transform:translateX(-3px)}
+  80%{transform:translateX(2px)}
+}
+
+/* ── Comments ── */
+.f-comments{border-radius:12px;border:1px solid var(--border);border-left:3px solid var(--text-muted);padding:12px;background:rgba(30,41,59,0.25);margin-top:4px;margin-bottom:8px}
+.f-comments label{font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:5px;display:block}
+.f-comments textarea{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-family:var(--font);font-size:11px;resize:vertical;min-height:48px;outline:none;transition:all .15s;line-height:1.5}
+.f-comments textarea:focus{border-color:rgba(59,130,246,0.4);box-shadow:0 0 0 3px var(--accent-soft)}
+.f-comments textarea::placeholder{color:var(--text-muted)}
+
+/* ── Sticky Bottom Bar ── */
+.f-bottom{position:fixed;bottom:0;left:0;right:0;z-index:50;height:var(--bottom-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(10,15,30,0.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);gap:10px}
+.f-bottom-left{display:flex;align-items:center;gap:10px;min-width:0}
+.f-bottom-total{font-family:var(--mono);font-size:18px;font-weight:800;letter-spacing:-0.5px}
+.f-bottom-status{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;white-space:nowrap}
+.f-bottom-status.warning{color:var(--warning)}
+.f-bottom-status.success{color:var(--success)}
+.f-bottom-status.danger{color:var(--danger)}
+.f-bottom-submit{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 18px;border-radius:10px;border:none;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0}
+.f-bottom-submit.active{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 4px 16px rgba(59,130,246,0.25)}
+.f-bottom-submit.active:hover{box-shadow:0 6px 24px rgba(59,130,246,0.35);transform:translateY(-1px)}
+.f-bottom-submit.active:active{transform:scale(0.97)}
+.f-bottom-submit.disabled{background:var(--bg-surface);color:var(--text-muted);cursor:not-allowed;border:1px solid var(--border)}
+
+/* ── Rubric Bottom Sheet ── */
+.f-sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s}
+.f-sheet-backdrop.open{opacity:1;pointer-events:auto}
+.f-sheet{position:fixed;bottom:0;left:0;right:0;z-index:90;background:rgba(12,18,35,0.97);backdrop-filter:blur(24px);border-top:1px solid rgba(148,163,184,0.1);border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .3s cubic-bezier(0.32,0.72,0,1);max-height:70vh;overflow-y:auto;padding:0 16px 24px}
+.f-sheet.open{transform:translateY(0)}
+.f-sheet-handle{width:36px;height:4px;border-radius:99px;background:rgba(148,163,184,0.2);margin:10px auto 14px}
+.f-sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.f-sheet-title{font-size:15px;font-weight:800;letter-spacing:-0.3px}
+.f-sheet-close{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);display:grid;place-items:center;cursor:pointer;font-size:14px;flex-shrink:0}
+.f-sheet-close:active{transform:scale(0.9)}
+.f-sheet-blurb{font-size:11px;color:var(--text-tertiary);line-height:1.5;margin-bottom:14px}
+.f-sheet-row{display:grid;grid-template-columns:44px 68px 1fr;gap:6px;padding:8px 10px;border-bottom:1px solid rgba(148,163,184,0.04);font-size:10.5px;align-items:flex-start;border-radius:8px;transition:background .12s}
+.f-sheet-row:last-child{border-bottom:none}
+.f-sheet-row.active{background:rgba(34,197,94,0.06)}
+.f-sheet-range{font-family:var(--mono);font-weight:600;color:#60a5fa;font-size:10px}
+.f-sheet-desc{color:var(--text-secondary);line-height:1.4}
+.f-sheet-score-badge{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--bg-surface);border:1px solid var(--border);margin-top:14px}
+.f-sheet-score-badge .val{font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:-0.5px}
+.f-sheet-score-badge .band{font-size:11px;font-weight:600}
+
+.tag{display:inline-flex;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.tag-excellent{color:#22c55e;background:rgba(34,197,94,0.1)}
+.tag-good{color:#84cc16;background:rgba(132,204,22,0.1)}
+.tag-developing{color:#eab308;background:rgba(234,179,8,0.1)}
+.tag-insufficient{color:#ef4444;background:rgba(239,68,68,0.1)}
+
+/* ── Group Selector Sheet ── */
+.g-sheet{position:fixed;bottom:0;left:0;right:0;z-index:90;background:rgba(12,18,35,0.97);backdrop-filter:blur(24px);border-top:1px solid rgba(148,163,184,0.1);border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .3s cubic-bezier(0.32,0.72,0,1);max-height:75vh;overflow-y:auto;padding:0 16px 24px}
+.g-sheet.open{transform:translateY(0)}
+.g-sheet-header{display:flex;align-items:center;justify-content:space-between;padding:0 0 12px}
+.g-sheet-title{font-size:14px;font-weight:800}
+.g-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg-surface);margin-bottom:6px;cursor:pointer;transition:all .12s}
+.g-item:hover{border-color:var(--border-hover);background:var(--bg-surface-2)}
+.g-item:active{transform:scale(0.98)}
+.g-item.current{border-color:var(--border-accent);background:rgba(59,130,246,0.05)}
+.g-item-num{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-muted);width:22px;flex-shrink:0}
+.g-item-info{flex:1;min-width:0}
+.g-item-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-item-students{font-size:10px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-item-status{font-size:11px;flex-shrink:0}
+.g-item-status.complete{color:var(--success)}
+.g-item-status.partial{color:var(--warning)}
+.g-item-status.empty{color:var(--text-muted)}
+
+/* ── State Legend (demo only) ── */
+.f-legend{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;margin-bottom:6px}
+.f-legend-item{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:600;color:var(--text-tertiary);padding:3px 8px;border-radius:6px;background:var(--bg-surface);border:1px solid var(--border);cursor:pointer;transition:all .12s;user-select:none}
+.f-legend-item:hover{border-color:var(--border-hover)}
+.f-legend-item:active{transform:scale(0.95)}
+.f-legend-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.f-legend-item.active-legend{border-color:var(--border-accent);color:var(--text-secondary)}
+
+/* ── Device indicator ── */
+.device-frame{position:fixed;bottom:calc(var(--bottom-h) + 6px);left:50%;transform:translateX(-50%);padding:2px 8px;border-radius:99px;font-size:8px;font-weight:600;color:var(--text-muted);background:rgba(30,41,59,0.5);border:1px solid var(--border);z-index:40;pointer-events:none}
+@media(max-width:400px){.device-frame::after{content:'Phone (~375px)'}}
+@media(min-width:401px) and (max-width:600px){.device-frame::after{content:'Phone+ (~500px)'}}
+@media(min-width:601px){.device-frame::after{content:'Tablet / Desktop'}}
+</style>
+</head>
+<body>
+
+<div class="bloom bloom-1"></div>
+<div class="bloom bloom-2"></div>
+<div class="device-frame"></div>
+
+<!-- ── Concept Nav ── -->
+<nav class="concept-nav">
+  <div class="brand">VE<span>RA</span></div>
+  <div class="tabs">
+    <button class="concept-tab active" data-target="final">Final Hybrid</button>
+    <button class="concept-tab" data-target="states">State Demo</button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════
+     FINAL HYBRID — Refined Card Stack
+     ═══════════════════════════════════════ -->
+<section id="final" class="concept-section active">
+  <div class="concept-label">
+    <h2><span>Final</span> — Refined Card Stack</h2>
+    <p>Kart stack + sticky bottom bar + rubric bottom sheet + katmanlı durum sistemi + grup dropdown</p>
+  </div>
+
+  <div class="f-page">
+    <!-- Header -->
+    <div class="f-header">
+      <div class="f-header-left">
+        <div class="f-header-name">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+          Dr. Ayşe Kaya
+        </div>
+        <div class="f-header-dept">Electrical Engineering</div>
+      </div>
+      <div class="f-header-right">
+        <span class="f-save">Saved</span>
+        <button class="f-home">⌂</button>
+      </div>
+    </div>
+
+    <!-- Group bar (tappable for dropdown) -->
+    <div class="f-group" id="fGroupBar" onclick="toggleGroupSheet()">
+      <div class="f-group-info">
+        <div class="f-group-title" id="fGroupTitle">Smart Grid System</div>
+        <div class="f-group-sub" id="fGroupSub">Ali Vural, Zeynep Kara</div>
+      </div>
+      <div class="f-group-nav" onclick="event.stopPropagation()">
+        <button class="f-nav-btn" onclick="navGroup(-1)" id="fPrevBtn">◀</button>
+        <span class="f-group-num" id="fGroupNum">3/8</span>
+        <button class="f-nav-btn" onclick="navGroup(1)" id="fNextBtn">▶</button>
+      </div>
+      <span class="f-group-chevron" id="fGroupChevron">▾</span>
+    </div>
+
+    <!-- Progress -->
+    <div class="f-progress">
+      <div class="f-progress-track"><div class="f-progress-fill" id="fProgressFill" style="width:50%"></div></div>
+      <span class="f-progress-pct" id="fProgressPct">50%</span>
+    </div>
+
+    <!-- Criteria Cards -->
+    <div id="fCritList">
+      <!-- Rendered by JS -->
+    </div>
+
+    <!-- Comments -->
+    <div class="f-comments">
+      <label>💬 Comments</label>
+      <textarea placeholder="Optional feedback for this group…"></textarea>
+    </div>
+  </div>
+
+  <!-- Sticky Bottom Bar -->
+  <div class="f-bottom">
+    <div class="f-bottom-left">
+      <span class="f-bottom-total" id="fTotal">51 <span style="font-size:11px;color:var(--text-muted)">/ 100</span></span>
+      <span class="f-bottom-status warning" id="fStatus">⚠ 2 remaining</span>
+    </div>
+    <button class="f-bottom-submit disabled" id="fSubmitBtn" onclick="trySubmit()">Submit</button>
+  </div>
+
+  <!-- Rubric Bottom Sheet -->
+  <div class="f-sheet-backdrop" id="fSheetBackdrop" onclick="closeRubricSheet()"></div>
+  <div class="f-sheet" id="fSheet">
+    <div class="f-sheet-handle"></div>
+    <div class="f-sheet-header">
+      <div class="f-sheet-title" id="fSheetTitle">—</div>
+      <button class="f-sheet-close" onclick="closeRubricSheet()">✕</button>
+    </div>
+    <div class="f-sheet-blurb" id="fSheetBlurb"></div>
+    <div id="fSheetRubric"></div>
+    <div class="f-sheet-score-badge" id="fSheetBadge" style="display:none">
+      <span class="val" id="fSheetBadgeVal">—</span>
+      <span class="band" id="fSheetBadgeBand">—</span>
+    </div>
+  </div>
+
+  <!-- Group Selector Sheet -->
+  <div class="f-sheet-backdrop" id="gSheetBackdrop" onclick="closeGroupSheet()"></div>
+  <div class="g-sheet" id="gSheet">
+    <div class="f-sheet-handle"></div>
+    <div class="g-sheet-header">
+      <div class="g-sheet-title">Select Group</div>
+      <button class="f-sheet-close" onclick="closeGroupSheet()">✕</button>
+    </div>
+    <div id="gSheetList"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     STATE DEMO — Interactive state toggle
+     ═══════════════════════════════════════ -->
+<section id="states" class="concept-section">
+  <div class="concept-label">
+    <h2><span>States</span> — Katmanlı Durum Sistemi</h2>
+    <p>Tıklayarak durumları değiştir. Scored → Skipped → Submit Fail → Normal</p>
+  </div>
+
+  <div class="f-page" style="padding-bottom:24px">
+    <div class="f-legend">
+      <div class="f-legend-item"><span class="dot" style="background:var(--text-muted)"></span> Normal</div>
+      <div class="f-legend-item"><span class="dot" style="background:var(--success)"></span> Scored ✓</div>
+      <div class="f-legend-item"><span class="dot" style="background:var(--warning)"></span> Skipped ⚠</div>
+      <div class="f-legend-item"><span class="dot" style="background:var(--danger)"></span> Submit Fail</div>
+    </div>
+
+    <!-- State: Normal (default) -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 0 4px">Normal — not yet visited</div>
+    <div class="f-crit oral" id="stateNormal">
+      <div class="f-crit-top">
+        <div class="f-crit-name">Oral Communication</div>
+        <button class="f-rubric-btn">📖 Rubric</button>
+      </div>
+      <div class="f-crit-meta">Max 30 · MÜDEK 9.1</div>
+      <div class="f-crit-score-row">
+        <input class="f-score-input" type="text" placeholder="—" readonly>
+        <div class="f-score-bar"><div class="f-score-bar-fill" style="width:0%"></div></div>
+        <span class="f-score-frac" style="color:var(--text-muted)">—/30</span>
+      </div>
+    </div>
+
+    <!-- State: Scored -->
+    <div style="font-size:10px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.5px;padding:12px 0 4px">Scored — value entered</div>
+    <div class="f-crit tech scored">
+      <div class="f-crit-top">
+        <div class="f-crit-name">Technical Content</div>
+        <button class="f-rubric-btn">📖 Rubric</button>
+      </div>
+      <div class="f-crit-meta">Max 30 · MÜDEK 1.2, 2, 3.1, 3.2</div>
+      <div class="f-crit-score-row">
+        <input class="f-score-input" type="text" value="27" readonly style="border-color:rgba(34,197,94,0.25)">
+        <div class="f-score-bar"><div class="f-score-bar-fill" style="width:90%;background:var(--c-tech)"></div></div>
+        <span class="f-score-frac">27/30</span>
+      </div>
+    </div>
+
+    <!-- State: Skipped -->
+    <div style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;padding:12px 0 4px">Skipped — visited but no score</div>
+    <div class="f-crit writ skipped">
+      <div class="f-crit-top">
+        <div class="f-crit-name">Written Communication</div>
+        <button class="f-rubric-btn">📖 Rubric</button>
+      </div>
+      <div class="f-crit-meta">Max 30 · MÜDEK 9.2</div>
+      <div class="f-crit-score-row">
+        <input class="f-score-input" type="text" placeholder="—" readonly style="border-color:rgba(245,158,11,0.3)">
+        <div class="f-score-bar"><div class="f-score-bar-fill" style="width:0%"></div></div>
+        <span class="f-score-frac" style="color:var(--warning)">⚠ —/30</span>
+      </div>
+    </div>
+
+    <!-- State: Submit Fail -->
+    <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.5px;padding:12px 0 4px">Submit Fail — shake + red pulse (click to replay)</div>
+    <div class="f-crit team" id="stateSubmitFail" onclick="replayShake(this)" style="cursor:pointer">
+      <div class="f-crit-top">
+        <div class="f-crit-name">Teamwork</div>
+        <button class="f-rubric-btn">📖 Rubric</button>
+      </div>
+      <div class="f-crit-meta">Max 10 · MÜDEK 6</div>
+      <div class="f-crit-score-row">
+        <input class="f-score-input" type="text" placeholder="—" readonly style="border-color:rgba(239,68,68,0.4);box-shadow:0 0 0 2px rgba(239,68,68,0.12)">
+        <div class="f-score-bar"><div class="f-score-bar-fill" style="width:0%"></div></div>
+        <span class="f-score-frac" style="color:var(--danger)">! —/10</span>
+      </div>
+    </div>
+
+    <!-- Comparison: group nav states -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:16px 0 6px">Group Sheet — completion states</div>
+    <div class="g-item" style="cursor:default"><span class="g-item-num">1</span><div class="g-item-info"><div class="g-item-title">IoT Gateway System</div><div class="g-item-students">Ahmet Y, Elif K</div></div><span class="g-item-status complete">✅ 4/4</span></div>
+    <div class="g-item" style="cursor:default"><span class="g-item-num">2</span><div class="g-item-info"><div class="g-item-title">Drone Control Platform</div><div class="g-item-students">Burak T, Selin A</div></div><span class="g-item-status complete">✅ 4/4</span></div>
+    <div class="g-item current" style="cursor:default"><span class="g-item-num">3</span><div class="g-item-info"><div class="g-item-title">Smart Grid System</div><div class="g-item-students">Ali V, Zeynep K</div></div><span class="g-item-status partial">⚠ 2/4</span></div>
+    <div class="g-item" style="cursor:default"><span class="g-item-num">4</span><div class="g-item-info"><div class="g-item-title">VR Classroom</div><div class="g-item-students">Can D, Aylin S</div></div><span class="g-item-status empty">— 0/4</span></div>
+    <div class="g-item" style="cursor:default"><span class="g-item-num">5</span><div class="g-item-info"><div class="g-item-title">AI Tutor Engine</div><div class="g-item-students">Mert K, Deniz B</div></div><span class="g-item-status empty">— 0/4</span></div>
+  </div>
+</section>
+
+<script>
+// ── Data ──
+const criteria = [
+  { id:'tech', name:'Technical Content', meta:'Max 30 · MÜDEK 1.2, 2, 3.1, 3.2', color:'var(--c-tech)', max:30,
+    blurb:'Evaluate the engineering depth, clarity of problem definition, and justification of technical decisions.',
+    rubric:[{r:'27–30',tag:'excellent',lbl:'Excellent',d:'Problem clearly defined with strong motivation. Decisions well-justified with engineering depth.'},{r:'21–26',tag:'good',lbl:'Good',d:'Design mostly clear and technically justified.'},{r:'13–20',tag:'developing',lbl:'Developing',d:'Problem stated but justification insufficient.'},{r:'0–12',tag:'insufficient',lbl:'Insufficient',d:'Vague definition and unjustified decisions.'}]},
+  { id:'writ', name:'Written Comm.', meta:'Max 30 · MÜDEK 9.2', color:'var(--c-writ)', max:30,
+    blurb:'Evaluate the clarity, structure, and visual effectiveness of the poster and materials.',
+    rubric:[{r:'27–30',tag:'excellent',lbl:'Excellent',d:'Intuitive layout, high-quality visuals, accessible content.'},{r:'21–26',tag:'good',lbl:'Good',d:'Mostly logical layout with minor gaps.'},{r:'13–20',tag:'developing',lbl:'Developing',d:'Occasional gaps in information flow.'},{r:'0–12',tag:'insufficient',lbl:'Insufficient',d:'Confusing layout, low-quality visuals.'}]},
+  { id:'oral', name:'Oral Comm.', meta:'Max 30 · MÜDEK 9.1', color:'var(--c-oral)', max:30,
+    blurb:'Evaluate the clarity of the presentation, pacing, and quality of answers during Q&A.',
+    rubric:[{r:'27–30',tag:'excellent',lbl:'Excellent',d:'Engaging, fluent presentation. Confident answers.'},{r:'21–26',tag:'good',lbl:'Good',d:'Mostly clear with minor hesitations.'},{r:'13–20',tag:'developing',lbl:'Developing',d:'Some hesitation, uneven pacing.'},{r:'0–12',tag:'insufficient',lbl:'Insufficient',d:'Hard to follow, poor Q&A.'}]},
+  { id:'team', name:'Teamwork', meta:'Max 10 · MÜDEK 6', color:'var(--c-team)', max:10,
+    blurb:'Evaluate collaboration, role distribution, and collective ownership.',
+    rubric:[{r:'9–10',tag:'excellent',lbl:'Excellent',d:'Outstanding collaboration and equal contribution.'},{r:'7–8',tag:'good',lbl:'Good',d:'Good teamwork with minor imbalance.'},{r:'4–6',tag:'developing',lbl:'Developing',d:'Uneven contributions visible.'},{r:'0–3',tag:'insufficient',lbl:'Insufficient',d:'Individual effort, no collaboration.'}]}
+];
+
+const groups = [
+  {title:'IoT Gateway System', students:'Ahmet Yılmaz, Elif Kaya', scores:[28,26,27,9]},
+  {title:'Drone Control Platform', students:'Burak Tekin, Selin Arslan', scores:[25,23,24,8]},
+  {title:'Smart Grid System', students:'Ali Vural, Zeynep Kara', scores:[27,24,null,null]},
+  {title:'VR Classroom', students:'Can Demir, Aylin Şahin', scores:[null,null,null,null]},
+  {title:'AI Tutor Engine', students:'Mert Koç, Deniz Bal', scores:[null,null,null,null]},
+  {title:'Robotic Arm Control', students:'Oğuz Han, Seda Çelik', scores:[null,null,null,null]},
+  {title:'Solar Tracker Array', students:'Emre Güneş, Naz Yıldız', scores:[null,null,null,null]},
+  {title:'Speech Recognition', students:'Kaan Öz, Berra Ak', scores:[null,null,null,null]}
+];
+
+let currentGroup = 2;
+
+// ── Render ──
+function render() {
+  const g = groups[currentGroup];
+  const scores = g.scores;
+
+  // Header
+  document.getElementById('fGroupTitle').textContent = g.title;
+  document.getElementById('fGroupSub').textContent = g.students;
+  document.getElementById('fGroupNum').textContent = `${currentGroup+1}/${groups.length}`;
+  document.getElementById('fPrevBtn').disabled = currentGroup === 0;
+  document.getElementById('fNextBtn').disabled = currentGroup === groups.length - 1;
+
+  // Criteria cards
+  const listEl = document.getElementById('fCritList');
+  listEl.innerHTML = criteria.map((c, i) => {
+    const score = scores[i];
+    const hasScore = score !== null;
+    const pct = hasScore ? (score / c.max * 100) : 0;
+
+    // Determine state
+    let stateClass = '';
+    if (hasScore) stateClass = 'scored';
+    // (skipped/submit-fail are triggered by user actions, not default render)
+
+    return `
+      <div class="f-crit ${c.id} ${stateClass}" data-idx="${i}">
+        <div class="f-crit-top">
+          <div class="f-crit-name">${c.name}</div>
+          <button class="f-rubric-btn" onclick="openRubricSheet(${i})">📖 Rubric</button>
+        </div>
+        <div class="f-crit-meta">${c.meta}</div>
+        <div class="f-crit-score-row">
+          <input class="f-score-input ${hasScore ? 'scored-input' : ''}"
+                 type="number" inputmode="numeric" pattern="[0-9]*"
+                 min="0" max="${c.max}"
+                 placeholder="—"
+                 value="${hasScore ? score : ''}"
+                 onchange="onScoreChange(${i}, this)"
+                 onblur="onScoreBlur(${i}, this)"
+                 ${hasScore ? 'style="border-color:rgba(34,197,94,0.25)"' : ''}>
+          <div class="f-score-bar"><div class="f-score-bar-fill" style="width:${pct}%;background:${c.color}"></div></div>
+          <span class="f-score-frac" ${!hasScore ? 'style="color:var(--text-muted)"' : ''}>${hasScore ? score : '—'}/${c.max}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  updateBottomBar();
+}
+
+function onScoreChange(idx, input) {
+  const c = criteria[idx];
+  let val = parseInt(input.value);
+  if (isNaN(val)) { groups[currentGroup].scores[idx] = null; }
+  else {
+    val = Math.min(c.max, Math.max(0, val));
+    input.value = val;
+    groups[currentGroup].scores[idx] = val;
+  }
+  render();
+}
+
+function onScoreBlur(idx, input) {
+  const c = criteria[idx];
+  const val = groups[currentGroup].scores[idx];
+  // Mark as visited — if no score, it becomes "skipped"
+  const card = input.closest('.f-crit');
+  if (val === null && card && !card.classList.contains('skipped')) {
+    // Only mark as skipped if they actually focused this input
+    card.classList.add('skipped');
+    card.classList.remove('scored');
+    // Update name indicator
+    const nameEl = card.querySelector('.f-crit-name');
+    if (!nameEl.innerHTML.includes('⚠')) {
+      nameEl.innerHTML = nameEl.textContent + '<span style="margin-left:6px;font-size:10px;color:var(--warning)">⚠</span>';
+    }
+    const fracEl = card.querySelector('.f-score-frac');
+    fracEl.style.color = 'var(--warning)';
+    fracEl.textContent = '⚠ —/' + c.max;
+    input.style.borderColor = 'rgba(245,158,11,0.3)';
+    updateBottomBar();
+  }
+}
+
+function updateBottomBar() {
+  const scores = groups[currentGroup].scores;
+  const filled = scores.filter(s => s !== null).length;
+  const total = scores.reduce((a, s) => a + (s || 0), 0);
+  const maxTotal = criteria.reduce((a, c) => a + c.max, 0);
+  const remaining = criteria.length - filled;
+  const pct = Math.round(filled / criteria.length * 100);
+
+  document.getElementById('fTotal').innerHTML = `${total} <span style="font-size:11px;color:var(--text-muted)">/ ${maxTotal}</span>`;
+  document.getElementById('fProgressFill').style.width = pct + '%';
+  document.getElementById('fProgressPct').textContent = pct + '%';
+
+  const statusEl = document.getElementById('fStatus');
+  const submitBtn = document.getElementById('fSubmitBtn');
+
+  if (remaining === 0) {
+    statusEl.className = 'f-bottom-status success';
+    statusEl.textContent = '✓ All scored';
+    submitBtn.className = 'f-bottom-submit active';
+    submitBtn.textContent = 'Submit ▶';
+  } else {
+    // Check for skipped
+    const skippedCards = document.querySelectorAll('.f-crit.skipped');
+    if (skippedCards.length > 0) {
+      statusEl.className = 'f-bottom-status warning';
+      statusEl.textContent = `⚠ ${remaining} remaining`;
+    } else {
+      statusEl.className = 'f-bottom-status warning';
+      statusEl.textContent = `${remaining} remaining`;
+    }
+    submitBtn.className = 'f-bottom-submit disabled';
+    submitBtn.textContent = 'Submit';
+  }
+}
+
+// ── Submit attempt → shake empty cards ──
+function trySubmit() {
+  const scores = groups[currentGroup].scores;
+  const allFilled = scores.every(s => s !== null);
+
+  if (allFilled) {
+    // Success animation
+    document.getElementById('fSubmitBtn').textContent = '✓ Submitted!';
+    document.getElementById('fSubmitBtn').style.background = 'linear-gradient(135deg,#22c55e,#16a34a)';
+    setTimeout(() => { render(); }, 1500);
+    return;
+  }
+
+  // Shake empty cards
+  const statusEl = document.getElementById('fStatus');
+  statusEl.className = 'f-bottom-status danger';
+  statusEl.textContent = '! Complete all criteria';
+
+  document.querySelectorAll('.f-crit').forEach((card, i) => {
+    if (scores[i] === null) {
+      card.classList.add('submit-fail');
+      card.classList.remove('skipped');
+      const input = card.querySelector('.f-score-input');
+      input.style.borderColor = 'rgba(239,68,68,0.4)';
+      input.style.boxShadow = '0 0 0 2px rgba(239,68,68,0.12)';
+      const frac = card.querySelector('.f-score-frac');
+      frac.style.color = 'var(--danger)';
+      frac.textContent = '! —/' + criteria[i].max;
+
+      setTimeout(() => {
+        card.classList.remove('submit-fail');
+        card.classList.add('skipped');
+        input.style.borderColor = 'rgba(245,158,11,0.3)';
+        input.style.boxShadow = '';
+        frac.style.color = 'var(--warning)';
+        frac.textContent = '⚠ —/' + criteria[i].max;
+        updateBottomBar();
+      }, 800);
+    }
+  });
+}
+
+// ── Rubric Sheet ──
+function openRubricSheet(idx) {
+  const c = criteria[idx];
+  const score = groups[currentGroup].scores[idx];
+
+  document.getElementById('fSheetTitle').textContent = c.name;
+  document.getElementById('fSheetTitle').style.color = c.color;
+  document.getElementById('fSheetBlurb').textContent = c.blurb;
+
+  // Determine active band
+  let activeBand = -1;
+  if (score !== null) {
+    for (let i = 0; i < c.rubric.length; i++) {
+      const [min, max] = c.rubric[i].r.replace('–','-').split('-').map(Number);
+      if (score >= min && score <= max) { activeBand = i; break; }
+    }
+  }
+
+  document.getElementById('fSheetRubric').innerHTML = c.rubric.map((r, i) =>
+    `<div class="f-sheet-row ${i === activeBand ? 'active' : ''}">
+      <span class="f-sheet-range">${r.r}</span>
+      <span class="tag tag-${r.tag}">${r.lbl}</span>
+      <span class="f-sheet-desc">${r.d}</span>
+    </div>`
+  ).join('');
+
+  const badge = document.getElementById('fSheetBadge');
+  if (score !== null) {
+    badge.style.display = 'flex';
+    document.getElementById('fSheetBadgeVal').innerHTML = `${score} <span style="font-size:11px;color:var(--text-muted)">/ ${c.max}</span>`;
+    const bandLabel = activeBand >= 0 ? c.rubric[activeBand].lbl : '—';
+    const bandColor = activeBand >= 0 ? ({'Excellent':'var(--success)','Good':'#84cc16','Developing':'var(--warning)','Insufficient':'var(--danger)'}[bandLabel] || 'var(--text-secondary)') : 'var(--text-muted)';
+    document.getElementById('fSheetBadgeBand').innerHTML = `<span style="color:${bandColor}">● ${bandLabel}</span>`;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  document.getElementById('fSheet').classList.add('open');
+  document.getElementById('fSheetBackdrop').classList.add('open');
+}
+
+function closeRubricSheet() {
+  document.getElementById('fSheet').classList.remove('open');
+  document.getElementById('fSheetBackdrop').classList.remove('open');
+}
+
+// ── Group Sheet ──
+function toggleGroupSheet() {
+  const sheet = document.getElementById('gSheet');
+  const backdrop = document.getElementById('gSheetBackdrop');
+  const isOpen = sheet.classList.contains('open');
+  if (isOpen) { closeGroupSheet(); return; }
+
+  document.getElementById('gSheetList').innerHTML = groups.map((g, i) => {
+    const filled = g.scores.filter(s => s !== null).length;
+    const total = criteria.length;
+    let statusClass = 'empty', statusText = `— ${filled}/${total}`;
+    if (filled === total) { statusClass = 'complete'; statusText = `✅ ${filled}/${total}`; }
+    else if (filled > 0) { statusClass = 'partial'; statusText = `⚠ ${filled}/${total}`; }
+
+    return `<div class="g-item ${i === currentGroup ? 'current' : ''}" onclick="selectGroup(${i})">
+      <span class="g-item-num">${i+1}</span>
+      <div class="g-item-info"><div class="g-item-title">${g.title}</div><div class="g-item-students">${g.students}</div></div>
+      <span class="g-item-status ${statusClass}">${statusText}</span>
+    </div>`;
+  }).join('');
+
+  sheet.classList.add('open');
+  backdrop.classList.add('open');
+}
+
+function closeGroupSheet() {
+  document.getElementById('gSheet').classList.remove('open');
+  document.getElementById('gSheetBackdrop').classList.remove('open');
+}
+
+function selectGroup(idx) {
+  currentGroup = idx;
+  closeGroupSheet();
+  render();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function navGroup(dir) {
+  const next = currentGroup + dir;
+  if (next < 0 || next >= groups.length) return;
+  currentGroup = next;
+  render();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// ── State Demo: replay shake ──
+function replayShake(el) {
+  el.classList.remove('submit-fail');
+  void el.offsetWidth; // force reflow
+  el.classList.add('submit-fail');
+}
+
+// ── Tab navigation ──
+document.querySelectorAll('.concept-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.concept-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.concept-section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.target).classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+});
+
+// ── Init ──
+render();
+</script>
+</body>
+</html>

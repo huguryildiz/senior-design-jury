@@ -311,7 +311,7 @@ export default function JurorsTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <SortHead id="name">Name</SortHead>
-              <SortHead id="dept" className="hidden md:table-cell">Department</SortHead>
+              <SortHead id="dept" className="hidden md:table-cell">Affiliation</SortHead>
               <SortHead id="status">Status</SortHead>
               <SortHead id="progress">Progress</SortHead>
               <SortHead id="activity" className="hidden lg:table-cell">Last Activity</SortHead>

@@ -74,7 +74,7 @@ export default function TenantSwitcher({ tenants, activeTenant, onSwitch }) {
           className={`semester-dropdown-panel semester-dropdown-panel--${panelPlacement}`}
           style={panelStyle || undefined}
           role="listbox"
-          aria-label="Select department"
+          aria-label="Select organization"
         >
           {tenantOptions.map((t) => (
             <li

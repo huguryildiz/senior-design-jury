@@ -1,0 +1,24 @@
+[      82ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/src/assets/favicon/web-app-manifest-512x512.png:0
+[      82ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/src/assets/vera_logo_dark.png:0
+[     115ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/src/assets/favicon/web-app-manifest-512x512.png:0
+[     206ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) @ http://localhost:7788/vera-premium-prototype.html:0
+[     206ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     206ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     207ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     207ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     207ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     207ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     207ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[     231ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/favicon.ico:0
+[ 1969814ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/src/assets/favicon/web-app-manifest-512x512.png:0
+[ 1969815ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/src/assets/vera_logo_dark.png:0
+[ 1970065ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/src/assets/favicon/web-app-manifest-512x512.png:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970290ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:7788/vera-premium-prototype.html:0
+[ 1970325ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:7788/favicon.ico:0
