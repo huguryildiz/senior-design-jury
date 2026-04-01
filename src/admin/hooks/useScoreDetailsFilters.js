@@ -54,16 +54,16 @@ export const JUROR_STATUS_OPTIONS = [
   { value: "not_started",     label: "Not Started"     },
 ];
 export const SCORE_STATUS_LEGEND = [
-  { status: "scored", description: "All criteria are scored for this row." },
+  { status: "scored", description: "All criteria are scored." },
   { status: "partial", description: "At least one criterion is missing." },
-  { status: "empty", description: "No score has been entered yet." },
+  { status: "empty", description: "No score entered yet." },
 ];
 export const JUROR_STATUS_LEGEND = [
-  { status: "completed", description: "Final submission is completed." },
-  { status: "ready_to_submit", description: "All groups are scored and ready for submission." },
-  { status: "in_progress", description: "Scoring has started but is not complete." },
+  { status: "completed", description: "Final submission completed." },
+  { status: "ready_to_submit", description: "All groups scored." },
+  { status: "in_progress", description: "Scoring has started." },
   { status: "not_started", description: "No scoring activity yet." },
-  { status: "editing", description: "Editing mode is enabled for this juror." },
+  { status: "editing", description: "Editing mode enabled." },
 ];
 
 export const VALID_SORT_DIRS = ["asc", "desc"];
@@ -271,7 +271,7 @@ export function useScoreDetailsFilters(currentCriteria = CRITERIA) {
   const [anchorRect, setAnchorRect] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [multiSearchQuery, setMultiSearchQuery] = useState("");
-  const [showStatusLegend, setShowStatusLegend] = useState(false);
+  const [showStatusLegend, setShowStatusLegend] = useState(true);
 
   const filterPresentation = useResponsiveFilterPresentation();
 
