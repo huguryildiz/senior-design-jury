@@ -29,10 +29,13 @@ const VALID_TABS = new Set([
   "entry-control",
   "audit-log",
   "export",
+  // Phase 11 — extracted from Settings
+  "criteria",
+  "outcomes",
 ]);
 
 // Tabs that have editable forms — dirty guard applies
-const DIRTY_TABS = new Set(["settings", "jurors", "projects", "semesters"]);
+const DIRTY_TABS = new Set(["settings", "jurors", "projects", "semesters", "criteria", "outcomes"]);
 
 const normalizeTab = (value) => {
   if (value === "results" || value === "analysis") return "scores";

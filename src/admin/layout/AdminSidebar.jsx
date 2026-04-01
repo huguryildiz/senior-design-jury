@@ -64,7 +64,7 @@ import SidebarProfileMenu from "../components/SidebarProfileMenu";
 // Navigation configuration
 // ---------------------------------------------------------------------------
 
-const SCORES_SUB_VIEWS = [
+const EVALUATION_SUB_VIEWS = [
   { id: "rankings", label: "Rankings" },
   { id: "analytics", label: "Analytics" },
   { id: "grid", label: "Grid" },
@@ -73,11 +73,17 @@ const SCORES_SUB_VIEWS = [
 
 const NAV_SECTIONS = [
   {
-    label: "Analytics",
-    collapsible: true,
+    label: "Overview",
+    collapsible: false,
     items: [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
-      { id: "scores", label: "Scores", icon: BarChart3, hasSubItems: true },
+    ],
+  },
+  {
+    label: "Evaluation",
+    collapsible: true,
+    items: [
+      { id: "scores", label: "Rankings", icon: BarChart3, hasSubItems: true },
     ],
   },
   {
@@ -87,6 +93,14 @@ const NAV_SECTIONS = [
       { id: "jurors", label: "Jurors", icon: Users },
       { id: "projects", label: "Projects", icon: FolderKanban },
       { id: "semesters", label: "Periods", icon: Calendar },
+    ],
+  },
+  {
+    label: "Configuration",
+    collapsible: true,
+    items: [
+      { id: "criteria", label: "Evaluation Criteria", icon: Settings },
+      { id: "outcomes", label: "Outcomes & Mapping", icon: Settings },
     ],
   },
   {
@@ -164,8 +178,8 @@ function SidebarTenantSwitcher({ activeTenant, tenants, onTenantSwitch, isSuper 
   );
 }
 
-/** Collapsible Scores menu item with sub-views (no icons on sub-items). */
-function ScoresCollapsible({ adminTab, scoresView, onNavigate, onScoresViewChange }) {
+/** Collapsible Evaluation menu item with sub-views (Rankings, Analytics, Grid, Details). */
+function EvaluationCollapsible({ adminTab, scoresView, onNavigate, onScoresViewChange }) {
   const isScoresActive = adminTab === "scores";
   const [isOpen, setIsOpen] = useState(isScoresActive);
   const open = isOpen || isScoresActive;
@@ -180,7 +194,7 @@ function ScoresCollapsible({ adminTab, scoresView, onNavigate, onScoresViewChang
               onNavigate("scores");
               if (!isScoresActive) setIsOpen(true);
             }}
-            tooltip="Scores"
+            tooltip="Evaluation Scores"
           >
             <BarChart3 />
             <span>Scores</span>
@@ -194,7 +208,7 @@ function ScoresCollapsible({ adminTab, scoresView, onNavigate, onScoresViewChang
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub>
-            {SCORES_SUB_VIEWS.map((view) => (
+            {EVALUATION_SUB_VIEWS.map((view) => (
               <SidebarMenuSubItem key={view.id}>
                 <SidebarMenuSubButton
                   isActive={isScoresActive && scoresView === view.id}
@@ -238,7 +252,7 @@ function CollapsibleNavSection({ section, adminTab, scoresView, onNavigate, onSc
             {section.items.map((item) => {
               if (item.hasSubItems) {
                 return (
-                  <ScoresCollapsible
+                  <EvaluationCollapsible
                     key={item.id}
                     adminTab={adminTab}
                     scoresView={scoresView}
@@ -331,16 +345,35 @@ export default function AdminSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {sections.map((section) => (
-          <CollapsibleNavSection
-            key={section.label}
-            section={section}
-            adminTab={adminTab}
-            scoresView={scoresView}
-            onNavigate={onNavigate}
-            onScoresViewChange={onScoresViewChange}
-          />
-        ))}
+        {sections.map((section) =>
+          section.collapsible ? (
+            <CollapsibleNavSection
+              key={section.label}
+              section={section}
+              adminTab={adminTab}
+              scoresView={scoresView}
+              onNavigate={onNavigate}
+              onScoresViewChange={onScoresViewChange}
+            />
+          ) : (
+            <SidebarGroup key={section.label}>
+              <SidebarMenu>
+                {section.items.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={adminTab === item.id}
+                      onClick={() => onNavigate(item.id)}
+                      tooltip={item.label}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          )
+        )}
       </SidebarContent>
 
       <SidebarUserFooter

@@ -33,6 +33,8 @@ import OrgSettingsPage from "./admin/pages/OrgSettingsPage";
 import ProjectsPage from "./admin/pages/ProjectsPage";
 import JurorsPage from "./admin/pages/JurorsPage";
 import SemestersPage from "./admin/pages/SemestersPage";
+import CriteriaPage from "./admin/pages/CriteriaPage";
+import OutcomesPage from "./admin/pages/OutcomesPage";
 import AlertCard from "./shared/AlertCard";
 import { AdminLayout } from "./admin/layout/AdminLayout";
 import { AdminHeader } from "./admin/layout/AdminHeader";
@@ -267,10 +269,12 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
       settings: "Settings",
       jurors: "Jurors",
       projects: "Projects",
-      semesters: "Semesters",
+      semesters: "Evaluation Periods",
       "entry-control": "Entry Control",
       "audit-log": "Audit Log",
       export: "Export",
+      criteria: "Evaluation Criteria",
+      outcomes: "Outcomes & Mapping",
     };
     if (adminTab === "scores") {
       const viewLabel = EVALUATION_VIEWS.find((v) => v.id === scoresView)?.label || "Rankings";
@@ -433,6 +437,30 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
               tenantId={tenantId}
               isDemoMode={isDemoMode}
               onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
+            />
+          )}
+          {adminTab === "criteria" && (
+            <CriteriaPage
+              tenantId={tenantId}
+              selectedSemesterId={selectedSemesterId}
+              isDemoMode={isDemoMode}
+              onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
+              onCurrentSemesterChange={(semesterId) => {
+                setSelectedSemesterId(semesterId);
+                fetchData(semesterId);
+              }}
+            />
+          )}
+          {adminTab === "outcomes" && (
+            <OutcomesPage
+              tenantId={tenantId}
+              selectedSemesterId={selectedSemesterId}
+              isDemoMode={isDemoMode}
+              onDirtyChange={(dirty) => { settingsDirtyRef.current = dirty; }}
+              onCurrentSemesterChange={(semesterId) => {
+                setSelectedSemesterId(semesterId);
+                fetchData(semesterId);
+              }}
             />
           )}
         </div>
