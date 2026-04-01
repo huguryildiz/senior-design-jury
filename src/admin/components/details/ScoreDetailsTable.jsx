@@ -193,35 +193,36 @@ function TablePagination({ currentPage, totalPages, pageSize, totalRows, onPageC
   const rangeEnd   = Math.min(currentPage * pageSize, totalRows);
   const tokens     = buildPageTokens(currentPage, totalPages);
 
+  const btnBase = "inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-lg border border-border bg-card text-muted-foreground text-sm font-medium cursor-pointer transition-colors hover:bg-muted hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(59,130,246,0.2)]";
   return (
-    <div className="details-pagination">
-      <div className="details-pagination__left">
-        <label className="details-pagination__size-label" htmlFor="details-page-size">
+    <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 bg-card border border-border rounded-xl text-sm max-sm:flex-col max-sm:items-stretch">
+      <div className="flex items-center gap-1.5">
+        <label className="text-sm text-muted-foreground whitespace-nowrap" htmlFor="details-page-size">
           Rows per page
         </label>
         <select
           id="details-page-size"
-          className="details-pagination__size-select"
+          className="px-2 py-1 rounded-lg border border-border text-sm bg-card text-foreground cursor-pointer focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(59,130,246,0.15)]"
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
         >
           {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
       </div>
-      <span className="details-pagination__range">
+      <span className="text-sm text-muted-foreground whitespace-nowrap max-sm:text-center">
         {totalRows === 0 ? "0 rows" : `${rangeStart}–${rangeEnd} of ${totalRows} rows`}
       </span>
-      <div className="details-pagination__controls">
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(1)} disabled={currentPage === 1} aria-label="First page">{"<<"}</button>
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page">{"<"}</button>
+      <div className="flex items-center gap-1">
+        <button type="button" className={btnBase} onClick={() => onPageChange(1)} disabled={currentPage === 1} aria-label="First page">{"<<"}</button>
+        <button type="button" className={btnBase} onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} aria-label="Previous page">{"<"}</button>
         {tokens.map((token, idx) =>
           token === "..." ? (
-            <span key={`el-${idx}`} className="details-pagination__ellipsis">…</span>
+            <span key={`el-${idx}`} className="px-1 text-sm text-muted-foreground inline-flex items-center select-none">…</span>
           ) : (
             <button
               key={token}
               type="button"
-              className={`details-pagination__btn details-pagination__page-btn${token === currentPage ? " details-pagination__page-btn--active" : ""}`}
+              className={`inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-lg border text-sm font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(59,130,246,0.2)] ${token === currentPage ? "bg-primary border-primary text-white font-bold cursor-default pointer-events-none" : "border-border bg-card text-muted-foreground hover:bg-muted hover:border-border-strong"}`}
               onClick={() => onPageChange(token)}
               aria-label={`Page ${token}`}
               aria-current={token === currentPage ? "page" : undefined}
@@ -230,8 +231,8 @@ function TablePagination({ currentPage, totalPages, pageSize, totalRows, onPageC
             </button>
           )
         )}
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next page">{">"}</button>
-        <button type="button" className="details-pagination__btn" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} aria-label="Last page">{">>"}</button>
+        <button type="button" className={btnBase} onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} aria-label="Next page">{">"}</button>
+        <button type="button" className={btnBase} onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} aria-label="Last page">{">>"}</button>
       </div>
     </div>
   );

@@ -96,48 +96,44 @@ export default function ScoreDetailsFilters({
 
       {/* Filter chips row */}
       {(loading || hasAnyFilter || sortLabel) && (
-        <div className="detail-table-toolbar">
-          {loading && (
-            <span className="detail-loading">Loading details…</span>
-          )}
+        <div className="flex items-center gap-2.5 flex-wrap my-0.5 mb-2.5">
+          {loading && <span className="text-xs text-muted-foreground">Loading details…</span>}
           {(hasAnyFilter || sortLabel) && (
-            <div className="filters-chip-row">
-              {(hasAnyFilter || sortLabel) && (
-                <button
-                  type="button"
-                  className="filter-chip filter-chip-clear-all"
-                  onClick={onResetFilters}
-                  title="Clear all filters"
-                  aria-label="Clear all filters"
-                >
-                  <span className="chip-label">Clear all</span>
-                  <XIcon />
-                </button>
-              )}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-red-200 bg-red-50 text-red-600 text-xs cursor-pointer whitespace-nowrap hover:bg-red-100 hover:border-red-300 [&_svg]:size-3"
+                onClick={onResetFilters}
+                title="Clear all filters"
+                aria-label="Clear all filters"
+              >
+                <span className="font-semibold">Clear all</span>
+                <XIcon />
+              </button>
               {sortLabel && (
                 <button
                   type="button"
-                  className="details-sort-indicator"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-border bg-muted/50 text-muted-foreground text-xs cursor-pointer whitespace-nowrap hover:bg-muted hover:border-border-strong [&_svg]:size-3"
                   onClick={onClearSort}
                   title="Clear sort"
                   aria-label="Clear sort"
                 >
-                  <span className="chip-label">Sorted By</span>
-                  <span className="chip-value">{sortLabel}</span>
-                  <span className="details-sort-close" aria-hidden="true">×</span>
+                  <span className="font-bold text-foreground">Sorted By</span>
+                  <span className="font-normal">{sortLabel}</span>
+                  <span aria-hidden="true">×</span>
                 </button>
               )}
               {activeFilterChips.map((chip) => (
                 <button
                   key={chip.id}
                   type="button"
-                  className="filter-chip"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-border bg-muted/50 text-muted-foreground text-xs cursor-pointer whitespace-nowrap hover:bg-muted hover:border-border-strong [&_svg]:size-3"
                   onClick={chip.onClear}
                   title={`Clear ${chip.label}`}
                   aria-label={`Clear ${chip.label}`}
                 >
-                  <span className="chip-label">{chip.label}</span>
-                  {chip.value && <span className="chip-value">{chip.value}</span>}
+                  <span className="font-semibold">{chip.label}</span>
+                  {chip.value && <span className="font-normal">{chip.value}</span>}
                   <XIcon />
                 </button>
               ))}

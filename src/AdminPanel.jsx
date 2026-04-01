@@ -45,8 +45,7 @@ import { AdminHeader } from "./admin/layout/AdminHeader";
 // admin-dashboard.css — charts wrapped in Phase 5A
 // admin-responsive.css — Tailwind responsive utilities replace breakpoints
 // admin-matrix.css — migrated to Tailwind in Phase 5C
-// Kept: admin-details.css, admin-manage.css (deep restyle pending)
-import "./styles/admin-details.css";
+// Kept: admin-manage.css (deep restyle pending)
 
 const CRITERIA_LIST = CRITERIA.map((c) => ({
   id: c.id, label: c.label, shortLabel: c.shortLabel, max: c.max,

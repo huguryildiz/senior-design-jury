@@ -353,7 +353,7 @@ export default function ScoreDetails({
   });
 
   return (
-    <div className="score-details">
+    <div className="flex flex-col gap-2.5">
       <ScoreDetailsHeader
         filteredCount={filteredData.length}
         onExport={() => {
