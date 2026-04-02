@@ -1,16 +1,9 @@
 // src/admin/layout/AdminHeader.jsx
-// ============================================================
-// Sticky header bar for the admin panel.
-// Layout: [breadcrumb (Org / Page)] [spacer] [refresh] [period select]
-// Matches vera-premium-prototype.html .admin-header structure.
-// ============================================================
+// Matches prototype HTML lines 11722–11754 exactly.
+// Structure: [mobile-menu-btn] [breadcrumb] [spacer] [refresh] [period dropdown]
 
-import { useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, FlaskConical, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-// ── Helpers ──────────────────────────────────────────────────
+import { useState, useCallback, useContext, useMemo } from "react";
+import { AdminMobileMenuContext } from "./AdminLayout";
 
 function formatRefreshTime(date) {
   if (!date) return null;
@@ -21,103 +14,96 @@ function formatRefreshTime(date) {
   }).format(date);
 }
 
-// ── Demo Banner ──────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Demo Banner — prototype line 11714–11721
+// ---------------------------------------------------------------------------
 
 function DemoBanner() {
   return (
-    <div
-      className="flex items-center justify-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200"
-      role="status"
-    >
-      <FlaskConical className="size-3.5 shrink-0" aria-hidden="true" />
-      <span>
-        <strong className="font-semibold">Demo Mode</strong>
-        <span className="mx-1.5 opacity-50">&middot;</span>
-        Sample data, resets daily
-      </span>
+    <div className="demo-banner" id="demo-banner">
+      <div className="demo-banner-inner">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+          <polygon points="5 3 19 12 5 21 5 3" />
+        </svg>
+        <span>
+          You&apos;re viewing a <strong>live demo</strong> with sample data.
+        </span>
+        <span className="demo-banner-sep">&middot;</span>
+        <span>Data resets daily</span>
+      </div>
     </div>
   );
 }
 
-// ── Period Selector ────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Period Dropdown — prototype lines 11741–11753
+// ---------------------------------------------------------------------------
 
-function PeriodSelector({ sortedPeriods, periodList, selectedPeriodId, onPeriodChange, onFetchData }) {
-  const periods = sortedPeriods || periodList || [];
+function PeriodDropdown({ periods, selectedPeriodId, onPeriodChange, onFetchData }) {
+  const [open, setOpen] = useState(false);
 
-  const handleChange = useCallback(
-    (e) => {
-      const id = e.target.value;
-      onPeriodChange?.(id);
-      onFetchData?.(id);
+  const selected = useMemo(
+    () => periods.find((p) => String(p.id) === String(selectedPeriodId)) || periods[0],
+    [periods, selectedPeriodId],
+  );
+
+  const handleSelect = useCallback(
+    (period) => {
+      setOpen(false);
+      onPeriodChange?.(period.id);
+      onFetchData?.(period.id);
     },
     [onPeriodChange, onFetchData],
   );
 
-  if (periods.length === 0) return null;
+  if (!periods.length) return null;
 
   return (
-    <div className="relative inline-flex items-center">
-      <select
-        value={selectedPeriodId || ""}
-        onChange={handleChange}
-        aria-label="Select evaluation period"
-        className={cn(
-          "h-8 cursor-pointer appearance-none rounded-md border border-border/70 bg-background py-1 pl-3 pr-8",
-          "text-sm font-medium text-foreground shadow-sm transition-colors",
-          "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        )}
+    <div className={`dropdown${open ? " open" : ""}`} id="semester-dropdown">
+      <button
+        className="dropdown-trigger"
+        id="semester-trigger"
+        type="button"
+        onClick={() => setOpen((v) => !v)}
       >
-        {periods.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.period_name || s.name}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute right-2 size-3.5 text-muted-foreground"
-        aria-hidden="true"
-      />
-    </div>
-  );
-}
-
-// ── Breadcrumb ────────────────────────────────────────────
-
-function HeaderBreadcrumb({ orgName, pageTitle }) {
-  return (
-    <div className="flex items-center gap-1.5 text-sm min-w-0">
-      {orgName && (
+        <span className="dropdown-dot" />
+        <span id="semester-label">{selected?.period_name || selected?.name || ""}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
         <>
-          <span className="font-semibold text-foreground truncate max-w-[140px]">{orgName}</span>
-          <span className="text-muted-foreground/60 shrink-0">/</span>
+          {/* Click-away */}
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 99 }}
+            onClick={() => setOpen(false)}
+          />
+          <div className="dropdown-menu" id="semester-menu" style={{ zIndex: 100 }}>
+            {periods.map((period, i) => (
+              <div
+                key={period.id}
+                className={`dropdown-item${String(period.id) === String(selectedPeriodId) ? " selected" : ""}`}
+                onClick={() => handleSelect(period)}
+              >
+                {period.period_name || period.name}
+                {period.is_current && <span className="dropdown-item-meta">Current</span>}
+                {period.is_locked && <span className="dropdown-item-meta">Locked</span>}
+              </div>
+            ))}
+          </div>
         </>
       )}
-      <span className="text-muted-foreground truncate">{pageTitle}</span>
     </div>
   );
 }
 
-// ── Main Component ───────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Main export — prototype lines 11722–11754
+// ---------------------------------------------------------------------------
 
-/**
- * @param {object}   props
- * @param {string}   props.title                   — Page title (e.g. "Overview")
- * @param {string}   [props.subtitle]              — Optional subtitle (e.g. "Spring 2026")
- * @param {object}   [props.activeOrganization]    — Active org { name }
- * @param {boolean}  [props.loading=false]          — Whether data is currently loading
- * @param {Date}     [props.lastRefresh]            — Timestamp of the last data refresh
- * @param {function} [props.onRefresh]              — Callback to trigger a data refresh
- * @param {boolean}  [props.isDemoMode=false]       — Show demo banner
- * @param {Array}    [props.periodList]            — Full period list
- * @param {Array}    [props.sortedPeriods]          — Sorted period list (preferred for display)
- * @param {string}   [props.selectedPeriodId]      — Currently selected period ID
- * @param {string}   [props.selectedPeriodName]    — Currently selected period display name
- * @param {function} [props.onPeriodChange]         — Callback when period selection changes
- * @param {function} [props.onFetchData]            — Callback to fetch data for a period
- */
 export function AdminHeader({
   title,
-  subtitle,
   activeOrganization,
   loading = false,
   lastRefresh,
@@ -126,76 +112,92 @@ export function AdminHeader({
   periodList,
   sortedPeriods,
   selectedPeriodId,
-  selectedPeriodName,
   onPeriodChange,
   onFetchData,
-  // Legacy prop aliases (backwards compat with old AdminPanel calls)
+  // Legacy aliases
   sortedSemesters,
   onSemesterChange,
 }) {
-  const refreshLabel = useMemo(() => formatRefreshTime(lastRefresh), [lastRefresh]);
-
-  const effectiveSortedPeriods = sortedPeriods || sortedSemesters;
+  const { onMenuToggle } = useContext(AdminMobileMenuContext);
+  const effectivePeriods = sortedPeriods || sortedSemesters || periodList || [];
   const effectiveOnPeriodChange = onPeriodChange || onSemesterChange;
-
-  const hasPeriods =
-    (effectiveSortedPeriods && effectiveSortedPeriods.length > 0) ||
-    (periodList && periodList.length > 0);
-
+  const refreshLabel = useMemo(() => formatRefreshTime(lastRefresh), [lastRefresh]);
   const orgName = activeOrganization?.name;
 
   return (
     <>
       {isDemoMode && <DemoBanner />}
 
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-4 md:px-6 sticky top-0 z-40">
+      <header className="admin-header">
+        {/* Mobile hamburger */}
+        <button
+          className="mobile-menu-btn"
+          id="mobile-menu-btn"
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded="false"
+          aria-controls="sidebar-nav"
+          onClick={onMenuToggle}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+
         {/* Breadcrumb */}
-        <HeaderBreadcrumb orgName={orgName} pageTitle={title} />
+        <div className="header-breadcrumb">
+          {orgName && <><strong>{orgName}</strong>&nbsp;/&nbsp;</>}
+          <span id="breadcrumb-page">{title}</span>
+        </div>
 
-        {/* Subtitle (period name) — shown inline on wider screens */}
-        {subtitle && (
-          <span className="hidden sm:inline text-xs text-muted-foreground/70 shrink-0">
-            {subtitle}
-          </span>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Period selector */}
-        {hasPeriods && (
-          <PeriodSelector
-            sortedPeriods={effectiveSortedPeriods}
-            periodList={periodList}
-            selectedPeriodId={selectedPeriodId}
-            onPeriodChange={effectiveOnPeriodChange}
-            onFetchData={onFetchData}
-          />
-        )}
+        <div className="header-spacer" />
 
         {/* Refresh */}
         {onRefresh && (
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
+          <div className="header-refresh-stack">
+            <button
+              className={`btn btn-outline btn-sm header-refresh-btn${loading ? " loading" : ""}`}
+              title="Refresh data"
+              type="button"
               onClick={onRefresh}
               disabled={loading}
-              aria-label="Refresh data"
-              className="h-8 gap-1.5 text-xs"
             >
-              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} aria-hidden="true" />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-            {refreshLabel && (
-              <span
-                className="hidden text-xs text-muted-foreground md:inline"
-                title={lastRefresh?.toLocaleString()}
+              <svg
+                className={`refresh-icon${loading ? " spin" : ""}`}
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M21 21v-5h-5" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+            {refreshLabel && (
+              <span className="header-refresh-time" title={lastRefresh?.toLocaleString()}>
                 {refreshLabel}
               </span>
             )}
           </div>
+        )}
+
+        {/* Period selector */}
+        {effectivePeriods.length > 0 && (
+          <PeriodDropdown
+            periods={effectivePeriods}
+            selectedPeriodId={selectedPeriodId}
+            onPeriodChange={effectiveOnPeriodChange}
+            onFetchData={onFetchData}
+          />
         )}
       </header>
     </>

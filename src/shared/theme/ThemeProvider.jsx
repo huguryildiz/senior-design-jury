@@ -24,8 +24,10 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
+      document.body.classList.add("dark-mode");
     } else {
       root.classList.remove("dark");
+      document.body.classList.remove("dark-mode");
     }
     try { localStorage.setItem(STORAGE_KEY, theme); } catch {}
   }, [theme]);
