@@ -307,7 +307,7 @@ export default function AdminPanel({ isDemoMode, onBack, onAuthError, onInitialL
     >
       <AdminHeader
         title={pageTitle}
-        subtitle={selectedPeriodName !== "—" ? selectedPeriodName : undefined}
+        activeOrganization={activeOrganization}
         loading={loading}
         lastRefresh={lastRefresh}
         onRefresh={() => fetchData()}
