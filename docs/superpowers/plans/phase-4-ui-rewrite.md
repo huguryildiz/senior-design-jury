@@ -33,7 +33,7 @@
 
 **Current state:** AdminSidebar uses Lucide icons, conditional rendering based on `activeTab` prop, links/buttons for navigation.
 
-- [x] **Step 1: Read the prototype sidebar section**
+- ✅ **Step 1: Read the prototype sidebar section**
 
 Read `docs/concepts/vera-premium-prototype.html` lines covering the sidebar structure (dark background, nav items, icons). Understand:
 - Logo/branding section at top
@@ -42,7 +42,7 @@ Read `docs/concepts/vera-premium-prototype.html` lines covering the sidebar stru
 - Responsive collapse behavior on mobile
 - Dark sidebar background color (use `--sidebar-bg` from prototype CSS: `#0f172a`)
 
-- [x] **Step 2: Update AdminSidebar imports to use shadcn Sidebar components**
+- ✅ **Step 2: Update AdminSidebar imports to use shadcn Sidebar components**
 
 Replace the current custom sidebar implementation with shadcn `Sidebar`, `SidebarContent`, `SidebarMenu`, `SidebarMenuItem`, `SidebarMenuButton`:
 
@@ -63,7 +63,7 @@ import { useAuthContext } from "@/shared/auth/AuthProvider";
 import { ChevronDown, BarChart3, Users, FileText, Settings, Lock, Eye } from "lucide-react";
 ```
 
-- [x] **Step 3: Rewrite sidebar JSX to use shadcn structure**
+- ✅ **Step 3: Rewrite sidebar JSX to use shadcn structure**
 
 ```jsx
 export function AdminSidebar({ activeTab, onTabChange, userRole }) {
@@ -177,13 +177,13 @@ export function AdminSidebar({ activeTab, onTabChange, userRole }) {
 export default AdminSidebar;
 ```
 
-- [x] **Step 4: Test the sidebar renders**
+- ✅ **Step 4: Test the sidebar renders**
 
 Run: `npm run dev`
 
 Visit `http://localhost:5173/?page=admin`. The sidebar should appear on the left with all menu items, dark styling, and responsive behavior. Click items to verify `onTabChange` is called.
 
-- [x] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/layout/AdminSidebar.jsx
@@ -199,7 +199,7 @@ git commit -m "refactor(admin): migrate AdminSidebar to shadcn Sidebar with prem
 
 **Context:** The prototype shows a clean header with page title on left, action buttons and user menu on right. Header has subtle shadow and light background.
 
-- [x] **Step 1: Read the prototype header section**
+- ✅ **Step 1: Read the prototype header section**
 
 Understand the header layout:
 - Page title on left
@@ -208,7 +208,7 @@ Understand the header layout:
 - Subtle top shadow
 - Light background that contrasts with sidebar
 
-- [x] **Step 2: Rewrite AdminHeader JSX**
+- ✅ **Step 2: Rewrite AdminHeader JSX**
 
 ```jsx
 // src/admin/layout/AdminHeader.jsx
@@ -249,7 +249,7 @@ export function AdminHeader({ title, children }) {
 export default AdminHeader;
 ```
 
-- [x] **Step 3: Update AdminLayout to use new AdminHeader**
+- ✅ **Step 3: Update AdminLayout to use new AdminHeader**
 
 ```jsx
 // src/admin/layout/AdminLayout.jsx
@@ -275,13 +275,13 @@ export function AdminLayout({ children, title, sidebarProps, headerChildren, def
 export default AdminLayout;
 ```
 
-- [x] **Step 4: Test header renders with title**
+- ✅ **Step 4: Test header renders with title**
 
 Run: `npm run dev`
 
 Navigate to admin panel. The header should display above the main content with page title and user menu on right.
 
-- [x] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/layout/AdminHeader.jsx src/admin/layout/AdminLayout.jsx
@@ -298,7 +298,7 @@ git commit -m "refactor(admin): redesign AdminHeader with premium styling and up
 
 **Context:** The prototype provides both light and dark theme CSS variables. Tailwind v4 uses `dark:` prefix for dark mode. Ensure the shell supports both seamlessly.
 
-- [x] **Step 1: Verify Tailwind dark mode is configured**
+- ✅ **Step 1: Verify Tailwind dark mode is configured**
 
 Check `tailwind.config.js`:
 
@@ -309,7 +309,7 @@ module.exports = {
 };
 ```
 
-- [x] **Step 2: Test dark mode toggle**
+- ✅ **Step 2: Test dark mode toggle**
 
 Run: `npm run dev`
 
@@ -321,7 +321,7 @@ document.documentElement.classList.toggle('dark');
 
 The sidebar, header, and main background should smoothly switch between light and dark themes with no hardcoded colors.
 
-- [x] **Step 3: Verify CSS variables in src/index.css**
+- ✅ **Step 3: Verify CSS variables in src/index.css**
 
 Ensure the prototype CSS variables are imported or defined:
 
@@ -344,7 +344,7 @@ Ensure the prototype CSS variables are imported or defined:
 }
 ```
 
-- [x] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/index.css
@@ -379,7 +379,7 @@ git commit -m "chore(theme): verify dark mode CSS tokens and Tailwind config"
 
 **Context:** The prototype shows a KPI strip with large numbers, labels, trend indicators (up/down arrows with % change). Cards have subtle backgrounds and shadows.
 
-- [ ] **Step 1: Read the prototype KPI section**
+- ✅ **Step 1: Read the prototype KPI section**
 
 Understand:
 - Large metric value display (e.g., "342 scores")
@@ -388,7 +388,7 @@ Understand:
 - Card background and border (light with subtle shadow)
 - Color coding for positive (green) vs negative (red) deltas
 
-- [ ] **Step 2: Rewrite KpiCard.jsx**
+- ✅ **Step 2: Rewrite KpiCard.jsx**
 
 ```jsx
 // src/admin/overview/KpiCard.jsx
@@ -439,7 +439,7 @@ export function KpiCard({ label, value, trend, icon: Icon, className = "" }) {
 export default KpiCard;
 ```
 
-- [ ] **Step 3: Rewrite KpiGrid.jsx**
+- ✅ **Step 3: Rewrite KpiGrid.jsx**
 
 ```jsx
 // src/admin/overview/KpiGrid.jsx
@@ -491,13 +491,13 @@ export function KpiGrid({ metrics = {} }) {
 export default KpiGrid;
 ```
 
-- [ ] **Step 4: Test KPI grid renders**
+- ✅ **Step 4: Test KPI grid renders**
 
 Run: `npm run dev`
 
 The overview page should show a 4-column grid of KPI cards with numbers, icons, and trend indicators.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/overview/KpiCard.jsx src/admin/overview/KpiGrid.jsx
@@ -513,7 +513,7 @@ git commit -m "refactor(admin): redesign KPI cards with premium styling and tren
 
 **Context:** The prototype shows a sortable table with juror name, affiliation, last activity timestamp, and status. Row hover shows subtle background. Table has striped rows or alternating background.
 
-- [ ] **Step 1: Read the prototype activity table section**
+- ✅ **Step 1: Read the prototype activity table section**
 
 Understand:
 - Column headers: Name, Affiliation, Last Activity, Status
@@ -523,7 +523,7 @@ Understand:
 - Sortable columns (arrows in headers)
 - Pagination or scroll
 
-- [ ] **Step 2: Rewrite JurorActivityTable.jsx**
+- ✅ **Step 2: Rewrite JurorActivityTable.jsx**
 
 ```jsx
 // src/admin/overview/JurorActivityTable.jsx
@@ -669,13 +669,13 @@ export function JurorActivityTable({
 export default JurorActivityTable;
 ```
 
-- [ ] **Step 3: Test the table renders with sample data**
+- ✅ **Step 3: Test the table renders with sample data**
 
 Run: `npm run dev`
 
 The overview page should show a styled table with juror activity, sortable columns, and status badges.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/overview/JurorActivityTable.jsx
@@ -691,7 +691,7 @@ git commit -m "refactor(admin): redesign Juror Activity table with premium styli
 
 **Context:** The prototype shows a card highlighting pending items (incomplete reviews, issues). Displays a warning icon and list of attention items with actionable information.
 
-- [ ] **Step 1: Read the prototype Needs Attention section**
+- ✅ **Step 1: Read the prototype Needs Attention section**
 
 Understand:
 - Card header with warning icon
@@ -699,7 +699,7 @@ Understand:
 - Action links or buttons
 - Color: warning palette (amber/orange tones)
 
-- [ ] **Step 2: Rewrite NeedsAttentionCard.jsx**
+- ✅ **Step 2: Rewrite NeedsAttentionCard.jsx**
 
 ```jsx
 // src/admin/overview/NeedsAttentionCard.jsx
@@ -760,13 +760,13 @@ export function NeedsAttentionCard({ items = [] }) {
 export default NeedsAttentionCard;
 ```
 
-- [ ] **Step 3: Test the card renders**
+- ✅ **Step 3: Test the card renders**
 
 Run: `npm run dev`
 
 The card should display with warning styling and attention items.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/overview/NeedsAttentionCard.jsx
@@ -782,7 +782,7 @@ git commit -m "refactor(admin): redesign Needs Attention card with premium warni
 
 **Context:** The prototype shows period metadata: current evaluation period name, start/end dates, juror count, score count, completion %, and period status.
 
-- [ ] **Step 1: Read the prototype Period Snapshot section**
+- ✅ **Step 1: Read the prototype Period Snapshot section**
 
 Understand:
 - Card with period name as header
@@ -790,7 +790,7 @@ Understand:
 - Progress bar or completion percentage
 - Period status (active, archived, draft)
 
-- [ ] **Step 2: Rewrite PeriodSnapshotCard.jsx**
+- ✅ **Step 2: Rewrite PeriodSnapshotCard.jsx**
 
 ```jsx
 // src/admin/overview/PeriodSnapshotCard.jsx
@@ -884,13 +884,13 @@ export function PeriodSnapshotCard({
 export default PeriodSnapshotCard;
 ```
 
-- [ ] **Step 3: Test the card renders**
+- ✅ **Step 3: Test the card renders**
 
 Run: `npm run dev`
 
 The card should display period metadata with progress bar.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/overview/PeriodSnapshotCard.jsx
@@ -906,7 +906,7 @@ git commit -m "refactor(admin): redesign Period Snapshot card with metadata grid
 
 **Context:** The prototype shows a card listing the top-scoring projects with rank badges (1st, 2nd, 3rd), average scores, and team names.
 
-- [ ] **Step 1: Read the prototype Top Projects section**
+- ✅ **Step 1: Read the prototype Top Projects section**
 
 Understand:
 - List of top projects by score
@@ -916,7 +916,7 @@ Understand:
 - Average score display
 - Click to navigate to project details (if interactive)
 
-- [ ] **Step 2: Rewrite TopProjectsCard.jsx**
+- ✅ **Step 2: Rewrite TopProjectsCard.jsx**
 
 ```jsx
 // src/admin/overview/TopProjectsCard.jsx
@@ -995,13 +995,13 @@ export function TopProjectsCard({ projects = [], onProjectClick }) {
 export default TopProjectsCard;
 ```
 
-- [ ] **Step 3: Test the card renders**
+- ✅ **Step 3: Test the card renders**
 
 Run: `npm run dev`
 
 The card should display top projects with rank badges and scores.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/overview/TopProjectsCard.jsx
@@ -1017,7 +1017,7 @@ git commit -m "refactor(admin): redesign Top Projects card with rank badges and 
 
 **Context:** The prototype shows a small card with mini progress bars for each evaluation criterion (Technical, Written, Oral, Teamwork), showing completion status by criterion.
 
-- [ ] **Step 1: Read the prototype Criteria Progress section**
+- ✅ **Step 1: Read the prototype Criteria Progress section**
 
 Understand:
 - Criterion name with progress bar
@@ -1025,7 +1025,7 @@ Understand:
 - Color-coded (one color per criterion from config.js)
 - Compact layout
 
-- [ ] **Step 2: Rewrite CriteriaProgress.jsx**
+- ✅ **Step 2: Rewrite CriteriaProgress.jsx**
 
 ```jsx
 // src/admin/overview/CriteriaProgress.jsx
@@ -1076,13 +1076,13 @@ export function CriteriaProgress({ progressByField = {} }) {
 export default CriteriaProgress;
 ```
 
-- [ ] **Step 3: Test the card renders**
+- ✅ **Step 3: Test the card renders**
 
 Run: `npm run dev`
 
 The card should display progress bars for each criterion.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/overview/CriteriaProgress.jsx
@@ -1098,11 +1098,11 @@ git commit -m "refactor(admin): redesign Criteria Progress card with per-criteri
 
 **Context:** The prototype Overview page combines all the above cards in a specific layout. The main grid layout is: KPI cards on top, then a 2-column grid of Live Jury Activity (left) + (Needs Attention + Period Snapshot stacked on right), then Top Projects + Criteria Progress in a 2-column layout below.
 
-- [ ] **Step 1: Read the full prototype Overview page**
+- ✅ **Step 1: Read the full prototype Overview page**
 
 Get the exact card order and layout structure from the prototype HTML.
 
-- [ ] **Step 2: Rewrite OverviewTab.jsx to compose all cards**
+- ✅ **Step 2: Rewrite OverviewTab.jsx to compose all cards**
 
 ```jsx
 // src/admin/OverviewTab.jsx
@@ -1178,13 +1178,13 @@ export function OverviewTab() {
 export default OverviewTab;
 ```
 
-- [ ] **Step 3: Test the full Overview page renders**
+- ✅ **Step 3: Test the full Overview page renders**
 
 Run: `npm run dev`
 
 Navigate to the admin Overview tab. All cards should render with proper spacing and layout.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/OverviewTab.jsx
@@ -1217,11 +1217,11 @@ git commit -m "refactor(admin): assemble OverviewTab with all premium cards in c
 
 **Context:** The prototype shows a sortable rankings table with: rank (medal), project title, team, average score, and per-criterion scores. Rows are clickable to view details.
 
-- [ ] **Step 1: Read the prototype Rankings section**
+- ✅ **Step 1: Read the prototype Rankings section**
 
 Understand the table structure and styling.
 
-- [ ] **Step 2: Rewrite RankingsTable.jsx**
+- ✅ **Step 2: Rewrite RankingsTable.jsx**
 
 ```jsx
 // src/admin/scores/RankingsTable.jsx
@@ -1359,7 +1359,7 @@ export function RankingsTable({
 export default RankingsTable;
 ```
 
-- [ ] **Step 3: Rewrite RankingsTab.jsx to compose the table**
+- ✅ **Step 3: Rewrite RankingsTab.jsx to compose the table**
 
 ```jsx
 // src/admin/RankingsTab.jsx
@@ -1404,13 +1404,13 @@ export function RankingsTab() {
 export default RankingsTab;
 ```
 
-- [ ] **Step 4: Test Rankings tab renders**
+- ✅ **Step 4: Test Rankings tab renders**
 
 Run: `npm run dev`
 
 Navigate to Rankings tab. The table should display projects ranked by average score with medals.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/scores/RankingsTable.jsx src/admin/RankingsTab.jsx
@@ -1427,7 +1427,7 @@ git commit -m "refactor(admin): redesign Rankings tab and table with premium sty
 
 **Context:** The prototype shows multiple analytics charts: Programme Outcome Analytics, criterion box plots, heatmaps, achievement charts. Charts use Tailwind-compatible colors and professional styling.
 
-- [ ] **Step 1: Read the prototype Analytics section**
+- ✅ **Step 1: Read the prototype Analytics section**
 
 Understand:
 - Chart types displayed (radar, bar, box plot, heatmap, area)
@@ -1435,7 +1435,7 @@ Understand:
 - Legend and label styling
 - Color scheme (matches --score-excellent-bg, --score-high-bg, etc. from prototype CSS)
 
-- [ ] **Step 2: Update all chart components to use premium colors**
+- ✅ **Step 2: Update all chart components to use premium colors**
 
 Read `src/charts/chartUtils.jsx` and update color definitions:
 
@@ -1499,7 +1499,7 @@ export const chartOptions = (isDark) => ({
 });
 ```
 
-- [ ] **Step 3: Rewrite AnalyticsTab.jsx to display charts with new styling**
+- ✅ **Step 3: Rewrite AnalyticsTab.jsx to display charts with new styling**
 
 ```jsx
 // src/admin/AnalyticsTab.jsx
@@ -1577,13 +1577,13 @@ export function AnalyticsTab() {
 export default AnalyticsTab;
 ```
 
-- [ ] **Step 4: Test Analytics tab renders**
+- ✅ **Step 4: Test Analytics tab renders**
 
 Run: `npm run dev`
 
 Navigate to Analytics tab. All charts should display with premium colors and styling.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/AnalyticsTab.jsx src/charts/chartUtils.jsx
@@ -1599,11 +1599,11 @@ git commit -m "refactor(admin): redesign Analytics tab with premium chart stylin
 
 **Context:** The prototype shows a heatmap of scores by project (rows) and juror (columns), with color-coded cells representing score ranges (excellent → poor).
 
-- [ ] **Step 1: Read the prototype Heatmap section**
+- ✅ **Step 1: Read the prototype Heatmap section**
 
 Understand the heatmap cell colors and layout.
 
-- [ ] **Step 2: Rewrite ScoreGrid.jsx with premium styling**
+- ✅ **Step 2: Rewrite ScoreGrid.jsx with premium styling**
 
 ```jsx
 // src/admin/ScoreGrid.jsx
@@ -1718,13 +1718,13 @@ export function ScoreGrid() {
 export default ScoreGrid;
 ```
 
-- [ ] **Step 3: Test Score Grid renders**
+- ✅ **Step 3: Test Score Grid renders**
 
 Run: `npm run dev`
 
 Navigate to Heatmap tab. The score heatmap should display with color-coded cells.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/ScoreGrid.jsx
@@ -1742,11 +1742,11 @@ git commit -m "refactor(admin): redesign Score Grid (Heatmap) with color-coded c
 
 **Context:** The prototype shows detailed score breakdowns with filter options (by project, juror, criterion) and a table showing individual scores with rubric band info.
 
-- [ ] **Step 1: Read the prototype Reviews/Details section**
+- ✅ **Step 1: Read the prototype Reviews/Details section**
 
 Understand the filter UI and table structure.
 
-- [ ] **Step 2: Rewrite ScoreDetailsFilters.jsx**
+- ✅ **Step 2: Rewrite ScoreDetailsFilters.jsx**
 
 ```jsx
 // src/admin/components/details/ScoreDetailsFilters.jsx
@@ -1866,7 +1866,7 @@ export function ScoreDetailsFilters({
 export default ScoreDetailsFilters;
 ```
 
-- [ ] **Step 3: Rewrite ScoreDetailsTable.jsx**
+- ✅ **Step 3: Rewrite ScoreDetailsTable.jsx**
 
 ```jsx
 // src/admin/components/details/ScoreDetailsTable.jsx
@@ -2002,7 +2002,7 @@ export function ScoreDetailsTable({ scores = [], pagination, onPageChange }) {
 export default ScoreDetailsTable;
 ```
 
-- [ ] **Step 4: Rewrite ScoreDetails.jsx to assemble filters and table**
+- ✅ **Step 4: Rewrite ScoreDetails.jsx to assemble filters and table**
 
 ```jsx
 // src/admin/ScoreDetails.jsx
@@ -2068,13 +2068,13 @@ export function ScoreDetails() {
 export default ScoreDetails;
 ```
 
-- [ ] **Step 5: Test Score Details tab renders**
+- ✅ **Step 5: Test Score Details tab renders**
 
 Run: `npm run dev`
 
 Navigate to Reviews tab. The filters and table should display with proper styling and functionality.
 
-- [ ] **Step 6: Commit**
+- ✅ **Step 6: Commit**
 
 ```bash
 git add src/admin/ScoreDetails.jsx src/admin/components/details/ScoreDetailsFilters.jsx src/admin/components/details/ScoreDetailsTable.jsx
@@ -2106,15 +2106,15 @@ git commit -m "refactor(admin): redesign Score Details (Reviews) tab with filter
 
 **Context:** The prototype shows a jurors table with name, affiliation, PIN, status, and action buttons (edit, reset PIN, delete).
 
-- [ ] **Step 1: Rewrite JurorsTable.jsx with shadcn Table, action menu, and modals**
+- ✅ **Step 1: Rewrite JurorsTable.jsx with shadcn Table, action menu, and modals**
 
 Table columns: Name, Affiliation, PIN, Status, Actions. Action menu includes: Edit, Reset PIN, Delete. Use `ConfirmDialog` for destructive actions.
 
-- [ ] **Step 2: Test table renders and actions**
+- ✅ **Step 2: Test table renders and actions**
 
 Run: `npm run dev`. Verify table displays, actions work, dialogs appear.
 
-- [ ] **Step 3: Commit**
+- ✅ **Step 3: Commit**
 
 ```bash
 git add src/admin/jurors/JurorsTable.jsx src/admin/pages/JurorsPage.jsx
@@ -2133,23 +2133,23 @@ git commit -m "refactor(admin): redesign Jurors table with action menu and modal
 
 **Context:** The prototype shows a projects table with title, team members, advisor, description, and action buttons. Add / Edit / Import flows are modal-based.
 
-- [ ] **Step 1: Rewrite ProjectsTable.jsx**
+- ✅ **Step 1: Rewrite ProjectsTable.jsx**
 
 Table columns: Title, Team Members, Advisor, Status, Actions. Action menu: Edit, Delete, Export.
 
-- [ ] **Step 2: Rewrite ProjectForm.jsx**
+- ✅ **Step 2: Rewrite ProjectForm.jsx**
 
 Modal form with fields: Title, Team Members (comma-separated or list), Advisor, Description. Use Zod schema for validation.
 
-- [ ] **Step 3: Rewrite ProjectImport.jsx**
+- ✅ **Step 3: Rewrite ProjectImport.jsx**
 
 CSV/Excel import flow with file upload, preview, and import button.
 
-- [ ] **Step 4: Test Projects page**
+- ✅ **Step 4: Test Projects page**
 
 Run: `npm run dev`. Verify table, add/edit/import flows work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/projects/ProjectsTable.jsx src/admin/projects/ProjectForm.jsx src/admin/projects/ProjectImport.jsx src/admin/pages/ProjectsPage.jsx
@@ -2167,23 +2167,23 @@ git commit -m "refactor(admin): redesign Projects management with table and form
 
 **Context:** The prototype shows an Evaluation Periods (renamed from Semesters) management page with table (name, date range, status, juror count, score count) and add/edit modal.
 
-- [ ] **Step 1: Create PeriodsTable.jsx**
+- ✅ **Step 1: Create PeriodsTable.jsx**
 
 Table columns: Name, Start Date, End Date, Juror Count, Score Count, Status, Actions. Action menu: Edit, Lock/Unlock, Delete.
 
-- [ ] **Step 2: Create PeriodForm.jsx**
+- ✅ **Step 2: Create PeriodForm.jsx**
 
 Modal form with fields: Name, Start Date, End Date, Description. Status is read-only (managed separately).
 
-- [ ] **Step 3: Create SemestersPage.jsx**
+- ✅ **Step 3: Create SemestersPage.jsx**
 
 Main page component assembling table and form modals.
 
-- [ ] **Step 4: Test Periods page**
+- ✅ **Step 4: Test Periods page**
 
 Run: `npm run dev`. Verify table, add/edit flows work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/pages/SemestersPage.jsx src/admin/semesters/PeriodsTable.jsx src/admin/semesters/PeriodForm.jsx
@@ -2216,23 +2216,23 @@ git commit -m "refactor(admin): redesign Evaluation Periods management page"
 
 **Context:** The prototype shows a criteria editor with list of criteria (Technical, Written, Oral, Teamwork) and detailed editor for each criterion showing rubric bands, MÜDEK mappings, and descriptions.
 
-- [ ] **Step 1: Redesign CriteriaManager.jsx**
+- ✅ **Step 1: Redesign CriteriaManager.jsx**
 
 Left sidebar list of criteria (with mini icons), right panel with editor for selected criterion. Support add/delete/reorder.
 
-- [ ] **Step 2: Redesign CriterionEditor.jsx**
+- ✅ **Step 2: Redesign CriterionEditor.jsx**
 
 Form fields: Criterion name, description, max score, rubric bands (add/edit/delete). Rubric bands editor shows: Band name, Min/Max score, description.
 
-- [ ] **Step 3: Redesign RubricBandEditor.jsx**
+- ✅ **Step 3: Redesign RubricBandEditor.jsx**
 
 Inline form for each rubric band in the editor.
 
-- [ ] **Step 4: Test Criteria page**
+- ✅ **Step 4: Test Criteria page**
 
 Run: `npm run dev`. Verify criteria list, editor, and band management work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/criteria/CriteriaManager.jsx src/admin/criteria/CriterionEditor.jsx src/admin/criteria/RubricBandEditor.jsx src/admin/pages/CriteriaPage.jsx
@@ -2250,23 +2250,23 @@ git commit -m "refactor(admin): redesign Criteria Manager with rubric band edito
 
 **Context:** The prototype shows a page listing MÜDEK/ABET outcomes and mapping each criterion to outcomes (direct/indirect coverage).
 
-- [ ] **Step 1: Create OutcomesTable.jsx**
+- ✅ **Step 1: Create OutcomesTable.jsx**
 
 Table: Outcome code, outcome description, mapped criteria, direct/indirect toggle. Rows are clickable to edit mapping.
 
-- [ ] **Step 2: Create MappingModal.jsx**
+- ✅ **Step 2: Create MappingModal.jsx**
 
 Modal showing current criterion-outcome mapping with checkboxes for Direct/Indirect coverage selection.
 
-- [ ] **Step 3: Create OutcomesPage.jsx**
+- ✅ **Step 3: Create OutcomesPage.jsx**
 
 Main page assembling table and mapping modal.
 
-- [ ] **Step 4: Test Outcomes page**
+- ✅ **Step 4: Test Outcomes page**
 
 Run: `npm run dev`. Verify table and mapping modal work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/pages/OutcomesPage.jsx src/admin/outcomes/OutcomesTable.jsx src/admin/outcomes/MappingModal.jsx
@@ -2298,23 +2298,23 @@ git commit -m "feat(admin): create Outcomes & Mapping page with criterion-outcom
 
 **Context:** The prototype shows a page for managing entry tokens: list active tokens, generate new, revoke, copy to clipboard.
 
-- [ ] **Step 1: Create TokensTable.jsx**
+- ✅ **Step 1: Create TokensTable.jsx**
 
 Table: Token preview (masked), created date, expiry, sessions (active count), Actions (Copy, Revoke). Use `ConfirmDialog` for revoke.
 
-- [ ] **Step 2: Create GenerateTokenModal.jsx**
+- ✅ **Step 2: Create GenerateTokenModal.jsx**
 
 Modal to generate new entry token. Show generated token for copy (with one-time display warning).
 
-- [ ] **Step 3: Create EntryControlPage.jsx**
+- ✅ **Step 3: Create EntryControlPage.jsx**
 
 Page with table and generate modal.
 
-- [ ] **Step 4: Test Entry Control page**
+- ✅ **Step 4: Test Entry Control page**
 
 Run: `npm run dev`. Verify token list, generation, and revoke work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/pages/EntryControlPage.jsx src/admin/entry-control/TokensTable.jsx src/admin/entry-control/GenerateTokenModal.jsx
@@ -2331,19 +2331,19 @@ git commit -m "feat(admin): create Entry Control page for managing evaluation to
 
 **Context:** The prototype shows a PIN blocking page listing blocked juror sessions (by PIN) with reason and action to unblock.
 
-- [ ] **Step 1: Create BlockListTable.jsx**
+- ✅ **Step 1: Create BlockListTable.jsx**
 
 Table: PIN, juror name, reason, blocked date, Actions (Unblock). Use `ConfirmDialog` for unblock.
 
-- [ ] **Step 2: Create EntryBlockPage.jsx**
+- ✅ **Step 2: Create EntryBlockPage.jsx**
 
 Page with block list table and bulk actions (e.g., clear all).
 
-- [ ] **Step 3: Test PIN Blocking page**
+- ✅ **Step 3: Test PIN Blocking page**
 
 Run: `npm run dev`. Verify block list and unblock actions work.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/admin/pages/EntryBlockPage.jsx src/admin/entry-control/BlockListTable.jsx
@@ -2360,23 +2360,23 @@ git commit -m "feat(admin): create PIN Blocking page for managing blocked sessio
 
 **Context:** The prototype shows an audit log with filters (date range, user, action type) and table displaying all system actions with timestamp, user, action, resource, and result.
 
-- [ ] **Step 1: Create AuditLogFilters.jsx**
+- ✅ **Step 1: Create AuditLogFilters.jsx**
 
 Filters: Date range picker, User dropdown, Action type dropdown, status (success/failure).
 
-- [ ] **Step 2: Create AuditLogTable.jsx**
+- ✅ **Step 2: Create AuditLogTable.jsx**
 
 Table: Timestamp, User, Action, Resource, Details, Status. Support sorting and pagination.
 
-- [ ] **Step 3: Create AuditLogPage.jsx**
+- ✅ **Step 3: Create AuditLogPage.jsx**
 
 Page with filters and table. Support export to CSV.
 
-- [ ] **Step 4: Test Audit Log page**
+- ✅ **Step 4: Test Audit Log page**
 
 Run: `npm run dev`. Verify filters, table, and export work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/pages/AuditLogPage.jsx src/admin/components/AuditLogTable.jsx
@@ -2394,23 +2394,23 @@ git commit -m "feat(admin): create Audit Log page with filtering and export"
 
 **Context:** The prototype shows organization settings with tabs: General (name, description, logo, contact), Members (manage org admins), Billing (if applicable).
 
-- [ ] **Step 1: Create OrgGeneralSettings.jsx**
+- ✅ **Step 1: Create OrgGeneralSettings.jsx**
 
 Form fields: Organization name, description, logo upload, contact email. Save button with validation.
 
-- [ ] **Step 2: Create OrgMembersPanel.jsx**
+- ✅ **Step 2: Create OrgMembersPanel.jsx**
 
 Table: Member email, role, joined date, Actions (Remove). Action to invite new member.
 
-- [ ] **Step 3: Create OrgSettingsPage.jsx**
+- ✅ **Step 3: Create OrgSettingsPage.jsx**
 
 Page with tabs: General, Members, and optionally Billing/Integrations.
 
-- [ ] **Step 4: Test Org Settings page**
+- ✅ **Step 4: Test Org Settings page**
 
 Run: `npm run dev`. Verify tabs, forms, and member management work.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/admin/pages/OrgSettingsPage.jsx src/admin/settings/OrgGeneralSettings.jsx src/admin/settings/OrgMembersPanel.jsx
@@ -2445,19 +2445,19 @@ git commit -m "feat(admin): create Organization Settings page with general and m
 
 **Context:** The prototype shows simple, centered forms with title, input fields, and next/continue buttons. Dark background for jury entry.
 
-- [ ] **Step 1: Redesign InfoStep.jsx**
+- ✅ **Step 1: Redesign InfoStep.jsx**
 
 Form with title "Your Information", fields: Name, Affiliation (dropdown), with continue button. Centered card layout.
 
-- [ ] **Step 2: Redesign PeriodStep.jsx**
+- ✅ **Step 2: Redesign PeriodStep.jsx**
 
 Form with title "Select Evaluation Period", period dropdown or list of periods. Auto-advance if only one period exists.
 
-- [ ] **Step 3: Test both steps**
+- ✅ **Step 3: Test both steps**
 
 Run: `npm run dev`. Verify forms render and navigate correctly.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/jury/InfoStep.jsx src/jury/PeriodStep.jsx
@@ -2474,19 +2474,19 @@ git commit -m "refactor(jury): redesign entry steps (InfoStep, PeriodStep) with 
 
 **Context:** The prototype shows a large PIN input field (4 digits) on PinStep, and a display/confirm screen on PinRevealStep (first login).
 
-- [ ] **Step 1: Redesign PinStep.jsx**
+- ✅ **Step 1: Redesign PinStep.jsx**
 
 Large PIN input (4 digits, numeric keypad appearance or input). Submit button. Error messaging for invalid PIN.
 
-- [ ] **Step 2: Redesign PinRevealStep.jsx**
+- ✅ **Step 2: Redesign PinRevealStep.jsx**
 
 Display screen showing "Your PIN is: 1234" with copy button and confirmation to continue.
 
-- [ ] **Step 3: Test PIN steps**
+- ✅ **Step 3: Test PIN steps**
 
 Run: `npm run dev`. Verify PIN input and reveal flow work.
 
-- [ ] **Step 4: Commit**
+- ✅ **Step 4: Commit**
 
 ```bash
 git add src/jury/PinStep.jsx src/jury/PinRevealStep.jsx
@@ -2504,23 +2504,23 @@ git commit -m "refactor(jury): redesign PIN steps with large input and reveal sc
 
 **Context:** The prototype shows the evaluation form with project info at top (header), scoring grid for the 4 criteria (with sliders or number inputs), and navigation buttons.
 
-- [ ] **Step 1: Redesign EvalHeader.jsx**
+- ✅ **Step 1: Redesign EvalHeader.jsx**
 
 Header showing: project title, team members, advisor, description. Clean card layout with project info summary.
 
-- [ ] **Step 2: Redesign ScoringGrid.jsx**
+- ✅ **Step 2: Redesign ScoringGrid.jsx**
 
 Grid of scoring inputs: one row per criterion. Each row: criterion label, input field (number with range 0-max), slider (optional), current score display. Support on-blur save.
 
-- [ ] **Step 3: Redesign EvalStep.jsx**
+- ✅ **Step 3: Redesign EvalStep.jsx**
 
 Full evaluation form combining header + scoring grid + next/submit buttons + comments section (if applicable).
 
-- [ ] **Step 4: Test evaluation form**
+- ✅ **Step 4: Test evaluation form**
 
 Run: `npm run dev`. Verify form renders, scoring works, and auto-save on blur functions.
 
-- [ ] **Step 5: Commit**
+- ✅ **Step 5: Commit**
 
 ```bash
 git add src/jury/EvalStep.jsx src/jury/EvalHeader.jsx src/jury/ScoringGrid.jsx
@@ -2536,15 +2536,15 @@ git commit -m "refactor(jury): redesign evaluation form with header and scoring 
 
 **Context:** The prototype shows a completion confirmation screen with checkmark, thank you message, and summary stats.
 
-- [ ] **Step 1: Redesign DoneStep.jsx**
+- ✅ **Step 1: Redesign DoneStep.jsx**
 
 Screen with: large checkmark icon, "Evaluation Complete" title, thank you message, score summary (count of projects reviewed), close/logout button.
 
-- [ ] **Step 2: Test completion step**
+- ✅ **Step 2: Test completion step**
 
 Run: `npm run dev`. Verify completion screen displays and logout works.
 
-- [ ] **Step 3: Commit**
+- ✅ **Step 3: Commit**
 
 ```bash
 git add src/jury/DoneStep.jsx
