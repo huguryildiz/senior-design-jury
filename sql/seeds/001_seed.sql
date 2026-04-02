@@ -237,6 +237,18 @@ INSERT INTO scores (id, juror_id, project_id, period_id, technical, written, ora
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
+-- Demo Admin User (profiles + super_admin membership)
+-- Auth user: demo-admin@vera-eval.app (UID: 6ea7146f-1331-4828-8b8a-e777c9a35d6a)
+-- ============================================================================
+INSERT INTO profiles (id, display_name)
+VALUES ('6ea7146f-1331-4828-8b8a-e777c9a35d6a', 'Demo Admin')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO memberships (user_id, organization_id, role)
+VALUES ('6ea7146f-1331-4828-8b8a-e777c9a35d6a', NULL, 'super_admin')
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
 -- Entry Tokens (2 active)
 -- ============================================================================
 INSERT INTO entry_tokens (id, period_id, token, is_revoked, expires_at) VALUES

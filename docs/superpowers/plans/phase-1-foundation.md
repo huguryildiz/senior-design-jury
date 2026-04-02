@@ -1,6 +1,6 @@
 # Foundation Theme & Base Components Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Migrate all design tokens, typography, base components, and shared styles from the prototype HTML to the real React codebase, matching `docs/concepts/vera-premium-prototype.html` 1:1 in both light and dark mode.
 
@@ -27,7 +27,7 @@
 
 These 7 files are not imported anywhere — they were deprecated during earlier Tailwind migration phases.
 
-- [ ] **Step 1: Verify files are truly orphaned**
+- [x] **Step 1: Verify files are truly orphaned**
 
 Run:
 
@@ -37,18 +37,18 @@ grep -r "admin-layout\.css\|admin-dashboard\.css\|admin-summary\.css\|admin-resp
 
 Expected: No results (or only the CSS files themselves referencing each other via comments).
 
-- [ ] **Step 2: Delete the files**
+- [x] **Step 2: Delete the files**
 
 ```bash
 rm src/styles/admin-layout.css src/styles/admin-dashboard.css src/styles/admin-summary.css src/styles/admin-responsive.css src/styles/admin-auth.css src/styles/admin-jurors.css src/styles/home.css
 ```
 
-- [ ] **Step 3: Verify build still works**
+- [x] **Step 3: Verify build still works**
 
 Run: `npm run build`
 Expected: Build succeeds with no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A src/styles/
@@ -69,7 +69,7 @@ Current fonts: Inter Variable (body), DM Mono (mono).
 Target fonts: Plus Jakarta Sans (body), JetBrains Mono (mono).
 Both packages are already in `package.json`.
 
-- [ ] **Step 1: Update globals.css font import**
+- [x] **Step 1: Update globals.css font import**
 
 In `src/styles/globals.css`, replace:
 
@@ -84,7 +84,7 @@ with:
 @import "@fontsource/jetbrains-mono";
 ```
 
-- [ ] **Step 2: Update font-sans and font-mono theme declarations**
+- [x] **Step 2: Update font-sans and font-mono theme declarations**
 
 In `src/styles/globals.css`, in the `@theme inline` block, replace:
 
@@ -101,7 +101,7 @@ with:
   --font-mono: 'JetBrains Mono', monospace;
 ```
 
-- [ ] **Step 3: Update the @theme block**
+- [x] **Step 3: Update the @theme block**
 
 In `src/styles/globals.css`, in the `@theme { ... }` block, replace:
 
@@ -119,12 +119,12 @@ with:
 
 Note: `--color-success`, `--color-warning`, and `--color-criterion-*` entries in the same `@theme` block should stay unchanged.
 
-- [ ] **Step 4: Verify dev server renders correctly**
+- [x] **Step 4: Verify dev server renders correctly**
 
 Run: `npm run dev`
 Open the browser. Text should now render in Plus Jakarta Sans. Score values and mono text should use JetBrains Mono. Check both light and dark mode.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/styles/globals.css
@@ -142,7 +142,7 @@ Matches prototype typography. Both packages were already installed."
 
 Replace the entire `:root { ... }` block with prototype-derived values.
 
-- [ ] **Step 1: Replace the `:root` block**
+- [x] **Step 1: Replace the `:root` block**
 
 In `src/styles/globals.css`, replace the entire `:root { ... }` block (lines 74–109) with:
 
@@ -249,12 +249,12 @@ In `src/styles/globals.css`, replace the entire `:root { ... }` block (lines 74�
 }
 ```
 
-- [ ] **Step 2: Verify no visual regressions in light mode**
+- [x] **Step 2: Verify no visual regressions in light mode**
 
 Run: `npm run dev`
 Check the admin panel in light mode. Cards should have subtle background separation from the page. Sidebar should be dark navy.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/styles/globals.css
@@ -274,7 +274,7 @@ sidebar, score scale, status tokens, and delta tokens."
 
 Replace the entire `.dark { ... }` block with prototype-derived values.
 
-- [ ] **Step 1: Replace the `.dark` block**
+- [x] **Step 1: Replace the `.dark` block**
 
 In `src/styles/globals.css`, replace the entire `.dark { ... }` block (lines 111–145) with:
 
@@ -398,12 +398,12 @@ In `src/styles/globals.css`, replace the entire `.dark { ... }` block (lines 111
 }
 ```
 
-- [ ] **Step 2: Verify dark mode rendering**
+- [x] **Step 2: Verify dark mode rendering**
 
 Run: `npm run dev`
 Toggle dark mode. Page background should be deep navy-black (#080d1a), not pure black. Cards should lift slightly from background. Sidebar should be near-black (#060a16).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/styles/globals.css
@@ -420,7 +420,7 @@ and semantic status tokens for dark mode."
 **Files:**
 - Modify: `src/styles/globals.css`
 
-- [ ] **Step 1: Add scrollbar styles to the `@layer base` block**
+- [x] **Step 1: Add scrollbar styles to the `@layer base` block**
 
 In `src/styles/globals.css`, expand the existing `@layer base` block. Replace:
 
@@ -462,12 +462,12 @@ with:
 
 Dark mode scrollbar styling is automatic because `--border` and `--border-strong` change in the `.dark` block.
 
-- [ ] **Step 2: Verify scrollbars**
+- [x] **Step 2: Verify scrollbars**
 
 Run: `npm run dev`
 Navigate to a page with scrollable content. Scrollbar should be thin (6px), subtle gray in light mode, near-invisible in dark mode.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/styles/globals.css
@@ -486,7 +486,7 @@ Automatically adapts to dark mode via token system."
 
 Several new custom tokens (text-tertiary, border-strong, shadow-card, etc.) need to be exposed as Tailwind utilities.
 
-- [ ] **Step 1: Add custom token mappings to `@theme inline`**
+- [x] **Step 1: Add custom token mappings to `@theme inline`**
 
 In `src/styles/globals.css`, add these lines inside the `@theme inline { ... }` block, after the existing sidebar entries:
 
@@ -518,12 +518,12 @@ In `src/styles/globals.css`, add these lines inside the `@theme inline { ... }` 
 
 This enables usage like `text-text-tertiary`, `bg-status-met-bg`, `shadow-card`, etc. in Tailwind classes.
 
-- [ ] **Step 2: Verify Tailwind recognizes the tokens**
+- [x] **Step 2: Verify Tailwind recognizes the tokens**
 
 Run: `npm run dev`
 In any component, temporarily add `className="text-text-tertiary"`. The text should render in `#94a3b8` (light) or `#7a8ca0` (dark). Remove the test class after verification.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/styles/globals.css
@@ -540,7 +540,7 @@ delta, shadow-card, shadow-elevated as usable Tailwind classes."
 **Files:**
 - Modify: `src/components/ui/input.jsx`
 
-- [ ] **Step 1: Update Input className**
+- [x] **Step 1: Update Input className**
 
 In `src/components/ui/input.jsx`, replace the className string:
 
@@ -556,12 +556,12 @@ with:
 
 Changes: `h-10` → `h-9`, `text-base` → `text-sm`, `focus-visible:border-ring` → `focus-visible:border-primary`, `focus-visible:ring-ring/50` → `focus-visible:ring-ring`, removed `md:text-sm` (redundant now).
 
-- [ ] **Step 2: Verify input rendering**
+- [x] **Step 2: Verify input rendering**
 
 Run: `npm run dev`
 Navigate to any form with inputs (admin login, juror identity). Inputs should be 36px height, have subtle shadow, and show blue focus ring on focus.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/ui/input.jsx
@@ -577,7 +577,7 @@ h-9 (36px), text-sm, blue focus ring."
 **Files:**
 - Modify: `src/components/ui/card.jsx`
 
-- [ ] **Step 1: Update Card className**
+- [x] **Step 1: Update Card className**
 
 In `src/components/ui/card.jsx`, in the `Card` function, replace the className:
 
@@ -593,12 +593,12 @@ with:
 
 Changes: added `border-border` (explicit), added `transition-shadow hover:shadow-[var(--shadow-card)]` for subtle hover elevation.
 
-- [ ] **Step 2: Verify card rendering**
+- [x] **Step 2: Verify card rendering**
 
 Run: `npm run dev`
 Navigate to admin Overview. Cards should have visible border, subtle shadow, and slightly more shadow on hover.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/ui/card.jsx
@@ -614,7 +614,7 @@ Matches prototype card styling with border-border and shadow-card hover."
 **Files:**
 - Modify: `src/components/ui/button.jsx`
 
-- [ ] **Step 1: Add primary shadow to default variant**
+- [x] **Step 1: Add primary shadow to default variant**
 
 In `src/components/ui/button.jsx`, in the `variants.variant` object, replace:
 
@@ -628,12 +628,12 @@ with:
 default: "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(37,99,235,0.2)] hover:bg-primary/90 [a]:hover:bg-primary/80",
 ```
 
-- [ ] **Step 2: Verify button rendering**
+- [x] **Step 2: Verify button rendering**
 
 Run: `npm run dev`
 Primary buttons should have a subtle blue shadow beneath them. Hover should slightly darken the background.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/ui/button.jsx
@@ -649,7 +649,7 @@ Subtle blue shadow matches prototype button styling."
 **Files:**
 - Modify: `src/components/ui/badge.jsx`
 
-- [ ] **Step 1: Add met, borderline, not-met, and neutral variants**
+- [x] **Step 1: Add met, borderline, not-met, and neutral variants**
 
 In `src/components/ui/badge.jsx`, add these entries to the `variants.variant` object, after the existing `link` variant:
 
@@ -668,12 +668,12 @@ In `src/components/ui/badge.jsx`, add these entries to the `variants.variant` ob
           "bg-warning-soft text-warning border-warning/20",
 ```
 
-- [ ] **Step 2: Verify badge variants**
+- [x] **Step 2: Verify badge variants**
 
 Run: `npm run dev`
 Temporarily render badges with each new variant to verify colors. Met should be green, borderline amber, not-met red, neutral muted gray.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/ui/badge.jsx
@@ -695,7 +695,7 @@ Status badges for outcome attainment display."
 
 Strategy: Keep `useToast()` hook API but rewrite it to delegate to sonner's `toast()`. This way all 12 consumer files continue working without changes. Delete the custom Toast component and CSS.
 
-- [ ] **Step 1: Rewrite useToast.js to wrap sonner**
+- [x] **Step 1: Rewrite useToast.js to wrap sonner**
 
 Replace the entire content of `src/components/toast/useToast.js` with:
 
@@ -729,7 +729,7 @@ export function useToasts() {
 }
 ```
 
-- [ ] **Step 2: Update main.jsx**
+- [x] **Step 2: Update main.jsx**
 
 In `src/main.jsx`, make these changes:
 
@@ -772,23 +772,23 @@ with:
 
 Note: `shared.css` import stays for now — it's removed in Task 12.
 
-- [ ] **Step 3: Delete old toast files**
+- [x] **Step 3: Delete old toast files**
 
 ```bash
 rm src/components/toast/Toast.jsx src/components/toast/ToastContainer.jsx src/styles/toast.css
 ```
 
-- [ ] **Step 4: Verify toast system works**
+- [x] **Step 4: Verify toast system works**
 
 Run: `npm run dev`
 Navigate to admin panel, trigger an action that shows a toast (e.g., export). Toast should appear via sonner (top-left, styled with shadcn theme).
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npm test -- --run`
 Expected: All tests pass. If any test imports ToastContainer or Toast directly, update the import to use the useToast shim.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A src/components/toast/ src/main.jsx src/styles/toast.css
@@ -812,7 +812,7 @@ All 12 consumer files continue working without changes."
 
 Only two things need migrating: the skip-link and safe-area env vars. Everything else is either already handled by Tailwind/shadcn or will be replaced in sub-projects.
 
-- [ ] **Step 1: Add skip-link and safe-area to globals.css**
+- [x] **Step 1: Add skip-link and safe-area to globals.css**
 
 In `src/styles/globals.css`, add these at the end of the `@layer base` block (before the closing `}`):
 
@@ -823,7 +823,7 @@ In `src/styles/globals.css`, add these at the end of the `@layer base` block (be
   }
 ```
 
-- [ ] **Step 2: Remove shared.css import from main.jsx**
+- [x] **Step 2: Remove shared.css import from main.jsx**
 
 In `src/main.jsx`, delete this line:
 
@@ -831,13 +831,13 @@ In `src/main.jsx`, delete this line:
 import "./styles/shared.css";
 ```
 
-- [ ] **Step 3: Delete shared.css**
+- [x] **Step 3: Delete shared.css**
 
 ```bash
 rm src/styles/shared.css
 ```
 
-- [ ] **Step 4: Verify build and check for broken styles**
+- [x] **Step 4: Verify build and check for broken styles**
 
 Run: `npm run build`
 Expected: Build succeeds.
@@ -845,7 +845,7 @@ Expected: Build succeeds.
 Run: `npm run dev`
 Check admin panel and jury form. Some legacy component styles from shared.css will be missing — this is expected and will be fixed in Admin/Jury sub-projects. The critical things (fonts, tokens, scrollbars, skip-link) should work.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A src/styles/ src/main.jsx
@@ -864,7 +864,7 @@ Component-specific styles will be replaced in sub-projects."
 **Files:**
 - Verify: `src/styles/globals.css` (should be the only CSS file actively imported)
 
-- [ ] **Step 1: Verify CSS file inventory**
+- [x] **Step 1: Verify CSS file inventory**
 
 Run:
 
@@ -882,17 +882,17 @@ jury-confetti.css    (used by JuryForm.jsx — removed in Jury sub-project)
 jury-pin.css         (used by JuryForm.jsx — removed in Jury sub-project)
 ```
 
-- [ ] **Step 2: Verify build**
+- [x] **Step 2: Verify build**
 
 Run: `npm run build`
 Expected: Build succeeds with zero errors.
 
-- [ ] **Step 3: Run all tests**
+- [x] **Step 3: Run all tests**
 
 Run: `npm test -- --run`
 Expected: All tests pass.
 
-- [ ] **Step 4: Visual spot-check in both modes**
+- [x] **Step 4: Visual spot-check in both modes**
 
 Run: `npm run dev`
 
@@ -904,7 +904,7 @@ Check these pages in BOTH light and dark mode:
 
 Dark mode should show deep navy backgrounds, not pure black. Light mode should show subtle blue-tinted backgrounds, not pure white.
 
-- [ ] **Step 5: Commit (if any fixes needed)**
+- [x] **Step 5: Commit (if any fixes needed)**
 
 Only commit if Step 4 revealed issues that needed fixing.
 

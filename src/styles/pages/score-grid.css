@@ -1,0 +1,381 @@
+/* src/styles/pages/score-grid.css
+   Score Grid (heatmap matrix) — extracted from vera-premium-prototype.html
+   -------------------------------------------------------------------------
+   Selectors match prototype HTML exactly so the React component can use the
+   same class names without any runtime style computation.
+*/
+
+/* ── Matrix wrapper & header ────────────────────────────────────── */
+.matrix-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.matrix-header-left .page-title {
+  margin-bottom: 2px;
+}
+
+.matrix-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-1);
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.matrix-tab {
+  padding: 6px 13px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s;
+  border-right: 1px solid var(--border);
+}
+
+.matrix-tab:last-child {
+  border-right: none;
+}
+
+.matrix-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+
+.matrix-tab.active {
+  color: var(--accent);
+  background: var(--bg-card);
+  font-weight: 600;
+}
+
+/* ── Table container ────────────────────────────────────────────── */
+.matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+/* ── Table ──────────────────────────────────────────────────────── */
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.matrix-table th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  padding: 12px 14px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.matrix-table th.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--surface-1);
+  width: 200px;
+  min-width: 200px;
+}
+
+.matrix-table th.col-project {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.matrix-table th.col-project .proj-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.matrix-table th.col-project .proj-group {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.matrix-table th.sortable-col {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 24px;
+}
+
+.matrix-table th.sortable-col::after {
+  content: '\2195';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--text-quaternary);
+}
+
+.matrix-table th.sortable-col[data-sort-dir="asc"]::after {
+  content: '\2191';
+  color: var(--accent);
+}
+
+.matrix-table th.sortable-col[data-sort-dir="desc"]::after {
+  content: '\2193';
+  color: var(--accent);
+}
+
+/* ── Table cells ────────────────────────────────────────────────── */
+.matrix-table td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  border-right: 1px solid var(--border);
+}
+
+.matrix-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.matrix-table td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--bg-card);
+  padding: 9px 14px;
+  font-weight: 500;
+  font-size: 12px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  width: 220px;
+  min-width: 220px;
+  line-height: 1.3;
+}
+
+.matrix-table td.sticky-col .juror-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.matrix-table td.sticky-col .juror-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: -0.3px;
+}
+
+.matrix-table td.sticky-col .juror-info {
+  min-width: 0;
+}
+
+.matrix-table td.sticky-col .juror-name {
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-table td.sticky-col .juror-inst {
+  display: block;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-top: 0;
+}
+
+.matrix-table tr:hover td.sticky-col {
+  background: var(--surface-1);
+}
+
+.matrix-table tr:hover .m-cell {
+  filter: brightness(0.96);
+}
+
+/* ── Footer / average row ───────────────────────────────────────── */
+.matrix-table tfoot td {
+  border-top: 2px solid var(--border);
+  background: var(--surface-1);
+}
+
+.matrix-table tfoot td.sticky-col {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-tertiary);
+  background: var(--surface-1);
+  padding: 10px 14px;
+}
+
+.matrix-table tfoot .m-cell {
+  background: transparent !important;
+  font-size: 14px;
+}
+
+/* ── Score cell (heatmap) ───────────────────────────────────────── */
+.m-cell {
+  position: relative;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 11px 16px;
+  cursor: default;
+  transition: filter 0.12s;
+  min-width: 120px;
+}
+
+.m-cell.partial {
+  color: var(--warning);
+}
+
+.m-cell .m-flag {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--score-partial-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  color: var(--score-partial-text);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Cell tooltip (CSS hover version — not used by React component) */
+.m-cell-tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 25;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  line-height: 1.5;
+  text-align: left;
+}
+
+.m-cell-tip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #0f172a;
+}
+
+.m-cell:hover .m-cell-tip {
+  display: block;
+}
+
+/* ── Matrix footer / legend ─────────────────────────────────────── */
+.matrix-footer {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-1);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.matrix-legend-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-legend-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.matrix-legend-bar {
+  display: flex;
+  align-items: center;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  width: 80px;
+}
+
+.matrix-legend-bar span {
+  flex: 1;
+  height: 100%;
+}
+
+.matrix-legend-range {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.matrix-legend-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 12px;
+}
+
+.matrix-legend-flag-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.matrix-legend-flag-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--score-partial-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  color: var(--score-partial-text);
+  font-weight: 700;
+  flex-shrink: 0;
+}

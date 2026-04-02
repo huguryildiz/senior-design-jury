@@ -1,7 +1,7 @@
 // src/components/auth/LoginForm.jsx
 // Phase C.4 / Phase 6: Admin email/password login form.
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,11 +13,18 @@ import AlertCard from "../../shared/AlertCard";
 import { KEYS } from "../../shared/storage/keys";
 
 export default function LoginForm({ onLogin, onGoogleLogin, onSwitchToRegister, onForgotPassword, error: externalError, loading: externalLoading, initialEmail = "", initialPassword = "" }) {
+  const turnstileSiteKey = String(import.meta.env.VITE_TURNSTILE_SITE_KEY || "").trim();
+  const requiresCaptcha = !!turnstileSiteKey;
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaReady, setCaptchaReady] = useState(!requiresCaptcha);
+  const widgetContainerRef = useRef(null);
+  const widgetIdRef = useRef(null);
+  const scriptId = "cf-turnstile-script";
   const [rememberMe, setRememberMe] = useState(() => {
     try { return localStorage.getItem(KEYS.ADMIN_REMEMBER_ME) === "true"; }
     catch { return false; }
@@ -29,6 +36,8 @@ export default function LoginForm({ onLogin, onGoogleLogin, onSwitchToRegister, 
   const normalizeLoginError = (raw) => {
     const msg = String(raw || "").toLowerCase().trim();
     if (!msg) return "Login failed. Please try again.";
+    if (msg.includes("captcha verification process failed")) return "Captcha verification failed. Please complete the captcha and try again.";
+    if (msg.includes("captcha")) return "Captcha is required to sign in. Please complete the captcha.";
     if (msg.includes("invalid login credentials")) return "Invalid email or password.";
     if (msg.includes("email not confirmed")) return "Your email is not confirmed yet. Please check your inbox.";
     if (msg.includes("database error querying schema")) return "Could not sign in right now. Please try again in a moment.";
@@ -42,14 +51,84 @@ export default function LoginForm({ onLogin, onGoogleLogin, onSwitchToRegister, 
     return parts.join(" | ");
   };
 
+  const resetCaptcha = () => {
+    if (!requiresCaptcha) return;
+    setCaptchaToken("");
+    if (typeof window === "undefined") return;
+    if (!window.turnstile || widgetIdRef.current == null) return;
+    try {
+      window.turnstile.reset(widgetIdRef.current);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (!requiresCaptcha) return undefined;
+    if (typeof window === "undefined") return undefined;
+
+    const onReady = () => {
+      setCaptchaReady(true);
+    };
+
+    if (window.turnstile) {
+      onReady();
+      return undefined;
+    }
+
+    let script = document.getElementById(scriptId);
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    script.addEventListener("load", onReady);
+    return () => {
+      script?.removeEventListener("load", onReady);
+    };
+  }, [requiresCaptcha]);
+
+  useEffect(() => {
+    if (!requiresCaptcha || !captchaReady || !widgetContainerRef.current) return;
+    if (typeof window === "undefined" || !window.turnstile) return;
+    if (widgetIdRef.current != null) return;
+
+    widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
+      sitekey: turnstileSiteKey,
+      callback: (token) => {
+        setCaptchaToken(String(token || ""));
+      },
+      "error-callback": () => {
+        setCaptchaToken("");
+      },
+      "expired-callback": () => {
+        setCaptchaToken("");
+      },
+      "timeout-callback": () => {
+        setCaptchaToken("");
+      },
+    });
+  }, [captchaReady, requiresCaptcha, turnstileSiteKey]);
+
+  const isSubmitDisabled = useMemo(() => {
+    if (isLoading) return true;
+    if (!requiresCaptcha) return false;
+    return !captchaToken;
+  }, [captchaToken, isLoading, requiresCaptcha]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!email.trim() || !password) { setError("Please enter your email and password."); return; }
     if (!isValidEmail(email)) { setError("A valid email is required."); return; }
+    if (requiresCaptcha && !captchaToken) { setError("Please complete the captcha challenge."); return; }
     setError("");
     setLoading(true);
-    try { await onLogin(email.trim(), password, rememberMe); }
-    catch (err) { setError(normalizeLoginError(extractErrorText(err) || "Login failed. Please try again.")); }
+    try { await onLogin(email.trim(), password, rememberMe, captchaToken); }
+    catch (err) {
+      setError(normalizeLoginError(extractErrorText(err) || "Login failed. Please try again."));
+      resetCaptcha();
+    }
     finally { setLoading(false); }
   }
 
@@ -135,8 +214,17 @@ export default function LoginForm({ onLogin, onGoogleLogin, onSwitchToRegister, 
             <span className="text-xs text-muted-foreground">Session stays active for 30 days</span>
           </label>
 
+          {requiresCaptcha && (
+            <div className="space-y-2">
+              <div ref={widgetContainerRef} className="min-h-[65px]" />
+              {!captchaToken && (
+                <p className="text-xs text-muted-foreground">Complete captcha verification before signing in.</p>
+              )}
+            </div>
+          )}
+
           {/* Submit */}
-          <Button type="submit" disabled={isLoading} className="w-full">
+          <Button type="submit" disabled={isSubmitDisabled} className="w-full">
             {isLoading ? "Signing in\u2026" : "Sign In"}
           </Button>
 

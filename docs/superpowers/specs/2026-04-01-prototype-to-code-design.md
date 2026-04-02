@@ -6,17 +6,17 @@ VERA has a complete UI prototype at `docs/concepts/vera-premium-prototype.html` 
 
 ## Scope
 
-This is the **master spec** that defines the overall migration strategy. Implementation is split into 4 sub-projects, each with its own spec-plan-implementation cycle:
+This is the **master spec** that defines the overall migration strategy. Implementation is split into phases, each with its own plan file:
 
-| # | Sub-project | Status |
-|---|------------|--------|
-| 1 | Foundation (tokens, dark mode, base components) | ✅ Done |
-| 2 | Admin (15 pages + sidebar + header) | ✅ Done |
-| DB | DB Migration (parallel track — see below) | 🔄 In Progress |
-| 3 | Jury (splash, identity, PIN, eval, done) | Separate spec |
-| 4 | Landing (hero, trust band, features, CTA) | Separate spec |
+| Phase | Name | Status |
+|-------|------|--------|
+| Phase 1 | Foundation (tokens, dark mode, base components) | ✅ Done |
+| Phase 2 | Admin (15 pages + sidebar + header) | ✅ Done (Task 16 blocked — DB migration pre-condition) |
+| Phase 3 | DB Migration (parallel track — see below) | ✅ Done (merged to main) |
+| Phase 4 | Jury (splash, identity, PIN, eval, done) | Separate spec |
+| Phase 5 | Landing (hero, trust band, features, CTA) | Separate spec |
 
-Order: Foundation → Admin → **DB Migration** → Jury → Landing.
+Order: Phase 1 → Phase 2 → Phase 3 (DB) → Phase 4 → Phase 5.
 
 ## Global Decisions
 
@@ -26,7 +26,7 @@ Order: Foundation → Admin → **DB Migration** → Jury → Landing.
 | Light + dark mode | Implement both simultaneously | Prototype defines both; Tailwind `dark:` makes it natural |
 | CSS approach | Tailwind utilities + minimal custom CSS | Existing ~9,700 lines of custom CSS will be migrated to Tailwind and deleted |
 | Component library | shadcn/ui (base-nova) + Tailwind v4 | Already installed, 58 components ready |
-| Sub-project isolation | Each area gets its own spec -> plan -> implementation | Prevents scope explosion |
+| Phase isolation | Each phase gets its own spec -> plan -> implementation | Prevents scope explosion |
 | DB migration | Consolidated migration required in parallel | Accumulated schema changes (renames, new columns) |
 
 ## Naming Updates (applied during implementation)
@@ -60,7 +60,7 @@ RPCs, API layer (`src/shared/api/`), and `fieldMapping.js` must be updated in sy
 
 ---
 
-## Sub-project 1: Foundation
+## Phase 1: Foundation
 
 ### 1.1 Typography
 
@@ -359,21 +359,32 @@ Component folder structure decisions will be made per sub-project as needed.
 
 ---
 
-## Sub-project 2: Admin (future spec)
+## Phase 2: Admin
 
-Covers 15 pages: Overview, Rankings, Analytics, Score Grid, Score Details, Jurors, Projects, Semesters (Evaluation Periods), Criteria, Accreditation (Outcomes & Mapping), Entry Control, PIN Block, Audit, Export, Settings. Plus sidebar navigation and header.
+Covers 15 pages: Overview, Rankings, Analytics, Score Grid, Score Details, Jurors, Projects, Evaluation Periods, Criteria, Accreditation (Outcomes & Mapping), Entry Control, PIN Block, Audit, Export, Settings. Plus sidebar navigation and header.
 
-Key considerations from memory notes:
+**Plan:** `docs/superpowers/plans/phase-2-admin-panel.md`
 
-- Top Projects card on Overview (auto-highlight rules)
-- Dynamic insight banners on Analytics (computed, not static)
-- Score-based field locking on Criteria/Settings
-- Framework per period on Analytics
-- Direct/Indirect outcome mapping on Accreditation
-- Chart theme integration (shadcn Recharts wrapper)
-- All naming updates (Evaluation Period, Affiliation, Title, Advisor, Team Members, Organization)
+### Completed (all 15 tasks)
 
-## Sub-project 3: Jury (future spec)
+- Layout (AdminLayout, AdminHeader, AdminSidebar, SidebarProfileMenu) ✅
+- Page decomposition (8 standalone page components) ✅
+- Naming updates: Period, Affiliation, Advisor, Team Members, Organization ✅
+- admin-matrix.css → Tailwind (ScoreGrid) ✅
+- admin-details.css → Tailwind (ScoreDetails) ✅
+- Rankings table restyle ✅
+- Overview: Needs Attention card, Period Snapshot card, Top Projects card ✅
+- Sidebar restructured to 5 sections matching prototype ✅
+- Score-based field locking UI on Criteria ✅
+- Chart theme integration with design tokens ✅
+- Form drawer/modal visual polish ✅
+- 403 tests passing ✅
+
+### Remaining
+
+- **Task 16 (⏳ blocked):** Final visual verification — blocked until Phase 3 (DB migration) is applied to demo Supabase
+
+## Phase 4: Jury (future spec)
 
 Covers: Splash screen, Identity (InfoStep), PIN (PinStep/PinRevealStep), Loading, Eval (EvalStep with group bar, criteria cards, sticky bottom bar, rubric bottom sheet, group selector sheet, submit confirm overlay), Done (DoneStep).
 
@@ -383,7 +394,7 @@ Key considerations:
 - "Affiliation" label for juror field
 - Glassmorphism in dark mode
 
-## Sub-project 4: Landing (future spec)
+## Phase 5: Landing (future spec)
 
 Covers: Nav, Hero (copy-led with small logo), Trust Band (social proof + stats), How it Works (3-step flow), Features (3-card grid), Before/After comparison, Mobile Mockup (3-phone flow), CTA Reprise, Footer.
 

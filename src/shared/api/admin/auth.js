@@ -38,6 +38,7 @@ export async function submitApplication(payload) {
   const { data, error } = await supabase
     .from("tenant_applications")
     .insert({
+      organization_id: payload.organization_id || payload.organizationId || null,
       organization_name: payload.organization_name || payload.organizationName,
       contact_email: payload.contact_email || payload.email,
       applicant_name: payload.applicant_name || payload.name,

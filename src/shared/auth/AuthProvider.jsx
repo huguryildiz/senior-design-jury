@@ -13,7 +13,7 @@ import { createContext, useCallback, useEffect, useMemo, useRef, useState } from
 import { supabase, clearPersistedSession } from "../../lib/supabaseClient";
 import { getActiveOrganizationId, setActiveOrganizationId } from "../storage/adminStorage";
 import { getProfile, upsertProfile } from "../api/admin/profiles";
-import { getSession } from "../api";
+import { getSession, listOrganizationsPublic } from "../api";
 import { KEYS } from "../storage/keys";
 
 export const AuthContext = createContext(null);
@@ -115,9 +115,9 @@ export default function AuthProvider({ children }) {
     if (!mountedRef.current) return;
 
     const organizationList = memberships.map((m) => ({
-      id: m.tenant_id,
-      code: m.tenant_code,
-      name: m.tenant_short_label,
+      id: m.organization_id,
+      code: m.organization?.short_name ?? null,
+      name: m.organization?.name ?? null,
       role: m.role,
     }));
     setOrganizations(organizationList);
@@ -144,6 +144,30 @@ export default function AuthProvider({ children }) {
     if (isDemoMode && preferredDemoOrganization) {
       setActiveOrganizationIdState(preferredDemoOrganization.id);
       setActiveOrganizationId(preferredDemoOrganization.id);
+    } else if (isSuper && !preferredDemoOrganization) {
+      // Super-admin: fetch all orgs to populate the switcher and pick active
+      // (super_admin memberships have organization_id = NULL, so it won't be in organizationList)
+      try {
+        const allOrgs = await listOrganizationsPublic();
+        const allOrgList = allOrgs.map((o) => ({
+          id: o.id,
+          code: o.short_name ?? null,
+          name: o.name ?? null,
+          role: "super_admin",
+        }));
+        if (mountedRef.current) setOrganizations(allOrgList);
+        const savedIsValid = allOrgList.some((o) => o.id === savedOrganizationId);
+        const demoOrg = allOrgs.find((o) =>
+          String(o.short_name || "").trim().toLowerCase() === "tedu-ee" ||
+          String(o.name || "").trim().toLowerCase().includes("tedu")
+        );
+        const preferred = isDemoMode ? demoOrg : null;
+        const picked = preferred ?? (savedIsValid ? { id: savedOrganizationId } : allOrgList[0]);
+        if (picked?.id && mountedRef.current) {
+          setActiveOrganizationIdState(picked.id);
+          setActiveOrganizationId(picked.id);
+        }
+      } catch {}
     } else if (hasSaved) {
       setActiveOrganizationIdState(savedOrganizationId);
     } else if (isSuper && organizationList.length > 1) {
@@ -240,13 +264,16 @@ export default function AuthProvider({ children }) {
 
   const setActiveOrganization = useCallback((organizationId) => {
     setActiveOrganizationIdState(organizationId);
-    setActiveTenantId(organizationId);
+    setActiveOrganizationId(organizationId);
   }, []);
 
-  const signIn = useCallback(async (email, password, rememberMe = false) => {
+  const signIn = useCallback(async (email, password, rememberMe = false, captchaToken = "") => {
     try { localStorage.setItem(KEYS.ADMIN_REMEMBER_ME, String(rememberMe)); }
     catch {}
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const credentials = captchaToken
+      ? { email, password, options: { captchaToken } }
+      : { email, password };
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
     if (error) throw error;
     if (!rememberMe) clearPersistedSession();
     return data;
@@ -330,9 +357,9 @@ export default function AuthProvider({ children }) {
     const memberships = await fetchMemberships();
     if (!mountedRef.current) return;
     const organizationList = memberships.map((m) => ({
-      id: m.tenant_id,
-      code: m.tenant_code,
-      name: m.tenant_short_label,
+      id: m.organization_id,
+      code: m.organization?.short_name ?? null,
+      name: m.organization?.name ?? null,
       role: m.role,
     }));
     setOrganizations(organizationList);

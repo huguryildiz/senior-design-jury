@@ -70,40 +70,36 @@ CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (
 
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
 
--- SELECT: users see memberships for their own orgs or super admins see all
-CREATE POLICY "memberships_select" ON memberships FOR SELECT USING (
-  organization_id IN (
-    SELECT organization_id FROM memberships WHERE user_id = auth.uid() AND organization_id IS NOT NULL
-  )
-  OR EXISTS (
+-- Security definer helper: avoids infinite recursion when memberships policies
+-- reference the memberships table itself.
+CREATE OR REPLACE FUNCTION public.current_user_is_super_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public AS $$
+  SELECT EXISTS (
     SELECT 1 FROM memberships WHERE user_id = auth.uid() AND organization_id IS NULL
-  )
-  OR user_id = auth.uid()
+  );
+$$;
+
+-- SELECT: users see their own memberships; super admin sees all
+CREATE POLICY "memberships_select" ON memberships FOR SELECT USING (
+  user_id = auth.uid() OR current_user_is_super_admin()
 );
 
 -- INSERT: super admin only
 CREATE POLICY "memberships_insert" ON memberships FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM memberships WHERE user_id = auth.uid() AND organization_id IS NULL
-  )
+  current_user_is_super_admin()
 );
 
 -- UPDATE: super admin only
 CREATE POLICY "memberships_update" ON memberships FOR UPDATE USING (
-  EXISTS (
-    SELECT 1 FROM memberships WHERE user_id = auth.uid() AND organization_id IS NULL
-  )
+  current_user_is_super_admin()
 ) WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM memberships WHERE user_id = auth.uid() AND organization_id IS NULL
-  )
+  current_user_is_super_admin()
 );
 
 -- DELETE: super admin only
 CREATE POLICY "memberships_delete" ON memberships FOR DELETE USING (
-  EXISTS (
-    SELECT 1 FROM memberships WHERE user_id = auth.uid() AND organization_id IS NULL
-  )
+  current_user_is_super_admin()
 );
 
 -- =============================================================================
@@ -112,13 +108,13 @@ CREATE POLICY "memberships_delete" ON memberships FOR DELETE USING (
 
 ALTER TABLE tenant_applications ENABLE ROW LEVEL SECURITY;
 
--- SELECT: super admin sees all, tenant admins see their own org's applications
+-- SELECT: super admin sees all; authenticated users see applications matching their email
 CREATE POLICY "tenant_applications_select" ON tenant_applications FOR SELECT USING (
-  organization_id IN (
-    SELECT organization_id FROM memberships WHERE user_id = auth.uid() AND organization_id IS NOT NULL
-  )
-  OR EXISTS (
+  EXISTS (
     SELECT 1 FROM memberships WHERE user_id = auth.uid() AND organization_id IS NULL
+  )
+  OR contact_email = (
+    SELECT email FROM auth.users WHERE id = auth.uid()
   )
 );
 

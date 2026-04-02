@@ -31,6 +31,7 @@ CREATE TABLE memberships (
 -- 4. tenant_applications
 CREATE TABLE tenant_applications (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id     UUID REFERENCES organizations(id) ON DELETE SET NULL,
   organization_name   TEXT NOT NULL,
   contact_email       TEXT NOT NULL,
   applicant_name      TEXT NOT NULL,
@@ -184,3 +185,12 @@ CREATE INDEX idx_scores_period_id
 
 CREATE INDEX idx_audit_logs_organization_created
   ON audit_logs (organization_id, created_at DESC);
+
+
+-- =============================================================================
+-- Role grants
+-- =============================================================================
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
