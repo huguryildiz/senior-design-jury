@@ -2,12 +2,6 @@
 import "../../styles/jury.css";
 
 export default function DoneStep({ state, onBack }) {
-  const handleReset = () => {
-    if (window.confirm("Are you sure? This will reset your scores.")) {
-      state.resetAll();
-    }
-  };
-
   const handleExit = () => {
     state.clearLocalSession();
     onBack();
@@ -151,13 +145,6 @@ export default function DoneStep({ state, onBack }) {
             Exit
           </button>
 
-          <button
-            className="dj-btn-secondary"
-            onClick={handleReset}
-            style={{ width: "100%", fontSize: "12px" }}
-          >
-            Reset & Start Over
-          </button>
         </div>
       </div>
     </div>

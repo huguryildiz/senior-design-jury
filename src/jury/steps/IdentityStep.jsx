@@ -91,6 +91,7 @@ export default function IdentityStep({ state, onBack }) {
         <button
           className="dj-btn-primary"
           onClick={handleSubmit}
+          disabled={!juryName.trim() || !affiliation.trim()}
           style={{ width: "100%", marginTop: "16px" }}
         >
           Continue

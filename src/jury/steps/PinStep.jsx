@@ -1,9 +1,16 @@
 // src/jury/steps/PinStep.jsx
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import "../../styles/jury.css";
 
 export default function PinStep({ state, onBack }) {
   const pinRefs = useRef([]);
+
+  // Clear and refocus on PIN error
+  useEffect(() => {
+    if (!state.pinError) return;
+    pinRefs.current.forEach((ref) => { if (ref) ref.value = ""; });
+    pinRefs.current[0]?.focus();
+  }, [state.pinError]);
 
   const handlePinChange = (index, value) => {
     const cleanValue = value.replace(/[^0-9]/g, "").slice(0, 1);

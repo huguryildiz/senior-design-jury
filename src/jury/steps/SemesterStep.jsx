@@ -54,15 +54,6 @@ export default function SemesterStep({ state, onBack }) {
         </div>
 
         <button
-          className="dj-btn-primary"
-          onClick={() => state.setStep("pin")}
-          disabled={!state.periodId}
-          style={{ width: "100%", marginTop: "16px" }}
-        >
-          Continue
-        </button>
-
-        <button
           className="dj-btn-secondary"
           onClick={onBack}
           style={{ width: "100%", marginTop: "8px" }}

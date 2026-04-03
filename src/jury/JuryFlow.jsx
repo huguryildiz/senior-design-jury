@@ -21,9 +21,13 @@ export default function JuryFlow({ onBack }) {
   const [loaderActive, setLoaderActive] = useState(false);
 
   // Map step names to components
+  // "period" is the hook-internal name for semester selection
+  // "qr_showcase" (demo only) redirects to identity — step deleted per Phase 13 spec
   const stepComponents = {
     identity: IdentityStep,
-    semester: SemesterStep,
+    period: SemesterStep,      // hook sets "period", not "semester"
+    semester: SemesterStep,    // kept as alias
+    qr_showcase: IdentityStep, // demo-mode init; QRShowcaseStep deleted, fall through to identity
     pin: PinStep,
     pin_reveal: PinRevealStep,
     locked: LockedStep,
