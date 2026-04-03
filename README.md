@@ -119,7 +119,42 @@ Row-Level Security on every table. JWT-authenticated admin RPCs routed through S
                   └───────────┘
 ```
 
-All database access is mediated through `src/shared/api/` — components never call Supabase directly. Admin RPCs use JWT-based auth (`rpc_admin_*`), jury RPCs use token+PIN auth (`rpc_jury_*`). A retry layer with exponential backoff handles transient network failures.
+All database access is mediated through `src/shared/api/` — components never call Supabase directly.
+
+### API Layer
+
+VERA exposes its backend through Supabase's PostgREST interface and named PL/pgSQL RPC functions. The frontend consumes these through a centralised API layer that enforces a strict boundary: no component ever calls `supabase.rpc()` directly.
+
+```text
+src/shared/api/
+├── index.js                  # Public surface — all exports aggregated here
+├── core/
+│   ├── client.js             # Supabase client initialisation (prod + demo dual-client)
+│   └── retry.js              # withRetry() — exponential backoff, skips AbortError
+├── transport.js              # RPC dispatch: callAdminRpcV2 (JWT) + callAdminRpc (legacy)
+├── fieldMapping.js           # UI ↔ DB field translation (design→written, delivery→oral)
+├── juryApi.js                # Jury session, scoring, and submission RPCs
+│
+└── admin/                    # Domain-scoped admin API — one file per resource
+    ├── auth.js               # Admin authentication + security state
+    ├── profiles.js           # User profile management
+    ├── organizations.js      # Tenant lifecycle (create, disable, archive)
+    ├── periods.js            # Evaluation period CRUD + eval-lock
+    ├── projects.js           # Project CRUD + CSV import
+    ├── jurors.js             # Juror CRUD + PIN reset + edit-mode toggle
+    ├── scores.js             # Score queries, upserts, grid data
+    ├── tokens.js             # Entry token generation, revocation, TTL
+    ├── frameworks.js         # Accreditation framework configuration
+    ├── audit.js              # Audit log queries
+    └── export.js             # XLSX export data preparation
+```
+
+**Conventions:**
+
+- **Naming**: Admin RPCs follow `rpc_admin_*` (JWT-authenticated via `auth.uid()` + `_assert_tenant_admin()`). Jury RPCs follow `rpc_jury_*` (token + PIN authenticated).
+- **Transport**: In production, admin RPCs route through a Supabase Edge Function so `rpc_secret` never reaches the browser. In development, calls go direct.
+- **Resilience**: `withRetry(fn, { maxAttempts, delayMs })` wraps score upserts and project listing. Retries only on transient network errors — never on `AbortError` or business-logic failures.
+- **Field mapping**: The API layer translates between UI field names (`design`, `delivery`) and database column names (`written`, `oral`) in a single location. Components work exclusively with UI names.
 
 ---
 
