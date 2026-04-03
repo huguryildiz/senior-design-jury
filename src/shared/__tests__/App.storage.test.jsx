@@ -10,21 +10,21 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
-import { qaTest } from "../test/qaTest.js";
+import { qaTest } from "../../test/qaTest.js";
 
 // ── Heavy mocks (all before any import of App) ────────────────
-vi.mock("../jury/JuryFlow", () => ({ default: () => <div data-testid="jury-flow" /> }));
-vi.mock("../AdminPanel", () => ({ default: () => <div data-testid="admin-panel" /> }));
-vi.mock("../admin/layout/AdminLayout", () => ({ default: () => <div data-testid="admin-layout" /> }));
-vi.mock("../jury/JuryGatePage", () => ({ default: () => <div data-testid="jury-gate" /> }));
-vi.mock("../landing/LandingPage", () => ({
+vi.mock("../../jury/JuryFlow", () => ({ default: () => <div data-testid="jury-flow" /> }));
+vi.mock("../../admin/pages/AdminPanel", () => ({ default: () => <div data-testid="admin-panel" /> }));
+vi.mock("../../admin/layout/AdminLayout", () => ({ default: () => <div data-testid="admin-layout" /> }));
+vi.mock("../../jury/JuryGatePage", () => ({ default: () => <div data-testid="jury-gate" /> }));
+vi.mock("../../landing/LandingPage", () => ({
   LandingPage: ({ onAdmin }) => (
     <div data-testid="landing-page">
       <button onClick={onAdmin}>Admin Panel</button>
     </div>
   ),
 }));
-vi.mock("../shared/api", () => ({
+vi.mock("../../shared/api", () => ({
   adminSecurityState: vi.fn().mockResolvedValue({ admin_password_set: true }),
   adminLogin: vi.fn().mockResolvedValue(false),
   adminBootstrapPassword: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock("@/shared/lib/supabaseClient", () => ({
     rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
   },
 }));
-vi.mock("../shared/scrollIndicators", () => ({ initScrollIndicators: () => () => {} }));
+vi.mock("../../shared/scrollIndicators", () => ({ initScrollIndicators: () => () => {} }));
 vi.mock("@/shared/ui/MinimalLoaderOverlay", () => ({ default: () => null }));
 vi.mock("@/auth/screens/LoginScreen", () => ({
   default: ({ onLogin, onSwitchToRegister }) => (
@@ -63,7 +63,7 @@ vi.mock("@/auth", () => ({
 // shared/Icons exports plain React SVG components — no mock needed.
 
 // Import App AFTER all mocks are declared
-import App from "../App";
+import App from "../../App";
 
 // ── Helpers ───────────────────────────────────────────────────
 

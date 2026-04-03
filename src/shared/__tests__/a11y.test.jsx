@@ -6,7 +6,7 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { qaTest } from "./qaTest.js";
+import { qaTest } from "../../test/qaTest.js";
 import * as axeMatchers from "vitest-axe/matchers";
 import { axe } from "vitest-axe";
 
@@ -14,7 +14,7 @@ expect.extend(axeMatchers);
 
 // ── Mocks ─────────────────────────────────────────────────────
 
-vi.mock("../config", () => ({
+vi.mock("../../config", () => ({
   CRITERIA: [
     {
       id: "technical", label: "Technical", max: 25, blurb: "Tech quality",
@@ -44,7 +44,7 @@ vi.mock("@/shared/ui/Icons", () => ({
 
 const PinResetDialog = ({ onClose }) => <div role="dialog" aria-modal="true"><button onClick={onClose}>Cancel</button></div>;
 
-vi.mock("../admin/settings/PinResetDialog", () => ({
+vi.mock("../../admin/settings/PinResetDialog", () => ({
   default: PinResetDialog,
 }));
 

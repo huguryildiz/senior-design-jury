@@ -15,8 +15,8 @@ import {
   rowKey,
   adminCompletionPct,
   dedupeAndSort,
-} from "../admin/utils/adminUtils";
-import { buildExportFilename } from "../admin/utils/exportXLSX";
+} from "../../admin/utils/adminUtils";
+import { buildExportFilename } from "../../admin/utils/exportXLSX";
 
 // ── parseCsv ──────────────────────────────────────────────────
 describe("parseCsv", () => {
