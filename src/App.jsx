@@ -6,11 +6,11 @@ import AdminLayout from "./admin/layout/AdminLayout";
 import JuryFlow from "./jury/JuryFlow";
 import ErrorBoundary from "@/shared/ui/ErrorBoundary";
 import { getPage, setPage as savePage, getJuryAccess } from "./shared/storage";
-import DemoAdminLoader from "./components/DemoAdminLoader";
+import DemoAdminLoader from "@/shared/ui/DemoAdminLoader";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 
 const LandingPage = lazy(() =>
-  import("./pages/LandingPage").then((m) => ({ default: m.LandingPage }))
+  import("./landing/LandingPage").then((m) => ({ default: m.LandingPage }))
 );
 const JuryGatePage = lazy(() => import("./jury/JuryGatePage"));
 

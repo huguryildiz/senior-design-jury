@@ -17,7 +17,7 @@ vi.mock("../jury/JuryFlow", () => ({ default: () => <div data-testid="jury-flow"
 vi.mock("../AdminPanel", () => ({ default: () => <div data-testid="admin-panel" /> }));
 vi.mock("../admin/layout/AdminLayout", () => ({ default: () => <div data-testid="admin-layout" /> }));
 vi.mock("../jury/JuryGatePage", () => ({ default: () => <div data-testid="jury-gate" /> }));
-vi.mock("../pages/LandingPage", () => ({
+vi.mock("../landing/LandingPage", () => ({
   LandingPage: ({ onAdmin }) => (
     <div data-testid="landing-page">
       <button onClick={onAdmin}>Admin Panel</button>

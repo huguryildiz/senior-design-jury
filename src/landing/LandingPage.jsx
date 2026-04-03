@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTheme } from "@/shared/theme/ThemeProvider";
-import AdminShowcaseCarousel from "@/components/home/AdminShowcaseCarousel";
+import AdminShowcaseCarousel from "./components/AdminShowcaseCarousel";
 import veraLogoDark from "@/assets/vera_logo_dark.png";
 import navLogo from "@/assets/favicon/web-app-manifest-512x512.png";
 
