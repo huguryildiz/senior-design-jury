@@ -4,7 +4,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
-import { useAuth } from "../shared/auth";
+import { useAuth } from "@/auth";
 import {
   listPeriods,
   listJurorsSummary,

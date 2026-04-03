@@ -13,7 +13,7 @@ import {
   buildAuditParams,
 } from "../utils/auditUtils";
 import { exportAuditLogsXLSX } from "../xlsx/exportXLSX";
-import { useAuth } from "../../shared/auth";
+import { useAuth } from "@/auth";
 
 const defaultAuditFilters = {
   startDate: "",

@@ -60,7 +60,7 @@ vi.mock("../useGridExport", () => ({
   useGridExport: () => ({ requestExport: vi.fn() }),
 }));
 
-vi.mock("../../shared/auth", () => ({
+vi.mock("@/auth", () => ({
   useAuth: () => ({ activeOrganization: null }),
 }));
 

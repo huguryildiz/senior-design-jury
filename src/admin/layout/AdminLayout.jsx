@@ -2,7 +2,7 @@
 // Wires useAuth + useAdminData. Renders OverviewPage when adminTab === "overview".
 // Period dropdown in AdminHeader is now fully live.
 import { lazy, Suspense, useRef, useMemo, useState, Component } from "react";
-import { useAuth } from "../../shared/auth";
+import { useAuth } from "@/auth";
 import { useAdminTabs } from "../hooks/useAdminTabs";
 import { useAdminData } from "../hooks/useAdminData";
 import AdminSidebar from "./AdminSidebar";
@@ -23,12 +23,12 @@ import ExportPage from "../ExportPage";
 import CriteriaPage from "../pages/CriteriaPage";
 import OutcomesPage from "../pages/OutcomesPage";
 
-const LazyLoginForm            = lazy(() => import("../../auth/LoginScreen"));
-const LazyRegisterForm         = lazy(() => import("../../auth/RegisterScreen"));
-const LazyForgotPasswordForm   = lazy(() => import("../../auth/ForgotPasswordScreen"));
-const LazyResetPasswordForm    = lazy(() => import("../../auth/ResetPasswordScreen"));
-const LazyCompleteProfileForm  = lazy(() => import("../../auth/CompleteProfileScreen"));
-const LazyPendingReviewGate    = lazy(() => import("../../auth/PendingReviewScreen"));
+const LazyLoginForm            = lazy(() => import("@/auth/screens/LoginScreen"));
+const LazyRegisterForm         = lazy(() => import("@/auth/screens/RegisterScreen"));
+const LazyForgotPasswordForm   = lazy(() => import("@/auth/screens/ForgotPasswordScreen"));
+const LazyResetPasswordForm    = lazy(() => import("@/auth/screens/ResetPasswordScreen"));
+const LazyCompleteProfileForm  = lazy(() => import("@/auth/screens/CompleteProfileScreen"));
+const LazyPendingReviewGate    = lazy(() => import("@/auth/screens/PendingReviewScreen"));
 
 const DEMO_EMAIL    = import.meta.env.VITE_DEMO_ADMIN_EMAIL    || "";
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "";

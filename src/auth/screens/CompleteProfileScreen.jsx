@@ -3,8 +3,8 @@
 // Replaces src/components/auth/CompleteProfileForm.jsx.
 
 import { useEffect, useState } from "react";
-import TenantSearchDropdown from "../components/auth/TenantSearchDropdown";
-import { listOrganizationsPublic } from "../shared/api";
+import TenantSearchDropdown from "../components/TenantSearchDropdown";
+import { listOrganizationsPublic } from "@/shared/api";
 
 export default function CompleteProfileScreen({ user, onComplete, onSignOut }) {
   const [fullName, setFullName] = useState(user?.name || "");

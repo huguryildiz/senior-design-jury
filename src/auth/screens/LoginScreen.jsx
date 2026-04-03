@@ -3,7 +3,7 @@
 // Replaces src/components/auth/LoginForm.jsx.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KEYS } from "../shared/storage/keys";
+import { KEYS } from "@/shared/storage/keys";
 
 const GOOGLE_ICON = (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

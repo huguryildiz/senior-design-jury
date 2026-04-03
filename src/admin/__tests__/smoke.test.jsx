@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, vi } from "vitest";
 import { qaTest } from "../../test/qaTest.js";
 import { render, screen } from "@testing-library/react";
 
-vi.mock("../../shared/auth", () => ({
+vi.mock("@/auth", () => ({
   useAuth: () => ({ activeOrganization: null }),
 }));
 

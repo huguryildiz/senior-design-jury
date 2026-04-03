@@ -11,10 +11,10 @@
 
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, clearPersistedSession } from "@/shared/lib/supabaseClient";
-import { getActiveOrganizationId, setActiveOrganizationId } from "../storage/adminStorage";
-import { getProfile, upsertProfile } from "../api/admin/profiles";
-import { getSession, listOrganizationsPublic } from "../api";
-import { KEYS } from "../storage/keys";
+import { getActiveOrganizationId, setActiveOrganizationId } from "@/shared/storage/adminStorage";
+import { getProfile, upsertProfile } from "@/shared/api/admin/profiles";
+import { getSession, listOrganizationsPublic } from "@/shared/api";
+import { KEYS } from "@/shared/storage/keys";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 
 export const AuthContext = createContext(null);

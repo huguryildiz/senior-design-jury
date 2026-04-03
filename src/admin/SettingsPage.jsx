@@ -4,7 +4,7 @@
 
 import { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useAuth } from "../shared/auth";
+import { useAuth } from "@/auth";
 import { useToast } from "@/shared/hooks/useToast";
 import { useProfileEdit } from "./hooks/useProfileEdit";
 import { useManageOrganizations } from "./hooks/useManageOrganizations";

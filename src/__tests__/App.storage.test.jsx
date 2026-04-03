@@ -46,7 +46,7 @@ vi.mock("@/shared/lib/supabaseClient", () => ({
 }));
 vi.mock("../shared/scrollIndicators", () => ({ initScrollIndicators: () => () => {} }));
 vi.mock("../shared/MinimalLoaderOverlay", () => ({ default: () => null }));
-vi.mock("../auth/LoginScreen", () => ({
+vi.mock("@/auth/screens/LoginScreen", () => ({
   default: ({ onLogin, onSwitchToRegister }) => (
     <div data-testid="login-form">
       <button onClick={onSwitchToRegister}>Apply for access</button>
@@ -54,10 +54,10 @@ vi.mock("../auth/LoginScreen", () => ({
     </div>
   ),
 }));
-vi.mock("../auth/ForgotPasswordScreen", () => ({ default: () => <div data-testid="forgot-form" /> }));
-vi.mock("../auth/RegisterScreen", () => ({ default: () => <div data-testid="register-form" /> }));
-vi.mock("../auth/PendingReviewScreen", () => ({ default: () => <div data-testid="pending-gate" /> }));
-vi.mock("../shared/auth", () => ({
+vi.mock("@/auth/screens/ForgotPasswordScreen", () => ({ default: () => <div data-testid="forgot-form" /> }));
+vi.mock("@/auth/screens/RegisterScreen", () => ({ default: () => <div data-testid="register-form" /> }));
+vi.mock("@/auth/screens/PendingReviewScreen", () => ({ default: () => <div data-testid="pending-gate" /> }));
+vi.mock("@/auth", () => ({
   AuthProvider: ({ children }) => children,
 }));
 // shared/Icons exports plain React SVG components — no mock needed.

@@ -2,7 +2,7 @@
 // Auto-login overlay for demo "Explore Admin Panel" flow.
 // Runs real Supabase signIn in parallel with a 3-step animation.
 import { useEffect, useRef } from "react";
-import { useAuth } from "@/shared/auth";
+import { useAuth } from "@/auth";
 
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_ADMIN_EMAIL;
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_ADMIN_PASSWORD;

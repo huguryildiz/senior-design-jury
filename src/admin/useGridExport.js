@@ -3,7 +3,7 @@
 
 import { useCallback } from "react";
 import { exportGridXLSX } from "./xlsx/exportXLSX";
-import { useAuth } from "../shared/auth";
+import { useAuth } from "@/auth";
 
 export function useGridExport({ buildExportRows, groups, periodName, visibleJurors }) {
   const { activeOrganization } = useAuth();

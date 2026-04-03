@@ -3,7 +3,7 @@
 // Replaces src/components/auth/RegisterForm.jsx.
 
 import { useEffect, useMemo, useState } from "react";
-import { listOrganizationsPublic } from "../shared/api";
+import { listOrganizationsPublic } from "@/shared/api";
 
 function generateTemporaryPassword() {
   const rand =

@@ -1,7 +1,7 @@
 // src/admin/layout/AdminHeader.jsx — Phase 1
 // Prototype source: lines 11722–11754
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../../shared/auth";
+import { useAuth } from "@/auth";
 
 const TAB_LABELS = {
   overview: "Overview",

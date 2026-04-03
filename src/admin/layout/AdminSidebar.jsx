@@ -1,7 +1,7 @@
 // src/admin/layout/AdminSidebar.jsx — Phase 1
 // Prototype source: lines 11580–11711
 import { useRef, useState } from "react";
-import { useAuth } from "../../shared/auth";
+import { useAuth } from "@/auth";
 import { useTheme } from "../../shared/theme/ThemeProvider";
 
 // Maps adminTab + scoresView → sidebar active state per nav item

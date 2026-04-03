@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useAuth } from "../../shared/auth";
+import { useAuth } from "@/auth";
 import { useToast } from "@/shared/hooks/useToast";
 import { upsertProfile } from "../../shared/api";
 import { supabase } from "@/shared/lib/supabaseClient";

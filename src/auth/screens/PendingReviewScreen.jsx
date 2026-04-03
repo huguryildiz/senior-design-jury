@@ -3,7 +3,7 @@
 // Replaces src/admin/components/PendingReviewGate.jsx.
 
 import { useEffect, useState } from "react";
-import { getMyApplications } from "../shared/api";
+import { getMyApplications } from "@/shared/api";
 
 function formatDate(dateStr) {
   if (!dateStr) return "";

@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useAuth } from "../../shared/auth";
+import { useAuth } from "@/auth";
 import { useFocusTrap } from "../../shared/useFocusTrap";
 import { useProfileEdit } from "../hooks/useProfileEdit";
 import {
