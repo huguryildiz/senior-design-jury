@@ -73,6 +73,7 @@ export { upsertProfile, getProfile } from "./profiles";
 export {
   listFrameworks,
   createFramework,
+  updateFramework,
   deleteFramework,
   listOutcomes,
   createOutcome,

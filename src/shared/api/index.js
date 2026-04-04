@@ -75,6 +75,7 @@ export {
   getProfile,
   listFrameworks,
   createFramework,
+  updateFramework,
   deleteFramework,
   listOutcomes,
   createOutcome,
