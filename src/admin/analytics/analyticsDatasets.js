@@ -336,3 +336,68 @@ export function buildMudekMappingDataset(outcomes = [], mudekLookup = null) {
     alignments,
   };
 }
+
+const OUTCOME_TREND_COLORS = [
+  "#6366F1", "#EC4899", "#14B8A6", "#F97316",
+  "#8B5CF6", "#06B6D4", "#F43F5E", "#10B981",
+];
+
+/**
+ * Transforms getOutcomeAttainmentTrends() output into Recharts-compatible rows.
+ *
+ * @param {object[]} outcomeTrendData — output of getOutcomeAttainmentTrends()
+ * @param {object[]} semesterOptions  — period list [{ id, period_name, startDate }]
+ * @param {string[]} selectedIds      — selected period IDs
+ * @returns {{ rows: object[], outcomeMeta: object[] }}
+ *   rows: one entry per period with {period, "{code}_att", "{code}_avg"} keys (null for missing)
+ *   outcomeMeta: [{ code, label, color, attKey, avgKey }]
+ */
+export function buildOutcomeAttainmentTrendDataset(outcomeTrendData, semesterOptions, selectedIds) {
+  if (!outcomeTrendData?.length) return { rows: [], outcomeMeta: [] };
+
+  const dataMap = new Map((outcomeTrendData || []).map((row) => [row.periodId, row]));
+
+  // Sort periods chronologically
+  const ordered = (semesterOptions || [])
+    .filter((s) => (selectedIds || []).includes(s.id))
+    .sort((a, b) => {
+      const da = a.startDate ? new Date(a.startDate) : 0;
+      const db = b.startDate ? new Date(b.startDate) : 0;
+      return da - db;
+    });
+
+  // Collect all outcome codes across all periods, preserving first-seen label
+  const codeOrder = [];
+  const outcomeLabelMap = {};
+  for (const row of outcomeTrendData) {
+    for (const o of row.outcomes || []) {
+      if (!outcomeLabelMap[o.code]) {
+        codeOrder.push(o.code);
+        outcomeLabelMap[o.code] = o.label || o.code;
+      }
+    }
+  }
+  codeOrder.sort((a, b) => a.localeCompare(b));
+
+  // Build Recharts row per period
+  const rows = ordered.map((s) => {
+    const row = dataMap.get(s.id);
+    const point = { period: s.period_name || s.name || row?.periodName || "—" };
+    for (const code of codeOrder) {
+      const outcome = row?.outcomes?.find((o) => o.code === code);
+      point[`${code}_att`] = outcome?.attainmentRate ?? null;
+      point[`${code}_avg`] = outcome?.avg ?? null;
+    }
+    return point;
+  });
+
+  const outcomeMeta = codeOrder.map((code, i) => ({
+    code,
+    label: outcomeLabelMap[code],
+    color: OUTCOME_TREND_COLORS[i % OUTCOME_TREND_COLORS.length],
+    attKey: `${code}_att`,
+    avgKey: `${code}_avg`,
+  }));
+
+  return { rows, outcomeMeta };
+}
