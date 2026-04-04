@@ -17,7 +17,10 @@ import {
   updatePeriodOutcomeConfig,
   deletePeriod,
   setEvalLock,
+  listPeriodCriteria,
+  listPeriodOutcomes,
 } from "../../shared/api";
+import { getActiveCriteria } from "../../shared/criteria/criteriaHelpers";
 import { sortPeriodsByStartDateDesc } from "../../shared/periodSort";
 import {
   APP_DATE_MIN_DATE,
@@ -92,6 +95,41 @@ export function useManagePeriods({
     [periodList, viewPeriodId]
   );
   const viewPeriodLabel = viewPeriod?.name || "—";
+
+  // ── Period criteria & outcomes (from DB snapshot tables) ──
+  const [criteriaConfig, setCriteriaConfig] = useState([]);
+  const [outcomeConfig, setOutcomeConfig] = useState([]);
+
+  useEffect(() => {
+    if (!viewPeriodId) {
+      setCriteriaConfig([]);
+      setOutcomeConfig([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const [criteriaRows, outcomeRows] = await Promise.all([
+          listPeriodCriteria(viewPeriodId),
+          listPeriodOutcomes(viewPeriodId),
+        ]);
+        if (!alive) return;
+        setCriteriaConfig(getActiveCriteria(criteriaRows));
+        setOutcomeConfig(outcomeRows.map((o) => ({
+          id: o.id,
+          code: o.code,
+          desc_en: o.label || o.description || "",
+          desc_tr: o.description || "",
+        })));
+      } catch {
+        if (alive) {
+          setCriteriaConfig([]);
+          setOutcomeConfig([]);
+        }
+      }
+    })();
+    return () => { alive = false; };
+  }, [viewPeriodId]);
 
   // ── Sync settings when viewPeriod changes ──────────────
   useEffect(() => {
@@ -408,6 +446,8 @@ export function useManagePeriods({
     viewPeriodId,
     viewPeriod,
     viewPeriodLabel,
+    criteriaConfig,
+    outcomeConfig,
     applyPeriodPatch,
     removePeriod,
     loadPeriods,

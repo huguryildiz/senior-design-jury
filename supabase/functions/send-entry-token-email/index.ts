@@ -68,7 +68,7 @@ function buildHtml(params: {
   const linesHtml = params.rawHtmlLines.join("");
   const logo = params.logoUrl
     ? `<img src="${escapeHtml(params.logoUrl)}" alt="VERA" width="160" style="display:block;margin:0 auto;height:auto;" />`
-    : `<div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:0.6px;">VERA</div>`;
+    : `<div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;"><span style="color:#f1f5f9;">V</span><span style="color:#93c5fd;">ERA</span></div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">

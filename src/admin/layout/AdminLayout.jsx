@@ -1,7 +1,7 @@
 // src/admin/layout/AdminLayout.jsx — Phase 2
 // Wires useAuth + useAdminData. Renders OverviewPage when adminTab === "overview".
 // Period dropdown in AdminHeader is now fully live.
-import { lazy, Suspense, useRef, useMemo, useState, Component } from "react";
+import { lazy, Suspense, useRef, useMemo, useState, useEffect, Component } from "react";
 import { useAuth } from "@/auth";
 import { useAdminTabs } from "../hooks/useAdminTabs";
 import { useAdminData } from "../hooks/useAdminData";
@@ -150,7 +150,35 @@ export default function AdminLayout({ onReturnHome }) {
   });
 
   const selectedPeriod = sortedPeriods.find((p) => p.id === selectedPeriodId) || null;
-  const criteriaConfig = selectedPeriod?.criteria_config || [];
+
+  // Fetch criteria + outcomes from snapshot tables (not from period row)
+  const [criteriaConfig, setCriteriaConfig] = useState([]);
+  const [outcomeConfig, setOutcomeConfig] = useState([]);
+  useEffect(() => {
+    if (!selectedPeriodId) { setCriteriaConfig([]); setOutcomeConfig([]); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const { listPeriodCriteria, listPeriodOutcomes } = await import("../../shared/api");
+        const { getActiveCriteria } = await import("../../shared/criteria/criteriaHelpers");
+        const [criteriaRows, outcomeRows] = await Promise.all([
+          listPeriodCriteria(selectedPeriodId),
+          listPeriodOutcomes(selectedPeriodId),
+        ]);
+        if (!alive) return;
+        setCriteriaConfig(getActiveCriteria(criteriaRows));
+        setOutcomeConfig(outcomeRows.map((o) => ({
+          id: o.id,
+          code: o.code,
+          desc_en: o.label || o.description || "",
+          desc_tr: o.description || "",
+        })));
+      } catch {
+        if (alive) { setCriteriaConfig([]); setOutcomeConfig([]); }
+      }
+    })();
+    return () => { alive = false; };
+  }, [selectedPeriodId]);
 
   // Groups derived from project summaries (used by HeatmapPage)
   const groups = useMemo(
@@ -346,7 +374,7 @@ export default function AdminLayout({ onReturnHome }) {
               trendLoading={trendLoading}
               trendError={trendError}
               criteriaConfig={criteriaConfig}
-              outcomeConfig={selectedPeriod?.outcome_config || []}
+              outcomeConfig={outcomeConfig}
             />
           )}
           {adminTab === "scores" && scoresView === "grid" && (

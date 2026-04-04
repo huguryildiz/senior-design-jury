@@ -6012,6 +6012,8 @@ INSERT INTO juror_period_auth (juror_id, period_id, pin_hash, final_submitted_at
     VALUES ('aca268ed-a5e4-4f24-a4b6-32bd736f9191', 'd0fd9b5e-fcdf-4690-bcd7-841067f1528f', '327d79df-1a6a-4e5e-af2d-ece7cff070bd', 16) ON CONFLICT DO NOTHING;
 
 -- Entry Tokens (Hashed)
+-- demo-tedu-ee: permanent demo entry token for "Experience Demo" CTA on landing page
+INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('f6e53c1f-9f17-4f1a-960c-c97d815ce846', 'a0d6f60d-ece4-40f8-aca2-955b4abc5d88', 'b21753a65d3e039d77e6ae4d95258460f73d6ac3859c8c07d1e8cac85764b524', false, '2099-12-31 00:00:00+00') ON CONFLICT DO NOTHING;
 INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('65eec217-e3e7-4892-aa86-c2dd89b8f341', 'a0d6f60d-ece4-40f8-aca2-955b4abc5d88', 'b2afaa35e6337796a575fe62ed9fb9eff3de54e21cb7a0d704831299ea32e950', false, timestamp '2026-05-10 12:00:00' + interval '20 hours') ON CONFLICT DO NOTHING;
 INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('b268f2bc-eec0-48d8-a256-4f38a0cb7c34', 'a0d6f60d-ece4-40f8-aca2-955b4abc5d88', '38f84c84567b17b31649c9846f6830cde7dec9e2517f6cfd80dce220f3d13d0a', false, timestamp '2026-05-10 12:00:00' + interval '20 hours') ON CONFLICT DO NOTHING;
 INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at, last_used_at) VALUES ('6e9ef69e-6b4d-400e-ae23-63adf410d6ed', 'a0d6f60d-ece4-40f8-aca2-955b4abc5d88', '01d114adc172f0dbc8d37fd6f454ac7a26ad4159bcb361b965b15bf3c2ae49be', true, timestamp '2026-05-10 12:00:00' - interval '2 days', timestamp '2026-05-10 12:00:00' - interval '2.1 days') ON CONFLICT DO NOTHING;

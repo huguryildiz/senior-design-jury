@@ -230,6 +230,20 @@ export async function listPeriodCriteria(periodId) {
 }
 
 /**
+ * Fetch period_outcomes snapshot rows for a given period.
+ * Returns an empty array if the period has no outcome snapshot yet.
+ */
+export async function listPeriodOutcomes(periodId) {
+  const { data, error } = await supabase
+    .from("period_outcomes")
+    .select("*")
+    .eq("period_id", periodId)
+    .order("sort_order");
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * Dispatches delete to appropriate table.
  */
 export async function deleteEntity({ targetType, targetId }) {

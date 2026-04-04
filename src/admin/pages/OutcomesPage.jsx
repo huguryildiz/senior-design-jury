@@ -270,8 +270,8 @@ export default function OutcomesPage({
   // ── Derived data ──────────────────────────────────────────────
 
   const viewPeriod = periods.periodList.find((s) => s.id === periods.viewPeriodId);
-  const outcomeConfig = viewPeriod?.outcome_config || [];
-  const criteriaConfig = viewPeriod?.criteria_config || [];
+  const outcomeConfig = periods.outcomeConfig || [];
+  const criteriaConfig = periods.criteriaConfig || [];
   const isLocked = !!(viewPeriod?.is_locked);
 
   // KPI computation

@@ -64,6 +64,7 @@ export {
   getDeleteCounts,
   deleteEntity,
   listPeriodCriteria,
+  listPeriodOutcomes,
   generateEntryToken,
   revokeEntryToken,
   getEntryTokenStatus,

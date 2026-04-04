@@ -19,7 +19,7 @@ const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN;
 function readInitialPage() {
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("eval") || params.get("t")) return "jury_gate";
+    if (params.has("demo-jury") || params.get("eval") || params.get("t")) return "jury_gate";
     if (params.has("explore")) return "demo_login";
     if (params.has("admin")) return "admin";
     const hash = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
@@ -48,8 +48,7 @@ function readToken() {
 
 export default function App() {
   const [page, setPage] = useState(readInitialPage);
-  const [forcedToken, setForcedToken] = useState(null);
-  const token = readToken() || forcedToken;
+  const token = readToken();
 
   useEffect(() => {
     if (page === "jury_gate") return;
@@ -67,7 +66,7 @@ export default function App() {
           <JuryGatePage
             token={token}
             onGranted={() => setPage("jury")}
-            onBack={() => { setForcedToken(null); setPage("home"); }}
+            onBack={() => setPage("home")}
           />
         </Suspense>
       </ErrorBoundary>
@@ -91,7 +90,7 @@ export default function App() {
   return (
     <Suspense fallback={null}>
       <LandingPage
-        onStartJury={() => { setForcedToken(DEMO_ENTRY_TOKEN || null); setPage("jury_gate"); }}
+        onStartJury={() => { window.location.href = window.location.origin + "?demo-jury"; }}
         onAdmin={() => { window.location.href = window.location.origin + "?explore"; }}
         onSignIn={() => setPage("admin")}
         isDemoMode={DEMO_MODE}

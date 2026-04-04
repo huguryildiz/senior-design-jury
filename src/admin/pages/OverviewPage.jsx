@@ -110,6 +110,7 @@ export default function OverviewPage({
   summaryData = [],
   allJurors = [],
   selectedPeriod = null,
+  criteriaConfig = [],
   loading = false,
   onNavigate,
   isDemoMode = false,
@@ -187,12 +188,10 @@ export default function OverviewPage({
 
   // ── Period snapshot ───────────────────────────────────────────
   const criteriaLabel = useMemo(() => {
-    const cfg = selectedPeriod?.criteria_config;
-    const list = Array.isArray(cfg?.criteria) ? cfg.criteria : [];
-    if (list.length === 0) return "Default (4 criteria)";
-    const names = list.map((c) => c.shortLabel || c.label || c.id).join(", ");
-    return `${list.length} (${names})`;
-  }, [selectedPeriod]);
+    if (!criteriaConfig || criteriaConfig.length === 0) return "No criteria configured";
+    const names = criteriaConfig.map((c) => c.shortLabel || c.label || c.id).join(", ");
+    return `${criteriaConfig.length} (${names})`;
+  }, [criteriaConfig]);
 
   // ── Needs attention items ─────────────────────────────────────
   const attentionItems = useMemo(() => {

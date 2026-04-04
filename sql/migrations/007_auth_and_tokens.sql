@@ -255,7 +255,7 @@ CREATE OR REPLACE FUNCTION public.rpc_jury_validate_entry_token(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public, extensions, auth
 AS $$
 DECLARE
   v_token_row   entry_tokens%ROWTYPE;
