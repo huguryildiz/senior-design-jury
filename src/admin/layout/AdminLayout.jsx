@@ -108,16 +108,11 @@ export default function AdminLayout({ onReturnHome }) {
     signIn,
     signInWithGoogle,
     signUp,
-    signOut: _signOut,
+    signOut,
     resetPassword,
     updatePassword,
     completeProfile,
   } = useAuth();
-
-  const signOut = useCallback(async () => {
-    await _signOut();
-    onReturnHome();
-  }, [_signOut, onReturnHome]);
 
   const [authPage, setAuthPage] = useState(() => {
     try {

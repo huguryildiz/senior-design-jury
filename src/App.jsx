@@ -54,7 +54,15 @@ function readToken() {
 export default function App() {
   const [page, setPage] = useState(readInitialPage);
   const token = readToken();
-  const { isSuper, loading: authLoading } = useAuth();
+  const { user, isSuper, loading: authLoading } = useAuth();
+
+  // When auth session is cleared from anywhere (sidebar, settings, etc.),
+  // always return to the landing page.
+  useEffect(() => {
+    if (!authLoading && !user && page === "admin") {
+      setPage("home");
+    }
+  }, [user, authLoading, page]);
   const [maintenance, setMaintenance] = useState(null);
 
   useEffect(() => {
