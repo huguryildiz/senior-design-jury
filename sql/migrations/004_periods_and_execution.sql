@@ -15,7 +15,7 @@ CREATE TABLE periods (
   organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   framework_id        UUID REFERENCES frameworks(id),
   name                TEXT NOT NULL,
-  season              TEXT CHECK (season IN ('Fall', 'Spring', 'Summer')),
+  season              TEXT CHECK (season IN ('Fall', 'Spring', 'Summer', 'Registration', 'Submission', 'Qualifying', 'Semi-Finals', 'Finals', 'Evaluation', 'Review', 'Selection', 'Announcement')),
   description         TEXT,
   start_date          DATE,
   end_date            DATE,
