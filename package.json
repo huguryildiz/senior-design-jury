@@ -50,6 +50,7 @@
     "react-virtualized-auto-sizer": "^1.0.26",
     "react-window": "^1.8.11",
     "recharts": "^3.8.0",
+    "svg2pdf.js": "^2.7.0",
     "vaul": "^1.1.2",
     "xlsx-js-style": "^1.2.0",
     "zod": "^4.3.6"
