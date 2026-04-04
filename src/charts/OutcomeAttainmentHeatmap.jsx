@@ -34,14 +34,16 @@ export function OutcomeAttainmentHeatmap({ rows = [], outcomeMeta = [] }) {
       <table style={{
         width: "100%",
         borderCollapse: "separate",
-        borderSpacing: 4,
+        borderSpacing: "4px 6px",
         tableLayout: "fixed",
       }}>
+        <colgroup>
+          <col style={{ width: 220 }} />
+        </colgroup>
         <thead>
           <tr>
             {/* Outcome label column header */}
             <th style={{
-              width: 100,
               textAlign: "left",
               fontSize: 10,
               color: "var(--text-muted)",
@@ -71,8 +73,10 @@ export function OutcomeAttainmentHeatmap({ rows = [], outcomeMeta = [] }) {
                 fontSize: 11,
                 color: "var(--text-secondary)",
                 fontWeight: 600,
-                paddingRight: 8,
+                paddingRight: 12,
                 whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}>
                 <span style={{
                   display: "inline-block",
@@ -80,13 +84,13 @@ export function OutcomeAttainmentHeatmap({ rows = [], outcomeMeta = [] }) {
                   height: 8,
                   borderRadius: "50%",
                   background: o.color,
-                  marginRight: 5,
+                  marginRight: 6,
                   flexShrink: 0,
                 }} />
                 {o.code}
                 {o.label && (
-                  <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 4 }}>
-                    {o.label.length > 18 ? `${o.label.slice(0, 18)}…` : o.label}
+                  <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 5 }}>
+                    {o.label.length > 28 ? `${o.label.slice(0, 28)}…` : o.label}
                   </span>
                 )}
               </td>
