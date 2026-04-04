@@ -8,7 +8,7 @@ import { qaTest } from "../../test/qaTest.js";
 
 // ── Mock html2canvas before importing the module under test ─────────────────
 const mockToDataURL = vi.fn(() => "data:image/png;base64,FAKE");
-const mockCanvas = { toDataURL: mockToDataURL };
+const mockCanvas = { toDataURL: mockToDataURL, width: 100, height: 50 };
 const mockHtml2canvas = vi.fn(() => Promise.resolve(mockCanvas));
 
 vi.mock("html2canvas", () => ({ default: mockHtml2canvas }));
@@ -60,6 +60,6 @@ describe("captureChartImage", () => {
       useCORS: true,
       logging: false,
     });
-    expect(result).toBe("data:image/png;base64,FAKE");
+    expect(result).toEqual({ dataURL: "data:image/png;base64,FAKE", width: 100, height: 50 });
   });
 });

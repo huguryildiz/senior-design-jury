@@ -26,7 +26,7 @@ export async function captureChartImage(elementId) {
       useCORS: true,
       logging: false,
     });
-    return canvas.toDataURL("image/png");
+    return { dataURL: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height };
   } finally {
     el.classList.remove("pdf-capture-mode");
   }

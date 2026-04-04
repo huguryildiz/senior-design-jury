@@ -153,7 +153,6 @@ export async function buildAnalyticsPDF(params, { periodName = "", organization 
   const pdfHeader = (h) => String(h).replace(/\s*(\(\d+\))$/, "\n$1");
   const margin = 14;
   const imgW = pageW - margin * 2;
-  const imgH = (imgW * 9) / 16;
 
   // Build all datasets upfront
   const progAvg    = buildProgrammeAveragesDataset(submittedData, activeOutcomes);
@@ -177,7 +176,9 @@ export async function buildAnalyticsPDF(params, { periodName = "", organization 
       : []),
   ];
 
-  let startY = 32;
+  // All chart sections start on page 2 (cover is page 1)
+  doc.addPage();
+  let startY = 14;
 
   for (let i = 0; i < sections.length; i++) {
     const { title, chartId, ds } = sections[i];
@@ -206,14 +207,16 @@ export async function buildAnalyticsPDF(params, { periodName = "", organization 
 
     // Chart image (gracefully skip on capture failure)
     try {
-      const imgData = await captureChartImage(chartId);
-      if (imgData) {
-        if (startY + imgH > pageH - 20) {
+      const captured = await captureChartImage(chartId);
+      if (captured) {
+        const { dataURL, width, height } = captured;
+        const chartImgH = Math.min(imgW / (width / height), pageH * 0.65);
+        if (startY + chartImgH > pageH - 20) {
           doc.addPage();
           startY = 14;
         }
-        doc.addImage(imgData, "PNG", margin, startY, imgW, imgH);
-        startY += imgH + 6;
+        doc.addImage(dataURL, "PNG", margin, startY, imgW, chartImgH);
+        startY += chartImgH + 6;
       }
     } catch (err) {
       console.error(`[PDF] Chart capture failed for ${chartId}:`, err);

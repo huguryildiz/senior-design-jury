@@ -403,6 +403,7 @@ body:not(.dark-mode) .ga-cv-poor{background:rgba(220,38,38,0.12);box-shadow:inse
   color: #1e293b !important;
   border-color: #e2e8f0 !important;
   box-shadow: none !important;
+  overflow: visible !important;
 }
 .pdf-capture-mode .ga-cell-high       { background: rgba(16,185,129,0.18) !important; color: #047857 !important; }
 .pdf-capture-mode .ga-cell-met        { background: rgba(16,185,129,0.10) !important; color: #059669 !important; }
