@@ -3777,5 +3777,38 @@
     "risk": "Wrong attainment rate would cause incorrect accreditation evidence.",
     "coverageStrength": "Strong",
     "severity": "critical"
+  },
+  {
+    "id": "analytics.pdf.capture.01",
+    "module": "Analytics / PDF Export",
+    "area": "Chart Image Capture",
+    "story": "Missing element handling",
+    "scenario": "captureChartImage returns null when element not found",
+    "whyItMatters": "If an element ID is invalid, the function must fail gracefully without throwing or attempting to capture.",
+    "risk": "Uncaught errors when element doesn't exist would break PDF generation.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "analytics.pdf.capture.02",
+    "module": "Analytics / PDF Export",
+    "area": "Chart Image Capture",
+    "story": "PDF capture mode styling",
+    "scenario": "captureChartImage applies and removes pdf-capture-mode class",
+    "whyItMatters": "The pdf-capture-mode class forces a light background for printing; it must be added before capture and removed after, even on error.",
+    "risk": "Forgetting to remove the class would leave the chart permanently styled for PDF export.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "analytics.pdf.capture.03",
+    "module": "Analytics / PDF Export",
+    "area": "Chart Image Capture",
+    "story": "PNG data URL generation",
+    "scenario": "captureChartImage returns data URL string on success",
+    "whyItMatters": "The function must return a valid data URL that can be embedded in a PDF image element.",
+    "risk": "Wrong data URL format or missing metadata would produce a broken image in the PDF.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
   }
 ]
