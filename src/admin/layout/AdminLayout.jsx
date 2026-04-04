@@ -155,16 +155,23 @@ export default function AdminLayout({ onReturnHome }) {
   // Fetch criteria + outcomes from snapshot tables (not from period row)
   const [criteriaConfig, setCriteriaConfig] = useState([]);
   const [outcomeConfig, setOutcomeConfig] = useState([]);
+  const [frameworks, setFrameworks] = useState([]);
   useEffect(() => {
-    if (!selectedPeriodId) { setCriteriaConfig([]); setOutcomeConfig([]); return; }
+    if (!selectedPeriodId || !activeOrganization?.id) {
+      setCriteriaConfig([]);
+      setOutcomeConfig([]);
+      setFrameworks([]);
+      return;
+    }
     let alive = true;
     (async () => {
       try {
-        const { listPeriodCriteria, listPeriodOutcomes } = await import("../../shared/api");
+        const { listPeriodCriteria, listPeriodOutcomes, listFrameworks } = await import("../../shared/api");
         const { getActiveCriteria } = await import("../../shared/criteria/criteriaHelpers");
-        const [criteriaRows, outcomeRows] = await Promise.all([
+        const [criteriaRows, outcomeRows, frameworkRows] = await Promise.all([
           listPeriodCriteria(selectedPeriodId),
           listPeriodOutcomes(selectedPeriodId),
+          listFrameworks(activeOrganization.id),
         ]);
         if (!alive) return;
         setCriteriaConfig(getActiveCriteria(criteriaRows));
@@ -174,12 +181,24 @@ export default function AdminLayout({ onReturnHome }) {
           desc_en: o.label || o.description || "",
           desc_tr: o.description || "",
         })));
+        setFrameworks(frameworkRows);
       } catch {
-        if (alive) { setCriteriaConfig([]); setOutcomeConfig([]); }
+        if (alive) { setCriteriaConfig([]); setOutcomeConfig([]); setFrameworks([]); }
       }
     })();
     return () => { alive = false; };
-  }, [selectedPeriodId]);
+  }, [selectedPeriodId, activeOrganization?.id]);
+
+  const reloadFrameworks = useCallback(async () => {
+    if (!activeOrganization?.id) return;
+    try {
+      const { listFrameworks } = await import("../../shared/api");
+      const rows = await listFrameworks(activeOrganization.id);
+      setFrameworks(rows);
+    } catch {}
+  }, [activeOrganization?.id]);
+
+  const frameworkThreshold = frameworks[0]?.default_threshold ?? 70;
 
   // Groups derived from project summaries (used by HeatmapPage)
   const groups = useMemo(
@@ -389,6 +408,7 @@ export default function AdminLayout({ onReturnHome }) {
               outcomeTrendError={outcomeTrendError}
               criteriaConfig={criteriaConfig}
               outcomeConfig={outcomeConfig}
+              threshold={frameworkThreshold}
             />
           )}
           {adminTab === "scores" && scoresView === "grid" && (
@@ -489,6 +509,8 @@ export default function AdminLayout({ onReturnHome }) {
               organizationId={activeOrganization?.id}
               selectedPeriodId={selectedPeriodId}
               isDemoMode={isDemoMode}
+              frameworks={frameworks}
+              onFrameworksChange={reloadFrameworks}
             />
           )}
         </div>
