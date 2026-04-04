@@ -56,7 +56,9 @@ A mobile-first scoring experience with no signup required. Jurors authenticate v
 
 ### Live Admin Dashboard
 
-19 dedicated admin views covering the full operational surface: live score grids, project rankings, juror activity monitoring, evaluation analytics, criteria management, period configuration, entry token control, audit logs, and XLSX exports. All data streams through Supabase Realtime for live visibility during evaluation events.
+19 dedicated admin views covering the full operational surface: live score grids, project rankings, juror activity monitoring, evaluation analytics, criteria management, period configuration, entry token control, audit logs, and XLSX exports.
+
+Data updates are event-driven, not polled. `useAdminRealtime` subscribes to `score_sheets`, `score_sheet_items`, `juror_period_auth`, `projects`, `periods`, and `jurors` via Supabase Realtime. Any DB change triggers a debounced re-fetch (600 ms) so score totals and juror status reflect live activity within roughly one second — with no periodic polling. A manual Refresh button is also available in the header for on-demand re-fetch.
 
 ### Configurable Evaluation Framework
 

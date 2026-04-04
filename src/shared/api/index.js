@@ -84,4 +84,5 @@ export {
   deleteCriterionOutcomeMapping,
   sendEntryTokenEmail,
   sendJurorPinEmail,
+  sendExportReport,
 } from "./admin/index";

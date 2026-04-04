@@ -14,10 +14,7 @@
 
 import { useState, useEffect } from "react";
 import Drawer from "@/shared/ui/Drawer";
-
-function initials(name) {
-  return (name || "?").split(" ").slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
-}
+import JurorBadge from "../components/JurorBadge";
 
 export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetPin, onRemove, error }) {
   const [form, setForm] = useState({ name: "", affiliation: "", email: "" });
@@ -58,19 +55,7 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
     <Drawer open={open} onClose={onClose}>
       <div className="fs-drawer-header">
         <div className="fs-drawer-header-row">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              className="fs-avatar"
-              style={{ background: "var(--accent)" }}
-              aria-hidden="true"
-            >
-              {initials(juror?.name)}
-            </div>
-            <div className="fs-title-group">
-              <div className="fs-title">{juror?.name || "Juror"}</div>
-              <div className="fs-subtitle">{juror?.affiliation || ""}</div>
-            </div>
-          </div>
+          <JurorBadge name={juror?.name} affiliation={juror?.affiliation} size="lg" />
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>

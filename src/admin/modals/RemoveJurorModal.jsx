@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import Modal from "@/shared/ui/Modal";
+import JurorBadge from "../components/JurorBadge";
 
 export default function RemoveJurorModal({ open, onClose, juror, impact = {}, onRemove }) {
   const [removing, setRemoving] = useState(false);
@@ -51,16 +52,7 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
               borderRadius: "var(--radius)", marginBottom: 12,
             }}
           >
-            <div
-              className="fs-avatar"
-              style={{ background: juror.color || "#2563eb", width: 34, height: 34, fontSize: 12 }}
-            >
-              {juror.initials}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 12 }}>{juror.name}</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-tertiary)" }}>{juror.affiliation}</div>
-            </div>
+            <JurorBadge name={juror.name} affiliation={juror.affiliation} size="md" />
           </div>
         )}
 

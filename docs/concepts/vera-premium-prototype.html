@@ -95,7 +95,7 @@ body:not(.dark-mode) .juror-action-menu{background:#fafbfd;border-color:#d0d7e2;
 body:not(.dark-mode) .juror-action-item:hover{background:#f0f3f7}
 body:not(.dark-mode) .page-title{color:#0f172a}
 body:not(.dark-mode) .col-info-popover{background:#fafbfd;border-color:#d0d7e2;box-shadow:0 8px 24px rgba(15,23,42,0.10)}
-body:not(.dark-mode) .demo-banner{background:linear-gradient(90deg,#1e3a5f 0%,#1e40af 50%,#1e3a5f 100%)}
+body:not(.dark-mode) .demo-banner{background:linear-gradient(90deg,#4c1d95 0%,#6d28d9 30%,#8b5cf6 50%,#6d28d9 70%,#4c1d95 100%)}
 body:not(.dark-mode) .demo-admin-overlay::before{background:#f0f4f8}
 
 /* ─── LIGHT MODE: ANALYTICS PREMIUM POLISH ─── */
@@ -2842,13 +2842,13 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
 .sa-avatar{background:linear-gradient(135deg,#6366f1,#8b5cf6) !important}
 
 .admin-main{margin-left:232px;flex:1;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-page);max-width:calc(100vw - 232px);overflow-x:hidden}
-.demo-banner{background:linear-gradient(90deg,#1e3a5f 0%,#1e40af 50%,#1e3a5f 100%);color:rgba(255,255,255,0.9);font-size:12px;padding:7px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50}
+.demo-banner{background:linear-gradient(90deg,#4c1d95 0%,#6d28d9 30%,#8b5cf6 50%,#6d28d9 70%,#4c1d95 100%);color:rgba(255,255,255,0.95);font-size:12px;padding:7px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:50;border-bottom:1px solid rgba(167,139,250,0.3);box-shadow:0 1px 12px rgba(109,40,217,0.4)}
 .demo-banner-inner{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .demo-banner-inner strong{color:#fff;font-weight:700}
-.demo-banner-sep{opacity:0.4}
-.demo-banner-link{color:rgba(147,197,253,0.95);cursor:pointer;font-weight:600;text-decoration:none;white-space:nowrap}
+.demo-banner-sep{opacity:0.35}
+.demo-banner-link{color:rgba(221,214,254,0.95);cursor:pointer;font-weight:600;text-decoration:none;white-space:nowrap}
 .demo-banner-link:hover{color:#fff;text-decoration:underline}
-.demo-banner-close{background:none;border:none;color:rgba(255,255,255,0.5);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0}
+.demo-banner-close{background:none;border:none;color:rgba(255,255,255,0.45);font-size:18px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0}
 .demo-banner-close:hover{color:#fff}
 .admin-header{height:48px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:33px;z-index:40}
 .header-breadcrumb{font-size:12px;color:var(--text-tertiary)}
@@ -6310,8 +6310,9 @@ body:not(.dark-mode) .dj-cb-no:hover{color:#64748b !important}
 
 /* ── Demo banner — richer gradient ── */
 .dark-mode .demo-banner{
-  background:linear-gradient(90deg,#090f1e 0%,#111e36 30%,#16294e 50%,#111e36 70%,#090f1e 100%) !important;
-  border-bottom:1px solid rgba(59,130,246,0.08);
+  background:linear-gradient(90deg,#4c1d95 0%,#6d28d9 30%,#8b5cf6 50%,#6d28d9 70%,#4c1d95 100%) !important;
+  border-bottom:1px solid rgba(167,139,250,0.3);
+  box-shadow:0 1px 12px rgba(109,40,217,0.4);
 }
 
 /* ── Score input dark mode — glass feel ── */

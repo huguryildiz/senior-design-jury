@@ -3,7 +3,10 @@
 // Prototype reference: vera-premium-prototype.html lines 11985–12197.
 import { useMemo, useState } from "react";
 import { exportRankingsXLSX } from "../utils/exportXLSX";
+import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
+import SendReportModal from "@/admin/modals/SendReportModal";
 
 // ── Competition ranking ──────────────────────────────────────────
 // Tied scores share the same rank; next rank skips (1,1,3,4,…).
@@ -190,6 +193,7 @@ export default function RankingsPage({
   loading = false,
 }) {
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -198,6 +202,7 @@ export default function RankingsPage({
   const [maxAvg, setMaxAvg] = useState("");
   const [criterionFilter, setCriterionFilter] = useState("all");
   const [exportFormat, setExportFormat] = useState("xlsx");
+  const [sendOpen, setSendOpen] = useState(false);
   const [sortField, setSortField] = useState("avg");
   const [sortDir, setSortDir] = useState("desc");
 
@@ -328,11 +333,48 @@ export default function RankingsPage({
 
   async function handleExport() {
     try {
+      const tc = activeOrganization?.code || "";
+      const fmtMembers = (m) => {
+        if (!m) return "";
+        if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
+        return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
+      };
+      const header = [
+        "Rank", "Project", "Title", "Team Members",
+        ...criteriaConfig.map((c) => `${c.shortLabel || c.label} Avg (${c.max})`),
+        `Total Avg (${criteriaConfig.reduce((s, c) => s + c.max, 0)})`,
+      ];
+      let rank = 0, lastScore = null, idx = 0;
+      const rows = rankedRows.map((p) => {
+        idx += 1;
+        if (Number.isFinite(p?.totalAvg) && p.totalAvg !== lastScore) { rank = idx; lastScore = p.totalAvg; }
+        return [
+          Number.isFinite(p?.totalAvg) ? rank : "",
+          p.group_no != null ? `Group ${p.group_no}` : (p.groupNo != null ? `Group ${p.groupNo}` : ""),
+          p.title || p.name || "",
+          fmtMembers(p.members || p.students),
+          ...criteriaConfig.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
+          Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
+        ];
+      });
       if (exportFormat === "xlsx") {
-        await exportRankingsXLSX(rankedRows, criteriaConfig, { periodName });
-        _toast.success("Rankings exported");
+        await exportRankingsXLSX(rankedRows, criteriaConfig, { periodName, tenantCode: tc });
+      } else {
+        await downloadTable(exportFormat, {
+          filenameType: "Rankings",
+          sheetName: "Rankings",
+          periodName,
+          tenantCode: tc,
+          organization: activeOrganization?.name || "",
+          department: activeOrganization?.institution_name || "",
+          pdfTitle: "VERA — Score Rankings",
+          pdfSubtitle: `${periodName || "All Periods"} · ${rankedRows.length} projects`,
+          header,
+          rows,
+        });
       }
-      // CSV and PDF: v2 roadmap
+      setExportPanelOpen(false);
+      _toast.success("Rankings exported");
     } catch (e) {
       _toast.error(e?.message || "Export failed");
     }
@@ -400,7 +442,7 @@ export default function RankingsPage({
       </div>
 
       {/* ── Filter Panel (always in DOM, toggled via CSS class) ─ */}
-      <div className={`filter-panel${filterPanelOpen ? " open" : ""}`}>
+      <div className={`filter-panel${filterPanelOpen ? " show" : ""}`}>
         <div className="filter-panel-header">
           <div>
             <h4>
@@ -511,7 +553,7 @@ export default function RankingsPage({
       )}
 
       {/* ── Export Panel (always in DOM, toggled via CSS class) ─ */}
-      <div className={`export-panel${exportPanelOpen ? " open" : ""}`}>
+      <div className={`export-panel${exportPanelOpen ? " show" : ""}`}>
         <div className="export-panel-header">
           <div>
             <h4>
@@ -579,6 +621,10 @@ export default function RankingsPage({
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
+              {" "}Send
+            </button>
             <button
               className="btn btn-primary btn-sm export-download-btn"
               onClick={handleExport}
@@ -593,6 +639,48 @@ export default function RankingsPage({
           </div>
         </div>
       </div>
+
+      <SendReportModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        format={exportFormat}
+        formatLabel={`${exportLabels[exportFormat]} · Score Rankings`}
+        meta={`${totalProjects} projects · ${totalJurors} jurors${periodName ? ` · ${periodName}` : ""}`}
+        reportTitle="Score Rankings"
+        periodName={periodName}
+        organization={activeOrganization?.name || ""}
+        department={activeOrganization?.institution_name || ""}
+        generateFile={async (fmt) => {
+          const fmtMembers = (m) => {
+            if (!m) return "";
+            if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
+            return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
+          };
+          const header = [
+            "Rank", "Project", "Title", "Team Members",
+            ...criteriaConfig.map((c) => `${c.shortLabel || c.label} Avg (${c.max})`),
+            `Total Avg (${criteriaConfig.reduce((s, c) => s + c.max, 0)})`,
+          ];
+          let rank = 0, lastScore = null, idx = 0;
+          const rows = rankedRows.map((p) => {
+            idx += 1;
+            if (Number.isFinite(p?.totalAvg) && p.totalAvg !== lastScore) { rank = idx; lastScore = p.totalAvg; }
+            return [
+              Number.isFinite(p?.totalAvg) ? rank : "",
+              p.group_no != null ? `Group ${p.group_no}` : (p.groupNo != null ? `Group ${p.groupNo}` : ""),
+              p.title || p.name || "", fmtMembers(p.members || p.students),
+              ...criteriaConfig.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
+              Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
+            ];
+          });
+          return generateTableBlob(fmt, {
+            filenameType: "Rankings", sheetName: "Rankings", periodName,
+            tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
+            department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Score Rankings",
+            header, rows,
+          });
+        }}
+      />
 
       {/* ── Rankings Table ───────────────────────────────────── */}
       <div id="sub-rankings">
@@ -626,7 +714,7 @@ export default function RankingsPage({
                     className={`sortable text-right${sortField === c.id ? " sorted" : ""}`}
                     onClick={() => handleSort(c.id)}
                   >
-                    {c.shortLabel || c.label}
+                    {c.shortLabel || c.label} ({c.max})
                     <SortIcon field={c.id} sortField={sortField} sortDir={sortDir} />
                   </th>
                 ))}
@@ -635,7 +723,7 @@ export default function RankingsPage({
                   style={{ paddingRight: 18 }}
                   onClick={() => handleSort("avg")}
                 >
-                  Average
+                  Average ({criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})
                   <SortIcon field="avg" sortField={sortField} sortDir={sortDir} />
                 </th>
                 <th

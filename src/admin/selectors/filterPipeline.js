@@ -55,26 +55,28 @@ export function buildJurorEditMap(jurors) {
 
 // ── buildJurorFinalMap ───────────────────────────────────────
 // Builds a Map keyed by jurorId, key, and name+dept compound key
-// to boolean indicating whether the juror has final-submitted.
+// to the finalSubmittedAt timestamp string (empty string = not final).
+// A non-empty string is truthy, so callers can still use it as a boolean.
 // Source: listJurorsSummary() rows (finalSubmittedAt / finalSubmitted).
 //
 // @param {Array} jurors
-// @returns {Map<string, boolean>}
+// @returns {Map<string, string>}
 export function buildJurorFinalMap(jurors) {
   const map = new Map();
   (jurors || []).forEach((j) => {
-    const isFinal = !!(
-      j.finalSubmittedAt || j.final_submitted_at || j.finalSubmitted
-    );
-    if (j.jurorId) map.set(j.jurorId, isFinal);
-    if (j.key) map.set(j.key, isFinal);
+    const ts =
+      (typeof j.finalSubmittedAt === "string" && j.finalSubmittedAt) ||
+      (typeof j.final_submitted_at === "string" && j.final_submitted_at) ||
+      "";
+    if (j.jurorId) map.set(j.jurorId, ts);
+    if (j.key) map.set(j.key, ts);
     const name = String(j.name ?? j.juryName ?? "")
       .trim()
       .toLowerCase();
     const dept = String(j.dept ?? j.affiliation ?? "")
       .trim()
       .toLowerCase();
-    if (name || dept) map.set(`${name}__${dept}`, isFinal);
+    if (name || dept) map.set(`${name}__${dept}`, ts);
   });
   return map;
 }
@@ -246,12 +248,18 @@ export function enrichRows(rows, projectMeta, jurorEditMap, groups, periodName, 
     const isEditing = !!(
       jurorEditMap.get(row.jurorId) || jurorEditMap.get(jurorKey)
     );
+    const finalTs =
+      row.finalSubmittedAt ||
+      jurorFinalMap.get(row.jurorId) ||
+      jurorFinalMap.get(jurorKey) ||
+      "";
     return {
       ...row,
       period: row.period ?? periodName ?? "",
       title,
       students,
       isEditing,
+      finalSubmittedAt: finalTs,
       effectiveStatus: getCellState(row, criteria),
       jurorStatus: jurorStatusMap.get(jurorKey) || "not_started",
     };

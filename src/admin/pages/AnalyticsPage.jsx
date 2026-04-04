@@ -5,6 +5,8 @@
 import { useState, useRef, useEffect } from "react";
 import { outcomeValues } from "@/shared/stats";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
+import SendReportModal from "@/admin/modals/SendReportModal";
 import { buildExportFilename } from "../utils/exportXLSX";
 import { OutcomeByGroupChart } from "@/charts/OutcomeByGroupChart";
 import { RubricAchievementChart } from "@/charts/RubricAchievementChart";
@@ -217,49 +219,74 @@ function AnalyticsNav({ activeSection }) {
 }
 
 // ── Export Panel ──────────────────────────────────────────────
-function ExportPanel({ onClose, onExport }) {
+const ANALYTICS_EXPORT_FORMATS = [
+  { id: "xlsx", iconLabel: "XLS", label: "Excel (.xlsx)", desc: "Outcome cards, charts, and summary tables", hint: "Best for sharing" },
+  { id: "csv",  iconLabel: "CSV", label: "CSV (.csv)",    desc: "Raw analytics datapoints for external analysis", hint: "Best for analysis" },
+  { id: "pdf",  iconLabel: "PDF", label: "PDF Report",    desc: "Formatted outcome attainment report", hint: "Best for archival" },
+];
+
+function ExportPanel({ onClose, onExport, periodName, organization, department, generateFile }) {
+  const [format, setFormat] = useState("xlsx");
+  const [sendOpen, setSendOpen] = useState(false);
+  const _toast = useToast();
+  const meta = ANALYTICS_EXPORT_FORMATS.find((f) => f.id === format) || ANALYTICS_EXPORT_FORMATS[0];
   return (
-    <div className="export-panel" role="region" aria-label="Export analytics">
-      <div className="export-panel-header">
-        <div>
-          <h4><DownloadIcon /> Export Analytics</h4>
-          <div className="export-panel-sub">Download outcome attainment data, charts, and trend analysis.</div>
+    <>
+      <div className="export-panel show" role="region" aria-label="Export analytics">
+        <div className="export-panel-header">
+          <div>
+            <h4><DownloadIcon /> Export Analytics</h4>
+            <div className="export-panel-sub">Download outcome attainment data, charts, and trend analysis.</div>
+          </div>
+          <button className="export-panel-close" onClick={onClose} aria-label="Close export panel">&#215;</button>
         </div>
-        <button className="export-panel-close" onClick={onClose} aria-label="Close export panel">&#215;</button>
+        <div className="export-options">
+          {ANALYTICS_EXPORT_FORMATS.map((fmt) => (
+            <div
+              key={fmt.id}
+              className={`export-option${format === fmt.id ? " selected" : ""}${fmt.disabled ? " disabled" : ""}`}
+              onClick={() => { if (!fmt.disabled) setFormat(fmt.id); }}
+              style={fmt.disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+            >
+              {format === fmt.id && <span className="export-option-selected-pill">Selected</span>}
+              <div className={`export-option-icon export-option-icon--${fmt.id}`}>
+                <span className="file-icon"><span className="file-icon-label">{fmt.iconLabel}</span></span>
+              </div>
+              <div className="export-option-title">{fmt.label}</div>
+              <div className="export-option-desc">{fmt.desc}</div>
+              <div className="export-option-hint">{fmt.disabled ? "Coming soon" : fmt.hint}</div>
+            </div>
+          ))}
+        </div>
+        <div className="export-footer">
+          <div className="export-footer-info">
+            <div className="export-footer-format">{meta.label} · Analytics</div>
+            <div className="export-footer-meta">{periodName ? `${periodName} · ` : ""}Outcome attainment data</div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} type="button" title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
+              {" "}Send
+            </button>
+            <button className="btn btn-primary btn-sm export-download-btn" onClick={() => onExport(format)} type="button">
+              <DownloadIcon /> Download {format === "xlsx" ? "Excel" : format === "pdf" ? "PDF" : "CSV"}
+            </button>
+          </div>
+        </div>
       </div>
-      <div className="export-options">
-        <div className="export-option selected">
-          <span className="export-option-selected-pill">Selected</span>
-          <div className="export-option-icon export-option-icon--xlsx"><span className="file-icon"><span className="file-icon-label">XLS</span></span></div>
-          <div className="export-option-title">Excel (.xlsx)</div>
-          <div className="export-option-desc">Outcome cards, charts, and summary tables</div>
-          <div className="export-option-hint">Best for sharing</div>
-        </div>
-        <div className="export-option">
-          <span className="export-option-selected-pill">Selected</span>
-          <div className="export-option-icon export-option-icon--csv"><span className="file-icon"><span className="file-icon-label">CSV</span></span></div>
-          <div className="export-option-title">CSV (.csv)</div>
-          <div className="export-option-desc">Raw analytics datapoints for external analysis</div>
-          <div className="export-option-hint">Best for analysis</div>
-        </div>
-        <div className="export-option">
-          <span className="export-option-selected-pill">Selected</span>
-          <div className="export-option-icon export-option-icon--pdf"><span className="file-icon"><span className="file-icon-label">PDF</span></span></div>
-          <div className="export-option-title">PDF Report</div>
-          <div className="export-option-desc">Formatted outcome attainment report</div>
-          <div className="export-option-hint">Best for archival</div>
-        </div>
-      </div>
-      <div className="export-footer">
-        <div className="export-footer-info">
-          <div className="export-footer-format">Excel (.xlsx) · Analytics</div>
-          <div className="export-footer-meta">Outcome attainment data</div>
-        </div>
-        <button className="btn btn-primary btn-sm export-download-btn" onClick={onExport} type="button">
-          <DownloadIcon /> Download Excel
-        </button>
-      </div>
-    </div>
+      <SendReportModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        format={format}
+        formatLabel={`${meta.label} · Analytics`}
+        meta={`${periodName ? `${periodName} · ` : ""}Outcome attainment data`}
+        reportTitle="Analytics"
+        periodName={periodName}
+        organization={organization}
+        department={department}
+        generateFile={generateFile}
+      />
+    </>
   );
 }
 
@@ -284,12 +311,14 @@ export default function AnalyticsPage({
   const criteria = criteriaConfig || [];
   const [exportOpen, setExportOpen] = useState(false);
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
+  const orgName = activeOrganization?.name || "";
+  const deptName = activeOrganization?.institution_name || "";
+  const tc = activeOrganization?.code || "";
 
-  async function handleExport() {
+  async function handleExport(format = "xlsx") {
     try {
-      const { buildAnalyticsWorkbook } = await import("../analytics/analyticsExport");
-      const XLSX = await import("xlsx-js-style");
-      const wb = buildAnalyticsWorkbook({
+      const exportParams = {
         dashboardStats,
         submittedData,
         trendData: trendData || [],
@@ -297,13 +326,83 @@ export default function AnalyticsPage({
         trendSemesterIds: trendSemesterIds || [],
         activeOutcomes: criteria,
         mudekLookup: outcomeConfig || [],
-      });
-      XLSX.writeFile(wb, buildExportFilename("analytics", periodName || "all", "xlsx"));
+      };
+
+      if (format === "pdf") {
+        const { buildAnalyticsPDF } = await import("../analytics/analyticsExport");
+        const doc = await buildAnalyticsPDF(exportParams, { periodName, organization: orgName, department: deptName });
+        doc.save(buildExportFilename("Analytics", periodName || "all", "pdf", tc));
+      } else if (format === "csv") {
+        const { buildAnalyticsWorkbook } = await import("../analytics/analyticsExport");
+        const XLSX = await import("xlsx-js-style");
+        const wb = buildAnalyticsWorkbook(exportParams);
+        // Combine all sheets into a single CSV
+        const BOM = "\uFEFF";
+        const sheets = wb.SheetNames.map((name) => {
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+          return `# ${name}\n${csv}`;
+        });
+        const csvContent = BOM + sheets.join("\n\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = buildExportFilename("Analytics", periodName || "all", "csv", tc);
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const { buildAnalyticsWorkbook } = await import("../analytics/analyticsExport");
+        const XLSX = await import("xlsx-js-style");
+        const wb = buildAnalyticsWorkbook(exportParams);
+        XLSX.writeFile(wb, buildExportFilename("Analytics", periodName || "all", "xlsx", tc));
+      }
       _toast.success("Analytics exported");
+      setExportOpen(false);
     } catch (e) {
       _toast.error(e?.message || "Export failed");
     }
   }
+
+  const generateAnalyticsFile = async (fmt) => {
+    const exportParams = {
+      dashboardStats,
+      submittedData,
+      trendData: trendData || [],
+      semesterOptions: semesterOptions || [],
+      trendSemesterIds: trendSemesterIds || [],
+      activeOutcomes: criteria,
+      mudekLookup: outcomeConfig || [],
+    };
+
+    if (fmt === "pdf") {
+      const { buildAnalyticsPDF } = await import("../analytics/analyticsExport");
+      const doc = await buildAnalyticsPDF(exportParams, { periodName, organization: orgName, department: deptName });
+      const arrayBuf = doc.output("arraybuffer");
+      const blob = new Blob([arrayBuf], { type: "application/pdf" });
+      const fileName = buildExportFilename("Analytics", periodName || "all", "pdf", tc);
+      return { blob, fileName, mimeType: "application/pdf" };
+    } else if (fmt === "csv") {
+      const { buildAnalyticsWorkbook } = await import("../analytics/analyticsExport");
+      const XLSX = await import("xlsx-js-style");
+      const wb = buildAnalyticsWorkbook(exportParams);
+      const BOM = "\uFEFF";
+      const sheets = wb.SheetNames.map((name) => {
+        const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+        return `# ${name}\n${csv}`;
+      });
+      const blob = new Blob([BOM + sheets.join("\n\n")], { type: "text/csv;charset=utf-8;" });
+      const fileName = buildExportFilename("Analytics", periodName || "all", "csv", tc);
+      return { blob, fileName, mimeType: "text/csv" };
+    } else {
+      const { buildAnalyticsWorkbook } = await import("../analytics/analyticsExport");
+      const XLSX = await import("xlsx-js-style");
+      const wb = buildAnalyticsWorkbook(exportParams);
+      const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const fileName = buildExportFilename("Analytics", periodName || "all", "xlsx", tc);
+      return { blob, fileName, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+    }
+  };
 
   const attCards = buildAttainmentCards(submittedData, criteria);
   const metCount = attCards.filter((c) => c.statusClass === "status-met").length;
@@ -349,7 +448,16 @@ export default function AnalyticsPage({
       </div>
 
       {/* ── Export Panel ── */}
-      {exportOpen && <ExportPanel onClose={() => setExportOpen(false)} onExport={handleExport} />}
+      {exportOpen && (
+        <ExportPanel
+          onClose={() => setExportOpen(false)}
+          onExport={handleExport}
+          periodName={periodName}
+          organization={orgName}
+          department={deptName}
+          generateFile={generateAnalyticsFile}
+        />
+      )}
 
       {/* ── Analytics Nav ── */}
       <AnalyticsNav />

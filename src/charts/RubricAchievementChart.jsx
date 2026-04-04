@@ -25,7 +25,7 @@ const BAND_LABELS = ["excellent", "good", "developing", "insufficient"];
 function classifyValue(v, rubric) {
   if (!Number.isFinite(v) || !rubric?.length) return null;
   for (const band of rubric) {
-    if (v >= band.min && v <= band.max) return band.level.toLowerCase();
+    if (v >= band.min && v <= band.max) return band.level?.toLowerCase() ?? null;
   }
   return null;
 }

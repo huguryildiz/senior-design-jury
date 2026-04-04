@@ -553,6 +553,32 @@
   margin-bottom: 18px;
 }
 
+.dj-project-card{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border-radius:12px;
+  background:rgba(15,23,42,0.5);
+  border:1px solid rgba(148,163,184,0.08);
+  margin-bottom:12px;
+}
+body:not(.dark-mode) .dj-project-card{
+  background:rgba(255,255,255,0.7) !important;
+  border-color:rgba(0,0,0,0.06) !important;
+}
+.dj-nav-arrow{
+  width:28px;height:28px;border-radius:8px;
+  border:1px solid rgba(148,163,184,0.12);
+  background:rgba(30,41,59,0.4);
+  color:#94a3b8;display:grid;place-items:center;
+  cursor:pointer;transition:all .15s;padding:0;
+}
+.dj-nav-arrow:hover:not(:disabled){background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.3);color:#93c5fd}
+.dj-nav-arrow:disabled{opacity:0.3;cursor:default}
+body:not(.dark-mode) .dj-nav-arrow{
+  background:rgba(241,245,249,0.8) !important;
+  border-color:#e2e8f0 !important;
+  color:#64748b !important;
+}
+
 .dj-eval-project-name {
   font-size: 14px;
   font-weight: 700;
@@ -568,22 +594,11 @@
 .dj-crit {
   background: rgba(30, 41, 59, 0.4);
   border: 1px solid rgba(148, 163, 184, 0.08);
+  border-left: 4px solid #3b82f6;
   border-radius: 10px;
   padding: 14px 16px;
   margin-bottom: 10px;
   position: relative;
-  padding-left: 28px;
-}
-
-.dj-crit::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, #60a5fa, #3b82f6);
-  border-radius: 10px 0 0 10px;
 }
 
 .dj-crit-label {
@@ -1520,8 +1535,6 @@ body{font-family:var(--font);color:var(--text-primary);background:var(--bg-page)
 #app{min-height:100vh;overflow-x:hidden}
 .screen{display:none}
 .screen.active{display:block}
-.jury-step{display:none}
-.jury-step.active{display:flex}
 
 
 /* ── From vera.css 3253-3965: Jury flow glassmorphism + done step + admin impact ── */

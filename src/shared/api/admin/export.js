@@ -18,14 +18,24 @@ export async function fullExport(organizationId) {
   let projects = [];
   let scores = [];
   if (periodIds.length > 0) {
-    const [projRes, scoreRes] = await Promise.all([
+    const [projRes, sheetRes] = await Promise.all([
       supabase.from("projects").select("*").in("period_id", periodIds),
-      supabase.from("scores_compat").select("*").in("period_id", periodIds),
+      supabase.from("score_sheets").select(`
+        id, juror_id, project_id, period_id, comment, status, created_at, updated_at,
+        items:score_sheet_items(score_value, period_criteria(key))
+      `).in("period_id", periodIds),
     ]);
     if (projRes.error) throw projRes.error;
-    if (scoreRes.error) throw scoreRes.error;
+    if (sheetRes.error) throw sheetRes.error;
     projects = projRes.data || [];
-    scores = scoreRes.data || [];
+    scores = (sheetRes.data || []).map((s) => {
+      const row = { id: s.id, juror_id: s.juror_id, project_id: s.project_id, period_id: s.period_id, comment: s.comment, status: s.status, created_at: s.created_at, updated_at: s.updated_at };
+      (s.items || []).forEach((item) => {
+        const key = item.period_criteria?.key;
+        if (key) row[key] = item.score_value != null ? Number(item.score_value) : null;
+      });
+      return row;
+    });
   }
 
   return {

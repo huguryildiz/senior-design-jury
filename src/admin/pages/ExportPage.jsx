@@ -25,6 +25,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
 
   const [dbBackupLoading, setDbBackupLoading] = useState(false);
   const [dbBackupError, setDbBackupError] = useState("");
+  const [scoresLoading, setScoresLoading] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [jurorsLoading, setJurorsLoading] = useState(false);
   const importFileRef = useRef(null);
 
   // ── Export helpers ────────────────────────────────────────────
@@ -37,104 +40,128 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
 
   const handleExportScores = useCallback(async () => {
     if (!organizationId) return;
-    const sems = (await listPeriods(organizationId)) || [];
-    if (!sems.length) return;
-    const orderedSemesters = sortSemesters(sems);
-    const results = await Promise.all(
-      orderedSemesters.map(async (sem) => {
-        const [rows, summary] = await Promise.all([
-          getScores(sem.id),
-          getProjectSummary(sem.id).catch(() => []),
-        ]);
-        const summaryMap = new Map((summary || []).map((p) => [p.id, p]));
-        const mappedRows = (rows || []).map((r) => ({
-          ...r,
-          period: sem?.period_name || "",
-          students: summaryMap.get(r.projectId)?.students ?? "",
-        }));
-        return { rows: mappedRows, summary: summary || [] };
-      }),
-    );
-    await exportXLSX(results.flatMap((x) => x.rows), {
-      periodName: "all-periods",
-      summaryData: results.flatMap((x) => x.summary),
-      tenantCode,
-    });
+    setScoresLoading(true);
+    try {
+      const sems = (await listPeriods(organizationId)) || [];
+      if (!sems.length) { _toast.error("No evaluation periods found."); return; }
+      const orderedSemesters = sortSemesters(sems);
+      const results = await Promise.all(
+        orderedSemesters.map(async (sem) => {
+          const [rows, summary] = await Promise.all([
+            getScores(sem.id),
+            getProjectSummary(sem.id).catch(() => []),
+          ]);
+          const summaryMap = new Map((summary || []).map((p) => [p.id, p]));
+          const mappedRows = (rows || []).map((r) => ({
+            ...r,
+            period: sem?.name || sem?.period_name || "",
+            students: summaryMap.get(r.projectId)?.students ?? "",
+          }));
+          return { rows: mappedRows, summary: summary || [] };
+        }),
+      );
+      await exportXLSX(results.flatMap((x) => x.rows), {
+        periodName: "all-periods",
+        summaryData: results.flatMap((x) => x.summary),
+        tenantCode,
+      });
+      _toast.success("Score report downloaded");
+    } catch (e) {
+      _toast.error(e?.message || "Export failed. Please try again.");
+    } finally {
+      setScoresLoading(false);
+    }
   }, [organizationId, tenantCode]);
 
   const handleExportProjects = useCallback(async () => {
     if (!organizationId) return;
-    const sems = (await listPeriods(organizationId)) || [];
-    if (!sems.length) return;
-    const orderedSemesters = sortSemesters(sems);
-    const projectsBySemester = await Promise.all(
-      orderedSemesters.map(async (sem) => {
-        const { adminListProjects } = await import("../../shared/api");
-        return {
-          periodName: sem?.period_name || "",
-          rows: await adminListProjects(sem.id),
-        };
-      }),
-    );
-    const XLSX = await import("xlsx-js-style");
-    const headers = ["Period", "Group No", "Title", "Team Members"];
-    const data = projectsBySemester.flatMap(({ periodName, rows }) =>
-      (rows || []).map((p) => [
-        periodName,
-        p?.group_no ?? "",
-        p?.title ?? "",
-        p?.members || "",
-      ]),
-    );
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Groups");
-    XLSX.writeFile(wb, buildExportFilename("groups", "all-periods", "xlsx", tenantCode));
+    setProjectsLoading(true);
+    try {
+      const sems = (await listPeriods(organizationId)) || [];
+      if (!sems.length) { _toast.error("No evaluation periods found."); return; }
+      const orderedSemesters = sortSemesters(sems);
+      const projectsBySemester = await Promise.all(
+        orderedSemesters.map(async (sem) => {
+          const { adminListProjects } = await import("../../shared/api");
+          return {
+            periodName: sem?.name || sem?.period_name || "",
+            rows: await adminListProjects(sem.id),
+          };
+        }),
+      );
+      const XLSX = await import("xlsx-js-style");
+      const headers = ["Period", "Project", "Title", "Team Members"];
+      const data = projectsBySemester.flatMap(({ periodName, rows }) =>
+        (rows || []).map((p) => [
+          periodName,
+          p?.group_no ?? "",
+          p?.title ?? "",
+          p?.members || "",
+        ]),
+      );
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Groups");
+      XLSX.writeFile(wb, buildExportFilename("Projects", "all-periods", "xlsx", tenantCode));
+      _toast.success("Projects exported");
+    } catch (e) {
+      _toast.error(e?.message || "Export failed. Please try again.");
+    } finally {
+      setProjectsLoading(false);
+    }
   }, [organizationId, tenantCode]);
 
   const handleExportJurors = useCallback(async () => {
     if (!organizationId) return;
-    const sems = (await listPeriods(organizationId)) || [];
-    if (!sems.length) return;
-    const orderedSemesters = sortSemesters(sems);
-    const jurorsBySemester = await Promise.all(
-      orderedSemesters.map(async (sem) => ({
-        periodName: sem?.period_name || "",
-        rows: await listJurorsSummary(sem.id),
-      })),
-    );
-    const isAssignedJuror = (j) => {
-      if (j?.isAssigned === true) return true;
-      if (j?.is_assigned === true) return true;
-      if (typeof j?.isAssigned === "string")
-        return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
-      if (typeof j?.is_assigned === "string")
-        return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
-      return false;
-    };
-    const XLSX = await import("xlsx-js-style");
-    const headers = ["Period", "Juror Name", "Affiliation"];
-    const data = jurorsBySemester.flatMap(({ periodName, rows }) => {
-      const hasAssignedFlag = (rows || []).some(
-        (j) =>
-          (j?.isAssigned !== undefined && j?.isAssigned !== null) ||
-          (j?.is_assigned !== undefined && j?.is_assigned !== null),
+    setJurorsLoading(true);
+    try {
+      const sems = (await listPeriods(organizationId)) || [];
+      if (!sems.length) { _toast.error("No evaluation periods found."); return; }
+      const orderedSemesters = sortSemesters(sems);
+      const jurorsBySemester = await Promise.all(
+        orderedSemesters.map(async (sem) => ({
+          periodName: sem?.name || sem?.period_name || "",
+          rows: await listJurorsSummary(sem.id),
+        })),
       );
-      const exportRows = hasAssignedFlag
-        ? (rows || []).filter(isAssignedJuror)
-        : rows || [];
-      return exportRows.map((j) => [
-        periodName,
-        j?.juryName || j?.juror_name || j?.jurorName || "",
-        j?.affiliation || "",
-      ]);
-    });
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Jurors");
-    XLSX.writeFile(wb, buildExportFilename("jurors", "all-periods", "xlsx", tenantCode));
+      const isAssignedJuror = (j) => {
+        if (j?.isAssigned === true) return true;
+        if (j?.is_assigned === true) return true;
+        if (typeof j?.isAssigned === "string")
+          return ["true", "t", "1"].includes(j.isAssigned.toLowerCase());
+        if (typeof j?.is_assigned === "string")
+          return ["true", "t", "1"].includes(j.is_assigned.toLowerCase());
+        return false;
+      };
+      const XLSX = await import("xlsx-js-style");
+      const headers = ["Period", "Juror Name", "Affiliation"];
+      const data = jurorsBySemester.flatMap(({ periodName, rows }) => {
+        const hasAssignedFlag = (rows || []).some(
+          (j) =>
+            (j?.isAssigned !== undefined && j?.isAssigned !== null) ||
+            (j?.is_assigned !== undefined && j?.is_assigned !== null),
+        );
+        const exportRows = hasAssignedFlag
+          ? (rows || []).filter(isAssignedJuror)
+          : rows || [];
+        return exportRows.map((j) => [
+          periodName,
+          j?.juryName || j?.juror_name || j?.jurorName || "",
+          j?.affiliation || "",
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Jurors");
+      XLSX.writeFile(wb, buildExportFilename("Jurors", "all-periods", "xlsx", tenantCode));
+      _toast.success("Juror list exported");
+    } catch (e) {
+      _toast.error(e?.message || "Export failed. Please try again.");
+    } finally {
+      setJurorsLoading(false);
+    }
   }, [organizationId, tenantCode]);
 
   // ── DB backup ─────────────────────────────────────────────────
@@ -155,7 +182,7 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = buildExportFilename("backup", "full", "json", tenantCode);
+      a.download = buildExportFilename("Backup", "full", "json", tenantCode);
       a.click();
       URL.revokeObjectURL(url);
       setMessage("Database backup downloaded");
@@ -194,9 +221,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             className="btn btn-outline btn-sm"
             type="button"
             onClick={handleExportScores}
-            disabled={isDemoMode || !organizationId}
+            disabled={!organizationId || scoresLoading}
           >
-            Download .xlsx
+            {scoresLoading ? "Exporting…" : "Download .xlsx"}
           </button>
         </div>
 
@@ -210,9 +237,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             className="btn btn-outline btn-sm"
             type="button"
             onClick={handleExportJurors}
-            disabled={isDemoMode || !organizationId}
+            disabled={!organizationId || jurorsLoading}
           >
-            Download .xlsx
+            {jurorsLoading ? "Exporting…" : "Download .xlsx"}
           </button>
         </div>
 
@@ -226,9 +253,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             className="btn btn-outline btn-sm"
             type="button"
             onClick={handleExportProjects}
-            disabled={isDemoMode || !organizationId}
+            disabled={!organizationId || projectsLoading}
           >
-            Download .xlsx
+            {projectsLoading ? "Exporting…" : "Download .xlsx"}
           </button>
         </div>
 
@@ -242,7 +269,7 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             className="btn btn-outline btn-sm"
             type="button"
             onClick={handleDbExportConfirm}
-            disabled={dbBackupLoading || isDemoMode || !organizationId}
+            disabled={dbBackupLoading || !organizationId}
           >
             {dbBackupLoading ? "Exporting…" : "Download .json"}
           </button>

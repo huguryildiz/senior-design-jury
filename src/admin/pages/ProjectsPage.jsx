@@ -2,10 +2,13 @@
 // Projects management page. Structure from prototype lines 14001–14241.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import { useManageProjects } from "../hooks/useManageProjects";
 import ImportCsvModal from "../modals/ImportCsvModal";
 import { parseProjectsCsv } from "../utils/csvParser";
+import ExportPanel from "../components/ExportPanel";
+import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import "../../styles/pages/projects.css";
 
 function formatUpdated(ts) {
@@ -30,6 +33,7 @@ export default function ProjectsPage({
   onCurrentSemesterChange,
 }) {
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
   const [panelError, setPanelErrorState] = useState("");
   const setPanelError = useCallback((_panel, msg) => setPanelErrorState(msg || ""), []);
@@ -307,36 +311,44 @@ export default function ProjectsPage({
 
       {/* Export panel */}
       {exportOpen && (
-        <div className="export-panel">
-          <div className="export-panel-header">
-            <div>
-              <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export Projects
-              </h4>
-              <div className="export-panel-sub">Download the project list with scores, student teams, and evaluation coverage.</div>
-            </div>
-            <button className="export-panel-close" onClick={() => setExportOpen(false)}>&#215;</button>
-          </div>
-          <div className="export-footer" style={{ borderTop: "none" }}>
-            <div className="export-footer-info">
-              <div className="export-footer-format">Excel (.xlsx) · Projects</div>
-              <div className="export-footer-meta">{periods.viewPeriodLabel} · {totalProjects} projects</div>
-            </div>
-            <button className="btn btn-primary btn-sm export-download-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download Excel
-            </button>
-          </div>
-        </div>
+        <ExportPanel
+          title="Export Projects"
+          subtitle="Download the project list with team members and evaluation coverage."
+          meta={`${periods.viewPeriodLabel} · ${totalProjects} projects`}
+          periodName={periods.viewPeriodLabel}
+          organization={activeOrganization?.name || ""}
+          onClose={() => setExportOpen(false)}
+          generateFile={async (fmt) => {
+            const header = ["Project", "Title", "Team Members", "Advisor", "Updated"];
+            const rows = filteredList.map((p) => [
+              p.group_no ?? "", p.title ?? "", p.members ?? "", p.advisor ?? "", formatUpdated(p.updated_at),
+            ]);
+            return generateTableBlob(fmt, {
+              filenameType: "Projects", sheetName: "Projects",
+              periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
+              organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+              pdfTitle: "VERA — Projects", header, rows, colWidths: [8, 36, 42, 24, 18],
+            });
+          }}
+          onExport={async (fmt) => {
+            try {
+              const header = ["Project", "Title", "Team Members", "Advisor", "Updated"];
+              const rows = filteredList.map((p) => [
+                p.group_no ?? "", p.title ?? "", p.members ?? "", p.advisor ?? "", formatUpdated(p.updated_at),
+              ]);
+              await downloadTable(fmt, {
+                filenameType: "Projects", sheetName: "Projects",
+                periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
+                organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+                pdfTitle: "VERA — Projects", header, rows, colWidths: [8, 36, 42, 24, 18],
+              });
+              setExportOpen(false);
+              _toast.success("Projects exported");
+            } catch (e) {
+              _toast.error(e?.message || "Export failed");
+            }
+          }}
+        />
       )}
 
       {/* Error */}

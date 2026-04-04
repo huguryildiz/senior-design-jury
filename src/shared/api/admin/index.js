@@ -82,4 +82,4 @@ export {
   deleteCriterionOutcomeMapping,
 } from "./frameworks";
 
-export { sendEntryTokenEmail, sendJurorPinEmail } from "./notifications";
+export { sendEntryTokenEmail, sendJurorPinEmail, sendExportReport } from "./notifications";

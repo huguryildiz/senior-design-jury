@@ -200,6 +200,7 @@ export default function AdminLayout({ onReturnHome }) {
           name: (j.juryName || "").trim(),
           dept: (j.affiliation || "").trim(),
           finalSubmitted: !!(j.finalSubmittedAt || j.final_submitted_at),
+          finalSubmittedAt: j.finalSubmittedAt || j.final_submitted_at || "",
         });
       }
     });
@@ -324,7 +325,17 @@ export default function AdminLayout({ onReturnHome }) {
         onClose={() => setMobileOpen(false)}
       />
 
-      <div className="admin-main">
+      <div className={`admin-main${isDemoMode ? " has-demo-banner" : ""}`}>
+        {isDemoMode && (
+          <div className="demo-banner">
+            <div className="demo-banner-inner">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              <span>You&apos;re viewing a <strong>live demo</strong> with sample data.</span>
+            </div>
+          </div>
+        )}
         <AdminHeader
           adminTab={adminTab}
           scoresView={scoresView}
@@ -383,6 +394,7 @@ export default function AdminLayout({ onReturnHome }) {
               jurors={matrixJurors}
               groups={groups}
               periodName={selectedPeriod?.name || selectedPeriod?.semester_name || selectedPeriod?.period_name || ""}
+              organization={activeOrganization?.name || ""}
               criteriaConfig={criteriaConfig}
             />
           )}

@@ -73,7 +73,7 @@ export default function AdminSidebar({ adminTab, scoresView, setAdminTab, switch
       {/* Logo */}
       <div className="sb-logo">
         <div className="sb-logo-icon">
-          <img src={isDark ? "/src/assets/favicon/web-app-manifest-512x512.png" : "/src/assets/favicon/favicon_light.png"} alt="V" width="34" height="34" />
+          <img src="/src/assets/favicon/web-app-manifest-512x512.png" alt="V" width="34" height="34" />
         </div>
         <div className="sb-logo-text"><span>V</span>ERA<small>v1.0</small></div>
         <button className="sidebar-close-btn" type="button" aria-label="Close navigation" onClick={onClose}>
@@ -91,7 +91,12 @@ export default function AdminSidebar({ adminTab, scoresView, setAdminTab, switch
             onClick={() => setTenantMenuOpen((v) => !v)}
           >
             <span className="sb-tenant-dot" />
-            <span className="sb-tenant-name">{orgLabel}</span>
+            <div className="sb-tenant-labels">
+              <span className="sb-tenant-name">{orgLabel}</span>
+              {activeOrganization?.institution_name && (
+                <span className="sb-tenant-inst">{activeOrganization.institution_name}</span>
+              )}
+            </div>
             <span className="sb-tenant-chevron">▾</span>
           </div>
           <div className={`sb-tenant-menu${tenantMenuOpen ? " show" : ""}`}>

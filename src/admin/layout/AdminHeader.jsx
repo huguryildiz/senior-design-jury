@@ -116,9 +116,6 @@ export default function AdminHeader({
             <span className="dropdown-dot" />
             <span className="dropdown-trigger-labels">
               <span className="dropdown-trigger-period">{periodLabel}</span>
-              {activeOrganization?.institution_name && (
-                <span className="dropdown-trigger-institution">{activeOrganization.institution_name}</span>
-              )}
             </span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2">

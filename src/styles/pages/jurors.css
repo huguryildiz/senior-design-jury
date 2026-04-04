@@ -82,15 +82,7 @@
 .fbb-editing::before { background: #7c3aed }
 .dark-mode .fbb-editing { background: rgba(167,139,250,.05); border-color: rgba(167,139,250,.15); color: #a78bfa }
 
-/* ─── Pill variants (jurors) ──────────────────────────────── */
-.pill-editing { background: rgba(139,92,246,.08); color: #7c3aed; border-color: rgba(139,92,246,.2) }
-.pill-editing svg { width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px }
-.pill-progress { background: rgba(217,119,6,.07); color: #b45309; border-color: rgba(217,119,6,.2) }
-.pill-progress svg { width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px }
-.pill-completed { background: var(--success-soft); color: #15803d; border-color: rgba(22,163,74,.2) }
-.pill-completed svg { width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px }
-.pill-not-started { background: var(--surface-1); color: var(--text-tertiary); border-color: var(--border) }
-.pill-ready { background: rgba(6,182,212,.07); color: #0e7490; border-color: rgba(6,182,212,.2) }
+/* Pill variants — defined in status-pills.css (centralized) */
 
 /* ── From vera.css 5037-5215: Jurors Page + Juror Avatar shared ── */
 

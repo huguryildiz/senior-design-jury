@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import Modal from "@/shared/ui/Modal";
+import JurorBadge from "../components/JurorBadge";
 
 export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
   const [confirming, setConfirming] = useState(false);
@@ -67,21 +68,7 @@ export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
               borderRadius: "var(--radius)", marginBottom: 12,
             }}
           >
-            <div
-              className="fs-avatar"
-              style={{
-                background: juror.color || "#2563eb",
-                width: 34, height: 34, fontSize: 12,
-              }}
-            >
-              {juror.initials}
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>{juror.name}</div>
-              <div style={{ fontSize: 10.5, color: "var(--text-tertiary)" }}>
-                {juror.affiliation} · Current PIN: ****
-              </div>
-            </div>
+            <JurorBadge name={juror.name} affiliation={`${juror.affiliation || ""} · Current PIN: ****`} size="md" />
           </div>
         )}
 

@@ -15,6 +15,7 @@ import ProgressStep from "./steps/ProgressStep";
 import EvalStep from "./steps/EvalStep";
 import DoneStep from "./steps/DoneStep";
 import MinimalLoaderOverlay from "@/shared/ui/MinimalLoaderOverlay";
+import StepperBar from "./components/StepperBar";
 
 export default function JuryFlow({ onBack }) {
   const state = useJuryState();
@@ -40,6 +41,7 @@ export default function JuryFlow({ onBack }) {
 
   return (
     <div className="dj-screen">
+      <StepperBar step={state.step} />
       <div className="dj-step active">
         {CurrentStep ? (
           <CurrentStep

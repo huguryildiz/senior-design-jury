@@ -2,6 +2,7 @@
 // Jurors management page. Structure from prototype lines 13492–13989.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import { useManageProjects } from "../hooks/useManageProjects";
 import { useManageJurors } from "../hooks/useManageJurors";
@@ -10,27 +11,13 @@ import ImportJurorsModal from "../modals/ImportJurorsModal";
 import { sendJurorPinEmail } from "@/shared/api";
 import { getRawToken } from "@/shared/storage/adminStorage";
 import { parseJurorsCsv } from "../utils/csvParser";
+import ExportPanel from "../components/ExportPanel";
+import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import "../../styles/pages/jurors.css";
 
 // ── Helpers ──────────────────────────────────────────────────
 
-const AVATAR_COLORS = [
-  "#2563eb", "#6366f1", "#0891b2", "#7c3aed", "#0d9488",
-  "#4f46e5", "#0284c7", "#7e22ce", "#0369a1", "#64748b",
-];
-
-function initials(name) {
-  const parts = (name || "").replace(/\b(Prof|Doç|Dr|Ö\.Ü|Müh|Y\.Doç)\b\.?/gi, "").trim().split(/\s+/);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function avatarColor(name) {
-  let hash = 0;
-  for (let i = 0; i < (name || "").length; i++) hash = (hash * 31 + (name || "").charCodeAt(i)) | 0;
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
+import JurorBadge from "../components/JurorBadge";
 
 function formatRelative(ts) {
   if (!ts) return "—";
@@ -66,7 +53,7 @@ function statusLabel(status) {
     case "editing": return "Editing";
     case "completed": return "Completed";
     case "in_progress": return "In Progress";
-    case "ready_to_submit": return "Ready";
+    case "ready_to_submit": return "Ready to Submit";
     default: return "Not Started";
   }
 }
@@ -108,6 +95,7 @@ export default function JurorsPage({
   onCurrentSemesterChange,
 }) {
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
   const [panelError, setPanelErrorState] = useState("");
   const setPanelError = useCallback((_panel, msg) => setPanelErrorState(msg || ""), []);
@@ -403,7 +391,7 @@ export default function JurorsPage({
         <div className="scores-kpi-item"><div className="scores-kpi-item-value"><span className="success">{completedJurors}</span></div><div className="scores-kpi-item-label">Completed</div></div>
         <div className="scores-kpi-item"><div className="scores-kpi-item-value" style={{ color: "var(--warning)" }}>{inProgressJurors}</div><div className="scores-kpi-item-label">In Progress</div></div>
         <div className="scores-kpi-item"><div className="scores-kpi-item-value" style={{ color: "#a78bfa" }}>{editingJurors}</div><div className="scores-kpi-item-label">Editing</div></div>
-        <div className="scores-kpi-item"><div className="scores-kpi-item-value"><span className="accent">{readyJurors}</span></div><div className="scores-kpi-item-label">Ready</div></div>
+        <div className="scores-kpi-item"><div className="scores-kpi-item-value"><span className="accent">{readyJurors}</span></div><div className="scores-kpi-item-label">Ready to Submit</div></div>
         <div className="scores-kpi-item"><div className="scores-kpi-item-value">{notStartedJurors}</div><div className="scores-kpi-item-label">Not Started</div></div>
       </div>
 
@@ -495,7 +483,7 @@ export default function JurorsPage({
                 <option value="in_progress">In Progress</option>
                 <option value="not_started">Not Started</option>
                 <option value="editing">Editing</option>
-                <option value="ready_to_submit">Ready</option>
+                <option value="ready_to_submit">Ready to Submit</option>
               </select>
             </div>
             <div className="filter-group">
@@ -517,36 +505,46 @@ export default function JurorsPage({
 
       {/* Export panel */}
       {exportOpen && (
-        <div className="export-panel">
-          <div className="export-panel-header">
-            <div>
-              <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export Jurors
-              </h4>
-              <div className="export-panel-sub">Download the juror roster with status, affiliation, and scoring progress.</div>
-            </div>
-            <button className="export-panel-close" onClick={() => setExportOpen(false)}>&#215;</button>
-          </div>
-          <div className="export-footer" style={{ borderTop: "none" }}>
-            <div className="export-footer-info">
-              <div className="export-footer-format">Excel (.xlsx) · Jurors</div>
-              <div className="export-footer-meta">{periods.viewPeriodLabel} · {totalJurors} jurors</div>
-            </div>
-            <button className="btn btn-primary btn-sm export-download-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download Excel
-            </button>
-          </div>
-        </div>
+        <ExportPanel
+          title="Export Jurors"
+          subtitle="Download the juror roster with status, affiliation, and scoring progress."
+          meta={`${periods.viewPeriodLabel} · ${totalJurors} jurors`}
+          periodName={periods.viewPeriodLabel}
+          organization={activeOrganization?.name || ""}
+          onClose={() => setExportOpen(false)}
+          generateFile={async (fmt) => {
+            const header = ["Juror Name", "Affiliation", "Status", "Completed", "Total Projects"];
+            const rows = filteredList.map((j) => [
+              j.juryName || j.juror_name || "", j.affiliation || "", j.overviewStatus || "",
+              j.completedProjects ?? "", j.totalProjects ?? "",
+            ]);
+            return generateTableBlob(fmt, {
+              filenameType: "Jurors", sheetName: "Jurors",
+              periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
+              organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+              pdfTitle: "VERA — Juror Roster", header, rows, colWidths: [28, 28, 14, 10, 10],
+            });
+          }}
+          onExport={async (fmt) => {
+            try {
+              const header = ["Juror Name", "Affiliation", "Status", "Completed", "Total Projects"];
+              const rows = filteredList.map((j) => [
+                j.juryName || j.juror_name || "", j.affiliation || "", j.overviewStatus || "",
+                j.completedProjects ?? "", j.totalProjects ?? "",
+              ]);
+              await downloadTable(fmt, {
+                filenameType: "Jurors", sheetName: "Jurors",
+                periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
+                organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+                pdfTitle: "VERA — Juror Roster", header, rows, colWidths: [28, 28, 14, 10, 10],
+              });
+              setExportOpen(false);
+              _toast.success("Jurors exported");
+            } catch (e) {
+              _toast.error(e?.message || "Export failed");
+            }
+          }}
+        />
       )}
 
       {/* Error */}
@@ -594,14 +592,8 @@ export default function JurorsPage({
               return (
                 <tr key={jid} onClick={() => setDrawerJuror(juror)}>
                   <td>
-                    <div className="j-row">
-                      <div className="j-av" style={{ background: avatarColor(name) }}>{initials(name)}</div>
-                      <div className="jurors-table-name">
-                        <span className="jt-name">{name}</span>
-                      </div>
-                    </div>
+                    <JurorBadge name={name} affiliation={juror.affiliation} size="sm" />
                   </td>
-                  <td className="text-sm">{juror.affiliation || "—"}</td>
                   <td className="text-center">
                     <span className={groupTextClass(scored, total)}>
                       {scored} / {total}
@@ -691,13 +683,7 @@ export default function JurorsPage({
               <button className="juror-drawer-close" onClick={() => setDrawerJuror(null)}>×</button>
             </div>
             <div className="juror-drawer-profile">
-              <div className="juror-drawer-avatar" style={{ background: avatarColor(drawerJuror.juror_name) }}>
-                {initials(drawerJuror.juror_name)}
-              </div>
-              <div className="juror-drawer-info">
-                <div className="juror-drawer-name">{drawerJuror.juror_name}</div>
-                <div className="juror-drawer-inst">{drawerJuror.affiliation || "—"}</div>
-              </div>
+              <JurorBadge name={drawerJuror.juror_name} affiliation={drawerJuror.affiliation} size="lg" />
             </div>
             <div className="juror-drawer-details">
               <div className="juror-drawer-row">

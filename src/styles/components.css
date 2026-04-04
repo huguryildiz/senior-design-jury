@@ -89,25 +89,7 @@
   color:#86efac !important;
 }
 
-/* ── Dark mode pills (small) ── */
-.dark-mode .pill-scored{background:rgba(34,197,94,0.12);color:#86efac;border-color:rgba(74,222,128,0.25)}
-.dark-mode .pill-partial{background:rgba(245,158,11,0.12);color:#fcd34d;border-color:rgba(251,191,36,0.25)}
-.dark-mode .pill-empty{background:rgba(255,255,255,0.05);color:#64748b;border-color:rgba(255,255,255,0.08)}
-.dark-mode .pill-completed{background:rgba(34,197,94,0.12);color:#86efac;border-color:rgba(74,222,128,0.25)}
-.dark-mode .pill-ready{background:rgba(59,130,246,0.12);color:#93c5fd;border-color:rgba(96,165,250,0.25)}
-.dark-mode .pill-progress{background:rgba(245,158,11,0.12);color:#fcd34d;border-color:rgba(251,191,36,0.25)}
-.dark-mode .pill-not-started{background:rgba(255,255,255,0.05);color:#64748b;border-color:rgba(255,255,255,0.08)}
-.dark-mode .pill-editing{background:rgba(139,92,246,0.12);color:#c4b5fd;border-color:rgba(167,139,250,0.25)}
-
-/* ── Dark mode pills (large status) ── */
-.dark-mode .status-pill.status-scored{background:rgba(34,197,94,0.1);color:#86efac;border-color:rgba(74,222,128,0.22)}
-.dark-mode .status-pill.status-partial{background:rgba(245,158,11,0.1);color:#fcd34d;border-color:rgba(251,191,36,0.22)}
-.dark-mode .status-pill.status-empty{background:rgba(255,255,255,0.04);color:#64748b;border-color:rgba(255,255,255,0.08)}
-.dark-mode .status-pill.status-completed{background:rgba(34,197,94,0.1);color:#86efac;border-color:rgba(74,222,128,0.22)}
-.dark-mode .status-pill.status-ready{background:rgba(59,130,246,0.1);color:#93c5fd;border-color:rgba(96,165,250,0.22)}
-.dark-mode .status-pill.status-progress{background:rgba(245,158,11,0.1);color:#fcd34d;border-color:rgba(251,191,36,0.22)}
-.dark-mode .status-pill.status-not-started{background:rgba(255,255,255,0.04);color:#64748b;border-color:rgba(255,255,255,0.08)}
-.dark-mode .status-pill.status-editing{background:rgba(139,92,246,0.1);color:#c4b5fd;border-color:rgba(167,139,250,0.22)}
+/* Status pill dark mode — centralized in status-pills.css */
 
 /* ── Dark mode tooltips ── */
 .dark-mode .heat-cell .heat-tip{background:#1e293b;color:#e2e8f0;border:1px solid rgba(255,255,255,0.08);box-shadow:0 8px 24px rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.2)}
@@ -988,8 +970,9 @@ input.input-error,select.input-error,textarea.input-error{border-color:rgba(225,
 
 /* ── Demo banner — richer gradient ── */
 .dark-mode .demo-banner{
-  background:linear-gradient(90deg,#090f1e 0%,#111e36 30%,#16294e 50%,#111e36 70%,#090f1e 100%) !important;
-  border-bottom:1px solid rgba(59,130,246,0.08);
+  background:linear-gradient(90deg,#2d1661 0%,#4c1d95 35%,#5b21b6 50%,#4c1d95 65%,#2d1661 100%) !important;
+  border-bottom:1px solid rgba(139,92,246,0.2);
+  box-shadow:0 1px 8px rgba(76,29,149,0.3);
 }
 
 /* ── Score input dark mode — glass feel ── */

@@ -8,6 +8,7 @@ import ErrorBoundary from "@/shared/ui/ErrorBoundary";
 import { getPage, setPage as savePage, getJuryAccess } from "./shared/storage";
 import DemoAdminLoader from "@/shared/ui/DemoAdminLoader";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
+import { setEnvironment, clearEnvironment } from "@/shared/lib/environment";
 
 const LandingPage = lazy(() =>
   import("./landing/LandingPage").then((m) => ({ default: m.LandingPage }))
@@ -19,8 +20,9 @@ const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN;
 function readInitialPage() {
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("demo-jury") || params.get("eval") || params.get("t")) return "jury_gate";
-    if (params.has("explore")) return "demo_login";
+    if (params.has("demo-jury")) { setEnvironment("demo"); return "jury"; }
+    if (params.get("eval") || params.get("t")) return "jury_gate";
+    if (params.has("explore")) { setEnvironment("demo"); return "demo_login"; }
     if (params.has("admin")) return "admin";
     const hash = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
     const isRecovery =
@@ -52,11 +54,17 @@ export default function App() {
 
   useEffect(() => {
     if (page === "jury_gate") return;
-    savePage(page);
-    // Clean URL params when returning to landing page
-    if (page === "home" && window.location.search) {
-      window.history.replaceState(null, "", window.location.pathname);
+    if (page === "home") {
+      // Clear demo env when navigating back to landing (SPA navigation, no reload).
+      // environment.js already clears it on fresh page loads without demo params.
+      clearEnvironment();
+      if (window.location.search) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      return;
     }
+    if (DEMO_MODE) return;
+    savePage(page);
   }, [page]);
 
   if (page === "jury_gate") {
@@ -90,9 +98,9 @@ export default function App() {
   return (
     <Suspense fallback={null}>
       <LandingPage
-        onStartJury={() => { window.location.href = window.location.origin + "?demo-jury"; }}
-        onAdmin={() => { window.location.href = window.location.origin + "?explore"; }}
-        onSignIn={() => setPage("admin")}
+        onStartJury={() => { setEnvironment("demo"); window.location.href = window.location.origin + "?demo-jury"; }}
+        onAdmin={() => { setEnvironment("demo"); window.location.href = window.location.origin + "?explore"; }}
+        onSignIn={() => { setEnvironment("prod"); setPage("admin"); }}
         isDemoMode={DEMO_MODE}
       />
     </Suspense>

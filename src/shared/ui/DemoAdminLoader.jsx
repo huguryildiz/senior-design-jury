@@ -3,6 +3,7 @@
 // Runs real Supabase signIn in parallel with a 3-step animation.
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/auth";
+import { supabase } from "../api/core/client";
 
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_ADMIN_EMAIL;
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_ADMIN_PASSWORD;
@@ -19,8 +20,8 @@ const STEPS = [
     ),
   },
   {
-    label: "Loading organization",
-    desc: "TED University · Electrical Engineering",
+    label: "Loading organizations",
+    desc: null,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -30,7 +31,7 @@ const STEPS = [
   },
   {
     label: "Syncing evaluation data",
-    desc: "15 projects · 28 jurors · Spring 2026",
+    desc: null,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <line x1="18" y1="20" x2="18" y2="10" />
@@ -41,10 +42,26 @@ const STEPS = [
   },
 ];
 
+async function fetchDemoStats() {
+  const [orgsRes, projectsRes, jurorsRes, periodsRes] = await Promise.all([
+    supabase.from("organizations").select("*", { count: "exact", head: true }),
+    supabase.from("projects").select("*", { count: "exact", head: true }),
+    supabase.from("jurors").select("*", { count: "exact", head: true }),
+    supabase.from("periods").select("*", { count: "exact", head: true }),
+  ]);
+  return {
+    orgs: orgsRes.error ? null : orgsRes.count,
+    projects: projectsRes.error ? null : projectsRes.count,
+    jurors: jurorsRes.error ? null : jurorsRes.count,
+    periods: periodsRes.error ? null : periodsRes.count,
+  };
+}
+
 // step state: "" | "active" | "done"
 export default function DemoAdminLoader({ onComplete }) {
   const { signIn } = useAuth();
   const stepsRef = useRef([]);
+  const descRefs = useRef([]);
   const barRef = useRef(null);
   const didRun = useRef(false);
 
@@ -60,21 +77,43 @@ export default function DemoAdminLoader({ onComplete }) {
     const setBar = (pct) => {
       if (barRef.current) barRef.current.style.width = pct + "%";
     };
+    const setDesc = (i, text) => {
+      const el = descRefs.current[i];
+      if (!el) return;
+      if (text) {
+        el.textContent = text;
+        el.style.display = "";
+      } else {
+        el.style.display = "none";
+      }
+    };
 
-    // Run auth + animation in parallel, navigate only when both are done
+    // Run auth + stats + animation in parallel, navigate only when both auth+anim are done
     const authDone = signIn(DEMO_EMAIL, DEMO_PASSWORD, true).then(() => true, () => false);
+    const statsDone = fetchDemoStats().catch(() => null);
     const animDone = new Promise((r) => setTimeout(r, 3100));
 
     // Step 0: Authenticating
     setTimeout(() => { setStep(0, "active"); setBar(15); }, 200);
     setTimeout(() => { setStep(0, "done"); setBar(35); }, 1000);
 
-    // Step 1: Loading organization
+    // Step 1: Loading organizations — update desc when stats arrive
     setTimeout(() => { setStep(1, "active"); setBar(50); }, 1100);
+    statsDone.then((stats) => {
+      if (stats?.orgs > 0) setDesc(1, `${stats.orgs} organization${stats.orgs !== 1 ? "s" : ""}`);
+    });
     setTimeout(() => { setStep(1, "done"); setBar(70); }, 1900);
 
-    // Step 2: Syncing data
+    // Step 2: Syncing data — update desc when stats arrive
     setTimeout(() => { setStep(2, "active"); setBar(85); }, 2000);
+    statsDone.then((stats) => {
+      if (!stats) return;
+      const parts = [];
+      if (stats.projects > 0) parts.push(`${stats.projects} projects`);
+      if (stats.jurors > 0) parts.push(`${stats.jurors} jurors`);
+      if (stats.periods > 0) parts.push(`${stats.periods} period${stats.periods !== 1 ? "s" : ""}`);
+      if (parts.length > 0) setDesc(2, parts.join(" · "));
+    });
     setTimeout(() => { setStep(2, "done"); setBar(100); }, 2700);
 
     // Navigate only when auth succeeded AND animation finished
@@ -99,7 +138,13 @@ export default function DemoAdminLoader({ onComplete }) {
               <div className="dao-step-icon">{s.icon}</div>
               <div className="dao-step-text">
                 <div className="dao-step-label">{s.label}</div>
-                <div className="dao-step-desc">{s.desc}</div>
+                <div
+                  className="dao-step-desc"
+                  ref={(el) => (descRefs.current[i] = el)}
+                  style={s.desc === null ? { display: "none" } : undefined}
+                >
+                  {s.desc}
+                </div>
               </div>
             </div>
           ))}

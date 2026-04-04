@@ -2,21 +2,11 @@
 // Prototype source: #page-overview (docs/concepts/vera-premium-prototype.html ~lines 11758–11982)
 // Single-file overview page: KPIs, juror table, right stack, live feed, completion, charts, top projects.
 import { useMemo, useState } from "react";
-import { jurorBg, jurorDot } from "../utils/adminUtils";
+import JurorBadge from "../components/JurorBadge";
 import { SubmissionTimelineChart } from "@/charts/SubmissionTimelineChart";
 import { ScoreDistributionChart } from "@/charts/ScoreDistributionChart";
 
 // ── Helpers ───────────────────────────────────────────────────
-
-function initials(name) {
-  if (!name) return "?";
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-}
 
 function relativeTime(ms) {
   if (!ms) return "—";
@@ -116,7 +106,6 @@ export default function OverviewPage({
   isDemoMode = false,
 }) {
   const [jurorTableExpanded, setJurorTableExpanded] = useState(false);
-  const [demoBannerDismissed, setDemoBannerDismissed] = useState(false);
 
   // ── KPIs ──────────────────────────────────────────────────────
   const kpi = useMemo(() => {
@@ -216,20 +205,6 @@ export default function OverviewPage({
   return (
     <div className="admin-page" id="page-overview">
 
-      {/* Demo banner */}
-      {isDemoMode && !demoBannerDismissed && (
-        <div className="fb-banner fbb-info">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-          </svg>
-          <span className="fb-banner-text">Demo mode — data is read-only and resets periodically</span>
-          <button className="fb-banner-dismiss" onClick={() => setDemoBannerDismissed(true)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
 
       {/* Page title */}
       <div className="overview-heading-row" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
@@ -302,19 +277,10 @@ export default function OverviewPage({
                   const done = j.completedProjects || 0;
                   const total = j.totalProjects || 0;
                   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                  const dotBg = jurorDot(j.juryName || "");
                   return (
                     <tr key={j.jurorId || j.juryName}>
                       <td>
-                        <div className="j-row">
-                          <div className="j-av" style={{ background: dotBg, color: "#fff" }}>
-                            {initials(j.juryName)}
-                          </div>
-                          <div className="j-info">
-                            <span className="j-name" style={{ fontWeight: 600 }}>{j.juryName || "—"}</span>
-                            <span className="j-inst">{j.affiliation || "—"}</span>
-                          </div>
-                        </div>
+                        <JurorBadge name={j.juryName} affiliation={j.affiliation} size="sm" />
                       </td>
                       <td><StatusBadge status={status} /></td>
                       <td className="text-center">

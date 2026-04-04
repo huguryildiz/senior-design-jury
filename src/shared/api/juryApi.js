@@ -3,7 +3,7 @@
 
 import { supabase } from "./core/client";
 import { withRetry } from "./core/retry";
-import { dbScoresToUi, uiScoresToDb, formatMembers } from "./fieldMapping";
+import { formatMembers } from "./fieldMapping";
 
 // ── Juror auth (RPCs) ────────────────────────────────────────
 
@@ -92,29 +92,43 @@ export async function listProjects(periodId, jurorId = null, signal) {
 
     // If jurorId provided, fetch their scores for these projects
     if (jurorId) {
-      const scoreQuery = supabase
-        .from("scores_compat")
-        .select("*")
+      let scoreQuery = supabase
+        .from("score_sheets")
+        .select(`
+          id, project_id, comment, updated_at,
+          items:score_sheet_items(score_value, period_criteria(key))
+        `)
         .eq("period_id", periodId)
         .eq("juror_id", jurorId);
-      if (signal) scoreQuery.abortSignal(signal);
-      const { data: scores } = await scoreQuery;
+      if (signal) scoreQuery = scoreQuery.abortSignal(signal);
+      const { data: sheets } = await scoreQuery;
 
-      const scoreMap = new Map((scores || []).map((s) => [s.project_id, s]));
+      const scoreMap = new Map();
+      (sheets || []).forEach((s) => {
+        const scores = {};
+        let total = 0;
+        (s.items || []).forEach((item) => {
+          const key = item.period_criteria?.key;
+          if (!key) return;
+          const val = item.score_value != null ? Number(item.score_value) : null;
+          scores[key] = val;
+          if (val != null) total += val;
+        });
+        scoreMap.set(s.project_id, { scores, total, comment: s.comment, updated_at: s.updated_at });
+      });
+
       return (projects || []).map((p) => {
-        const score = scoreMap.get(p.id);
+        const entry = scoreMap.get(p.id);
         return {
           project_id: p.id,
           title: p.title,
           members: formatMembers(p.members),
           advisor: p.advisor || "",
-          scores: score ? dbScoresToUi(score) : null,
-          comment: score?.comments ?? "",
-          total: score
-            ? (score.technical || 0) + (score.written || 0) + (score.oral || 0) + (score.teamwork || 0)
-            : null,
-          updated_at: score?.updated_at,
-          final_submitted_at: null, // Set from juror_period_auth, not individual scores
+          scores: entry?.scores || null,
+          comment: entry?.comment ?? "",
+          total: entry?.total ?? null,
+          updated_at: entry?.updated_at,
+          final_submitted_at: null,
         };
       });
     }
@@ -163,7 +177,7 @@ export async function finalizeJurorSubmission(periodId, jurorId, sessionToken) {
 export async function listPeriods(signal) {
   let query = supabase
     .from("periods")
-    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at")
+    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(name, institution_name)")
     .eq("is_visible", true)
     .order("created_at", { ascending: false });
   if (signal) query = query.abortSignal(signal);

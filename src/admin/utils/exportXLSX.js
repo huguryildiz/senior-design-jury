@@ -39,7 +39,7 @@ function buildAuditExportFilename(filters = {}, search = "", tenantCode = "") {
   const searchTag = String(search || "").trim();
   if (searchTag) parts.push(searchTag.slice(0, 24));
   const tag = parts.length ? parts.join("_") : "all";
-  return buildExportFilename("audit-log", tag, "xlsx", tenantCode);
+  return buildExportFilename("Audit", tag, "xlsx", tenantCode);
 }
 
 // ── Public API ────────────────────────────────────────────────
@@ -49,16 +49,15 @@ export function buildExportFilename(type, periodName, ext = "xlsx", tenantCode =
   const yyyy = now.getFullYear();
   const mm   = String(now.getMonth() + 1).padStart(2, "0");
   const dd   = String(now.getDate()).padStart(2, "0");
-  const hh   = String(now.getHours()).padStart(2, "0");
-  const min  = String(now.getMinutes()).padStart(2, "0");
-  const safeTenant = String(tenantCode || "").trim().toLowerCase()
-    .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const safeSem  = String(periodName || "period").trim().toLowerCase()
-    .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const safeType = String(type || "export").trim().toLowerCase()
-    .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-  const tenantPart = safeTenant ? `_${safeTenant}` : "";
-  return `vera_${safeType}${tenantPart}_${safeSem}_${yyyy}-${mm}-${dd}_${hh}${min}.${ext}`;
+  const safe = (s) => String(s || "").trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
+  const parts = [
+    "VERA",
+    safe(type) || "Export",
+    safe(tenantCode),
+    safe(periodName),
+    `${yyyy}-${mm}-${dd}`,
+  ].filter(Boolean);
+  return `${parts.join("_")}.${ext}`;
 }
 
 export async function exportAuditLogsXLSX(rows, { filters = {}, search = "", tenantCode = "" } = {}) {
@@ -146,10 +145,10 @@ export async function exportXLSX(rows, { periodName = "", summaryData = [], juro
 
   const allRows = includeEmptyRows ? [...baseRows, ...generated] : baseRows;
 
-  const criteriaHeaders = activeCriteria.map((c) => `${c.shortLabel || c.label} / ${c.max}`);
+  const criteriaHeaders = activeCriteria.map((c) => `${c.shortLabel || c.label} (${c.max})`);
   const headers = [
     "Period",
-    "Group No",
+    "Project",
     "Title",
     "Team Members",
     "Juror",
@@ -157,7 +156,7 @@ export async function exportXLSX(rows, { periodName = "", summaryData = [], juro
     "Score Status",
     "Juror Status",
     ...criteriaHeaders,
-    "Total",
+    `Total (${activeCriteria.reduce((s, c) => s + (c.max || 0), 0)})`,
     "Updated At",
     "Completed At",
     "Comment",
@@ -252,41 +251,54 @@ export async function exportXLSX(rows, { periodName = "", summaryData = [], juro
     .map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Jury Evaluations");
-  XLSX.writeFile(wb, buildExportFilename("details", periodName, "xlsx", tenantCode));
+  XLSX.writeFile(wb, buildExportFilename("Reviews", periodName, "xlsx", tenantCode));
 }
 
 // exportRows: { name, dept, statusLabel, scores: { [groupId]: number|null } }[]
 // groups:     { id, label, groupNo }[]
-export async function exportGridXLSX(exportRows, groups, { periodName = "", tenantCode = "" } = {}) {
+// criterionTabs: [{ id, label, rows: { name, dept, scores: {[gid]: number|null} } }] (optional)
+export async function exportGridXLSX(exportRows, groups, { periodName = "", tenantCode = "", criterionTabs = [] } = {}) {
   const XLSX = await import("xlsx-js-style");
 
-  const groupHeaders = groups.map((g) => g.groupNo != null ? `Group ${g.groupNo}` : g.label);
-  const headers = ["Juror", "Institution / Department", "Status", ...groupHeaders];
-
-  const data = exportRows.map((r) => [
-    r.name,
-    r.dept ?? "",
-    r.statusLabel,
-    ...groups.map((g) => {
-      const v = r.scores[g.id];
-      return v !== null && v !== undefined ? v : "";
-    }),
-  ]);
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  const groupHeaders = groups.map((g) => (g.groupNo ?? g.group_no) != null ? `Group ${g.groupNo ?? g.group_no}` : (g.label || g.title || g.id));
   const colWidths = [28, 28, 18, ...groups.map(() => 10)];
-  ws["!cols"] = colWidths.map((w) => ({ wch: w }));
+
+  function makeSheet(rows, includeStatus = true) {
+    const headers = ["Juror", "Affiliation", ...(includeStatus ? ["Status"] : []), ...groupHeaders];
+    const data = rows.map((r) => [
+      r.name,
+      r.dept ?? "",
+      ...(includeStatus ? [r.statusLabel ?? ""] : []),
+      ...groups.map((g) => {
+        const v = r.scores[g.id];
+        return v !== null && v !== undefined ? v : "";
+      }),
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    ws["!cols"] = (includeStatus ? colWidths : [28, 28, ...groups.map(() => 10)]).map((w) => ({ wch: w }));
+    return ws;
+  }
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Evaluation Grid");
-  XLSX.writeFile(wb, buildExportFilename("grid", periodName, "xlsx", tenantCode));
+  XLSX.utils.book_append_sheet(wb, makeSheet(exportRows), "All Criteria");
+  criterionTabs.forEach((tab) => {
+    const safeName = tab.label.replace(/[\/\\*?\[\]:]/g, "-").slice(0, 31);
+    XLSX.utils.book_append_sheet(wb, makeSheet(tab.rows, false), safeName);
+  });
+  XLSX.writeFile(wb, buildExportFilename("Heatmap", periodName, "xlsx", tenantCode));
 }
 
 export async function exportRankingsXLSX(ranked, criteria, { periodName = "", tenantCode = "" } = {}) {
   const XLSX = await import("xlsx-js-style");
+  const fmtMembers = (m) => {
+    if (!m) return "";
+    if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
+    return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
+  };
   const headers = [
-    "Rank", "Group", "Title", "Team Members",
-    ...criteria.flatMap((c) => [`${c.shortLabel} Avg`, `${c.shortLabel} Max`]),
-    "Total Avg",
+    "Rank", "Project", "Title", "Team Members",
+    ...criteria.map((c) => `${c.shortLabel || c.label} Avg (${c.max})`),
+    `Total Avg (${criteria.reduce((s, c) => s + (c.max || 0), 0)})`,
   ];
   const displayRanks = [];
   let scoredIndex = 0;
@@ -304,23 +316,17 @@ export async function exportRankingsXLSX(ranked, criteria, { periodName = "", te
     }
     displayRanks.push(lastRank);
   });
-  const dataRows = (ranked || []).map((p, i) => {
-    const criteriaVals = criteria.flatMap((c) => [
-      Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : "",
-      c.max,
-    ]);
-    return [
-      displayRanks[i],
-      `Group ${p.groupNo}`,
-      p.name ?? "",
-      p.students ?? "",
-      ...criteriaVals,
-      Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
-    ];
-  });
+  const dataRows = (ranked || []).map((p, i) => [
+    displayRanks[i],
+    p.group_no != null ? `Group ${p.group_no}` : (p.groupNo != null ? `Group ${p.groupNo}` : ""),
+    p.title || p.name || "",
+    fmtMembers(p.members || p.students),
+    ...criteria.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
+    Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
+  ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-  ws["!cols"] = [6, 10, 36, 32, ...criteria.flatMap(() => [10, 8]), 10].map((w) => ({ wch: w }));
+  ws["!cols"] = [6, 10, 36, 32, ...criteria.map(() => 14), 10].map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Rankings");
-  XLSX.writeFile(wb, buildExportFilename("rankings", periodName, "xlsx", tenantCode));
+  XLSX.writeFile(wb, buildExportFilename("Rankings", periodName, "xlsx", tenantCode));
 }

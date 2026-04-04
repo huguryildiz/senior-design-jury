@@ -9,6 +9,9 @@ import { useHeatmapData } from "../hooks/useHeatmapData";
 import { useGridSort } from "../hooks/useGridSort";
 import { useGridExport } from "../hooks/useGridExport";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
+import { generateTableBlob } from "../utils/downloadTable";
+import SendReportModal from "@/admin/modals/SendReportModal";
 
 // ── Score color band ──────────────────────────────────────────
 // Returns a CSS variable name for the cell background color.
@@ -23,35 +26,9 @@ function getScoreBgVar(score, max) {
   return "var(--score-poor-bg)";
 }
 
-// Avatar initials from full name
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = String(name).trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
+import JurorBadge from "../components/JurorBadge";
 
-// Deterministic avatar color from juror key
-const AVATAR_PALETTE = [
-  "#6366f1", "#0891b2", "#7c3aed", "#2563eb",
-  "#0d9488", "#4f46e5", "#0284c7", "#7e22ce",
-  "#0369a1", "#1d4ed8", "#059669", "#b45309",
-];
-function getAvatarColor(key) {
-  let hash = 0;
-  const s = String(key || "");
-  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
-}
-
-// Criteria tab definitions — maps tab id → CRITERIA field id + max
-const CRITERIA_TABS = [
-  { id: "all",  label: "All Criteria" },
-  { id: "technical", label: "Technical" },
-  { id: "design",    label: "Design" },
-  { id: "delivery",  label: "Delivery" },
-  { id: "teamwork",  label: "Teamwork" },
-];
+// Criteria tabs are built dynamically from activeCriteria inside the component
 
 // Resolve the display score and max for a cell given the active tab
 function getCellDisplay(entry, activeTab, activeCriteria) {
@@ -96,7 +73,7 @@ const EXPORT_FORMAT_META = {
 
 // ── Main component ────────────────────────────────────────────
 
-export default function HeatmapPage({ data, jurors, groups, periodName, criteriaConfig = [] }) {
+export default function HeatmapPage({ data, jurors, groups, periodName, organization = "", criteriaConfig = [] }) {
   const activeCriteria = criteriaConfig;
   const totalMax = useMemo(
     () => activeCriteria.reduce((s, c) => s + c.max, 0),
@@ -118,14 +95,27 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
     groups: groups || [],
     periodName,
     visibleJurors,
+    lookup,
+    activeCriteria,
   });
 
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
 
   // UI state
   const [activeTab, setActiveTab]       = useState("all");
   const [exportOpen, setExportOpen]     = useState(false);
   const [exportFormat, setExportFormat] = useState("xlsx");
+  const [sendOpen, setSendOpen]         = useState(false);
+
+  // Dynamic criteria tabs
+  const criteriaTabs = useMemo(
+    () => [
+      { id: "all", label: "All Criteria" },
+      ...activeCriteria.map((c) => ({ id: c.id, label: c.shortLabel || c.label || c.id })),
+    ],
+    [activeCriteria]
+  );
 
   // Per-group averages for visible jurors
   const visibleAverages = useMemo(
@@ -164,10 +154,9 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
     return sortGroupDir === "asc" ? "ascending" : "descending";
   }
 
-  // Export download handler (only xlsx supported via useGridExport for now)
   function handleDownload() {
     try {
-      requestExport();
+      requestExport(exportFormat);
       setExportOpen(false);
       _toast.success("Heatmap exported");
     } catch (e) {
@@ -187,7 +176,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
         </div>
         <div className="analytics-actions">
           <div className="matrix-tabs">
-            {CRITERIA_TABS.map((tab) => (
+            {criteriaTabs.map((tab) => (
               <div
                 key={tab.id}
                 className={`matrix-tab${activeTab === tab.id ? " active" : ""}`}
@@ -213,7 +202,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
 
       {/* ── Export Panel ── */}
       {exportOpen && (
-        <div className="export-panel">
+        <div className="export-panel show">
           <div className="export-panel-header">
             <div>
               <h4>
@@ -263,6 +252,10 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
               </div>
             </div>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
+                {" "}Send
+              </button>
               <button
                 className="btn btn-primary btn-sm export-download-btn"
                 onClick={handleDownload}
@@ -272,12 +265,39 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                Download {EXPORT_FORMAT_META[exportFormat]?.iconLabel}
+                Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "pdf" ? "PDF" : "CSV"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <SendReportModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        format={exportFormat}
+        formatLabel={`${EXPORT_FORMAT_META[exportFormat]?.label} · Heatmap`}
+        meta="Includes selected criterion tab and per-project averages"
+        reportTitle="Heatmap"
+        periodName={periodName}
+        organization={activeOrganization?.name || organization}
+        department={activeOrganization?.institution_name || ""}
+        generateFile={async (fmt) => {
+          const exportRows = buildExportRows(visibleJurors);
+          const groupHeaders = (groups || []).map((g) => g.group_no != null ? `Group ${g.group_no}` : (g.title || g.id));
+          const header = ["Juror", "Affiliation", "Status", ...groupHeaders];
+          const rows = exportRows.map((r) => [
+            r.name, r.dept ?? "", r.statusLabel,
+            ...(groups || []).map((g) => { const v = r.scores[g.id]; return v !== null && v !== undefined ? v : ""; }),
+          ]);
+          return generateTableBlob(fmt, {
+            filenameType: "Heatmap", sheetName: "Heatmap", periodName,
+            tenantCode: activeOrganization?.code || "",
+            organization: activeOrganization?.name || organization,
+            pdfTitle: "VERA — Evaluation Heatmap", header, rows,
+          });
+        }}
+      />
 
       {/* ── Matrix ── */}
       <div className="matrix-wrap">
@@ -314,7 +334,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
                   }
                   onClick={() => toggleGroupSort(g.id)}
                 >
-                  <span className="proj-name">Project {g.group_no}</span>
+                  <span className="proj-name">{g.group_no != null ? `P${g.group_no}` : ""}</span>
                   <span className="proj-group">{g.title}</span>
                 </th>
               ))}
@@ -325,19 +345,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, criteria
             {visibleJurors.map((juror) => (
               <tr key={juror.key}>
                 <td className="sticky-col" role="rowheader">
-                  <div className="j-row">
-                    <div
-                      className="j-av"
-                      style={{ background: getAvatarColor(juror.key) }}
-                      aria-hidden="true"
-                    >
-                      {getInitials(juror.name || juror.juror_name)}
-                    </div>
-                    <div className="j-info">
-                      <span className="j-name">{juror.name || juror.juror_name}</span>
-                      <span className="j-inst">{juror.dept || juror.affiliation}</span>
-                    </div>
-                  </div>
+                  <JurorBadge name={juror.name || juror.juror_name} affiliation={juror.dept || juror.affiliation} size="sm" />
                 </td>
 
                 {(groups || []).map((g) => {

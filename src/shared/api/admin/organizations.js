@@ -33,16 +33,17 @@ function mapPending(applications) {
 }
 
 export async function listOrganizations() {
-  const { data, error } = await supabase
-    .from("organizations")
-    .select("*, memberships(*, profiles(*)), tenant_applications(*)")
-    .order("name");
+  // Use SECURITY DEFINER RPC to bypass RLS on joined tables.
+  // Direct PostgREST embedding (memberships + org_applications) 403s because
+  // the org_applications RLS policy previously accessed auth.users directly
+  // (authenticated role has no SELECT on that table).
+  const { data, error } = await supabase.rpc("rpc_admin_list_organizations");
   if (error) throw error;
   return (data || []).map((row) => ({
     ...row,
     shortLabel: row.code,
     tenantAdmins: mapAdmins(row.memberships),
-    pendingApplications: mapPending(row.tenant_applications),
+    pendingApplications: mapPending(row.org_applications),
   }));
 }
 
@@ -60,7 +61,8 @@ export async function createOrganization(payload) {
   return data;
 }
 
-export async function updateOrganization(id, payload) {
+export async function updateOrganization(payload) {
+  const id = payload.organizationId || payload.id;
   const updates = {};
   if (payload.name !== undefined) updates.name = payload.name;
   if (payload.code !== undefined) updates.code = payload.code;

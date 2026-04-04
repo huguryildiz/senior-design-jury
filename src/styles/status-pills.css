@@ -1,0 +1,117 @@
+/* ═══════════════════════════════════════════════════════════
+   VERA — Unified Status Pill System
+   Single source of truth for all status badges/pills.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── CSS Variables (Light mode defaults) ─────────────────── */
+:root {
+  /* Juror workflow states — PRIMARY (strong, prominent) */
+  --pill-completed-bg: #dcfce7;
+  --pill-completed-text: #15803d;
+  --pill-completed-border: #86efac;
+
+  --pill-progress-bg: #fef3c7;
+  --pill-progress-text: #b45309;
+  --pill-progress-border: #fbbf24;
+
+  --pill-ready-bg: #dbeafe;
+  --pill-ready-text: #1d4ed8;
+  --pill-ready-border: #93c5fd;
+
+  --pill-editing-bg: #ede9fe;
+  --pill-editing-text: #6d28d9;
+  --pill-editing-border: #c4b5fd;
+
+  --pill-not-started-bg: #f1f5f9;
+  --pill-not-started-text: #94a3b8;
+  --pill-not-started-border: #e2e8f0;
+
+  /* Cell/score states — SECONDARY (softer, muted) */
+  --pill-scored-bg: #f0fdf4;
+  --pill-scored-text: #4ade80;
+  --pill-scored-border: #bbf7d0;
+
+  --pill-partial-bg: #fffbeb;
+  --pill-partial-text: #d97706;
+  --pill-partial-border: #fde68a;
+
+  --pill-empty-bg: #f8fafc;
+  --pill-empty-text: #94a3b8;
+  --pill-empty-border: #e2e8f0;
+}
+
+/* ── Dark mode overrides ─────────────────────────────────── */
+.dark-mode {
+  --pill-completed-bg: rgba(34,197,94,0.14);
+  --pill-completed-text: #86efac;
+  --pill-completed-border: rgba(74,222,128,0.3);
+
+  --pill-progress-bg: rgba(245,158,11,0.14);
+  --pill-progress-text: #fbbf24;
+  --pill-progress-border: rgba(251,191,36,0.3);
+
+  --pill-ready-bg: rgba(59,130,246,0.14);
+  --pill-ready-text: #93c5fd;
+  --pill-ready-border: rgba(96,165,250,0.3);
+
+  --pill-editing-bg: rgba(139,92,246,0.14);
+  --pill-editing-text: #c4b5fd;
+  --pill-editing-border: rgba(167,139,250,0.3);
+
+  --pill-not-started-bg: rgba(255,255,255,0.04);
+  --pill-not-started-text: #64748b;
+  --pill-not-started-border: rgba(255,255,255,0.08);
+
+  --pill-scored-bg: rgba(34,197,94,0.08);
+  --pill-scored-text: rgba(134,239,172,0.7);
+  --pill-scored-border: rgba(74,222,128,0.15);
+
+  --pill-partial-bg: rgba(245,158,11,0.08);
+  --pill-partial-text: rgba(251,191,36,0.7);
+  --pill-partial-border: rgba(251,191,36,0.15);
+
+  --pill-empty-bg: rgba(255,255,255,0.03);
+  --pill-empty-text: #475569;
+  --pill-empty-border: rgba(255,255,255,0.06);
+}
+
+/* ── Base pill ───────────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; white-space: nowrap;
+  border: 1px solid transparent; letter-spacing: -0.01em; line-height: 1.5;
+}
+.pill svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* ── Pill variants ───────────────────────────────────────── */
+/* Juror workflow — strong/prominent */
+.pill-completed   { background: var(--pill-completed-bg);   color: var(--pill-completed-text);   border-color: var(--pill-completed-border); }
+.pill-progress    { background: var(--pill-progress-bg);    color: var(--pill-progress-text);    border-color: var(--pill-progress-border); }
+.pill-ready       { background: var(--pill-ready-bg);       color: var(--pill-ready-text);       border-color: var(--pill-ready-border); }
+.pill-editing     { background: var(--pill-editing-bg);     color: var(--pill-editing-text);     border-color: var(--pill-editing-border); }
+.pill-not-started { background: var(--pill-not-started-bg); color: var(--pill-not-started-text); border-color: var(--pill-not-started-border); }
+
+/* Cell/score states — softer/secondary */
+.pill-scored      { background: var(--pill-scored-bg);      color: var(--pill-scored-text);      border-color: var(--pill-scored-border); }
+.pill-partial     { background: var(--pill-partial-bg);     color: var(--pill-partial-text);     border-color: var(--pill-partial-border); }
+.pill-empty       { background: var(--pill-empty-bg);       color: var(--pill-empty-text);       border-color: var(--pill-empty-border); }
+
+/* ── Legend status pills (larger, for legend bar) ────────── */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+  border: 1.5px solid transparent; line-height: 1; position: relative;
+  cursor: default;
+}
+.status-pill svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.status-pill.status-completed   { background: var(--pill-completed-bg);   color: var(--pill-completed-text);   border-color: var(--pill-completed-border); }
+.status-pill.status-progress    { background: var(--pill-progress-bg);    color: var(--pill-progress-text);    border-color: var(--pill-progress-border); }
+.status-pill.status-ready       { background: var(--pill-ready-bg);       color: var(--pill-ready-text);       border-color: var(--pill-ready-border); }
+.status-pill.status-editing     { background: var(--pill-editing-bg);     color: var(--pill-editing-text);     border-color: var(--pill-editing-border); }
+.status-pill.status-not-started { background: var(--pill-not-started-bg); color: var(--pill-not-started-text); border-color: var(--pill-not-started-border); }
+.status-pill.status-scored      { background: var(--pill-scored-bg);      color: var(--pill-scored-text);      border-color: var(--pill-scored-border); }
+.status-pill.status-partial     { background: var(--pill-partial-bg);     color: var(--pill-partial-text);     border-color: var(--pill-partial-border); }
+.status-pill.status-empty       { background: var(--pill-empty-bg);       color: var(--pill-empty-text);       border-color: var(--pill-empty-border); }

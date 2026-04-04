@@ -2,7 +2,10 @@
 // Evaluation Periods management page.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
 import { useManagePeriods } from "../hooks/useManagePeriods";
+import ExportPanel from "../components/ExportPanel";
+import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import "../../styles/pages/periods.css";
 
 function formatUpdated(ts) {
@@ -66,6 +69,7 @@ export default function PeriodsPage({
   onCurrentSemesterChange,
 }) {
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
   const [panelError, setPanelErrorState] = useState("");
   const setPanelError = useCallback((_panel, msg) => setPanelErrorState(msg || ""), []);
@@ -301,36 +305,43 @@ export default function PeriodsPage({
 
       {/* Export panel */}
       {exportOpen && (
-        <div className="export-panel">
-          <div className="export-panel-header">
-            <div>
-              <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export Periods
-              </h4>
-              <div className="export-panel-sub">Download period records with project counts, juror counts, and status history.</div>
-            </div>
-            <button className="export-panel-close" onClick={() => setExportOpen(false)}>&#215;</button>
-          </div>
-          <div className="export-footer" style={{ borderTop: "none" }}>
-            <div className="export-footer-info">
-              <div className="export-footer-format">Excel (.xlsx) · Periods</div>
-              <div className="export-footer-meta">{totalPeriods} periods · All records</div>
-            </div>
-            <button className="btn btn-primary btn-sm export-download-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Download Excel
-            </button>
-          </div>
-        </div>
+        <ExportPanel
+          title="Export Periods"
+          subtitle="Download period records with project counts, juror counts, and status history."
+          meta={`${totalPeriods} periods · All records`}
+          organization={activeOrganization?.name || ""}
+          onClose={() => setExportOpen(false)}
+          generateFile={async (fmt) => {
+            const header = ["Name", "Season", "Current", "Locked", "Created"];
+            const rows = filteredList.map((p) => [
+              p.name ?? "", p.season ?? "", p.is_current ? "Yes" : "No", p.is_locked ? "Yes" : "No", formatUpdated(p.created_at),
+            ]);
+            return generateTableBlob(fmt, {
+              filenameType: "Periods", sheetName: "Periods", periodName: "all",
+              tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
+              department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Evaluation Periods",
+              header, rows, colWidths: [28, 14, 10, 10, 18],
+            });
+          }}
+          onExport={async (fmt) => {
+            try {
+              const header = ["Name", "Season", "Current", "Locked", "Created"];
+              const rows = filteredList.map((p) => [
+                p.name ?? "", p.season ?? "", p.is_current ? "Yes" : "No", p.is_locked ? "Yes" : "No", formatUpdated(p.created_at),
+              ]);
+              await downloadTable(fmt, {
+                filenameType: "Periods", sheetName: "Periods", periodName: "all",
+                tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
+                department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Evaluation Periods",
+                header, rows, colWidths: [28, 14, 10, 10, 18],
+              });
+              setExportOpen(false);
+              _toast.success("Periods exported");
+            } catch (e) {
+              _toast.error(e?.message || "Export failed");
+            }
+          }}
+        />
       )}
 
       {/* KPI strip */}

@@ -351,28 +351,7 @@
 .reviews-footer-note{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-tertiary);margin-top:8px}
 .reviews-footer-note .flag-dot{width:12px;height:12px;border-radius:50%;background:rgba(217,119,6,0.12);display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:var(--warning);font-weight:700;flex-shrink:0}
 
-/* Status pills (mirrors app status-badge colors) */
-.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap;border:1px solid transparent;letter-spacing:-0.01em;line-height:1.5}
-.pill svg{width:12px;height:12px;flex-shrink:0}
-.pill-scored{background:#e9fbe9;color:#1b6f3a;border-color:#a7e7ba}
-.pill-partial{background:#fef9c3;color:#92400e;border-color:#e6d28a}
-.pill-empty{background:#f1f5f9;color:#64748b;border-color:#e2e8f0}
-.pill-completed{background:#dcfce7;color:#166534;border-color:#86efac}
-.pill-ready{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
-.pill-progress{background:#fef9c3;color:#92400e;border-color:#e6d28a}
-.pill-not-started{background:#f1f5f9;color:#64748b;border-color:#e2e8f0}
-.pill-editing{background:#ede9fe;color:#6d28d9;border-color:#c4b5fd}
-
-.status-pill{display:inline-flex;align-items:center;gap:9px;padding:8px 20px;border-radius:999px;border:2px solid transparent;font-size:14px;font-weight:700;letter-spacing:-0.01em;line-height:1}
-.status-pill svg{width:18px;height:18px;flex-shrink:0}
-.status-pill.status-scored{background:#dcfce7;color:#166534;border-color:#86efac}
-.status-pill.status-partial{background:#fef9c3;color:#92400e;border-color:#e6d28a}
-.status-pill.status-empty{background:#f1f5f9;color:#64748b;border-color:#e2e8f0}
-.status-pill.status-completed{background:#dcfce7;color:#166534;border-color:#86efac}
-.status-pill.status-ready{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
-.status-pill.status-progress{background:#fef9c3;color:#92400e;border-color:#e6d28a}
-.status-pill.status-not-started{background:#f1f5f9;color:#64748b;border-color:#e2e8f0}
-.status-pill.status-editing{background:#ede9fe;color:#6d28d9;border-color:#c4b5fd}
+/* Status pills — defined in status-pills.css (centralized) */
 
 @media (max-width:980px){
   .reviews-status-legend{flex-direction:column;gap:8px}

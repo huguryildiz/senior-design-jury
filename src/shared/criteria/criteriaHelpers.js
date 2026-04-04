@@ -132,8 +132,16 @@ export function normalizeCriterionFromDb(row) {
     max:        Number(row.max_score) || 0,
     weight:     row.weight ?? null,
     blurb:      row.description || "",
-    mudek:      [],  // mapped via period_criterion_outcome_maps, not stored on the row
-    rubric:     Array.isArray(row.rubric_bands) ? row.rubric_bands : [],
+    mudek:      Array.isArray(row.mudek) ? row.mudek : [],
+    rubric:     Array.isArray(row.rubric_bands)
+      ? row.rubric_bands.map((b) => ({
+          level: b.level ?? b.label ?? "",
+          min:   b.min,
+          max:   b.max,
+          range: b.range || `${b.min}–${b.max}`,
+          desc:  b.desc ?? b.description ?? "",
+        }))
+      : [],
   };
 }
 

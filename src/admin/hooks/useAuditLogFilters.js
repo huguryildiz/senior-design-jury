@@ -13,6 +13,7 @@ import {
   buildAuditParams,
 } from "../utils/auditUtils";
 import { exportAuditLogsXLSX } from "../utils/exportXLSX";
+import { downloadTable } from "../utils/downloadTable";
 import { useAuth } from "@/auth";
 
 const defaultAuditFilters = {
@@ -189,7 +190,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
     loadAuditLogs(auditFilters, { mode: "append", cursor: auditCursor });
   };
 
-  const handleAuditExport = async () => {
+  const handleAuditExport = async (format = "xlsx") => {
     if (!organizationId) return;
     setAuditExporting(true);
     setAuditError("");
@@ -213,7 +214,36 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
         setMessage("No audit entries found for export");
         return;
       }
-      await exportAuditLogsXLSX(all, { filters: auditFilters, search: auditSearch, organizationCode });
+      if (format === "xlsx") {
+        await exportAuditLogsXLSX(all, { filters: auditFilters, search: auditSearch, organizationCode });
+      } else {
+        const fmtTs = (v) => {
+          if (!v) return "";
+          const d = new Date(v);
+          if (isNaN(d.getTime())) return "";
+          const pad = (n) => String(n).padStart(2, "0");
+          return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+        const header = ["Timestamp", "Actor", "Action", "Entity", "Message"];
+        const dataRows = all.map((r) => [
+          fmtTs(r.created_at),
+          r.actor_type ?? "",
+          r.action ?? "",
+          r.entity_type ?? "",
+          r.message ?? "",
+        ]);
+        await downloadTable(format, {
+          filenameType: "Audit",
+          sheetName: "Audit Log",
+          periodName: "all",
+          tenantCode: organizationCode,
+          pdfTitle: "VERA — Audit Log",
+          pdfSubtitle: `${all.length} events · ${auditSearch ? `Search: "${auditSearch}"` : "All time"}`,
+          header,
+          rows: dataRows,
+          colWidths: [22, 12, 18, 16, 48],
+        });
+      }
       setMessage("Audit log exported");
     } catch (e) {
       setAuditError(e?.message || "Could not export audit logs.");

@@ -18,7 +18,7 @@ export function buildScoreCols(criteria = []) {
     ...(criteria || []).map((c) => ({
       id: c.id,
       key: c.id,
-      label: `${c.shortLabel || c.label} / ${c.max}`,
+      label: `${c.shortLabel || c.label} (${c.max})`,
       sortKey: c.id,
     })),
   ];

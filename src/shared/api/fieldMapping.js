@@ -46,13 +46,16 @@ export function dbAvgScoresToUi(row) {
 }
 
 /**
- * Normalizes JSONB member array or string to a comma-separated string for React rendering.
+ * Normalizes JSONB member array or string to a semicolon-separated string.
  */
 export function formatMembers(m) {
   if (!m) return "";
-  if (typeof m === "string") return m;
+  if (typeof m === "string") {
+    // Re-format comma-separated strings to semicolons
+    return m.split(/[,;]/).map((s) => s.trim()).filter(Boolean).join("; ");
+  }
   if (Array.isArray(m)) {
-    return m.map((entry) => entry.name || entry).join(", ");
+    return m.map((entry) => (entry?.name || entry || "").toString().trim()).filter(Boolean).join("; ");
   }
   return String(m);
 }

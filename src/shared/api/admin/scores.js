@@ -1,36 +1,61 @@
 // src/shared/api/admin/scores.js
-// Admin score data, summaries, and settings (PostgREST).
+// Admin score data, summaries, and settings.
+// Reads from score_sheets + score_sheet_items (dynamic criteria, no hardcoded keys).
 
 import { supabase } from "../core/client";
-import { dbAvgScoresToUi, formatMembers } from "../fieldMapping";
+import { formatMembers } from "../fieldMapping";
+
+/**
+ * Pivots score_sheet_items rows into a flat { [criterionKey]: value } object.
+ * @param {Array} items - score_sheet_items rows with joined period_criteria
+ * @returns {{ scores: object, total: number }}
+ */
+function pivotItems(items) {
+  const scores = {};
+  let total = 0;
+  (items || []).forEach((item) => {
+    const key = item.period_criteria?.key || item.criterion_key;
+    if (!key) return;
+    const val = item.score_value != null ? Number(item.score_value) : null;
+    scores[key] = val;
+    if (val != null) total += val;
+  });
+  return { scores, total };
+}
 
 /**
  * Returns all score rows for a period with project and juror info.
+ * Scores are dynamic — keyed by period_criteria.key (not hardcoded columns).
  */
 export async function getScores(periodId) {
   const { data, error } = await supabase
-    .from("scores_compat")
-    .select("*, project:projects(id, title, members, project_no), juror:jurors(id, juror_name, affiliation)")
+    .from("score_sheets")
+    .select(`
+      id, juror_id, project_id, period_id, comment, status, created_at, updated_at,
+      items:score_sheet_items(id, score_value, period_criterion_id, period_criteria(key, short_label)),
+      project:projects(id, title, members, project_no),
+      juror:jurors(id, juror_name, affiliation)
+    `)
     .eq("period_id", periodId);
   if (error) throw error;
-  return (data || []).map((row) => ({
-    id: row.id,
-    jurorId: row.juror_id,
-    juryName: row.juror?.juror_name || "",
-    affiliation: row.juror?.affiliation || "",
-    projectId: row.project_id,
-    projectName: row.project?.title || "",
-    groupNo: row.project?.project_no ?? null,
-    students: formatMembers(row.project?.members),
-    technical: row.technical,
-    design: row.written,
-    delivery: row.oral,
-    teamwork: row.teamwork,
-    total: (row.technical || 0) + (row.written || 0) + (row.oral || 0) + (row.teamwork || 0),
-    comments: row.comments || "",
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+  return (data || []).map((row) => {
+    const { scores, total } = pivotItems(row.items);
+    return {
+      id: row.id,
+      jurorId: row.juror_id,
+      juryName: row.juror?.juror_name || "",
+      affiliation: row.juror?.affiliation || "",
+      projectId: row.project_id,
+      projectName: row.project?.title || "",
+      groupNo: row.project?.project_no ?? null,
+      students: formatMembers(row.project?.members),
+      ...scores,
+      total,
+      comments: row.comment || "",
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  });
 }
 
 /**
@@ -44,12 +69,12 @@ export async function listJurorsSummary(periodId) {
     .eq("period_id", periodId);
   if (authErr) throw authErr;
 
-  // Get score counts per juror for this period
-  const { data: scores, error: scoreErr } = await supabase
-    .from("scores_compat")
+  // Get score sheet counts per juror for this period
+  const { data: sheets, error: sheetErr } = await supabase
+    .from("score_sheets")
     .select("juror_id, id")
     .eq("period_id", periodId);
-  if (scoreErr) throw scoreErr;
+  if (sheetErr) throw sheetErr;
 
   // Get total projects count for this period
   const { data: projects, error: projErr } = await supabase
@@ -59,9 +84,9 @@ export async function listJurorsSummary(periodId) {
   if (projErr) throw projErr;
   const totalProjects = projects?.length || 0;
 
-  // Count scores per juror
+  // Count score sheets per juror
   const scoreCounts = {};
-  for (const s of scores || []) {
+  for (const s of sheets || []) {
     scoreCounts[s.juror_id] = (scoreCounts[s.juror_id] || 0) + 1;
   }
 
@@ -82,7 +107,7 @@ export async function listJurorsSummary(periodId) {
 }
 
 /**
- * Returns per-project summary with aggregated scores.
+ * Returns per-project summary with aggregated scores (dynamic criteria).
  */
 export async function getProjectSummary(periodId) {
   // Get projects
@@ -93,40 +118,43 @@ export async function getProjectSummary(periodId) {
     .order("title");
   if (projErr) throw projErr;
 
-  // Get all scores for this period
-  const { data: scores, error: scoreErr } = await supabase
-    .from("scores_compat")
-    .select("*")
+  // Get all score sheets with items for this period
+  const { data: sheets, error: sheetErr } = await supabase
+    .from("score_sheets")
+    .select(`
+      id, project_id,
+      items:score_sheet_items(score_value, period_criteria(key))
+    `)
     .eq("period_id", periodId);
-  if (scoreErr) throw scoreErr;
+  if (sheetErr) throw sheetErr;
 
   // Aggregate scores per project
   const scoresByProject = {};
-  for (const s of scores || []) {
+  for (const s of sheets || []) {
     if (!scoresByProject[s.project_id]) scoresByProject[s.project_id] = [];
-    scoresByProject[s.project_id].push(s);
+    scoresByProject[s.project_id].push(pivotItems(s.items));
   }
 
   return (projects || []).map((p) => {
     const pScores = scoresByProject[p.id] || [];
     const count = pScores.length;
 
-    const avg = (field) => {
-      const vals = pScores.map((s) => s[field]).filter((v) => v != null);
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    };
+    // Collect all criterion keys across all jurors
+    const allKeys = new Set();
+    pScores.forEach((ps) => Object.keys(ps.scores).forEach((k) => allKeys.add(k)));
+
+    // Compute per-criterion average
+    const avg = {};
+    allKeys.forEach((key) => {
+      const vals = pScores.map((ps) => ps.scores[key]).filter((v) => v != null);
+      avg[key] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    });
 
     const totalAvg = count
-      ? pScores.reduce(
-          (sum, s) =>
-            sum + (s.technical || 0) + (s.written || 0) + (s.oral || 0) + (s.teamwork || 0),
-          0
-        ) / count
+      ? pScores.reduce((sum, ps) => sum + ps.total, 0) / count
       : null;
 
-    const totals = pScores.map(
-      (s) => (s.technical || 0) + (s.written || 0) + (s.oral || 0) + (s.teamwork || 0)
-    );
+    const totals = pScores.map((ps) => ps.total);
 
     return {
       id: p.id,
@@ -135,12 +163,7 @@ export async function getProjectSummary(periodId) {
       members: formatMembers(p.members),
       advisor: p.advisor || "",
       count,
-      avg: dbAvgScoresToUi({
-        technical: avg("technical"),
-        written: avg("written"),
-        oral: avg("oral"),
-        teamwork: avg("teamwork"),
-      }),
+      avg,
       totalAvg,
       totalMin: totals.length ? Math.min(...totals) : null,
       totalMax: totals.length ? Math.max(...totals) : null,
@@ -149,7 +172,7 @@ export async function getProjectSummary(periodId) {
 }
 
 /**
- * Returns per-period outcome averages for trend charts.
+ * Returns per-period criterion averages for trend charts (dynamic criteria).
  */
 export async function getOutcomeTrends(periodIds) {
   const results = [];
@@ -160,26 +183,31 @@ export async function getOutcomeTrends(periodIds) {
       .eq("id", periodId)
       .single();
 
-    const { data: scores } = await supabase
-      .from("scores_compat")
-      .select("technical, written, oral, teamwork")
+    const { data: sheets } = await supabase
+      .from("score_sheets")
+      .select(`
+        id,
+        items:score_sheet_items(score_value, period_criteria(key))
+      `)
       .eq("period_id", periodId);
 
-    const count = scores?.length || 0;
-    const avg = (field) => {
-      const vals = (scores || []).map((s) => s[field]).filter((v) => v != null);
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    };
+    const pivoted = (sheets || []).map((s) => pivotItems(s.items));
+    const count = pivoted.length;
+
+    // Collect all criterion keys
+    const allKeys = new Set();
+    pivoted.forEach((ps) => Object.keys(ps.scores).forEach((k) => allKeys.add(k)));
+
+    const criteriaAvgs = {};
+    allKeys.forEach((key) => {
+      const vals = pivoted.map((ps) => ps.scores[key]).filter((v) => v != null);
+      criteriaAvgs[key] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    });
 
     results.push({
       periodId,
       periodName: period?.name || "",
-      criteriaAvgs: dbAvgScoresToUi({
-        technical: avg("technical"),
-        written: avg("written"),
-        oral: avg("oral"),
-        teamwork: avg("teamwork"),
-      }),
+      criteriaAvgs,
       nEvals: count,
     });
   }
@@ -193,21 +221,21 @@ export async function getDeleteCounts(targetType, targetId) {
   if (targetType === "period") {
     const [projects, scores, jurorAuth] = await Promise.all([
       supabase.from("projects").select("id", { count: "exact", head: true }).eq("period_id", targetId),
-      supabase.from("scores_compat").select("id", { count: "exact", head: true }).eq("period_id", targetId),
+      supabase.from("score_sheets").select("id", { count: "exact", head: true }).eq("period_id", targetId),
       supabase.from("juror_period_auth").select("juror_id", { count: "exact", head: true }).eq("period_id", targetId),
     ]);
     return { projects: projects.count || 0, scores: scores.count || 0, jurorAssignments: jurorAuth.count || 0 };
   }
   if (targetType === "project") {
     const { count } = await supabase
-      .from("scores_compat")
+      .from("score_sheets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", targetId);
     return { scores: count || 0 };
   }
   if (targetType === "juror") {
     const { count } = await supabase
-      .from("scores_compat")
+      .from("score_sheets")
       .select("id", { count: "exact", head: true })
       .eq("juror_id", targetId);
     return { scores: count || 0 };
@@ -216,22 +244,37 @@ export async function getDeleteCounts(targetType, targetId) {
 }
 
 /**
- * Returns criteria rows for a period snapshot (from period_criteria table).
- * Returns an empty array if the period has no snapshot yet.
+ * Returns criteria rows for a period snapshot (from period_criteria table),
+ * enriched with mapped outcome codes from period_criterion_outcome_maps.
  */
 export async function listPeriodCriteria(periodId) {
-  const { data, error } = await supabase
-    .from("period_criteria")
-    .select("*")
-    .eq("period_id", periodId)
-    .order("sort_order");
-  if (error) throw error;
-  return data || [];
+  const [criteriaRes, mapsRes] = await Promise.all([
+    supabase
+      .from("period_criteria")
+      .select("*")
+      .eq("period_id", periodId)
+      .order("sort_order"),
+    supabase
+      .from("period_criterion_outcome_maps")
+      .select("period_criterion_id, period_outcomes(code)")
+      .eq("period_id", periodId),
+  ]);
+  if (criteriaRes.error) throw criteriaRes.error;
+  const criteria = criteriaRes.data || [];
+
+  // Build a map: criterion_id → [code, ...]
+  const codeMap = {};
+  for (const row of mapsRes.data || []) {
+    const code = row.period_outcomes?.code;
+    if (!code) continue;
+    (codeMap[row.period_criterion_id] ||= []).push(code);
+  }
+
+  return criteria.map((c) => ({ ...c, mudek: codeMap[c.id] || [] }));
 }
 
 /**
  * Fetch period_outcomes snapshot rows for a given period.
- * Returns an empty array if the period has no outcome snapshot yet.
  */
 export async function listPeriodOutcomes(periodId) {
   const { data, error } = await supabase

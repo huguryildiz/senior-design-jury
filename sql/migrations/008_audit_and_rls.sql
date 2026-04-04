@@ -188,7 +188,7 @@ CREATE POLICY "organizations_delete" ON organizations FOR DELETE USING (
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (
-  id = auth.uid()
+  id = auth.uid() OR current_user_is_super_admin()
 );
 
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (
@@ -925,6 +925,12 @@ CREATE POLICY "score_sheet_items_delete" ON score_sheet_items FOR DELETE USING (
 -- =============================================================================
 
 ALTER TABLE period_criteria ENABLE ROW LEVEL SECURITY;
+
+-- Public read: anon jurors can read criteria for any visible period.
+-- Mirrors the periods_select_public_visible pattern.
+CREATE POLICY "period_criteria_select_public" ON period_criteria FOR SELECT USING (
+  period_id IN (SELECT id FROM periods WHERE is_visible = true)
+);
 
 CREATE POLICY "period_criteria_select" ON period_criteria FOR SELECT USING (
   period_id IN (

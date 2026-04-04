@@ -32,9 +32,10 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from "react";
-import { getCurrentPeriod, listProjects, listPeriods, verifyEntryToken } from "../../shared/api";
+import { getCurrentPeriod, listProjects, listPeriodsPublic as listPeriods, verifyEntryToken } from "../../shared/api";
 import { getJuryAccess } from "../../shared/storage";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
+import { supabase, clearPersistedSession } from "@/shared/lib/supabaseClient";
 
 const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN || "";
 
@@ -60,14 +61,34 @@ export function useJuryLoading() {
     const ctrl = new AbortController();
     const run = async () => {
       try {
+        // Demo mode: clear any stale admin session (from ?explore) before making
+        // anon PostgREST queries. An expired Bearer token causes 401.
+        // Must clear BOTH localStorage (so Supabase client can't restore it) AND
+        // in-memory session to fully prevent the stale token from being sent.
+        if (DEMO_MODE) {
+          clearPersistedSession();
+          try { await supabase.auth.signOut({ scope: "local" }); } catch (_) {}
+        }
+
         // Demo mode: resolve period via entry token so demo tenant is always shown.
         if (DEMO_MODE && DEMO_ENTRY_TOKEN) {
           const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
           if (!alive) return;
           if (tokenRes?.ok && tokenRes?.period_id) {
-            const periods = await listPeriods(ctrl.signal);
-            if (!alive) return;
-            const res = (periods || []).find((p) => p.id === tokenRes.period_id) || null;
+            // Build base period from token, then try to enrich with full data.
+            let res = {
+              id:         tokenRes.period_id,
+              name:       tokenRes.period_name || "",
+              is_current: tokenRes.is_current ?? true,
+              is_locked:  tokenRes.is_locked  ?? false,
+            };
+            // Enrich with organization info and poster_date from periods table.
+            try {
+              const allPeriods = await listPeriods(ctrl.signal);
+              if (!alive) return;
+              const full = (allPeriods || []).find((p) => p.id === tokenRes.period_id);
+              if (full) res = { ...res, ...full };
+            } catch (_) { /* non-fatal: token data is sufficient */ }
             setCurrentPeriodInfo(res);
             if (res?.id) {
               try {
@@ -79,8 +100,9 @@ export function useJuryLoading() {
                 if (alive) setActiveProjectCount(null);
               }
             }
-            return;
           }
+          // In demo mode always stop here — never fall through to prod path.
+          return;
         }
 
         const grantedPeriodId = getJuryAccess();

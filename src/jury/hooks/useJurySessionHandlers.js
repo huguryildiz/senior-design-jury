@@ -22,7 +22,7 @@ import { getActiveCriteria } from "../../shared/criteriaHelpers";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 
 import {
-  listPeriods,
+  listPeriodsPublic as listPeriods,
   listProjects,
   authenticateJuror,
   verifyJurorPin,
@@ -30,6 +30,7 @@ import {
   verifyEntryToken,
   freezePeriodSnapshot,
   listPeriodCriteria,
+  listPeriodOutcomes,
 } from "../../shared/api";
 import {
   isAllFilled,
@@ -87,7 +88,21 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       loading.setPeriodId(period.id);
       loading.setPeriodName(period.name);
 
-      const outcomeConfig = period.outcome_config || [];
+      let outcomeRows = [];
+      try {
+        outcomeRows = await listPeriodOutcomes(period.id);
+      } catch (e) {
+        if (e?.name === "AbortError") throw e;
+        // Non-fatal: fall back to static MUDEK_OUTCOMES via buildOutcomeLookup([]).
+      }
+      // Map period_outcomes rows to the shape buildOutcomeLookup expects.
+      // DB stores a single `description` field; we surface it as desc_en.
+      const outcomeConfig = outcomeRows.map((o) => ({
+        id:      "po_" + String(o.code).replace(/\./g, "_"),
+        code:    o.code,
+        desc_en: o.description || o.label || "",
+        desc_tr: "",
+      }));
       loading.setCriteriaConfig(criteriaConfigForState);
       loading.setOutcomeConfig(outcomeConfig);
       const periodCriteria = getActiveCriteria(criteriaConfigForState);
@@ -201,6 +216,21 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
         const res = await authenticateJuror(period.id, name, affiliation, DEMO_MODE);
         if (res?.juror_name) identity.setJuryName(res.juror_name);
         if (res?.affiliation) identity.setAffiliation(res.affiliation);
+
+        // Demo mode: RPC returns needs_pin=true even for force_reissue because
+        // it conflates "PIN was generated" with "user must enter PIN". In demo
+        // mode, always show pin_reveal (display PIN) instead of pin (enter PIN).
+        if (DEMO_MODE && res?.pin_plain_once) {
+          session.setIssuedPin(res.pin_plain_once);
+          session.setPinError("");
+          session.setPinErrorCode("");
+          session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+          session.setPinLockedUntil("");
+          loading.setLoadingState(null);
+          workflow.setStep("pin_reveal");
+          return;
+        }
+
         if (res?.needs_pin) {
           session.setIssuedPin("");
           session.setPinError("");
@@ -255,22 +285,29 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
     loading.loadAbortRef.current = ctrl;
     loading.setLoadingState({ stage: "loading", message: "Loading periods…" });
     try {
-      const periodList = await listPeriods(ctrl.signal);
-      const active = (periodList || []).filter((p) => p.is_current);
-      loading.setPeriods(active);
-      // Demo mode: resolve correct period via entry token (not just active[0])
+      // Demo mode: resolve period via entry token first, bypassing listPeriods entirely.
+      // listPeriods is a PostgREST table query that 401s when a stale admin session
+      // (from ?explore) is present. verifyEntryToken is a SECURITY DEFINER RPC that
+      // returns enough period data to proceed without a separate table query.
       const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN || "";
       if (DEMO_MODE && DEMO_ENTRY_TOKEN) {
         const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
         if (ctrl.signal.aborted) return;
-        const target = tokenRes?.ok && tokenRes?.period_id
-          ? active.find((p) => p.id === tokenRes.period_id) || active[0]
-          : active[0];
-        if (target) {
-          await handlePeriodSelect(target);
+        if (tokenRes?.ok && tokenRes?.period_id) {
+          const period = {
+            id:         tokenRes.period_id,
+            name:       tokenRes.period_name || "",
+            is_current: tokenRes.is_current ?? true,
+            is_locked:  tokenRes.is_locked  ?? false,
+          };
+          loading.setPeriods([period]);
+          await handlePeriodSelect(period);
           return;
         }
       }
+      const periodList = await listPeriods(ctrl.signal);
+      const active = (periodList || []).filter((p) => p.is_current);
+      loading.setPeriods(active);
       if (active.length === 1) {
         await handlePeriodSelect(active[0]);
         return;

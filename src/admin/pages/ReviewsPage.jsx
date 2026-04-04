@@ -11,6 +11,8 @@
 import { useMemo, useState } from "react";
 import { useReviewsFilters } from "../hooks/useReviewsFilters";
 import { useToast } from "@/shared/hooks/useToast";
+import { useAuth } from "@/auth";
+import SendReportModal from "@/admin/modals/SendReportModal";
 import {
   buildProjectMetaMap,
   buildJurorEditMap,
@@ -21,11 +23,13 @@ import {
   sortRows,
   computeActiveFilterCount,
 } from "../selectors/filterPipeline";
-import { jurorBg, jurorDot, formatTs } from "../utils/adminUtils";
+import { formatTs } from "../utils/adminUtils";
+import { downloadTable, generateTableBlob } from "../utils/downloadTable";
+import JurorBadge from "../components/JurorBadge";
 import "../../styles/pages/reviews.css";
 
-// ── Avatar initials ───────────────────────────────────────────
-function initials(name) {
+// initials removed — using JurorBadge component
+function _unused_initials(name) {
   const parts = String(name || "")
     .trim()
     .split(/\s+/)
@@ -85,7 +89,7 @@ function JurorPill({ status }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
           <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
         </svg>
-        Ready
+        Ready to Submit
       </span>
     );
   }
@@ -168,9 +172,11 @@ export default function ReviewsPage({
   } = filters;
 
   const _toast = useToast();
+  const { activeOrganization } = useAuth();
   const [showFilter, setShowFilter] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [exportFormat, setExportFormat] = useState("csv");
+  const [sendOpen, setSendOpen] = useState(false);
 
   // ── Data pipeline ─────────────────────────────────────────
   const projectMeta = useMemo(() => buildProjectMetaMap(summaryData), [summaryData]);
@@ -314,12 +320,12 @@ export default function ReviewsPage({
     setCurrentPage(1);
   }
 
-  function handleExport() {
+  async function handleExport() {
     try {
       const header = [
         "Juror", "Affiliation",
         ...scoreCols.filter((c) => c.key !== "total").map((c) => c.label),
-        "Total", "Score Status", "Juror Status", "Comment", "Submitted",
+        `Total (${criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})`, "Score Status", "Juror Status", "Comment", "Submitted",
       ];
       const rows = sorted.map((r) => [
         r.juryName ?? "",
@@ -331,18 +337,21 @@ export default function ReviewsPage({
         r.comments ?? "",
         formatTs(r.finalSubmittedAt || r.updatedAt),
       ]);
-      const csvContent = [header, ...rows]
-        .map((row) =>
-          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-        )
-        .join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reviews-${periodName || "export"}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      await downloadTable(exportFormat, {
+        filenameType: "Reviews",
+        sheetName: "Reviews",
+        periodName,
+        tenantCode: activeOrganization?.code || "",
+        organization: activeOrganization?.name || "",
+        department: activeOrganization?.institution_name || "",
+        pdfTitle: "VERA — Reviews",
+        pdfSubtitle: `${periodName || "All Periods"} · ${sorted.length} reviews · ${uniqueJurors} jurors`,
+        header,
+        rows,
+        colWidths: [24, 24, ...scoreCols.filter((c) => c.key !== "total").map(() => 10), 8, 12, 14, 32, 18],
+      });
+      setShowExport(false);
       _toast.success("Reviews exported");
     } catch (e) {
       _toast.error(e?.message || "Export failed");
@@ -469,17 +478,17 @@ export default function ReviewsPage({
       <div className="reviews-status-legend" role="note" aria-label="Status legend">
         <div className="reviews-status-legend-row-inline">
           <span className="reviews-status-legend-title">Score</span>
-          <span className="status-pill status-scored" title="All criteria are scored for this row">
+          <span className="status-pill status-scored" data-tip="All criteria are scored for this row">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
             Scored
           </span>
-          <span className="status-pill status-partial" title="At least one criterion is missing">
+          <span className="status-pill status-partial" data-tip="At least one criterion is missing">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="8" strokeDasharray="2.5 2.5" /><circle cx="12" cy="12" r="1.3" />
             </svg>
             Partial
           </span>
-          <span className="status-pill status-empty" title="No score has been entered yet">
+          <span className="status-pill status-empty" data-tip="No score has been entered yet">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
             Empty
           </span>
@@ -487,29 +496,29 @@ export default function ReviewsPage({
         <div className="legend-sep" />
         <div className="reviews-status-legend-row-inline">
           <span className="reviews-status-legend-title">Juror</span>
-          <span className="status-pill status-completed" title="Final submission is completed">
+          <span className="status-pill status-completed" data-tip="Final submission is completed">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><path d="M9.2 12.4 11.3 14.5 15 10.8" />
             </svg>
             Completed
           </span>
-          <span className="status-pill status-ready" title="All groups scored, ready for submission">
+          <span className="status-pill status-ready" data-tip="All groups scored, ready for submission">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
               <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
             </svg>
-            Ready
+            Ready to Submit
           </span>
-          <span className="status-pill status-progress" title="Scoring has started but is not complete">
+          <span className="status-pill status-progress" data-tip="Scoring has started but is not complete">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
             </svg>
             In Progress
           </span>
-          <span className="status-pill status-not-started" title="No scoring activity yet">
+          <span className="status-pill status-not-started" data-tip="No scoring activity yet">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
             Not Started
           </span>
-          <span className="status-pill status-editing" title="Editing mode is enabled for this juror">
+          <span className="status-pill status-editing" data-tip="Editing mode is enabled for this juror">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
@@ -626,8 +635,9 @@ export default function ReviewsPage({
         </div>
         <div className="export-options">
           {[
-            { id: "csv", label: "CSV (.csv)", desc: "Raw review data for custom analysis", hint: "Best for analysis" },
             { id: "xlsx", label: "Excel (.xlsx)", desc: "All reviews with juror details and comments", hint: "Best for sharing" },
+            { id: "csv", label: "CSV (.csv)", desc: "Raw review data for custom analysis", hint: "Best for analysis" },
+            { id: "pdf", label: "PDF Report", desc: "Formatted review report for print / archive", hint: "Best for archival" },
           ].map((opt) => (
             <div
               key={opt.id}
@@ -646,21 +656,56 @@ export default function ReviewsPage({
         </div>
         <div className="export-footer">
           <div className="export-footer-info">
-            <div className="export-footer-format">{exportFormat === "xlsx" ? "Excel (.xlsx)" : "CSV (.csv)"} · Reviews</div>
+            <div className="export-footer-format">{exportFormat === "xlsx" ? "Excel (.xlsx)" : exportFormat === "pdf" ? "PDF Report" : "CSV (.csv)"} · Reviews</div>
             <div className="export-footer-meta">{sorted.length} reviews · {uniqueJurors} jurors{periodName ? ` · ${periodName}` : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
+              {" "}Send
+            </button>
             <button className="btn btn-primary btn-sm export-download-btn" onClick={handleExport}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Download {exportFormat === "xlsx" ? "Excel" : "CSV"}
+              Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "pdf" ? "PDF" : "CSV"}
             </button>
           </div>
         </div>
       </div>
+
+      <SendReportModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        format={exportFormat}
+        formatLabel={`${exportFormat === "xlsx" ? "Excel (.xlsx)" : exportFormat === "pdf" ? "PDF Report" : "CSV (.csv)"} · Reviews`}
+        meta={`${sorted.length} reviews · ${uniqueJurors} jurors${periodName ? ` · ${periodName}` : ""}`}
+        reportTitle="Reviews"
+        periodName={periodName}
+        organization={activeOrganization?.name || ""}
+        department={activeOrganization?.institution_name || ""}
+        generateFile={async (fmt) => {
+          const header = [
+            "Juror", "Affiliation",
+            ...scoreCols.filter((c) => c.key !== "total").map((c) => c.label),
+            `Total (${criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})`, "Score Status", "Juror Status", "Comment", "Submitted",
+          ];
+          const rows = sorted.map((r) => [
+            r.juryName ?? "", r.affiliation ?? "",
+            ...scoreCols.filter((c) => c.key !== "total").map((c) => r[c.key] ?? ""),
+            r.total ?? "", r.effectiveStatus ?? "", r.jurorStatus ?? "", r.comments ?? "",
+            formatTs(r.finalSubmittedAt || r.updatedAt),
+          ]);
+          return generateTableBlob(fmt, {
+            filenameType: "Reviews", sheetName: "Reviews", periodName,
+            tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
+            department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Reviews",
+            header, rows,
+          });
+        }}
+      />
 
       {/* Table */}
       <div className="table-wrap" style={{ borderRadius: "var(--radius) var(--radius) 0 0" }}>
@@ -707,21 +752,12 @@ export default function ReviewsPage({
               </tr>
             ) : (
               pageRows.map((row, i) => {
-                const name = row.juryName || "";
-                const bg = jurorBg(name);
-                const dot = jurorDot(name);
-                const ini = initials(name);
                 const isPartialRow = row.effectiveStatus === "partial";
                 const submittedTs = formatTs(row.finalSubmittedAt);
                 return (
                   <tr key={`${row.jurorId ?? row.juryName}__${row.projectId ?? row.title}__${i}`} className={isPartialRow ? "partial-row" : ""}>
                     <td>
-                      <div className="j-row">
-                        <div className="j-av" style={{ background: dot, width: 22, height: 22, fontSize: 8, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, flexShrink: 0 }}>
-                          {ini}
-                        </div>
-                        <span style={{ fontWeight: 500, fontSize: 12 }}>{name}</span>
-                      </div>
+                      <JurorBadge name={row.juryName} affiliation={row.affiliation} size="sm" />
                     </td>
                     <td className="text-center mono" style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                       {row.groupNo ?? "—"}

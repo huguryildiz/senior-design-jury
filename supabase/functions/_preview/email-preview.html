@@ -21,6 +21,7 @@
     <button onclick="show('rejected', this)">Application Rejected</button>
     <button onclick="show('pin', this)">Juror PIN</button>
     <button onclick="show('token', this)">Entry Token</button>
+    <button onclick="show('export', this)">Export Report</button>
   </nav>
   <div id="preview"></div>
 
@@ -136,6 +137,70 @@
         </table>`;
     }
 
+    function exportTpl() {
+      const senderName = "Dr. Mehmet Yılmaz";
+      const organization = "TED University";
+      const department = "Electrical & Electronics Eng.";
+      const periodName = "Spring 2026";
+      const reportTitle = "Score Rankings";
+      const fileName = "VERA_Rankings_TEDU_Spring-2026_2026-04-04.xlsx";
+      const iconColor = "#16a34a";
+      const iconLabel = "XLSX";
+      const message = "Please review the attached rankings report before Monday's committee meeting.";
+
+      // Subject is always static (mirrors edge function logic)
+      const subjectPreview = "VERA Evaluation Report";
+
+      const sentByLine = `<p style="margin:4px 0 16px;font-size:13px;color:#718096;">Sent by <strong style="color:#a0aec0;">${senderName}</strong></p>`;
+      const metaLine = `<p style="margin:0 0 16px;font-size:13px;color:#718096;">${organization} &middot; ${department} &middot; ${periodName}</p>`;
+      const messageBlock = `<div style="margin:0 0 20px;padding:14px 16px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;">Message from ${senderName}</p>
+        <p style="margin:0;font-size:14px;line-height:1.7;color:#a0aec0;white-space:pre-wrap;">${message}</p>
+      </div>`;
+
+      return `
+        <!-- Subject line preview -->
+        <div style="font-family:sans-serif;font-size:12px;color:#718096;margin-bottom:12px;padding:8px 12px;background:#1a1a2e;border-radius:8px;border:1px solid #2a2a4e;">
+          <span style="color:#4a5568;text-transform:uppercase;letter-spacing:0.5px;font-size:10px;font-weight:600;">Subject · </span>${subjectPreview}
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f0f1a; padding:40px 0;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+              <tr><td style="background:linear-gradient(90deg,#6c47ff,#a78bfa,#6c47ff); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+              <tr><td align="center" style="padding:40px 40px 20px;">
+                <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;"><span style="color:#f1f5f9;">V</span><span style="color:#93c5fd;">ERA</span></div>
+              </td></tr>
+              <tr><td align="center" style="padding:8px 48px 12px;">
+                <h1 style="margin:0; font-size:25px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">Export Report</h1>
+              </td></tr>
+              <tr><td style="padding:0 48px 8px;">
+                <p style="margin:0; font-size:15px; line-height:1.7; color:#a0aec0;">A VERA evaluation report has been shared with you.</p>
+                ${sentByLine}
+                ${metaLine}
+                ${messageBlock}
+                <div style="padding:16px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid rgba(108,71,255,0.3);">
+                  <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                    <td width="48" valign="middle" style="padding-right:14px;">
+                      <div style="width:42px;height:48px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);text-align:center;line-height:48px;">
+                        <span style="font-family:monospace;font-size:11px;font-weight:700;color:${iconColor};letter-spacing:0.3px;">${iconLabel}</span>
+                      </div>
+                    </td>
+                    <td valign="middle">
+                      <p style="margin:0;font-size:14px;font-weight:600;color:#ffffff;">${reportTitle}</p>
+                      <p style="margin:2px 0 0;font-size:12px;color:#718096;">${fileName}</p>
+                    </td>
+                  </tr></table>
+                </div>
+                <p style="margin:14px 0 0;font-size:12px;color:#4a5568;">The report file is included as an attachment to this email.</p>
+              </td></tr>
+              <tr><td style="padding:16px 48px 0;"><div style="border-top:1px solid rgba(255,255,255,0.08); font-size:0;">&nbsp;</div></td></tr>
+              <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 VERA. All rights reserved.</p></td></tr>
+              <tr><td style="background:linear-gradient(90deg,#6c47ff,#a78bfa,#6c47ff); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+        </table>`;
+    }
+
     const templates = {
       reset:    tpl("Reset Password",       "There is a password reset request for your VERA account.",        "Use the button below to create your new password.",                                          "Reset Password"),
       changed:  tpl("Password Changed",     "Your VERA account password was successfully updated.",            "If you did not make this change, please contact support immediately.",                     "Go to VERA"),
@@ -143,6 +208,7 @@
       rejected: tpl("Application Update",   "Unfortunately, your VERA admin application was not approved.",    "If you think this is a mistake, please reach out to the platform administrator.",         "Contact Support"),
       pin:      pinTpl(),
       token:    tokenTpl(),
+      export:   exportTpl(),
     };
 
     function show(key, btn) {

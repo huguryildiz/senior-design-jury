@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuditLogFilters } from "../hooks/useAuditLogFilters";
 import { usePageRealtime } from "../hooks/usePageRealtime";
+import ExportPanel from "../components/ExportPanel";
 
 // ── Chip helpers ──────────────────────────────────────────────
 const CHIP_MAP = {
@@ -272,48 +273,18 @@ export default function AuditLogPage({ organizationId }) {
 
       {/* Export Panel */}
       {exportOpen && (
-        <div className="export-panel" style={{ marginBottom: 12 }}>
-          <div className="export-panel-header">
-            <div>
-              <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export Audit Log
-              </h4>
-              <div className="export-panel-sub">Download the full activity trail with timestamps, actors, and event details.</div>
-            </div>
-            <button className="export-panel-close" type="button" onClick={() => setExportOpen(false)}>×</button>
-          </div>
-          <div className="export-options">
-            <div className="export-option selected">
-              <span className="export-option-selected-pill">Selected</span>
-              <div className="export-option-icon export-option-icon--xlsx">
-                <span className="file-icon"><span className="file-icon-label">XLS</span></span>
-              </div>
-              <div className="export-option-title">Excel (.xlsx)</div>
-              <div className="export-option-desc">Full audit log with filters and formatting</div>
-              <div className="export-option-hint">Best for sharing</div>
-            </div>
-          </div>
-          <div className="export-footer">
-            <div className="export-footer-info">
-              <div className="export-footer-format">Excel (.xlsx) · Audit Log</div>
-              <div className="export-footer-meta">{total} events · {hasAuditFilters ? "Filtered" : "All time"}</div>
-            </div>
-            <button
-              className="btn btn-primary btn-sm export-download-btn"
-              type="button"
-              disabled={auditExporting || !organizationId}
-              onClick={handleAuditExport}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              {auditExporting ? "Exporting…" : "Download Excel"}
-            </button>
-          </div>
-        </div>
+        <ExportPanel
+          title="Export Audit Log"
+          subtitle="Download the full activity trail with timestamps, actors, and event details."
+          meta={`${total} events · ${hasAuditFilters ? "Filtered" : "All time"}`}
+          loading={auditExporting}
+          onClose={() => setExportOpen(false)}
+          onExport={async (fmt) => {
+            await handleAuditExport(fmt);
+            setExportOpen(false);
+          }}
+          style={{ marginBottom: 12 }}
+        />
       )}
 
       {/* Audit table */}

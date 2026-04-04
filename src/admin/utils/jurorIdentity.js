@@ -1,0 +1,76 @@
+// src/admin/utils/jurorIdentity.js
+// Shared juror identity helpers: title stripping, initials, deterministic colors.
+// Used by JurorBadge component and all admin pages.
+
+// Academic / honorific prefixes to strip from display names
+const TITLE_PREFIXES = /^(Prof\.\s*Dr\.|Doç\.\s*Dr\.|Yrd\.\s*Doç\.\s*Dr\.|Assoc\.\s*Prof\.\s*Dr\.|Asst\.\s*Prof\.\s*Dr\.|Prof\.|Doç\.|Dr\.|Assoc\.\s*Prof\.|Asst\.\s*Prof\.|Mr\.|Mrs\.|Ms\.|Miss\.)\s*/i;
+
+/**
+ * Remove academic titles/honorifics from a juror name.
+ * "Prof. Dr. Ahmet Kaya" → "Ahmet Kaya"
+ * "Dr. Ayşe Yılmaz" → "Ayşe Yılmaz"
+ */
+export function stripTitles(name) {
+  if (!name) return "";
+  let cleaned = String(name).trim();
+  // Iteratively strip — handles "Prof. Dr." (two passes)
+  for (let i = 0; i < 3; i++) {
+    const prev = cleaned;
+    cleaned = cleaned.replace(TITLE_PREFIXES, "").trim();
+    if (cleaned === prev) break;
+  }
+  return cleaned || String(name).trim();
+}
+
+/**
+ * Extract initials from a name (after title stripping).
+ * "Ahmet Kaya" → "AK"
+ * "Ayşe" → "AY"
+ */
+export function jurorInitials(name) {
+  const clean = stripTitles(name);
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// Deterministic hash → integer
+function hashInt(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+// HSL → hex
+function hsl2hex(h, s, l) {
+  s /= 100; l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) =>
+    Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))))
+      .toString(16).padStart(2, "0");
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+// Color palette — 12 carefully chosen hues that work on both light/dark themes
+const PALETTE_HUES = [210, 340, 160, 30, 270, 190, 350, 120, 50, 300, 230, 80];
+
+/**
+ * Deterministic avatar background color for a juror name.
+ * Same name → same color everywhere in the admin panel.
+ */
+export function jurorAvatarBg(name) {
+  const hue = PALETTE_HUES[hashInt(stripTitles(name) || "?") % PALETTE_HUES.length];
+  return hsl2hex(hue, 55, 92);
+}
+
+/**
+ * Deterministic avatar text/dot color (darker version of background).
+ */
+export function jurorAvatarFg(name) {
+  const hue = PALETTE_HUES[hashInt(stripTitles(name) || "?") % PALETTE_HUES.length];
+  return hsl2hex(hue, 60, 42);
+}
