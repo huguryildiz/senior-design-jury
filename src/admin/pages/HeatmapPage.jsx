@@ -284,7 +284,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
         department={activeOrganization?.institution_name || ""}
         generateFile={async (fmt) => {
           const exportRows = buildExportRows(visibleJurors);
-          const groupHeaders = (groups || []).map((g) => g.group_no != null ? `Group ${g.group_no}` : (g.title || g.id));
+          const groupHeaders = (groups || []).map((g) => g.group_no != null ? `P${g.group_no}` : (g.title || g.id));
           const header = ["Juror", "Affiliation", "Status", ...groupHeaders];
           const rows = exportRows.map((r) => [
             r.name, r.dept ?? "", r.statusLabel,

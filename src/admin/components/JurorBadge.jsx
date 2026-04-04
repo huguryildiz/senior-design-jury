@@ -2,7 +2,7 @@
 // Shared juror identity badge — avatar + name + affiliation.
 // Used across all admin pages for consistent juror rendering.
 
-import { stripTitles, jurorInitials, jurorAvatarBg, jurorAvatarFg } from "../utils/jurorIdentity";
+import { jurorInitials, jurorAvatarBg, jurorAvatarFg } from "../utils/jurorIdentity";
 
 /**
  * @param {object}  props
@@ -23,7 +23,7 @@ export default function JurorBadge({
   style,
   className,
 }) {
-  const displayName = stripTitles(name);
+  const displayName = name ? String(name).trim() : "";
   const ini = jurorInitials(name);
   const bg = jurorAvatarBg(name);
   const fg = jurorAvatarFg(name);

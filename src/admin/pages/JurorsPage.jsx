@@ -559,9 +559,8 @@ export default function JurorsPage({
         <table id="jurors-main-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Affiliation</th>
-              <th className="text-center">Groups</th>
+              <th>Juror Name</th>
+              <th className="text-center">Projects Evaluated</th>
               <th>Status</th>
               <th>Last Active</th>
               <th style={{ width: "48px" }}>Actions</th>
@@ -570,24 +569,24 @@ export default function JurorsPage({
           <tbody>
             {loadingCount > 0 && filteredList.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
+                <td colSpan={5} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
                   Loading jurors…
                 </td>
               </tr>
             ) : filteredList.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
+                <td colSpan={5} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
                   No jurors found.
                 </td>
               </tr>
             ) : filteredList.map((juror) => {
               const jid = juror.juror_id || juror.jurorId;
-              const name = juror.juror_name || "";
+              const name = juror.juryName || juror.juror_name || "";
               const scored = juror.overviewScoredProjects || 0;
               const total = juror.overviewTotalProjects || 0;
               const pct = total > 0 ? Math.round((scored / total) * 100) : 0;
               const status = juror.overviewStatus || "not_started";
-              const lastActive = juror.last_activity_at || juror.finalSubmittedAt || juror.final_submitted_at;
+              const lastActive = juror.lastSeenAt || juror.last_activity_at || juror.finalSubmittedAt || juror.final_submitted_at;
 
               return (
                 <tr key={jid} onClick={() => setDrawerJuror(juror)}>

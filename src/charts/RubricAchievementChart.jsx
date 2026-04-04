@@ -74,13 +74,6 @@ export function RubricAchievementChart({ submittedData = [], criteria = [] }) {
         <Tooltip
           cursor={false}
           formatter={(v, name) => [`${v}%`, name.charAt(0).toUpperCase() + name.slice(1)]}
-          contentStyle={{
-            fontSize: 11,
-            background: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            boxShadow: "var(--shadow-elevated)",
-          }}
         />
         {BAND_LABELS.map((band) => (
           <Bar

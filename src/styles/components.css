@@ -2,15 +2,52 @@
 
 /* ── From vera.css 221-578: Dark mode overrides + premium light mode polish ── */
 /* ── Premium scrollbars ── */
-*{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-::-webkit-scrollbar{width:6px;height:6px}
+*{scrollbar-width:thin;scrollbar-color:rgba(148,163,184,0.22) transparent}
+::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
-::-webkit-scrollbar-thumb:hover{background:var(--border-strong)}
+::-webkit-scrollbar-thumb{
+  background:rgba(148,163,184,0.22);
+  border-radius:99px;
+  transition:background 0.15s;
+}
+::-webkit-scrollbar-thumb:hover{background:rgba(148,163,184,0.45)}
 ::-webkit-scrollbar-corner{background:transparent}
-.dark-mode ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08)}
-.dark-mode ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.15)}
-.dark-mode *{scrollbar-color:rgba(255,255,255,0.08) transparent}
+
+.dark-mode *{scrollbar-color:rgba(255,255,255,0.10) transparent}
+.dark-mode ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.10)}
+.dark-mode ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.22)}
+
+/* Horizontal scrollbar on table wrappers — slightly taller for visibility */
+.table-wrap::-webkit-scrollbar,
+.score-grid-wrap::-webkit-scrollbar,
+.matrix-wrap::-webkit-scrollbar{height:6px}
+
+.table-wrap::-webkit-scrollbar-track,
+.score-grid-wrap::-webkit-scrollbar-track,
+.matrix-wrap::-webkit-scrollbar-track{
+  background:rgba(148,163,184,0.06);
+  border-radius:99px;
+  margin:0 4px;
+}
+.table-wrap::-webkit-scrollbar-thumb,
+.score-grid-wrap::-webkit-scrollbar-thumb,
+.matrix-wrap::-webkit-scrollbar-thumb{
+  background:rgba(148,163,184,0.28);
+  border-radius:99px;
+}
+.table-wrap::-webkit-scrollbar-thumb:hover,
+.score-grid-wrap::-webkit-scrollbar-thumb:hover,
+.matrix-wrap::-webkit-scrollbar-thumb:hover{background:rgba(148,163,184,0.50)}
+
+.dark-mode .table-wrap::-webkit-scrollbar-track,
+.dark-mode .score-grid-wrap::-webkit-scrollbar-track,
+.dark-mode .matrix-wrap::-webkit-scrollbar-track{background:rgba(255,255,255,0.04)}
+.dark-mode .table-wrap::-webkit-scrollbar-thumb,
+.dark-mode .score-grid-wrap::-webkit-scrollbar-thumb,
+.dark-mode .matrix-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.14)}
+.dark-mode .table-wrap::-webkit-scrollbar-thumb:hover,
+.dark-mode .score-grid-wrap::-webkit-scrollbar-thumb:hover,
+.dark-mode .matrix-wrap::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.28)}
 
 /* ── Dark mode surfaces ── */
 .dark-mode .admin-main{
@@ -94,8 +131,29 @@
 /* ── Dark mode tooltips ── */
 .dark-mode .heat-cell .heat-tip{background:#1e293b;color:#e2e8f0;border:1px solid rgba(255,255,255,0.08);box-shadow:0 8px 24px rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.2)}
 .dark-mode .heat-cell .heat-tip::after{border-top-color:#1e293b}
-.dark-mode .consensus-sub{background:#1e293b;color:#e2e8f0;border:1px solid rgba(255,255,255,0.08);box-shadow:0 8px 24px rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.2)}
-.dark-mode .consensus-sub::before{border-bottom-color:#1e293b}
+/* consensus-sub dark overrides handled by base style (dark-first design) */
+/* Light mode — darken chip colors for contrast on white bg */
+body:not(.dark-mode) .consensus-high{background:rgba(16,185,129,0.08);color:#059669;border-color:rgba(16,185,129,0.32)}
+body:not(.dark-mode) .consensus-high::before{background:#059669}
+body:not(.dark-mode) .consensus-moderate{background:rgba(99,102,241,0.08);color:#4f46e5;border-color:rgba(99,102,241,0.26)}
+body:not(.dark-mode) .consensus-moderate::before{background:#4f46e5}
+body:not(.dark-mode) .consensus-disputed{background:rgba(244,63,94,0.08);color:#e11d48;border-color:rgba(244,63,94,0.28)}
+body:not(.dark-mode) .consensus-disputed::before{background:#e11d48}
+/* Light mode tooltip */
+body:not(.dark-mode) .consensus-sub{
+  background:rgba(255,255,255,0.97);
+  border-color:rgba(15,23,42,0.10);
+  box-shadow:0 8px 24px rgba(15,23,42,0.12),0 2px 6px rgba(15,23,42,0.06);
+}
+body:not(.dark-mode) .consensus-sub::after{
+  background:rgba(255,255,255,0.97);
+  border-color:rgba(15,23,42,0.10);
+}
+body:not(.dark-mode) .consensus-sub-range{color:rgba(15,23,42,0.40)}
+body:not(.dark-mode) .consensus-sub-sep{background:rgba(15,23,42,0.12)}
+body:not(.dark-mode) .consensus-sub-high .consensus-sub-sigma{color:#059669}
+body:not(.dark-mode) .consensus-sub-moderate .consensus-sub-sigma{color:#4f46e5}
+body:not(.dark-mode) .consensus-sub-disputed .consensus-sub-sigma{color:#e11d48}
 
 /* ── Dark mode buttons ── */
 .dark-mode .btn-primary{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 50%,#4f46e5 100%);color:#fff;box-shadow:0 2px 12px rgba(59,130,246,0.22),0 0 0 1px rgba(59,130,246,0.12),inset 0 1px 0 rgba(255,255,255,0.1)}
@@ -615,14 +673,86 @@ tbody tr:hover{background:var(--surface-1)}
 
 /* Consensus badges */
 .consensus-cell{position:relative}
-.consensus-badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:600;white-space:nowrap;cursor:default;letter-spacing:0.2px;transition:transform .1s}
-.consensus-cell:hover .consensus-badge{transform:scale(1.04)}
-.consensus-high{background:rgba(22,163,74,0.07);color:var(--success);border:1px solid rgba(22,163,74,0.12)}
-.consensus-moderate{background:var(--surface-1);color:var(--text-tertiary);border:1px solid var(--border)}
-.consensus-low{background:rgba(217,119,6,0.07);color:var(--warning);border:1px solid rgba(217,119,6,0.12)}
-.consensus-sub{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(2px);background:#0f172a;color:#e2e8f0;font-size:10.5px;padding:7px 12px;border-radius:8px;white-space:nowrap;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,0.18),0 2px 6px rgba(0,0,0,0.1);font-weight:400;letter-spacing:0.1px;border:1px solid rgba(255,255,255,0.06);opacity:0;transition:opacity .12s,transform .12s}
-.consensus-sub::before{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid #0f172a}
-.consensus-cell:hover .consensus-sub{display:block;opacity:1;transform:translateX(-50%) translateY(0)}
+.consensus-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:99px;
+  font-size:10.5px;font-weight:600;white-space:nowrap;cursor:default;
+  letter-spacing:0.3px;transition:transform .15s,box-shadow .15s;
+  position:relative;
+}
+.consensus-badge::before{
+  content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0;
+}
+.consensus-cell:hover .consensus-badge{transform:scale(1.05)}
+/* High — emerald */
+.consensus-high{
+  background:linear-gradient(135deg,rgba(16,185,129,0.14),rgba(5,150,105,0.08));
+  color:#10b981;
+  border:1px solid rgba(16,185,129,0.28);
+  box-shadow:0 0 0 0 rgba(16,185,129,0);
+}
+.consensus-high::before{background:#10b981;box-shadow:0 0 4px rgba(16,185,129,0.6)}
+.consensus-cell:hover .consensus-high{box-shadow:0 2px 12px rgba(16,185,129,0.18)}
+/* Moderate — violet/slate */
+.consensus-moderate{
+  background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(79,70,229,0.06));
+  color:#818cf8;
+  border:1px solid rgba(99,102,241,0.22);
+}
+.consensus-moderate::before{background:#818cf8;box-shadow:0 0 4px rgba(129,140,248,0.5)}
+.consensus-cell:hover .consensus-moderate{box-shadow:0 2px 12px rgba(99,102,241,0.16)}
+/* Disputed — rose */
+.consensus-disputed{
+  background:linear-gradient(135deg,rgba(244,63,94,0.12),rgba(225,29,72,0.06));
+  color:#fb7185;
+  border:1px solid rgba(244,63,94,0.24);
+}
+.consensus-disputed::before{background:#fb7185;box-shadow:0 0 4px rgba(251,113,133,0.55)}
+.consensus-cell:hover .consensus-disputed{box-shadow:0 2px 12px rgba(244,63,94,0.18)}
+/* Legacy alias */
+.consensus-low{
+  background:linear-gradient(135deg,rgba(244,63,94,0.12),rgba(225,29,72,0.06));
+  color:#fb7185;border:1px solid rgba(244,63,94,0.24);
+}
+.consensus-low::before{background:#fb7185}
+.consensus-sub{
+  display:none;position:absolute;top:calc(100% + 8px);left:50%;
+  transform:translateX(-50%) translateY(3px);
+  background:rgba(10,14,26,0.90);
+  backdrop-filter:blur(20px) saturate(1.3);
+  -webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:10px;
+  padding:9px 13px;
+  white-space:nowrap;z-index:50;
+  box-shadow:0 12px 32px rgba(0,0,0,0.35),0 2px 8px rgba(0,0,0,0.18);
+  opacity:0;transition:opacity .15s,transform .15s;
+  display:flex;align-items:center;gap:8px;
+}
+.consensus-cell:hover .consensus-sub{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+/* arrow */
+.consensus-sub::after{
+  content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);
+  width:8px;height:8px;border-radius:1px;
+  background:rgba(10,14,26,0.90);
+  border-left:1px solid rgba(255,255,255,0.09);
+  border-top:1px solid rgba(255,255,255,0.09);
+  transform:translateX(-50%) rotate(45deg);
+}
+.consensus-sub-sigma{
+  font-size:11px;font-weight:700;letter-spacing:0.3px;
+}
+.consensus-sub-sep{
+  width:1px;height:12px;background:rgba(255,255,255,0.12);flex-shrink:0;
+}
+.consensus-sub-range{
+  font-size:10.5px;font-weight:400;color:rgba(255,255,255,0.45);
+  letter-spacing:0.1px;
+}
+/* Per-level accent on σ value */
+.consensus-sub-high   .consensus-sub-sigma{color:#34d399}
+.consensus-sub-moderate .consensus-sub-sigma{color:#a5b4fc}
+.consensus-sub-disputed .consensus-sub-sigma{color:#fda4af}
 
 /* Column info popover */
 .col-info{position:relative;display:inline-flex;align-items:center;gap:3px}
@@ -635,6 +765,10 @@ tbody tr:hover{background:var(--surface-1)}
 .col-info-popover p{font-size:11px;color:var(--text-secondary);line-height:1.55;margin-bottom:8px;text-align:justify}
 .col-info-popover p:last-child{margin-bottom:0}
 .col-info-levels{display:grid;grid-template-columns:8px auto 1fr;gap:6px 8px;align-items:baseline}
+.consensus-info-rows{display:grid;grid-template-columns:max-content 1fr;gap:6px 12px;align-items:center;margin:2px 0}
+.consensus-info-row{display:contents}
+.consensus-info-row .consensus-badge{pointer-events:none;justify-self:start}
+.consensus-info-desc{font-size:11px;color:var(--text-secondary);line-height:1.4}
 .col-info-level{display:contents}
 .col-info-level .dot{width:6px;height:6px;border-radius:50%;justify-self:center;align-self:first baseline;position:relative;top:1px}
 .col-info-level strong{font-weight:600;white-space:nowrap}
@@ -1071,13 +1205,7 @@ input.input-error,select.input-error,textarea.input-error{border-color:rgba(225,
   border-color:rgba(255,255,255,0.08) !important;
   box-shadow:0 8px 28px rgba(0,0,0,0.40) !important;
 }
-.dark-mode .consensus-sub{
-  background:rgba(12,18,32,0.85) !important;
-  backdrop-filter:blur(20px) saturate(1.2) !important;
-  -webkit-backdrop-filter:blur(20px) saturate(1.2) !important;
-  border-color:rgba(255,255,255,0.08) !important;
-  box-shadow:0 8px 28px rgba(0,0,0,0.40) !important;
-}
+/* consensus-sub dark override — no longer needed (base is dark-first) */
 
 /* ── Confirm card (jury submit) — premium glass ── */
 .dark-mode .dj-confirm-card{

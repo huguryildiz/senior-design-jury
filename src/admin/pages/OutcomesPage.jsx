@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useManagePeriods } from "../hooks/useManagePeriods";
-import MudekManager from "../components/MudekManager";
+import OutcomeEditor from "../components/OutcomeEditor";
 import "../../styles/pages/outcomes.css";
 
 // ── Coverage helpers ─────────────────────────────────────────
@@ -281,7 +281,7 @@ export default function OutcomesPage({
   const unmappedCount = totalOutcomes - directCount - indirectCount;
   const incompleteCount = unmappedCount + indirectCount;
 
-  // ── Save handler (used by MudekManager overlay) ───────────────
+  // ── Save handler (used by OutcomeEditor overlay) ──────────────
 
   const handleSave = async (newTemplate) => {
     if (!periods.viewPeriodId) return { ok: false, error: "No period selected" };
@@ -509,7 +509,7 @@ export default function OutcomesPage({
         onConfirm={handleDeleteConfirm}
       />
 
-      {/* MudekManager fullscreen overlay */}
+      {/* OutcomeEditor fullscreen overlay */}
       {editorOpen && (
         <div className="crt-editor-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeEditor(); }}>
           <div className="crt-editor-panel" onClick={(e) => e.stopPropagation()}>
@@ -531,7 +531,7 @@ export default function OutcomesPage({
               <button className="crt-editor-panel-close" onClick={closeEditor} aria-label="Close editor">×</button>
             </div>
             <div className="crt-editor-panel-body">
-              <MudekManager
+              <OutcomeEditor
                 outcomeConfig={outcomeConfig}
                 criteriaConfig={criteriaConfig}
                 onSave={async (newTemplate) => {

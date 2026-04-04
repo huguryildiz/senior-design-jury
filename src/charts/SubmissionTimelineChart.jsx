@@ -11,52 +11,60 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function RotatedTick({ x, y, payload }) {
+  const parts = payload.value.split(" ");
+  // parts: ["13", "Jun", "2026", "23:00"]
+  const dateLine = parts.slice(0, 3).join(" ");
+  const timeLine = parts[3] ?? "";
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        textAnchor="end"
+        fill="var(--text-tertiary)"
+        fontSize={9}
+        transform="rotate(-35)"
+      >
+        <tspan x={0} dy="0">{dateLine}</tspan>
+        <tspan x={0} dy="11">{timeLine}</tspan>
+      </text>
+    </g>
+  );
+}
+
 /**
- * Build hourly activity buckets from juror lastSeenMs timestamps.
- * Groups all seen jurors by hour within the same calendar day.
- * Falls back to cumulative mock shape when no real timestamps are available.
+ * Build per-hour submission buckets from juror finalSubmittedAt timestamps.
+ * Each unique day+hour combination is a separate bucket on the x-axis.
+ * Label format: "14 Jun 20:00"
  *
- * @param {object[]} jurors — allJurors array with lastSeenMs
+ * @param {object[]} jurors — allJurors array with finalSubmittedAt
  * @returns {Array<{label: string, count: number, cumulative: number}>}
  */
 function buildTimelineBuckets(jurors) {
-  const seen = jurors.filter((j) => (j.lastSeenMs || 0) > 0);
-  if (!seen.length) return [];
+  const submitted = jurors.filter((j) => j.finalSubmittedAt);
+  if (!submitted.length) return [];
 
-  // Find the most recent activity day as the reference day
-  const latestMs = Math.max(...seen.map((j) => j.lastSeenMs));
-  const refDate = new Date(latestMs);
-  const refDay = refDate.toDateString();
-
-  // Filter jurors active on the same day and bucket by hour
-  const sameDay = seen.filter((j) => new Date(j.lastSeenMs).toDateString() === refDay);
-  if (!sameDay.length) return [];
-
-  const minHour = Math.min(...sameDay.map((j) => new Date(j.lastSeenMs).getHours()));
-  const maxHour = Math.max(...sameDay.map((j) => new Date(j.lastSeenMs).getHours()));
-
+  // Build a map keyed by sortable "YYYY-MM-DD HH" string
   const buckets = {};
-  for (let h = minHour; h <= maxHour; h++) {
-    buckets[h] = 0;
-  }
-  sameDay.forEach((j) => {
-    const h = new Date(j.lastSeenMs).getHours();
-    buckets[h] = (buckets[h] || 0) + 1;
+  submitted.forEach((j) => {
+    const d = new Date(j.finalSubmittedAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}`;
+    buckets[key] = (buckets[key] || 0) + 1;
   });
 
-  // Build cumulative series
-  const hours = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+  const sortedKeys = Object.keys(buckets).sort();
   let cumulative = 0;
-  return hours.map((h) => {
-    cumulative += buckets[h];
-    return {
-      label: `${String(h).padStart(2, "0")}:00`,
-      count: buckets[h],
-      cumulative,
-    };
+  return sortedKeys.map((key) => {
+    const [datePart, hourPart] = key.split(" ");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const label = `${day} ${MONTH_ABBR[month - 1]} ${year} ${hourPart}:00`;
+    cumulative += buckets[key];
+    return { label, count: buckets[key], cumulative };
   });
 }
 
@@ -73,8 +81,12 @@ const CustomTooltip = ({ active, payload, label }) => {
       color: "var(--text-primary)",
     }}>
       <div style={{ fontWeight: 600, marginBottom: 4, color: "var(--text-secondary)" }}>{label}</div>
-      <div>Active: <strong>{payload[0]?.value}</strong></div>
-      {payload[1] && <div>Cumulative: <strong>{payload[1]?.value}</strong></div>}
+      {payload.map((p) => (
+        <div key={p.dataKey}>
+          {p.dataKey === "count" ? "Submissions" : "Cumulative"}:{" "}
+          <strong>{p.value}</strong>
+        </div>
+      ))}
     </div>
   );
 };
@@ -110,7 +122,8 @@ export function SubmissionTimelineChart({ allJurors = [] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
         <XAxis
           dataKey="label"
-          tick={{ fontSize: 10, fill: "var(--text-tertiary)" }}
+          tick={<RotatedTick />}
+          height={52}
           axisLine={false}
           tickLine={false}
         />
@@ -121,6 +134,15 @@ export function SubmissionTimelineChart({ allJurors = [] }) {
           tickLine={false}
         />
         <Tooltip content={<CustomTooltip />} />
+        <Legend
+          verticalAlign="top"
+          align="right"
+          iconType="plainline"
+          wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
+          formatter={(value) =>
+            <span style={{ color: "var(--text-secondary)" }}>{value}</span>
+          }
+        />
         {/* Cumulative line (secondary) */}
         <Area
           type="monotone"

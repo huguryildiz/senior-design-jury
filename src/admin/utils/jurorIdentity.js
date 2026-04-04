@@ -2,18 +2,27 @@
 // Shared juror identity helpers: title stripping, initials, deterministic colors.
 // Used by JurorBadge component and all admin pages.
 
-// Academic / honorific prefixes to strip from display names
+// Academic / honorific prefixes to strip (for avatar initials only)
 const TITLE_PREFIXES = /^(Prof\.\s*Dr\.|Doç\.\s*Dr\.|Yrd\.\s*Doç\.\s*Dr\.|Assoc\.\s*Prof\.\s*Dr\.|Asst\.\s*Prof\.\s*Dr\.|Prof\.|Doç\.|Dr\.|Assoc\.\s*Prof\.|Asst\.\s*Prof\.|Mr\.|Mrs\.|Ms\.|Miss\.)\s*/i;
+
+// Academic / honorific suffixes to strip (for avatar initials only)
+const TITLE_SUFFIXES = /[,\s]+(Ph\.?D\.?|M\.?Sc\.?|M\.?S\.?|M\.?A\.?|M\.?B\.?A\.?|B\.?Sc\.?|B\.?S\.?|M\.?D\.?|D\.?D\.?S\.?|J\.?D\.?|LL\.?M\.?|D\.?Phil\.?|Eng\.|Jr\.|Sr\.|II|III|IV)\.?\s*$/i;
 
 /**
  * Remove academic titles/honorifics from a juror name.
- * "Prof. Dr. Ahmet Kaya" → "Ahmet Kaya"
- * "Dr. Ayşe Yılmaz" → "Ayşe Yılmaz"
+ * Used only for avatar initials — display name keeps the full string.
+ * "Prof. Dr. Ahmet Kaya, PhD" → "Ahmet Kaya"
  */
 export function stripTitles(name) {
   if (!name) return "";
   let cleaned = String(name).trim();
-  // Iteratively strip — handles "Prof. Dr." (two passes)
+  // Strip suffixes first
+  for (let i = 0; i < 3; i++) {
+    const prev = cleaned;
+    cleaned = cleaned.replace(TITLE_SUFFIXES, "").trim();
+    if (cleaned === prev) break;
+  }
+  // Then strip prefixes
   for (let i = 0; i < 3; i++) {
     const prev = cleaned;
     cleaned = cleaned.replace(TITLE_PREFIXES, "").trim();
@@ -23,8 +32,8 @@ export function stripTitles(name) {
 }
 
 /**
- * Extract initials from a name (after title stripping).
- * "Ahmet Kaya" → "AK"
+ * Extract initials from a name (strips both prefixes and suffixes).
+ * "Prof. Dr. Ahmet Kaya, PhD" → "AK"
  * "Ayşe" → "AY"
  */
 export function jurorInitials(name) {
@@ -64,13 +73,13 @@ const PALETTE_HUES = [210, 340, 160, 30, 270, 190, 350, 120, 50, 300, 230, 80];
  */
 export function jurorAvatarBg(name) {
   const hue = PALETTE_HUES[hashInt(stripTitles(name) || "?") % PALETTE_HUES.length];
-  return hsl2hex(hue, 55, 92);
+  return hsl2hex(hue, 55, 32);
 }
 
 /**
- * Deterministic avatar text/dot color (darker version of background).
+ * Deterministic avatar text color — near-white for contrast on dark background.
  */
 export function jurorAvatarFg(name) {
   const hue = PALETTE_HUES[hashInt(stripTitles(name) || "?") % PALETTE_HUES.length];
-  return hsl2hex(hue, 60, 42);
+  return hsl2hex(hue, 30, 92);
 }

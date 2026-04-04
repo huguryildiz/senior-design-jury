@@ -214,10 +214,10 @@ export function validateCriterion(row, allRows, outcomeConfig, index) {
     }
   }
 
-  // MÜDEK
+  // Outcomes
   const mudekArray = Array.isArray(row.mudek) ? row.mudek : [];
   if (new Set(mudekArray).size !== mudekArray.length) {
-    errors.mudek_dup = "Duplicate MÜDEK selections";
+    errors.outcome_dup = "Duplicate outcome selections";
   }
 
   // Rubric
@@ -240,7 +240,7 @@ export function validateCriterion(row, allRows, outcomeConfig, index) {
  * Validate all criterion rows for an evaluation period.
  *
  * Error keys are namespaced by index (camelCase field name + "_" + index):
- * label_0, shortLabel_1, blurb_2, max_0, mudek_1, mudek_dup_2
+ * label_0, shortLabel_1, blurb_2, max_0, outcome_1, outcome_dup_2
  *
  * @param {Array}  rows            - All criterion rows
  * @param {Array}  outcomeConfig - Outcome objects
@@ -264,8 +264,8 @@ export function validatePeriodCriteria(rows, outcomeConfig) {
     if (rowErrors.shortLabel) errors[`shortLabel_${i}`] = rowErrors.shortLabel;
     if (rowErrors.blurb)     errors[`blurb_${i}`]     = rowErrors.blurb;
     if (rowErrors.max)       errors[`max_${i}`]       = rowErrors.max;
-    if (rowErrors.mudek)     errors[`mudek_${i}`]     = rowErrors.mudek;
-    if (rowErrors.mudek_dup) errors[`mudek_dup_${i}`] = rowErrors.mudek_dup;
+    if (rowErrors.outcome)     errors[`outcome_${i}`]     = rowErrors.outcome;
+    if (rowErrors.outcome_dup) errors[`outcome_dup_${i}`] = rowErrors.outcome_dup;
 
     const hasRubricError =
       Object.keys(rubricErrors.bandRangeErrors).length > 0 ||

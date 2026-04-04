@@ -38,7 +38,7 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
       return;
     }
 
-    const groupHeaders = groups.map((g) => g.group_no != null ? `Group ${g.group_no}` : (g.title || g.id));
+    const groupHeaders = groups.map((g) => g.group_no != null ? `P${g.group_no}` : (g.title || g.id));
 
     if (format === "csv") {
       // Long-format (unpivoted): one row per juror × project × criterion

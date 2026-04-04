@@ -9,6 +9,9 @@ import { getPage, setPage as savePage, getJuryAccess } from "./shared/storage";
 import DemoAdminLoader from "@/shared/ui/DemoAdminLoader";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 import { setEnvironment, clearEnvironment } from "@/shared/lib/environment";
+import { useAuth } from "./auth/useAuth";
+import { getMaintenanceStatus } from "./shared/api/admin/maintenance";
+import MaintenancePage from "./components/MaintenancePage";
 
 const LandingPage = lazy(() =>
   import("./landing/LandingPage").then((m) => ({ default: m.LandingPage }))
@@ -51,6 +54,15 @@ function readToken() {
 export default function App() {
   const [page, setPage] = useState(readInitialPage);
   const token = readToken();
+  const { isSuper, loading: authLoading } = useAuth();
+  const [maintenance, setMaintenance] = useState(null);
+
+  useEffect(() => {
+    if (DEMO_MODE) return;
+    getMaintenanceStatus()
+      .then(setMaintenance)
+      .catch(() => {}); // silently ignore — never block the app on this
+  }, []);
 
   useEffect(() => {
     if (page === "jury_gate") return;
@@ -66,6 +78,15 @@ export default function App() {
     if (DEMO_MODE) return;
     savePage(page);
   }, [page]);
+
+  // Maintenance gate — super admins pass through; everyone else sees the page.
+  // Wait for auth to resolve so super admins don't briefly see the gate.
+  if (maintenance?.is_active && !DEMO_MODE) {
+    if (authLoading) return null;
+    if (!isSuper) {
+      return <MaintenancePage message={maintenance.message} endTime={maintenance.end_time} />;
+    }
+  }
 
   if (page === "jury_gate") {
     return (

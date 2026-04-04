@@ -758,7 +758,7 @@
 .crt-band-add:hover{background:var(--accent-soft);border-color:rgba(59,130,246,0.25);color:var(--accent)}
 .crt-band-add svg{width:12px;height:12px}
 
-/* Premium MÜDEK outcome rows in drawer */
+/* Premium outcome rows in drawer */
 .crt-outcome-row{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);transition:border-color .12s}
 .crt-outcome-row:hover{border-color:var(--border-strong)}
 .crt-outcome-code{min-width:36px;display:flex;justify-content:center}
@@ -767,7 +767,7 @@
 .crt-outcome-desc{font-size:10.5px;color:var(--text-tertiary);line-height:1.4}
 .crt-outcome-grid{display:grid;gap:5px}
 
-/* MÜDEK pill selector (editable) */
+/* Outcome pill selector (editable) */
 /* Framework tab bar inside outcome mapping */
 .crt-fw-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:10px}
 .crt-fw-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 10px;font-size:10px;font-weight:600;color:var(--text-tertiary);background:var(--surface-1);border:none;border-right:1px solid var(--border);cursor:pointer;transition:all .12s;font-family:var(--font);white-space:nowrap}
@@ -778,22 +778,22 @@
 .crt-fw-tab:not(.active) .crt-fw-tab-count{background:transparent;color:var(--text-quaternary)}
 .dark-mode .crt-fw-tab.active{background:rgba(96,165,250,0.10);color:var(--accent)}
 .crt-fw-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:0.3px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.10);color:var(--accent);margin-left:auto;white-space:nowrap}
-.crt-mudek-selector{display:flex;flex-direction:column;gap:12px}
-.crt-mudek-selector-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-tertiary)}
-.crt-mudek-pills{display:flex;flex-wrap:wrap;gap:5px}
-.crt-mudek-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid;cursor:pointer;transition:all .12s;user-select:none}
-.crt-mudek-pill .pill-code{font-family:var(--mono);font-weight:700;font-size:10.5px}
-.crt-mudek-pill.pill-selected{background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.22);color:var(--accent)}
-.crt-mudek-pill.pill-selected:hover{background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.3)}
-.crt-mudek-pill.pill-available{background:var(--surface-1);border-color:var(--border);color:var(--text-tertiary)}
-.crt-mudek-pill.pill-available:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
-.crt-mudek-pill .pill-check{width:12px;height:12px;opacity:0.7}
-.crt-mudek-selected-detail{display:grid;gap:4px;margin-top:2px}
-.crt-mudek-selected-row{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;border-radius:6px;background:rgba(59,130,246,0.03);border:1px solid rgba(59,130,246,0.06)}
-.crt-mudek-selected-row .sel-code{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent);min-width:28px;padding-top:1px}
-.crt-mudek-selected-row .sel-text{font-size:10.5px;color:var(--text-secondary);line-height:1.35;flex:1}
-.dark-mode .crt-mudek-pill.pill-selected{background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.25);color:var(--accent)}
-.dark-mode .crt-mudek-selected-row{background:rgba(96,165,250,0.03);border-color:rgba(96,165,250,0.08)}
+.crt-outcome-selector{display:flex;flex-direction:column;gap:12px}
+.crt-outcome-selector-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-tertiary)}
+.crt-outcome-pills{display:flex;flex-wrap:wrap;gap:5px}
+.crt-outcome-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid;cursor:pointer;transition:all .12s;user-select:none}
+.crt-outcome-pill .pill-code{font-family:var(--mono);font-weight:700;font-size:10.5px}
+.crt-outcome-pill.pill-selected{background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.22);color:var(--accent)}
+.crt-outcome-pill.pill-selected:hover{background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.3)}
+.crt-outcome-pill.pill-available{background:var(--surface-1);border-color:var(--border);color:var(--text-tertiary)}
+.crt-outcome-pill.pill-available:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.crt-outcome-pill .pill-check{width:12px;height:12px;opacity:0.7}
+.crt-outcome-selected-detail{display:grid;gap:4px;margin-top:2px}
+.crt-outcome-selected-row{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;border-radius:6px;background:rgba(59,130,246,0.03);border:1px solid rgba(59,130,246,0.06)}
+.crt-outcome-selected-row .sel-code{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent);min-width:28px;padding-top:1px}
+.crt-outcome-selected-row .sel-text{font-size:10.5px;color:var(--text-secondary);line-height:1.35;flex:1}
+.dark-mode .crt-outcome-pill.pill-selected{background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.25);color:var(--accent)}
+.dark-mode .crt-outcome-selected-row{background:rgba(96,165,250,0.03);border-color:rgba(96,165,250,0.08)}
 
 .crt-add-criterion-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:11px 16px;border-radius:9px;border:1.5px dashed var(--border);background:transparent;color:var(--text-tertiary);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
 .crt-add-criterion-btn:hover{background:var(--accent-soft);border-color:rgba(59,130,246,0.25);color:var(--accent)}

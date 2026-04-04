@@ -22,6 +22,7 @@
     <button onclick="show('pin', this)">Juror PIN</button>
     <button onclick="show('token', this)">Entry Token</button>
     <button onclick="show('export', this)">Export Report</button>
+    <button onclick="show('maintenance', this)">Maintenance Notice</button>
   </nav>
   <div id="preview"></div>
 
@@ -201,14 +202,62 @@
         </table>`;
     }
 
+    function maintenanceTpl() {
+      const startTime = "April 5, 2026 at 02:00 AM PDT";
+      const endTime   = "April 5, 2026 at 04:00 AM PDT";
+      const message   = "We will be performing scheduled database maintenance. The platform will be temporarily unavailable. All evaluation data is preserved and unaffected.";
+      const recipientName = "Dr. Ayşe Kaya";
+
+      const windowBlock = `
+        <div style="margin:12px 0 20px; padding:14px 16px; background:rgba(217,119,6,0.08); border-radius:10px; border:1px solid rgba(217,119,6,0.25);">
+          <p style="margin:0 0 6px; font-size:14px; line-height:1.7; color:#a0aec0;"><strong style="color:#fbbf24;">Start:</strong> ${startTime}</p>
+          <p style="margin:0 0 6px; font-size:14px; line-height:1.7; color:#a0aec0;"><strong style="color:#fbbf24;">Estimated end:</strong> ${endTime}</p>
+        </div>`;
+
+      const messageBlock = `
+        <div style="margin:0 0 20px; padding:14px 16px; background:rgba(255,255,255,0.04); border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+          <p style="margin:0 0 6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#718096;">Notice</p>
+          <p style="margin:0; font-size:14px; line-height:1.7; color:#a0aec0; white-space:pre-wrap;">${message}</p>
+        </div>`;
+
+      return `
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f0f1a; padding:40px 0;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+              <tr><td style="background:linear-gradient(90deg,#d97706,#fbbf24,#d97706); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+              <tr><td align="center" style="padding:40px 40px 20px;">
+                <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;"><span style="color:#f1f5f9;">V</span><span style="color:#93c5fd;">ERA</span></div>
+              </td></tr>
+              <tr><td align="center" style="padding:8px 48px 12px;">
+                <h1 style="margin:0; font-size:25px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">Scheduled Maintenance</h1>
+              </td></tr>
+              <tr><td align="center" style="padding:0 48px 20px;">
+                <p style="margin:0; font-size:15px; line-height:1.7; color:#a0aec0;">VERA will be temporarily unavailable for scheduled maintenance.</p>
+              </td></tr>
+              <tr><td style="padding:0 48px 8px;">
+                <p style="margin:0 0 8px; font-size:15px; line-height:1.7; color:#a0aec0;">Hello, <strong style="color:#fff;">${recipientName}</strong>.</p>
+                <p style="margin:0 0 8px; font-size:14px; line-height:1.7; color:#a0aec0;">The VERA platform will be entering maintenance mode. During this window, regular users will not be able to access the platform.</p>
+                ${windowBlock}
+                ${messageBlock}
+                <p style="margin:0 0 16px; font-size:13px; line-height:1.7; color:#718096;">Super admins retain full access during the maintenance window. All evaluation data is preserved and unaffected.</p>
+              </td></tr>
+              <tr><td style="padding:0 48px;"><div style="border-top:1px solid rgba(255,255,255,0.08); font-size:0;">&nbsp;</div></td></tr>
+              <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 VERA. All rights reserved.</p></td></tr>
+              <tr><td style="background:linear-gradient(90deg,#d97706,#fbbf24,#d97706); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+        </table>`;
+    }
+
     const templates = {
-      reset:    tpl("Reset Password",       "There is a password reset request for your VERA account.",        "Use the button below to create your new password.",                                          "Reset Password"),
-      changed:  tpl("Password Changed",     "Your VERA account password was successfully updated.",            "If you did not make this change, please contact support immediately.",                     "Go to VERA"),
-      approved: tpl("Application Approved", "Your VERA admin application has been approved.",                  "You can now sign in to your account and start managing your organization.",               "Sign In"),
-      rejected: tpl("Application Update",   "Unfortunately, your VERA admin application was not approved.",    "If you think this is a mistake, please reach out to the platform administrator.",         "Contact Support"),
-      pin:      pinTpl(),
-      token:    tokenTpl(),
-      export:   exportTpl(),
+      reset:       tpl("Reset Password",       "There is a password reset request for your VERA account.",        "Use the button below to create your new password.",                                          "Reset Password"),
+      changed:     tpl("Password Changed",     "Your VERA account password was successfully updated.",            "If you did not make this change, please contact support immediately.",                     "Go to VERA"),
+      approved:    tpl("Application Approved", "Your VERA admin application has been approved.",                  "You can now sign in to your account and start managing your organization.",               "Sign In"),
+      rejected:    tpl("Application Update",   "Unfortunately, your VERA admin application was not approved.",    "If you think this is a mistake, please reach out to the platform administrator.",         "Contact Support"),
+      pin:         pinTpl(),
+      token:       tokenTpl(),
+      export:      exportTpl(),
+      maintenance: maintenanceTpl(),
     };
 
     function show(key, btn) {

@@ -62,28 +62,15 @@ export function buildExportFilename(type, periodName, ext = "xlsx", tenantCode =
 
 export async function exportAuditLogsXLSX(rows, { filters = {}, search = "", tenantCode = "" } = {}) {
   const XLSX = await import("xlsx-js-style");
-  const headers = [
-    "created_at",
-    "actor_type",
-    "action",
-    "entity_type",
-    "message",
-    "actor_id",
-    "entity_id",
-    "metadata",
-  ];
+  const headers = ["Timestamp", "Type", "Actor", "Action"];
   const data = (rows || []).map((r) => [
     formatExportTimestamp(r.created_at),
-    r.actor_type ?? "",
+    r.entity_type ?? r.actor_type ?? "",
+    r.actor_id ?? (r.actor_type === "system" ? "System" : ""),
     r.action ?? "",
-    r.entity_type ?? "",
-    r.message ?? "",
-    r.actor_id ?? "",
-    r.entity_id ?? "",
-    r.metadata ? JSON.stringify(r.metadata) : "",
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  ws["!cols"] = [22, 12, 18, 16, 48, 36, 36, 60].map((w) => ({ wch: w }));
+  ws["!cols"] = [22, 14, 36, 48].map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Audit Log");
   XLSX.writeFile(wb, buildAuditExportFilename(filters, search, tenantCode));
@@ -147,19 +134,16 @@ export async function exportXLSX(rows, { periodName = "", summaryData = [], juro
 
   const criteriaHeaders = activeCriteria.map((c) => `${c.shortLabel || c.label} (${c.max})`);
   const headers = [
-    "Period",
-    "Project",
-    "Title",
-    "Team Members",
     "Juror",
-    "Affiliation",
-    "Score Status",
-    "Juror Status",
+    "No",
+    "Project",
+    "Team Members",
     ...criteriaHeaders,
     `Total (${activeCriteria.reduce((s, c) => s + (c.max || 0), 0)})`,
-    "Updated At",
-    "Completed At",
+    "Status",
+    "Progress",
     "Comment",
+    "Submitted",
   ];
 
   const totalGroups =
@@ -229,25 +213,22 @@ export async function exportXLSX(rows, { periodName = "", summaryData = [], juro
       ?? jurorStatusMap.get(jurorKey)
       ?? normalizeJurorStatus(r.status);
     return [
-    r.period ?? periodName ?? "",
+    r.juryName    ?? "",
     r.groupNo     ?? "",
     r.projectName ?? "",
     studentsMap.get(r.projectId) ?? "",
-    r.juryName    ?? "",
-    r.affiliation    ?? "",
-    cellStatus ?? "",
-    jurorStatus ?? "",
     ...activeCriteria.map((c) => exportScoreValue(r[c.id])),
     exportScoreValue(r.total),
-    formatExportTimestamp(r.updatedAt), // updated_at
-    formatExportTimestamp(r.finalSubmittedAt), // final_submitted_at
+    cellStatus ?? "",
+    jurorStatus ?? "",
     r.comments    ?? "",
+    formatExportTimestamp(r.finalSubmittedAt),
     ];
   });
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
   const criteriaWidths = activeCriteria.map(() => 10);
-  ws["!cols"] = [18, 8, 32, 42, 24, 26, 12, 14, ...criteriaWidths, 8, 24, 24, 32]
+  ws["!cols"] = [24, 8, 32, 42, ...criteriaWidths, 8, 12, 12, 32, 24]
     .map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Jury Evaluations");
@@ -260,7 +241,7 @@ export async function exportXLSX(rows, { periodName = "", summaryData = [], juro
 export async function exportGridXLSX(exportRows, groups, { periodName = "", tenantCode = "", criterionTabs = [] } = {}) {
   const XLSX = await import("xlsx-js-style");
 
-  const groupHeaders = groups.map((g) => (g.groupNo ?? g.group_no) != null ? `Group ${g.groupNo ?? g.group_no}` : (g.label || g.title || g.id));
+  const groupHeaders = groups.map((g) => (g.groupNo ?? g.group_no) != null ? `P${g.groupNo ?? g.group_no}` : (g.label || g.title || g.id));
   const colWidths = [28, 28, 18, ...groups.map(() => 10)];
 
   function makeSheet(rows, includeStatus = true) {
@@ -288,44 +269,45 @@ export async function exportGridXLSX(exportRows, groups, { periodName = "", tena
   XLSX.writeFile(wb, buildExportFilename("Heatmap", periodName, "xlsx", tenantCode));
 }
 
-export async function exportRankingsXLSX(ranked, criteria, { periodName = "", tenantCode = "" } = {}) {
+export async function exportRankingsXLSX(ranked, criteria, { periodName = "", tenantCode = "", consensusMap = {} } = {}) {
   const XLSX = await import("xlsx-js-style");
   const fmtMembers = (m) => {
     if (!m) return "";
     if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
     return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
   };
+  const totalMax = criteria.reduce((s, c) => s + (c.max || 0), 0);
   const headers = [
-    "Rank", "Project", "Title", "Team Members",
-    ...criteria.map((c) => `${c.shortLabel || c.label} Avg (${c.max})`),
-    `Total Avg (${criteria.reduce((s, c) => s + (c.max || 0), 0)})`,
+    "Rank",
+    "Project Title",
+    "Team Members",
+    ...criteria.map((c) => `${c.shortLabel || c.label} (${c.max})`),
+    `Average (${totalMax})`,
+    "Consensus",
+    "Jurors Evaluated",
   ];
-  const displayRanks = [];
-  let scoredIndex = 0;
-  let lastScore = null;
-  let lastRank = 0;
-  (ranked || []).forEach((p) => {
-    if (!Number.isFinite(p?.totalAvg)) {
-      displayRanks.push("");
-      return;
+  let scoredIndex = 0, lastScore = null, lastRank = 0;
+  const dataRows = (ranked || []).map((p) => {
+    if (Number.isFinite(p?.totalAvg)) {
+      scoredIndex += 1;
+      if (lastScore === null || p.totalAvg !== lastScore) { lastRank = scoredIndex; lastScore = p.totalAvg; }
     }
-    scoredIndex += 1;
-    if (lastScore === null || p.totalAvg !== lastScore) {
-      lastRank = scoredIndex;
-      lastScore = p.totalAvg;
-    }
-    displayRanks.push(lastRank);
+    const consensus = consensusMap?.[p.id];
+    const consensusLabel = consensus
+      ? `${consensus.level === "high" ? "High" : consensus.level === "moderate" ? "Moderate" : "Disputed"} (σ=${consensus.sigma})`
+      : "";
+    return [
+      Number.isFinite(p?.totalAvg) ? lastRank : "",
+      p.title || p.name || "",
+      fmtMembers(p.members || p.students),
+      ...criteria.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
+      Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
+      consensusLabel,
+      p.count ?? "",
+    ];
   });
-  const dataRows = (ranked || []).map((p, i) => [
-    displayRanks[i],
-    p.group_no != null ? `Group ${p.group_no}` : (p.groupNo != null ? `Group ${p.groupNo}` : ""),
-    p.title || p.name || "",
-    fmtMembers(p.members || p.students),
-    ...criteria.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
-    Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
-  ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-  ws["!cols"] = [6, 10, 36, 32, ...criteria.map(() => 14), 10].map((w) => ({ wch: w }));
+  ws["!cols"] = [6, 36, 32, ...criteria.map(() => 14), 12, 18, 10].map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Rankings");
   XLSX.writeFile(wb, buildExportFilename("Rankings", periodName, "xlsx", tenantCode));

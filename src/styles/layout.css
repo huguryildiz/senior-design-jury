@@ -1282,22 +1282,20 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
     overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
 
-  /* ── 2B. GA Heatmap: compact cells + sticky first col ── */
+  /* ── 2B. GA Heatmap: compact cells ── */
   .ga-heatmap { font-size: 10px; border-collapse: collapse; }
   .ga-heatmap th {
     font-size: 9px; padding: 5px 6px; white-space: nowrap;
   }
   .ga-heatmap th:first-child {
-    position: sticky; left: 0; z-index: 10;
-    background: var(--bg-card); min-width: 110px;
+    min-width: 110px;
   }
   .ga-heatmap td {
     padding: 4px 5px; font-size: 10px; text-align: center;
     white-space: nowrap;
   }
   .ga-heatmap td:first-child {
-    position: sticky; left: 0; z-index: 9;
-    background: var(--bg-card); text-align: left;
+    text-align: left;
     min-width: 110px; font-weight: 500;
   }
 
@@ -1307,16 +1305,14 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
     font-size: 9px; padding: 5px 6px; white-space: nowrap;
   }
   #juror-cv-heatmap th:first-child {
-    position: sticky; left: 0; z-index: 10;
-    background: var(--bg-card); min-width: 110px;
+    min-width: 110px;
   }
   #juror-cv-heatmap td {
     padding: 4px 5px; font-size: 10px; text-align: center;
     white-space: nowrap;
   }
   #juror-cv-heatmap td:first-child {
-    position: sticky; left: 0; z-index: 9;
-    background: var(--bg-card); text-align: left;
+    text-align: left;
     min-width: 110px; font-weight: 500;
   }
 

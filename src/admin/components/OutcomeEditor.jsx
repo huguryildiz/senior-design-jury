@@ -1,6 +1,6 @@
-// src/admin/MudekManager.jsx
+// src/admin/components/OutcomeEditor.jsx
 // ============================================================
-// MÜDEK outcome template editor for period settings.
+// Outcome template editor for period settings.
 //
 // Admin-facing canonical editor model per outcome:
 //   code, en, tr
@@ -199,11 +199,11 @@ function getMudekDisplayName(row, index) {
   return String(row?.code ?? "").trim() || `Outcome ${index + 1}`;
 }
 
-function MudekLanguageFlag({ language, label }) {
+function OutcomeLanguageFlag({ language, label }) {
   const symbol = language === "tr" ? "🇹🇷" : "🇬🇧";
   return (
     <Tooltip text={label}>
-      <span className="mudek-manager-row-flag" role="img" aria-label={label}>
+      <span className="outcome-editor-row-flag" role="img" aria-label={label}>
         {symbol}
       </span>
     </Tooltip>
@@ -212,7 +212,7 @@ function MudekLanguageFlag({ language, label }) {
 
 // ── Sortable row wrapper ──────────────────────────────────────
 
-function SortableMudekRow({ id, disabled, children }) {
+function SortableOutcomeRow({ id, disabled, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled });
   const style = {
@@ -225,7 +225,7 @@ function SortableMudekRow({ id, disabled, children }) {
 
 // ── Main component ───────────────────────────────────────────
 
-export default function MudekManager({
+export default function OutcomeEditor({
   outcomeConfig = [],
   criteriaConfig = [],
   onSave,
@@ -282,13 +282,13 @@ export default function MudekManager({
 
   const saveBlockReasons = (() => {
     if (!hasErrors) return [];
-    
+
     const reasons = [];
     rows.forEach((row, i) => {
       const codeVal = row.code.trim();
       const labelName = codeVal ? `"${codeVal}"` : `"Untitled outcome"`;
       const prefix = `Outcome ${labelName} — `;
-      
+
       const codeE = allErrors[`code_${i}`];
       if (codeE) {
         if (codeE === "Required") reasons.push(`${prefix}Code is required.`);
@@ -298,7 +298,7 @@ export default function MudekManager({
       if (allErrors[`en_${i}`]) reasons.push(`${prefix}English description is required.`);
       if (allErrors[`tr_${i}`]) reasons.push(`${prefix}Turkish description is required.`);
     });
-    
+
     return [...new Set(reasons)];
   })();
 
@@ -407,14 +407,14 @@ export default function MudekManager({
       const normalized = mudekRowsToTemplate(rows);
       const result = await onSave(normalized);
       if (!result?.ok) {
-        setSaveError(result?.error || "Could not save MÜDEK template. Try again.");
+        setSaveError(result?.error || "Could not save outcome template. Try again.");
       } else {
         setTouched(new Set());
         setSaveAttempted(false);
         onDirtyChange?.(false);
       }
     } catch (e) {
-      setSaveError(e?.message || "Could not save MÜDEK template. Try again.");
+      setSaveError(e?.message || "Could not save outcome template. Try again.");
     } finally {
       setSaving(false);
     }
@@ -428,10 +428,10 @@ export default function MudekManager({
     : 0;
 
   return (
-    <div className="mudek-manager">
-      <div className="mudek-manager-header">
-        <span className="mudek-manager-title">MÜDEK Outcomes</span>
-        <span className="mudek-manager-count">
+    <div className="outcome-editor">
+      <div className="outcome-editor-header">
+        <span className="outcome-editor-title">MÜDEK Outcomes</span>
+        <span className="outcome-editor-count">
           {rows.length} outcome{rows.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -457,18 +457,18 @@ export default function MudekManager({
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-            <div className="mudek-manager-rows">
+            <div className="outcome-editor-rows">
               {rows.map((row, i) => (
-                <SortableMudekRow key={row._rowId} id={row._rowId} disabled={structurallyLocked}>
+                <SortableOutcomeRow key={row._rowId} id={row._rowId} disabled={structurallyLocked}>
                   {({ attributes, listeners, setNodeRef, style }) => (
                     <div
                       ref={setNodeRef}
                       style={style}
-                      className={`mudek-manager-row-shell${row._expanded ? " is-expanded" : ""}`}
+                      className={`outcome-editor-row-shell${row._expanded ? " is-expanded" : ""}`}
                     >
-                      <div className="mudek-manager-row-top">
-                        <div className="mudek-manager-row-head">
-                          <div className="mudek-manager-row-leading">
+                      <div className="outcome-editor-row-top">
+                        <div className="outcome-editor-row-head">
+                          <div className="outcome-editor-row-leading">
                             <Tooltip text="Drag to reorder">
                               <button
                                 type="button"
@@ -482,24 +482,24 @@ export default function MudekManager({
                               </button>
                             </Tooltip>
 
-                            <div className="mudek-manager-row-main">
-                              <div className="mudek-manager-row-title-line">
-                                <span className="mudek-manager-row-goal" aria-hidden="true">
+                            <div className="outcome-editor-row-main">
+                              <div className="outcome-editor-row-title-line">
+                                <span className="outcome-editor-row-goal" aria-hidden="true">
                                   <GoalIcon />
                                 </span>
-                                <span className="mudek-manager-row-code">{getMudekDisplayName(row, i)}</span>
+                                <span className="outcome-editor-row-code">{getMudekDisplayName(row, i)}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="mudek-manager-row-actions">
+                          <div className="outcome-editor-row-actions">
                             <Tooltip text={row._expanded ? "Collapse outcome" : "Expand outcome"}>
                               <button
                                 type="button"
-                                className="mudek-manager-row-expand-btn vera-expand-btn"
+                                className="outcome-editor-row-expand-btn vera-expand-btn"
                                 onClick={() => toggleRow(i)}
                                 aria-expanded={row._expanded}
-                                aria-controls={`mudek-body-${row._rowId}`}
+                                aria-controls={`outcome-editor-body-${row._rowId}`}
                                 aria-label={`${row._expanded ? "Collapse" : "Expand"} ${getMudekDisplayName(row, i)}`}
                               >
                                 {row._expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -516,16 +516,16 @@ export default function MudekManager({
                         </div>
 
                         {!row._expanded && (
-                          <div className="mudek-manager-row-preview" aria-label={`Outcome ${i + 1} preview`}>
-                            <div className="mudek-manager-row-preview-line">
-                              <MudekLanguageFlag language="en" label="English" />
-                              <span className="mudek-manager-row-preview-text">
+                          <div className="outcome-editor-row-preview" aria-label={`Outcome ${i + 1} preview`}>
+                            <div className="outcome-editor-row-preview-line">
+                              <OutcomeLanguageFlag language="en" label="English" />
+                              <span className="outcome-editor-row-preview-text">
                                 {getPreviewText(row.en, "No English text")}
                               </span>
                             </div>
-                            <div className="mudek-manager-row-preview-line">
-                              <MudekLanguageFlag language="tr" label="Turkish" />
-                              <span className="mudek-manager-row-preview-text">
+                            <div className="outcome-editor-row-preview-line">
+                              <OutcomeLanguageFlag language="tr" label="Turkish" />
+                              <span className="outcome-editor-row-preview-text">
                                 {getPreviewText(row.tr, "No Turkish text")}
                               </span>
                             </div>
@@ -534,12 +534,12 @@ export default function MudekManager({
                       </div>
 
                       {row._expanded && (
-                        <div id={`mudek-body-${row._rowId}`} className="mudek-manager-row-editor">
-                          <div className="mudek-manager-row-expanded-fields">
-                            <div className="mudek-manager-field-group mudek-manager-field-group--code">
-                              <label className="mudek-manager-cell-label">Program outcome</label>
+                        <div id={`outcome-editor-body-${row._rowId}`} className="outcome-editor-row-editor">
+                          <div className="outcome-editor-row-expanded-fields">
+                            <div className="outcome-editor-field-group outcome-editor-field-group--code">
+                              <label className="outcome-editor-cell-label">Program outcome</label>
                               <input
-                                className={["vera-field-input", "mudek-manager-input", displayErrors[`code_${i}`] && "vera-field-input--error"].filter(Boolean).join(" ")}
+                                className={["vera-field-input", "outcome-editor-input", displayErrors[`code_${i}`] && "vera-field-input--error"].filter(Boolean).join(" ")}
                                 value={row.code}
                                 onChange={(e) => setRow(i, "code", e.target.value)}
                                 onBlur={() => touch(`code_${i}`)}
@@ -554,8 +554,8 @@ export default function MudekManager({
                               )}
                             </div>
 
-                            <div className="mudek-manager-field-group">
-                              <label className="mudek-manager-cell-label">English description</label>
+                            <div className="outcome-editor-field-group">
+                              <label className="outcome-editor-cell-label">English description</label>
                               <AutoGrow
                                 value={row.en}
                                 onChange={(e) => setRow(i, "en", e.target.value)}
@@ -564,7 +564,7 @@ export default function MudekManager({
                                 placeholder="English description"
                                 ariaLabel={`Outcome ${i + 1} English description`}
                                 hasError={!!displayErrors[`en_${i}`]}
-                                className="mudek-manager-textarea"
+                                className="outcome-editor-textarea"
                               />
                               {displayErrors[`en_${i}`] && (
                                 <div className="vera-field-error--xs">
@@ -573,8 +573,8 @@ export default function MudekManager({
                               )}
                             </div>
 
-                            <div className="mudek-manager-field-group">
-                              <label className="mudek-manager-cell-label">Turkish description</label>
+                            <div className="outcome-editor-field-group">
+                              <label className="outcome-editor-cell-label">Turkish description</label>
                               <AutoGrow
                                 value={row.tr}
                                 onChange={(e) => setRow(i, "tr", e.target.value)}
@@ -583,7 +583,7 @@ export default function MudekManager({
                                 placeholder="Türkçe açıklama"
                                 ariaLabel={`Outcome ${i + 1} Turkish description`}
                                 hasError={!!displayErrors[`tr_${i}`]}
-                                className="mudek-manager-textarea"
+                                className="outcome-editor-textarea"
                               />
                               {displayErrors[`tr_${i}`] && (
                                 <div className="vera-field-error--xs">
@@ -596,14 +596,14 @@ export default function MudekManager({
                       )}
                     </div>
                   )}
-                </SortableMudekRow>
+                </SortableOutcomeRow>
               ))}
             </div>
           </SortableContext>
         </DndContext>
       )}
 
-      <div className="mudek-manager-footer">
+      <div className="outcome-editor-footer">
         <button
           type="button"
           className="vera-btn-add-pill"
@@ -628,7 +628,7 @@ export default function MudekManager({
           {saveBlockReasons.length === 1
             ? saveBlockReasons[0]
             : (
-              <ul className="mudek-manager-block-reasons-list">
+              <ul className="outcome-editor-block-reasons-list">
                 {saveBlockReasons.map((reason) => (
                   <li key={reason}>{reason}</li>
                 ))}
@@ -650,8 +650,8 @@ export default function MudekManager({
         title="Delete Confirmation"
         body={
           usageCount > 0
-            ? `This MÜDEK outcome is used by ${usageCount} criteria. Deleting it will remove those mappings automatically. Some criteria may remain without a MÜDEK mapping.`
-            : "This MÜDEK outcome contains entered content. Are you sure you want to remove it?"
+            ? `This outcome is used by ${usageCount} criteria. Deleting it will remove those mappings automatically. Some criteria may remain without an outcome mapping.`
+            : "This outcome contains entered content. Are you sure you want to remove it?"
         }
         warning={
           usageCount > 0

@@ -54,7 +54,7 @@ export function templateToRow(c, idx) {
     mudek:      n.mudek,                        // display codes only
     rubric:     boundedRubric,
     _expanded:  false,
-    _mudekOpen: false,
+    _outcomeOpen: false,
     _rubricOpen: false,
     _rubricTouched: true,
     _fieldTouched: {},
@@ -74,7 +74,7 @@ export function emptyRow(idx) {
     mudek:      [],
     rubric:     [],
     _expanded:  true,
-    _mudekOpen: false,
+    _outcomeOpen: false,
     _rubricOpen: false,
     _rubricTouched: false,
     _fieldTouched: {},

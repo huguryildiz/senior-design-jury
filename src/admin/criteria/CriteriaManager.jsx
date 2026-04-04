@@ -3,18 +3,15 @@
 // Rich evaluation criteria editor for period settings.
 //
 // Admin-facing canonical model per criterion:
-//   label, shortLabel, color, max, blurb, mudek[], rubric[]
+//   label, shortLabel, color, max, blurb, outcomes[], rubric[]
 //
 // Internal machine-safe `key` is NEVER shown to the admin.
 // It is silently preserved from the existing template (row._key)
 // or auto-derived from label in criterionToTemplate().
 //
-// `mudek_outcomes` is a legacy field — it is never stored in editor
-// state and is only emitted in the save normalizer (criterionToTemplate).
-//
 // Props:
 //   template      — current criteria array (any stored shape)
-//   outcomeConfig — period's MÜDEK outcomes [{ id, code, ... }]
+//   outcomeConfig — period's outcomes [{ id, code, ... }]
 //   onSave        — (newTemplate) => Promise<{ ok, error? }>
 //   disabled      — disables all inputs and the save button
 //   isLocked      — when true, the entire template is read-only; no field or action is editable
@@ -31,7 +28,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CirclePlusIcon, LockIcon } from "@/shared/ui/Icons";
+import { LockIcon } from "@/shared/ui/Icons";
 import { CSS } from "@dnd-kit/utilities";
 import { getCriterionDisplayName } from "./criteriaFormHelpers";
 import { useCriteriaForm } from "./useCriteriaForm";
@@ -79,15 +76,15 @@ export default function CriteriaManager({
     saveBlockReasons,
     canSave,
     fullyLocked,
-    mudekOutcomeByCode,
-    sanitizeMudekSelection,
+    outcomeByCode,
+    sanitizeOutcomeSelection,
     markTouched,
     setRow,
     addRow,
     requestRemoveRow,
     confirmRemoveRow,
     toggleRubric,
-    toggleMudek,
+    toggleOutcome,
     toggleCriterionCard,
     sensors,
     handleDragEnd,
@@ -100,28 +97,46 @@ export default function CriteriaManager({
     setRow,
     markTouched,
     toggleCriterionCard,
-    toggleMudek,
+    toggleOutcome,
     toggleRubric,
     requestRemoveRow,
   };
 
+  const fillPct = Math.min(100, totalMax);
+  const fillColor = totalOk ? "var(--success)" : totalMax > 100 ? "var(--danger)" : "var(--accent)";
+
   return (
     <div className="criteria-manager">
-      <div className="criteria-manager-header">
-        <span className="criteria-manager-title">Evaluation Criteria</span>
-        <div className={`criteria-total-bar${totalOk ? " criteria-total-valid" : " criteria-total-invalid"}`}>
-          Total: {totalMax} / 100 {totalOk ? "✓" : "— must equal 100"}
+      {/* Weight summary bar */}
+      <div className="crt-weight-summary">
+        <div className="crt-weight-summary-info">
+          <div className="crt-weight-summary-label">Total weight</div>
+          <div className="crt-weight-summary-value">
+            {totalMax}<span>/ 100</span>
+          </div>
         </div>
+        <div className="crt-weight-summary-track">
+          <div
+            className="crt-weight-summary-fill"
+            style={{ width: `${fillPct}%`, background: fillColor }}
+          />
+        </div>
+        {totalOk ? (
+          <span className="crt-weight-badge" style={{ background: "rgba(22,163,74,0.07)", borderColor: "rgba(22,163,74,0.18)", color: "var(--success)" }}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+              <polyline points="1.5,5.5 4,8 8.5,2.5" />
+            </svg>
+            Valid
+          </span>
+        ) : (
+          <span className="crt-weight-badge" style={{ background: "rgba(225,29,72,0.06)", borderColor: "rgba(225,29,72,0.16)", color: "var(--danger)" }}>
+            Must equal 100
+          </span>
+        )}
       </div>
 
       {isLocked && (
-        <AlertCard variant="warning">
-          Evaluation template locked — scoring has started for this period. No criteria changes are allowed.
-        </AlertCard>
-      )}
-
-      {isLocked && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" style={{ marginBottom: 12 }}>
           <LockIcon className="size-4 shrink-0" />
           <span>Scores exist for this period — criteria weights and rubric ranges are locked to preserve result integrity.</span>
         </div>
@@ -146,8 +161,8 @@ export default function CriteriaManager({
                     saveAttempted={saveAttempted}
                     fullyLocked={fullyLocked}
                     outcomeConfig={outcomeConfig}
-                    mudekOutcomeByCode={mudekOutcomeByCode}
-                    sanitizeMudekSelection={sanitizeMudekSelection}
+                    outcomeByCode={outcomeByCode}
+                    sanitizeOutcomeSelection={sanitizeOutcomeSelection}
                     rowActions={rowActions}
                     rowCount={rows.length}
                     attributes={attributes}
@@ -162,25 +177,39 @@ export default function CriteriaManager({
         </SortableContext>
       </DndContext>
 
+      {!fullyLocked && (
+        <button
+          type="button"
+          className="crt-add-criterion-btn"
+          onClick={addRow}
+        >
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" />
+            <path d="M7 4v6M4 7h6" />
+          </svg>
+          Add Criterion
+        </button>
+      )}
+
       <div className="criteria-manager-footer">
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-full border border-input bg-muted px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:-translate-y-px hover:border-border hover:shadow-md disabled:pointer-events-none disabled:opacity-60"
-          onClick={addRow}
-          disabled={fullyLocked}
+          className="crt-cancel-btn"
+          onClick={() => {/* handled by drawer onClose */}}
+          disabled={saving}
         >
-          <span aria-hidden="true"><CirclePlusIcon className="size-3.5" /></span>
-          Add Criterion
+          Cancel
         </button>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-full bg-primary border-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-md hover:shadow-lg disabled:pointer-events-none disabled:opacity-60"
+          className="crt-save-btn"
           onClick={handleSave}
           disabled={!canSave || saveDisabled}
         >
-          {saving ? "Saving..." : "Save Criteria"}
+          {saving ? "Saving…" : "Save Criteria"}
         </button>
       </div>
+
       {saveAttempted && saveBlockReasons.length > 0 && (
         <AlertCard variant="error">
           {saveBlockReasons.length === 1

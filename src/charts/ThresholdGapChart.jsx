@@ -27,30 +27,47 @@ function normalize(gap) {
 export function ThresholdGapChart({ submittedData = [], criteria = [] }) {
   const rows = submittedData || [];
 
-  const items = (criteria || []).map((c) => {
-    const vals = outcomeValues(rows, c.id);
-    if (!vals.length) return { criterion: c, gap: null };
-    const aboveThreshold = vals.filter((v) => (v / c.max) * 100 >= ATTAINMENT_THRESHOLD).length;
+  // One row per unique outcome code (same approach as attainment cards)
+  const outcomeMap = new Map(); // code → { criterionKey, max, color }
+  for (const c of criteria || []) {
+    for (const code of (c.mudek || [])) {
+      if (!outcomeMap.has(code)) {
+        outcomeMap.set(code, { criterionKey: c.id, max: c.max, color: c.color });
+      }
+    }
+  }
+
+  const items = [...outcomeMap.entries()].map(([code, { criterionKey, max }]) => {
+    const vals = outcomeValues(rows, criterionKey);
+    if (!vals.length) return { code, gap: null };
+    const aboveThreshold = vals.filter((v) => (v / max) * 100 >= ATTAINMENT_THRESHOLD).length;
     const attRate = fmt1((aboveThreshold / vals.length) * 100);
     const gap = fmt1(attRate - ATTAINMENT_THRESHOLD);
-    return { criterion: c, gap };
+    return { code, gap };
   });
+
+  // Sort: positive gaps first (descending), then negative (descending)
+  items.sort((a, b) => (b.gap ?? -Infinity) - (a.gap ?? -Infinity));
 
   return (
     <div className="lollipop-chart">
-      {items.map(({ criterion: c, gap }) => {
-        // vera.css uses .lollipop-stem.positive / .lollipop-stem.negative (not lollipop-positive)
+      {items.map(({ code, gap }) => {
         const modifier = gap == null ? "" : gap >= 0 ? "positive" : "negative";
         const stemLeft = gap != null ? (gap >= 0 ? "50%" : `${normalize(gap)}%`) : "50%";
         const stemWidth = gap != null ? `${Math.abs(normalize(gap) - 50)}%` : "0%";
         const dotLeft = gap != null ? `${normalize(gap)}%` : "50%";
-        // Position value label slightly offset from dot
-        const valLeft = gap != null ? (gap >= 0 ? `${normalize(gap) + 3}%` : `${normalize(gap) - 3}%`) : "50%";
+        // Positive: label anchored to left of dot position, shifted right
+        // Negative: label anchored to right edge at dot position, shifted left via transform
+        const valStyle = gap == null
+          ? { left: "52%", color: "var(--text-tertiary)" }
+          : gap >= 0
+            ? { left: `calc(${normalize(gap)}% + 14px)` }
+            : { left: `calc(${normalize(gap)}% - 14px)`, transform: "translateX(-100%)" };
 
         return (
-          <div key={c.id} className="lollipop-row">
+          <div key={code} className="lollipop-row">
             <div className="lollipop-label">
-              <span style={{ color: c.color }}>{c.shortLabel}</span>
+              <span style={{ color: "var(--accent)" }}>{code}</span>
             </div>
             <div className="lollipop-track">
               {/* Center threshold line */}
@@ -69,17 +86,13 @@ export function ThresholdGapChart({ submittedData = [], criteria = [] }) {
                   style={{ left: dotLeft }}
                 />
               )}
-              {/* Value label — absolutely positioned inside track per vera.css */}
-              {gap != null ? (
-                <div
-                  className={`lollipop-val${modifier ? ` ${modifier}` : ""}`}
-                  style={{ left: valLeft }}
-                >
-                  {gap >= 0 ? "+" : ""}{gap}%
-                </div>
-              ) : (
-                <div className="lollipop-val" style={{ left: "52%", color: "var(--text-tertiary)" }}>—</div>
-              )}
+              {/* Value label */}
+              <div
+                className={`lollipop-val${modifier ? ` ${modifier}` : ""}`}
+                style={valStyle}
+              >
+                {gap != null ? `${gap >= 0 ? "+" : ""}${gap}%` : "—"}
+              </div>
             </div>
           </div>
         );

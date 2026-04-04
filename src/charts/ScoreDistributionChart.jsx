@@ -26,21 +26,14 @@ const BINS = [
   { label: "90+",    color: "#16a34a", test: (v) => v >= 90 },
 ];
 
-/**
- * Compute score percentage from raw total.
- * rawScores rows have `total` (raw score sum). Max total per juror is 100 (30+30+30+10).
- */
-function toPercent(total) {
-  return total != null ? Math.min(100, (total / 100) * 100) : null;
-}
-
+// rawScores rows have `total` (raw score sum, 0–100: 30+30+30+10 max).
 function buildBins(rawScores) {
   const counts = BINS.map(() => 0);
   for (const row of rawScores) {
     if (row.total == null) continue;
-    const pct = toPercent(row.total);
+    const score = Math.min(100, row.total);
     for (let i = 0; i < BINS.length; i++) {
-      if (BINS[i].test(pct)) {
+      if (BINS[i].test(score)) {
         counts[i]++;
         break;
       }
@@ -99,7 +92,7 @@ export function ScoreDistributionChart({ rawScores = [] }) {
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--surface-1)" }} />
+        <Tooltip content={<CustomTooltip />} cursor={false} />
         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.85} />

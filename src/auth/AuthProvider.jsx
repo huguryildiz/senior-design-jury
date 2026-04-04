@@ -124,8 +124,8 @@ export default function AuthProvider({ children }) {
           role: "super_admin",
         }));
       } catch {
-        // listOrganizationsPublic may also fail in demo — use empty list
-        organizationList = [];
+        // listOrganizationsPublic may fail in demo (RLS) — keep super_admin role
+        organizationList = [{ id: null, code: null, name: null, institution_name: null, role: "super_admin" }];
       }
     } else {
       const memberships = await fetchMemberships();
@@ -394,7 +394,7 @@ export default function AuthProvider({ children }) {
   );
 
   const isSuper = useMemo(
-    () => organizations.some((o) => o.role === "super_admin"),
+    () => DEMO_MODE || organizations.some((o) => o.role === "super_admin"),
     [organizations]
   );
 

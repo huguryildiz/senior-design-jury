@@ -11,6 +11,16 @@ import ExportPanel from "../components/ExportPanel";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import "../../styles/pages/projects.css";
 
+function membersToArray(m) {
+  if (!m) return [];
+  if (Array.isArray(m)) return m.map((s) => (s?.name || s || "").toString().trim()).filter(Boolean);
+  if (typeof m === "string") return m.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+function membersToString(m) {
+  return membersToArray(m).join(", ");
+}
+
 function formatUpdated(ts) {
   if (!ts) return "—";
   try {
@@ -128,7 +138,7 @@ export default function ProjectsPage({
     const q = search.toLowerCase();
     return projectList.filter((p) =>
       (p.title || "").toLowerCase().includes(q) ||
-      (p.members || "").toLowerCase().includes(q) ||
+      membersToString(p.members).toLowerCase().includes(q) ||
       String(p.group_no || "").includes(q)
     );
   }, [projectList, search]);
@@ -136,8 +146,7 @@ export default function ProjectsPage({
   // KPI stats
   const totalProjects = projectList.length;
   const totalMembers = projectList.reduce((sum, p) => {
-    const m = (p.members || "").split(/[,\n]/).filter((s) => s.trim());
-    return sum + m.length;
+    return sum + membersToArray(p.members).length;
   }, 0);
 
   function openAddModal() {
@@ -152,7 +161,7 @@ export default function ProjectsPage({
     setEditTarget(project);
     setFormTitle(project.title || "");
     setFormGroupNo(String(project.group_no || ""));
-    setFormMembers(project.members || "");
+    setFormMembers(membersToString(project.members));
     setAddModalOpen(true);
     setOpenMenuId(null);
   }
@@ -166,13 +175,13 @@ export default function ProjectsPage({
           id: editTarget.id,
           title: formTitle.trim(),
           group_no: parseInt(formGroupNo, 10) || editTarget.group_no,
-          members: formMembers.trim(),
+          members: membersToArray(formMembers),
         });
       } else {
         await projects.handleAddProject({
           title: formTitle.trim(),
           group_no: parseInt(formGroupNo, 10) || (totalProjects + 1),
-          members: formMembers.trim(),
+          members: membersToArray(formMembers),
         });
       }
       setAddModalOpen(false);
@@ -334,7 +343,7 @@ export default function ProjectsPage({
             try {
               const header = ["Project", "Title", "Team Members", "Advisor", "Updated"];
               const rows = filteredList.map((p) => [
-                p.group_no ?? "", p.title ?? "", p.members ?? "", p.advisor ?? "", formatUpdated(p.updated_at),
+                p.group_no ?? "", p.title ?? "", membersToString(p.members), p.advisor ?? "", formatUpdated(p.updated_at),
               ]);
               await downloadTable(fmt, {
                 filenameType: "Projects", sheetName: "Projects",
@@ -392,8 +401,8 @@ export default function ProjectsPage({
                 </td>
                 <td>
                   <div className="text-sm" style={{ lineHeight: 1.5, color: "var(--text-secondary)" }}>
-                    {(project.members || "").split(/[,\n]/).filter((s) => s.trim()).map((name, i) => (
-                      <span key={i}>{name.trim()}{i < (project.members || "").split(/[,\n]/).filter((s) => s.trim()).length - 1 ? <br /> : null}</span>
+                    {membersToArray(project.members).map((name, i, arr) => (
+                      <span key={i}>{name}{i < arr.length - 1 ? <br /> : null}</span>
                     ))}
                   </div>
                 </td>
@@ -486,7 +495,7 @@ export default function ProjectsPage({
               <div className="juror-drawer-row">
                 <span className="juror-drawer-row-label">Team Members</span>
                 <span className="juror-drawer-row-value">
-                  {(drawerProject.members || "—").split(/[,\n]/).filter((s) => s.trim()).join(", ") || "—"}
+                  {membersToString(drawerProject.members) || "—"}
                 </span>
               </div>
               <div className="juror-drawer-row">

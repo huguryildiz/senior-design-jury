@@ -19,14 +19,14 @@ import {
 } from "./criteriaFormHelpers";
 
 export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange, disabled, isLocked }) {
-  const mudekOutcomeByCode = new Map((outcomeConfig || []).map((o) => [o.code, o]));
-  const mudekOutcomeCodes = useMemo(
+  const outcomeByCode = new Map((outcomeConfig || []).map((o) => [o.code, o]));
+  const outcomeCodes = useMemo(
     () => new Set((outcomeConfig || []).map((o) => o.code)),
     [outcomeConfig]
   );
-  const sanitizeMudekSelection = useCallback(
-    (selected = []) => (Array.isArray(selected) ? selected.filter((code) => mudekOutcomeCodes.has(code)) : []),
-    [mudekOutcomeCodes]
+  const sanitizeOutcomeSelection = useCallback(
+    (selected = []) => (Array.isArray(selected) ? selected.filter((code) => outcomeCodes.has(code)) : []),
+    [outcomeCodes]
   );
 
   const buildRows = useCallback(
@@ -46,9 +46,9 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
     () =>
       rows.map((row) => ({
         ...row,
-        mudek: sanitizeMudekSelection(row.mudek),
+        mudek: sanitizeOutcomeSelection(row.mudek),
       })),
-    [rows, sanitizeMudekSelection]
+    [rows, sanitizeOutcomeSelection]
   );
 
   // Sync when template prop changes
@@ -82,8 +82,8 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
       const name = String(row.label ?? row.shortLabel ?? "").trim() || "Untitled criterion";
       const prefix = `Criteria: "${name}" — `;
 
-      if (errors[`mudek_${i}`]) {
-        reasons.push(`${prefix}Select at least one MÜDEK outcome.`);
+      if (errors[`outcome_${i}`]) {
+        reasons.push(`${prefix}Select at least one outcome.`);
       }
       if (errors[`shortLabel_${i}`]) {
         reasons.push(`${prefix}Fix duplicate or missing short labels.`);
@@ -188,10 +188,10 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
     });
   };
 
-  const toggleMudek = (i) => {
+  const toggleOutcome = (i) => {
     setRows((prev) => {
       const next = [...prev];
-      next[i] = { ...next[i], _mudekOpen: !next[i]._mudekOpen };
+      next[i] = { ...next[i], _outcomeOpen: !next[i]._outcomeOpen };
       return next;
     });
   };
@@ -257,7 +257,7 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
     setRows((prev) =>
       prev.map((r, i) => ({
         ...r,
-        _mudekOpen: localErrors[`mudek_${i}`] ? true : r._mudekOpen,
+        _outcomeOpen: localErrors[`outcome_${i}`] ? true : r._outcomeOpen,
         _rubricOpen:
           localRubricErrors[i] &&
           (Object.keys(localRubricErrors[i].bandRangeErrors).length > 0 ||
@@ -288,14 +288,14 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
             !!localErrors[`shortLabel_${i}`] ||
             !!localErrors[`blurb_${i}`] ||
             !!localErrors[`max_${i}`] ||
-            !!localErrors[`mudek_${i}`] ||
-            !!localErrors[`mudek_dup_${i}`] ||
+            !!localErrors[`outcome_${i}`] ||
+            !!localErrors[`outcome_dup_${i}`] ||
             !!rubric;
           if (!rowHasErrors) return r;
           return {
             ...r,
             _expanded: true,
-            _mudekOpen: outcomeConfig.length > 0 ? true : r._mudekOpen,
+            _outcomeOpen: outcomeConfig.length > 0 ? true : r._outcomeOpen,
             _rubricOpen: true,
           };
         })
@@ -309,7 +309,7 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
     try {
       const normalized = activeRows.map((r) => {
         const boundedRubric = clampRubricBandsToCriterionMax(r.rubric, Number(r.max));
-        return criterionToConfig({ ...r, mudek: sanitizeMudekSelection(r.mudek), rubric: boundedRubric });
+        return criterionToConfig({ ...r, mudek: sanitizeOutcomeSelection(r.mudek), rubric: boundedRubric });
       });
       const result = await onSave(normalized);
       if (!result?.ok) {
@@ -340,15 +340,15 @@ export function useCriteriaForm({ template, outcomeConfig, onSave, onDirtyChange
     saveBlockReasons,
     canSave,
     fullyLocked,
-    mudekOutcomeByCode,
-    sanitizeMudekSelection,
+    outcomeByCode,
+    sanitizeOutcomeSelection,
     markTouched,
     setRow,
     addRow,
     requestRemoveRow,
     confirmRemoveRow,
     toggleRubric,
-    toggleMudek,
+    toggleOutcome,
     toggleCriterionCard,
     sensors,
     handleDragEnd,

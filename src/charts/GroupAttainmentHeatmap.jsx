@@ -33,9 +33,17 @@ export function GroupAttainmentHeatmap({ dashboardStats = [], submittedData = []
         <thead>
           <tr>
             <th>Criterion</th>
-            {groups.map((g) => (
-              <th key={g.id} title={g.title || g.name}>{(g.title || g.name)?.length > 12 ? (g.title || g.name).slice(0, 12) + "…" : (g.title || g.name)}</th>
-            ))}
+            {groups.map((g) => {
+              const code = g.group_no != null ? `P${g.group_no}` : null;
+              const title = g.title || g.name || "";
+              const truncated = title.length > 14 ? title.slice(0, 14) + "…" : title;
+              return (
+                <th key={g.id} title={title}>
+                  {code && <span className="ga-th-code">{code}</span>}
+                  <span className="ga-th-name">{truncated}</span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

@@ -84,13 +84,6 @@ export function AttainmentTrendChart({ trendData = [], semesterOptions = [], sel
         <Tooltip
           cursor={{ stroke: "var(--border-strong)", strokeWidth: 1, strokeDasharray: "3 2" }}
           formatter={(v) => (v != null ? `${v}%` : "—")}
-          contentStyle={{
-            fontSize: 11,
-            background: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            boxShadow: "var(--shadow-elevated)",
-          }}
         />
         <ReferenceLine
           y={ATTAINMENT_THRESHOLD}

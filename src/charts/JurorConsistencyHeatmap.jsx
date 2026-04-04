@@ -8,12 +8,12 @@ function fmt1(v) {
   return Math.round(v * 10) / 10;
 }
 
-function getCvCellStyle(cv) {
-  if (cv == null) return {};
-  if (cv < 10) return { background: "rgba(22,163,74,0.08)", color: "#15803d" };
-  if (cv < 15) return { background: "rgba(187,247,208,0.5)", color: "#16a34a" };
-  if (cv < 25) return { background: "rgba(254,240,138,0.5)", color: "#a16207" };
-  return { background: "rgba(254,202,202,0.5)", color: "#dc2626" };
+function getCvCellClass(cv) {
+  if (cv == null) return "";
+  if (cv < 10) return "ga-cv-excellent";
+  if (cv < 15) return "ga-cv-good";
+  if (cv < 25) return "ga-cv-acceptable";
+  return "ga-cv-poor";
 }
 
 /**
@@ -33,9 +33,17 @@ export function JurorConsistencyHeatmap({ dashboardStats = [], submittedData = [
         <thead>
           <tr>
             <th>Criterion</th>
-            {groups.map((g) => (
-              <th key={g.id} title={g.title || g.name}>{(g.title || g.name)?.length > 12 ? (g.title || g.name).slice(0, 12) + "…" : (g.title || g.name)}</th>
-            ))}
+            {groups.map((g) => {
+              const code = g.group_no != null ? `P${g.group_no}` : null;
+              const title = g.title || g.name || "";
+              const truncated = title.length > 14 ? title.slice(0, 14) + "…" : title;
+              return (
+                <th key={g.id} title={title}>
+                  {code && <span className="ga-th-code">{code}</span>}
+                  <span className="ga-th-name">{truncated}</span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -62,7 +70,7 @@ export function JurorConsistencyHeatmap({ dashboardStats = [], submittedData = [
                 }
 
                 return (
-                  <td key={g.id} style={getCvCellStyle(cv)} title={g.title || g.name}>
+                  <td key={g.id} className={getCvCellClass(cv)} title={g.title || g.name}>
                     {cv != null ? `${cv}%` : "—"}
                   </td>
                 );

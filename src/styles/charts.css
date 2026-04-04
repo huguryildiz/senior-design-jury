@@ -11,6 +11,34 @@
   z-index: 10;
 }
 
+/* ─── Recharts tooltip — premium glass ───────────────────────────────────── */
+.recharts-default-tooltip {
+  background: rgba(12, 18, 32, 0.82) !important;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.40) !important;
+  padding: 10px 14px !important;
+}
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: #f1f5f9 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  margin-bottom: 4px !important;
+}
+.recharts-default-tooltip .recharts-tooltip-item-list {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.recharts-default-tooltip .recharts-tooltip-item {
+  font-size: 11px !important;
+  padding: 1px 0 !important;
+}
+.recharts-default-tooltip .recharts-tooltip-item .recharts-tooltip-item-value {
+  font-weight: 600 !important;
+}
+
 /* ─── CSS chart container (att-bar-chart, lollipop-chart) ─────────────────── */
 /* Base containers defined in analytics.css; overview page inherits them.
    The vera.css component styles (att-bar-fill.met, lollipop-stem.positive, etc.)

@@ -15,9 +15,17 @@ function relativeTime(ms) {
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  if (rem === 0) return `${hrs}h ago`;
-  return `${hrs}h ${rem}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(days / 365);
+  const remMonths = Math.floor((days % 365) / 30);
+  if (remMonths === 0) return `${years}y ago`;
+  return `${years}y ${remMonths}mo ago`;
 }
 
 function jurorStatus(j) {
@@ -110,16 +118,22 @@ export default function OverviewPage({
   // ── KPIs ──────────────────────────────────────────────────────
   const kpi = useMemo(() => {
     const totalJ = allJurors.length;
-    const completed = allJurors.filter((j) => j.finalSubmitted).length;
+    const completed = allJurors.filter((j) => j.finalSubmitted && !j.editEnabled).length;
+    const editing = allJurors.filter((j) => j.editEnabled).length;
     const inProg = allJurors.filter((j) => !j.finalSubmitted && (j.completedProjects || 0) > 0).length;
-    const notStarted = allJurors.filter((j) => !j.finalSubmitted && !(j.completedProjects > 0));
-    const pct = totalJ > 0 ? Math.round((completed / totalJ) * 100) : 0;
-    const validScores = rawScores.filter((r) => r.total != null);
+    const notStarted = allJurors.filter((j) => !j.finalSubmitted && !(j.completedProjects > 0)).length;
+    const pct = totalJ > 0 ? Math.round(((completed + editing) / totalJ) * 100) : 0;
+    const completedJurorIds = new Set(
+      allJurors.filter((j) => j.finalSubmitted).map((j) => j.jurorId)
+    );
+    const completedScores = rawScores.filter(
+      (r) => r.total != null && completedJurorIds.has(r.jurorId)
+    );
     const avg =
-      validScores.length > 0
-        ? (validScores.reduce((s, r) => s + r.total, 0) / validScores.length).toFixed(1)
+      completedScores.length > 0
+        ? (completedScores.reduce((s, r) => s + r.total, 0) / completedScores.length).toFixed(1)
         : null;
-    return { totalJ, completed, inProg, notStarted, pct, avg };
+    return { totalJ, completed, editing, inProg, notStarted, pct, avg };
   }, [allJurors, rawScores]);
 
   // ── Per-juror average map ─────────────────────────────────────
@@ -137,11 +151,31 @@ export default function OverviewPage({
     return result;
   }, [rawScores]);
 
+  // ── Juror table sort ──────────────────────────────────────────
+  const [tableSort, setTableSort] = useState({ col: "active", dir: "desc" });
+
+  const STATUS_ORDER = { completed: 0, editing: 1, in_progress: 2, partial: 3, not_started: 4 };
+
+  function toggleSort(col) {
+    setTableSort((prev) =>
+      prev.col === col ? { col, dir: prev.dir === "desc" ? "asc" : "desc" } : { col, dir: "desc" }
+    );
+  }
+
   // ── Juror table rows ──────────────────────────────────────────
-  const sortedJurors = useMemo(
-    () => [...allJurors].sort((a, b) => (b.lastSeenMs || 0) - (a.lastSeenMs || 0)),
-    [allJurors]
-  );
+  const sortedJurors = useMemo(() => {
+    const { col, dir } = tableSort;
+    const mult = dir === "asc" ? 1 : -1;
+    return [...allJurors].sort((a, b) => {
+      if (col === "name")     return mult * (a.juryName || "").localeCompare(b.juryName || "");
+      if (col === "status")   return mult * ((STATUS_ORDER[jurorStatus(a)] ?? 9) - (STATUS_ORDER[jurorStatus(b)] ?? 9));
+      if (col === "progress") return mult * ((a.completedProjects || 0) - (b.completedProjects || 0));
+      if (col === "avg")      return mult * ((parseFloat(jurorAvgMap.get(a.jurorId)) || 0) - (parseFloat(jurorAvgMap.get(b.jurorId)) || 0));
+      if (col === "active")   return mult * ((a.lastSeenMs || 0) - (b.lastSeenMs || 0));
+      return 0;
+    });
+  }, [allJurors, tableSort, jurorAvgMap]);
+
   const displayedJurors = jurorTableExpanded ? sortedJurors : sortedJurors.slice(0, 5);
 
   // ── Group completion bars ─────────────────────────────────────
@@ -219,16 +253,17 @@ export default function OverviewPage({
         <div className="card kpi">
           <div className="kpi-label">Active Jurors</div>
           <div className="kpi-value">{kpi.totalJ || "—"}</div>
-          <div className="kpi-sub">
-            <span className="up">{kpi.completed} completed</span>
-            {" · "}
-            {kpi.inProg} in progress
+          <div className="kpi-sub" style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px" }}>
+            <span style={{ color: "var(--success)" }}>{kpi.completed} completed</span>
+            {kpi.editing > 0 && <span style={{ color: "#8b5cf6" }}>{kpi.editing} editing</span>}
+            {kpi.inProg > 0 && <span style={{ color: "var(--warning)" }}>{kpi.inProg} in progress</span>}
+            {kpi.notStarted > 0 && <span style={{ color: "var(--text-secondary)" }}>{kpi.notStarted} not started</span>}
           </div>
         </div>
         <div className="card kpi">
           <div className="kpi-label">Projects / Groups</div>
           <div className="kpi-value">{summaryData.length || "—"}</div>
-          <div className="kpi-sub">{selectedPeriod?.semester_name || "—"}</div>
+          <div className="kpi-sub">{selectedPeriod?.name || selectedPeriod?.semester_name || "—"}</div>
         </div>
         <div className="card kpi">
           <div className="kpi-label">Completion</div>
@@ -238,7 +273,7 @@ export default function OverviewPage({
         <div className="card kpi">
           <div className="kpi-label">Average Score</div>
           <div className="kpi-value">{kpi.avg ?? "—"}</div>
-          <div className="kpi-sub">of 100</div>
+          <div className="kpi-sub">of 100 · completed jurors only</div>
         </div>
       </div>
 
@@ -263,11 +298,23 @@ export default function OverviewPage({
             <table id="overview-juror-table" className={jurorTableExpanded ? "expanded" : ""}>
               <thead>
                 <tr>
-                  <th>Juror</th>
-                  <th>Status</th>
-                  <th className="text-center">Progress</th>
-                  <th className="text-right">Avg</th>
-                  <th className="text-right">Active</th>
+                  {[
+                    { col: "name",     label: "Juror",    cls: "" },
+                    { col: "status",   label: "Status",   cls: "" },
+                    { col: "progress", label: "Progress", cls: "text-center" },
+                    { col: "avg",      label: "Avg",      cls: "text-right" },
+                    { col: "active",   label: "Active",   cls: "text-right" },
+                  ].map(({ col, label, cls }) => (
+                    <th key={col} className={cls}
+                      onClick={() => toggleSort(col)}
+                      style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+                    >
+                      {label}
+                      {tableSort.col === col
+                        ? tableSort.dir === "desc" ? " ↓" : " ↑"
+                        : <span style={{ opacity: 0.25 }}> ↕</span>}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -366,7 +413,7 @@ export default function OverviewPage({
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
               <div className="text-muted">Period</div>
-              <div style={{ fontWeight: 500 }}>{selectedPeriod?.semester_name || "—"}</div>
+              <div style={{ fontWeight: 500 }}>{selectedPeriod?.name || selectedPeriod?.semester_name || "—"}</div>
               <div className="text-muted">Criteria</div>
               <div style={{ fontWeight: 500 }}>{criteriaLabel}</div>
               <div className="text-muted">Jurors</div>
@@ -502,7 +549,7 @@ export default function OverviewPage({
             </div>
           </div>
           <SubmissionTimelineChart allJurors={allJurors} />
-          <div className="text-xs text-muted" style={{ marginTop: 4 }}>Juror activity by hour — current period</div>
+          <div className="text-xs text-muted" style={{ marginTop: 4 }}>Final submissions by hour — current period</div>
         </div>
         <div className="card chart-card">
           <div className="card-header">
@@ -516,7 +563,7 @@ export default function OverviewPage({
             </div>
           </div>
           <ScoreDistributionChart rawScores={rawScores} />
-          <div className="text-xs text-muted" style={{ marginTop: 4 }}>Score range distribution across all evaluations</div>
+          <div className="text-xs text-muted" style={{ marginTop: 4 }}>Score range distribution — one data point per juror × project pair</div>
         </div>
       </div>
 

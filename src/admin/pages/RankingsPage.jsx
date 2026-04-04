@@ -1,7 +1,7 @@
 // src/admin/RankingsPage.jsx — Phase 3
 // Rankings page: KPI strip, filter panel, export panel, sortable table with heat cells + consensus badges.
 // Prototype reference: vera-premium-prototype.html lines 11985–12197.
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { exportRankingsXLSX } from "../utils/exportXLSX";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import { useToast } from "@/shared/hooks/useToast";
@@ -22,6 +22,39 @@ function computeRanks(sortedRows) {
   return map;
 }
 
+// ── Export data builder — matches UI column names exactly ────────
+function buildRankingsExportData(rankedRows, criteriaConfig, consensusMap, fmtMembers) {
+  const totalMax = criteriaConfig.reduce((s, c) => s + (c.max || 0), 0);
+  const header = [
+    "Rank",
+    "Project Title",
+    "Team Members",
+    ...criteriaConfig.map((c) => `${c.shortLabel || c.label} (${c.max})`),
+    `Average (${totalMax})`,
+    "Consensus",
+    "Jurors Evaluated",
+  ];
+  let rank = 0, lastScore = null, idx = 0;
+  const rows = rankedRows.map((p) => {
+    idx += 1;
+    if (Number.isFinite(p?.totalAvg) && p.totalAvg !== lastScore) { rank = idx; lastScore = p.totalAvg; }
+    const consensus = consensusMap?.[p.id];
+    const consensusLabel = consensus
+      ? `${consensus.level === "high" ? "High" : consensus.level === "moderate" ? "Moderate" : "Disputed"} (σ=${consensus.sigma})`
+      : "";
+    return [
+      Number.isFinite(p?.totalAvg) ? rank : "",
+      p.title || p.name || "",
+      fmtMembers(p.members || p.students),
+      ...criteriaConfig.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
+      Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
+      consensusLabel,
+      p.count ?? "",
+    ];
+  });
+  return { header, rows };
+}
+
 // ── Per-project juror consensus (σ of per-juror totals) ─────────
 function buildConsensusMap(summaryData, rawScores, criteriaConfig) {
   const map = {};
@@ -29,12 +62,12 @@ function buildConsensusMap(summaryData, rawScores, criteriaConfig) {
 
   for (const proj of summaryData) {
     if (proj.totalAvg == null) continue;
-    const projScores = rawScores.filter((s) => s.project_id === proj.id);
+    const projScores = rawScores.filter((s) => (s.projectId ?? s.project_id) === proj.id);
     if (!projScores.length) continue;
 
     const byJuror = {};
     for (const s of projScores) {
-      const jid = s.juror_id;
+      const jid = s.jurorId ?? s.juror_id;
       if (!byJuror[jid]) byJuror[jid] = 0;
       for (const c of criteriaConfig) {
         const v = s[c.id];
@@ -87,8 +120,10 @@ function ConsensusBadge({ consensus }) {
   return (
     <>
       <span className={`consensus-badge consensus-${level}`}>{label}</span>
-      <span className="consensus-sub">
-        σ={sigma} · range {min}–{max}
+      <span className={`consensus-sub consensus-sub-${level}`}>
+        <span className="consensus-sub-sigma">σ = {sigma}</span>
+        <span className="consensus-sub-sep" />
+        <span className="consensus-sub-range">range {min}–{max}</span>
       </span>
     </>
   );
@@ -205,6 +240,45 @@ export default function RankingsPage({
   const [sendOpen, setSendOpen] = useState(false);
   const [sortField, setSortField] = useState("avg");
   const [sortDir, setSortDir] = useState("desc");
+  const [consensusPopoverOpen, setConsensusPopoverOpen] = useState(false);
+  const [consensusPopoverPos, setConsensusPopoverPos] = useState({ top: 0, left: 0 });
+  const consensusIconRef = useRef(null);
+  const consensusPopoverRef = useRef(null);
+
+  function openConsensusPopover(e) {
+    e.stopPropagation();
+    if (consensusPopoverOpen) { setConsensusPopoverOpen(false); return; }
+    const rect = consensusIconRef.current?.getBoundingClientRect();
+    if (rect) {
+      const popoverWidth = 280;
+      let left = rect.right - popoverWidth;
+      if (left < 8) left = 8;
+      if (left + popoverWidth > window.innerWidth - 8) left = window.innerWidth - popoverWidth - 8;
+      setConsensusPopoverPos({ top: rect.bottom + 6, left });
+    }
+    setConsensusPopoverOpen(true);
+  }
+
+  useEffect(() => {
+    if (!consensusPopoverOpen) return;
+    function handleClick(e) {
+      if (
+        consensusPopoverRef.current && !consensusPopoverRef.current.contains(e.target) &&
+        consensusIconRef.current && !consensusIconRef.current.contains(e.target)
+      ) {
+        setConsensusPopoverOpen(false);
+      }
+    }
+    const close = () => setConsensusPopoverOpen(false);
+    document.addEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [consensusPopoverOpen]);
 
   const periodName = periodNameProp || selectedPeriod?.name || selectedPeriod?.semester_name || "";
 
@@ -339,26 +413,9 @@ export default function RankingsPage({
         if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
         return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
       };
-      const header = [
-        "Rank", "Project", "Title", "Team Members",
-        ...criteriaConfig.map((c) => `${c.shortLabel || c.label} Avg (${c.max})`),
-        `Total Avg (${criteriaConfig.reduce((s, c) => s + c.max, 0)})`,
-      ];
-      let rank = 0, lastScore = null, idx = 0;
-      const rows = rankedRows.map((p) => {
-        idx += 1;
-        if (Number.isFinite(p?.totalAvg) && p.totalAvg !== lastScore) { rank = idx; lastScore = p.totalAvg; }
-        return [
-          Number.isFinite(p?.totalAvg) ? rank : "",
-          p.group_no != null ? `Group ${p.group_no}` : (p.groupNo != null ? `Group ${p.groupNo}` : ""),
-          p.title || p.name || "",
-          fmtMembers(p.members || p.students),
-          ...criteriaConfig.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
-          Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
-        ];
-      });
+      const { header, rows } = buildRankingsExportData(rankedRows, criteriaConfig, consensusMap, fmtMembers);
       if (exportFormat === "xlsx") {
-        await exportRankingsXLSX(rankedRows, criteriaConfig, { periodName, tenantCode: tc });
+        await exportRankingsXLSX(rankedRows, criteriaConfig, { periodName, tenantCode: tc, consensusMap });
       } else {
         await downloadTable(exportFormat, {
           filenameType: "Rankings",
@@ -367,7 +424,7 @@ export default function RankingsPage({
           tenantCode: tc,
           organization: activeOrganization?.name || "",
           department: activeOrganization?.institution_name || "",
-          pdfTitle: "VERA — Score Rankings",
+          pdfTitle: "VERA — Rankings",
           pdfSubtitle: `${periodName || "All Periods"} · ${rankedRows.length} projects`,
           header,
           rows,
@@ -387,6 +444,7 @@ export default function RankingsPage({
   };
 
   return (
+    <>
     <div>
       {/* ── Header ───────────────────────────────────────────── */}
       <div className="scores-header">
@@ -656,27 +714,11 @@ export default function RankingsPage({
             if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
             return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
           };
-          const header = [
-            "Rank", "Project", "Title", "Team Members",
-            ...criteriaConfig.map((c) => `${c.shortLabel || c.label} Avg (${c.max})`),
-            `Total Avg (${criteriaConfig.reduce((s, c) => s + c.max, 0)})`,
-          ];
-          let rank = 0, lastScore = null, idx = 0;
-          const rows = rankedRows.map((p) => {
-            idx += 1;
-            if (Number.isFinite(p?.totalAvg) && p.totalAvg !== lastScore) { rank = idx; lastScore = p.totalAvg; }
-            return [
-              Number.isFinite(p?.totalAvg) ? rank : "",
-              p.group_no != null ? `Group ${p.group_no}` : (p.groupNo != null ? `Group ${p.groupNo}` : ""),
-              p.title || p.name || "", fmtMembers(p.members || p.students),
-              ...criteriaConfig.map((c) => Number.isFinite(p.avg?.[c.id]) ? Number(p.avg[c.id].toFixed(2)) : ""),
-              Number.isFinite(p.totalAvg) ? Number(p.totalAvg.toFixed(2)) : "",
-            ];
-          });
+          const { header, rows } = buildRankingsExportData(rankedRows, criteriaConfig, consensusMap, fmtMembers);
           return generateTableBlob(fmt, {
             filenameType: "Rankings", sheetName: "Rankings", periodName,
             tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
-            department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Score Rankings",
+            department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Rankings",
             header, rows,
           });
         }}
@@ -699,12 +741,12 @@ export default function RankingsPage({
             </colgroup>
             <thead>
               <tr>
-                <th className="col-rank">#</th>
+                <th className="col-rank">Rank</th>
                 <th
                   className={`sortable${sortField === "project" ? " sorted" : ""}`}
                   onClick={() => handleSort("project")}
                 >
-                  Project
+                  Project Title
                   <SortIcon field="project" sortField={sortField} sortDir={sortDir} />
                 </th>
                 <th>Team Members</th>
@@ -733,37 +775,14 @@ export default function RankingsPage({
                   <div className="col-info">
                     Consensus
                     <SortIcon field="consensus" sortField={sortField} sortDir={sortDir} />
-                    <span className="col-info-icon">?</span>
-                    <div className="col-info-popover">
-                      <h5>Juror Consensus</h5>
-                      <p>
-                        Measures how much jurors agree on a project's score. Based on the standard
-                        deviation (σ) of total scores across all jurors.
-                      </p>
-                      <div className="col-info-levels">
-                        <div className="col-info-level">
-                          <span className="dot" style={{ background: "var(--success)" }} />
-                          <strong style={{ color: "var(--success)" }}>High</strong>
-                          <span>σ &lt; 3.0 — Jurors closely agree</span>
-                        </div>
-                        <div className="col-info-level">
-                          <span className="dot" style={{ background: "var(--text-tertiary)" }} />
-                          <strong>Moderate</strong>
-                          <span>σ 3.0–5.0 — Some variation</span>
-                        </div>
-                        <div className="col-info-level">
-                          <span className="dot" style={{ background: "var(--warning)" }} />
-                          <strong style={{ color: "var(--warning)" }}>Disputed</strong>
-                          <span>σ &gt; 5.0 — Significant disagreement</span>
-                        </div>
-                      </div>
-                      <p style={{ marginTop: 8, fontSize: 10, color: "var(--text-tertiary)" }}>
-                        Hover each badge to see the exact σ value and score range.
-                      </p>
-                    </div>
+                    <span
+                      ref={consensusIconRef}
+                      className="col-info-icon"
+                      onClick={openConsensusPopover}
+                    >?</span>
                   </div>
                 </th>
-                <th className="text-right">Jurors</th>
+                <th className="text-right">Jurors Evaluated</th>
               </tr>
             </thead>
             <tbody>
@@ -830,5 +849,34 @@ export default function RankingsPage({
         </div>
       </div>
     </div>
+
+    {consensusPopoverOpen && (
+      <div
+        ref={consensusPopoverRef}
+        className="col-info-popover show"
+        style={{ position: "fixed", top: consensusPopoverPos.top, left: consensusPopoverPos.left, zIndex: 9999 }}
+      >
+        <h5>Juror Consensus</h5>
+        <p>Measures how much jurors agree on a project&apos;s score. Based on the standard deviation (σ) of total scores across all jurors.</p>
+        <div className="consensus-info-rows">
+          <div className="consensus-info-row">
+            <span className="consensus-badge consensus-high">High</span>
+            <span className="consensus-info-desc">σ &lt; 3.0 — Jurors closely agree</span>
+          </div>
+          <div className="consensus-info-row">
+            <span className="consensus-badge consensus-moderate">Moderate</span>
+            <span className="consensus-info-desc">σ 3.0–5.0 — Some variation</span>
+          </div>
+          <div className="consensus-info-row">
+            <span className="consensus-badge consensus-disputed">Disputed</span>
+            <span className="consensus-info-desc">σ &gt; 5.0 — Significant disagreement</span>
+          </div>
+        </div>
+        <p style={{ marginTop: 8, fontSize: 10, color: "var(--text-tertiary)" }}>
+          Hover each badge to see the exact σ value and score range.
+        </p>
+      </div>
+    )}
+    </>
   );
 }

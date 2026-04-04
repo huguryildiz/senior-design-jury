@@ -2,12 +2,21 @@
 // Settings page: org-admin profile/security view vs super-admin control center.
 // Prototype: vera-premium-prototype.html lines 15647–16066
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/auth";
 import { useToast } from "@/shared/hooks/useToast";
 import { useProfileEdit } from "../hooks/useProfileEdit";
 import { useManageOrganizations } from "../hooks/useManageOrganizations";
+import SecurityPolicyDrawer from "../drawers/SecurityPolicyDrawer";
+import {
+  GlobalSettingsDrawer,
+  AuditCenterDrawer,
+  ExportBackupDrawer,
+  MaintenanceDrawer,
+  FeatureFlagsDrawer,
+  SystemHealthDrawer,
+} from "../drawers/GovernanceDrawers";
 
 import { DEMO_MODE as isDemoMode } from "@/shared/lib/demoMode";
 
@@ -221,6 +230,19 @@ export default function SettingsPage({ organizationId }) {
 
   const initials = getInitials(displayName, user?.email);
 
+  // Drawer states
+  const [securityPolicyOpen, setSecurityPolicyOpen] = useState(false);
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
+  const [auditCenterOpen, setAuditCenterOpen] = useState(false);
+  const [exportBackupOpen, setExportBackupOpen] = useState(false);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [featureFlagsOpen, setFeatureFlagsOpen] = useState(false);
+  const [systemHealthOpen, setSystemHealthOpen] = useState(false);
+
+  // Super-admin Danger Zone modal state
+  const [dangerModal, setDangerModal] = useState(null); // null | "disable_org" | "revoke_admin" | "maintenance"
+  const [dangerConfirm, setDangerConfirm] = useState("");
+
   // Super-admin KPIs
   const kpis = useMemo(() => {
     const active = orgList.filter((o) => o.status === "active").length;
@@ -250,9 +272,83 @@ export default function SettingsPage({ organizationId }) {
     return [...map.values()];
   }, [orgList]);
 
+  const DANGER_LABELS = {
+    disable_org: "Disable Organization",
+    revoke_admin: "Revoke Admin Access",
+    maintenance: "Start Maintenance Mode",
+  };
+  const DANGER_CONFIRM_PHRASE = {
+    disable_org: "DISABLE",
+    revoke_admin: "REVOKE",
+    maintenance: "MAINTENANCE",
+  };
+
   return (
     <>
       <ProfileEditModal profile={profile} />
+
+      {/* Governance drawers */}
+      <SecurityPolicyDrawer open={securityPolicyOpen} onClose={() => setSecurityPolicyOpen(false)} />
+      <GlobalSettingsDrawer open={globalSettingsOpen} onClose={() => setGlobalSettingsOpen(false)} />
+      <AuditCenterDrawer open={auditCenterOpen} onClose={() => setAuditCenterOpen(false)} />
+      <ExportBackupDrawer open={exportBackupOpen} onClose={() => setExportBackupOpen(false)} />
+      <MaintenanceDrawer open={maintenanceOpen} onClose={() => setMaintenanceOpen(false)} />
+      <FeatureFlagsDrawer open={featureFlagsOpen} onClose={() => setFeatureFlagsOpen(false)} />
+      <SystemHealthDrawer open={systemHealthOpen} onClose={() => setSystemHealthOpen(false)} />
+
+      {/* Super-admin Danger Zone confirmation modal */}
+      {dangerModal && createPortal(
+        <div
+          className="crud-overlay"
+          style={{ display: "flex" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDangerModal(null); }}
+        >
+          <div className="crud-modal" style={{ maxWidth: 420 }}>
+            <div className="crud-modal-header" style={{ borderBottom: "1px solid rgba(225,29,72,0.15)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" style={{ width: 16, height: 16 }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <path d="M12 9v4m0 4h.01" />
+                </svg>
+                <h3 style={{ color: "var(--danger)" }}>{DANGER_LABELS[dangerModal]}</h3>
+              </div>
+              <button className="crud-modal-close" onClick={() => setDangerModal(null)}>&#215;</button>
+            </div>
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="fb-alert fba-error">
+                <div className="fb-alert-body">
+                  <div className="fb-alert-desc" style={{ fontSize: 12 }}>
+                    This action is irreversible and will take effect immediately. Type <strong>{DANGER_CONFIRM_PHRASE[dangerModal]}</strong> below to confirm.
+                  </div>
+                </div>
+              </div>
+              <input
+                className="form-input"
+                type="text"
+                placeholder={`Type ${DANGER_CONFIRM_PHRASE[dangerModal]} to confirm`}
+                value={dangerConfirm}
+                onChange={(e) => setDangerConfirm(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", background: "var(--surface-1)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => setDangerModal(null)}>Cancel</button>
+              <button
+                className="btn btn-sm"
+                style={{ background: "var(--danger)", color: "#fff" }}
+                disabled={dangerConfirm !== DANGER_CONFIRM_PHRASE[dangerModal]}
+                onClick={() => {
+                  _toast.success(`${DANGER_LABELS[dangerModal]} — action recorded (demo)`);
+                  setDangerModal(null);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {isSuper ? (
         /* ── Super-Admin Control Center ─────────────────────────────── */
@@ -284,7 +380,7 @@ export default function SettingsPage({ organizationId }) {
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button className="btn btn-outline btn-sm" onClick={() => profile.openModal("profile")}>Edit Profile</button>
-                <button className="btn btn-outline btn-sm" disabled title="Organization security policies — coming soon">Security Policy</button>
+                <button className="btn btn-outline btn-sm" onClick={() => setSecurityPolicyOpen(true)}>Security Policy</button>
               </div>
             </div>
           </div>
@@ -464,6 +560,95 @@ export default function SettingsPage({ organizationId }) {
               </div>
             </div>
 
+            {/* Platform Governance */}
+            <div className="card" style={{ padding: 14 }}>
+              <div className="card-header" style={{ marginBottom: 10 }}>
+                <div>
+                  <div className="card-title">Platform Governance</div>
+                  <div className="text-sm text-muted" style={{ marginTop: 3 }}>System-wide controls, flags, and operational tools.</div>
+                </div>
+                <span className="badge badge-neutral" style={{ fontSize: 9 }}>Super Admin Only</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  {
+                    label: "Global Settings",
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 19.07A10 10 0 0 0 4.93 4.93" /></svg>,
+                    onClick: () => setGlobalSettingsOpen(true),
+                  },
+                  {
+                    label: "Audit Center",
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
+                    onClick: () => setAuditCenterOpen(true),
+                  },
+                  {
+                    label: "Export & Backup",
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
+                    onClick: () => setExportBackupOpen(true),
+                  },
+                  {
+                    label: "Maintenance",
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
+                    onClick: () => setMaintenanceOpen(true),
+                  },
+                  {
+                    label: "Feature Flags",
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>,
+                    onClick: () => setFeatureFlagsOpen(true),
+                  },
+                  {
+                    label: "System Health",
+                    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
+                    onClick: () => setSystemHealthOpen(true),
+                  },
+                ].map(({ label, icon, onClick }) => (
+                  <button
+                    key={label}
+                    className="btn btn-outline btn-sm"
+                    style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-start", padding: "8px 10px", fontSize: 12 }}
+                    onClick={onClick}
+                  >
+                    {icon}
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Super-admin Danger Zone */}
+          <div className="card" style={{ marginBottom: 14, padding: "12px 14px", borderColor: "rgba(225,29,72,0.15)", background: "var(--danger-soft)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" style={{ width: 14, height: 14, opacity: 0.5, flexShrink: 0 }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <path d="M12 9v4m0 4h.01" />
+                </svg>
+                <div className="card-title" style={{ color: "var(--danger)", fontSize: 12.5 }}>Danger Zone</div>
+              </div>
+              <span className="badge badge-danger" style={{ fontSize: 9 }}>Irreversible</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { key: "disable_org", label: "Disable Organization", desc: "Suspend all access for an organization. Evaluation sessions, juror logins, and admin access are frozen." },
+                { key: "revoke_admin", label: "Revoke Admin Access", desc: "Remove an org-admin's membership and platform access immediately." },
+                { key: "maintenance", label: "Start Maintenance Mode", desc: "Take the platform offline for all users except Super Admin. Schedule or trigger immediately." },
+              ].map(({ key, label, desc }) => (
+                <div key={key} style={{ flex: 1, minWidth: 180, padding: 10, border: "1px solid rgba(225,29,72,0.12)", borderRadius: "var(--radius-sm)", background: "var(--bg-card)" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 8, lineHeight: 1.4 }}>{desc}</div>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    style={{ borderColor: "rgba(225,29,72,0.2)", color: "var(--danger)", fontSize: 11, padding: "4px 10px" }}
+                    onClick={() => { setDangerModal(key); setDangerConfirm(""); }}
+                    disabled={isDemoMode}
+                  >
+                    {label}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Cross-Organization Access & Memberships */}

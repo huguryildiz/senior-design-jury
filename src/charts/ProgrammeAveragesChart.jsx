@@ -21,6 +21,20 @@ function fmt1(v) {
   return Math.round(v * 10) / 10;
 }
 
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const { name, pct, sd, color } = payload[0].payload;
+  return (
+    <div className="recharts-default-tooltip" style={{ minWidth: 140 }}>
+      <p className="recharts-tooltip-label" style={{ color, marginBottom: 4 }}>{name}</p>
+      <p style={{ fontSize: 11, color: "#cbd5e1", margin: 0 }}>
+        Mean: <strong style={{ color }}>{pct}%</strong>
+        {sd ? <span style={{ color: "#94a3b8" }}> ±{sd}%</span> : null}
+      </p>
+    </div>
+  );
+}
+
 /**
  * @param {object} props
  * @param {object[]} props.submittedData — score rows
@@ -58,20 +72,7 @@ export function ProgrammeAveragesChart({ submittedData = [], criteria = [] }) {
           tickLine={false}
           tickFormatter={(v) => `${v}%`}
         />
-        <Tooltip
-          cursor={false}
-          formatter={(v, name, props) => {
-            const sd = props?.payload?.sd;
-            return [`${v}%${sd ? ` ±${sd}%` : ""}`, "Mean"];
-          }}
-          contentStyle={{
-            fontSize: 11,
-            background: "var(--bg-card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            boxShadow: "var(--shadow-elevated)",
-          }}
-        />
+        <Tooltip cursor={false} content={<CustomTooltip />} />
         <ReferenceLine
           y={ATTAINMENT_THRESHOLD}
           stroke="var(--text-tertiary)"
