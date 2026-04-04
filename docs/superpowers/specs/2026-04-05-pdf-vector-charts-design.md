@@ -17,9 +17,9 @@ Leave the 3 HTML table charts untouched (already rendered well via jspdf-autotab
 
 | Group | Charts | Strategy |
 |-------|--------|----------|
-| SVG (recharts) | OutcomeByGroupChart, ProgrammeAveragesChart, RubricAchievementChart, AttainmentTrendChart | svg2pdf.js vector embed |
+| SVG (recharts) | OutcomeByGroupChart, ProgrammeAveragesChart, RubricAchievementChart | svg2pdf.js vector embed |
 | CSS-based | AttainmentRateChart, ThresholdGapChart | html2canvas scale 3 + PNG |
-| HTML table | GroupAttainmentHeatmap, JurorConsistencyHeatmap, CoverageMatrix | No change — jspdf-autotable |
+| HTML table | GroupAttainmentHeatmap, JurorConsistencyHeatmap, CoverageMatrix, OutcomeAttainmentHeatmap (trend) | html2canvas scale 3 + PNG |
 
 ## Architecture
 
@@ -71,11 +71,11 @@ Section assignments:
 | Threshold Gap Analysis | raster |
 | Outcome Achievement by Group | svg |
 | Programme-Level Averages | svg |
-| Group Attainment Heatmap | none |
-| Inter-Rater Consistency Heatmap | none |
+| Group Attainment Heatmap | raster |
+| Inter-Rater Consistency Heatmap | raster |
 | Rubric Achievement Distribution | svg |
-| Coverage Matrix | none |
-| Attainment Trend | svg |
+| Coverage Matrix | raster |
+| Attainment Trend | raster |
 
 The section loop branches on `captureMethod`:
 
