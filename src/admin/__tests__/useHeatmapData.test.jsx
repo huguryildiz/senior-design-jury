@@ -10,11 +10,6 @@ const MOCK_CRITERIA = [
   { id: "teamwork" },
 ];
 
-const BASE_GROUPS = [
-  { id: "g1", groupNo: 1, label: "Group 1" },
-  { id: "g2", groupNo: 2, label: "Group 2" },
-];
-
 describe("useHeatmapData", () => {
   qaTest("griddata.01", () => {
     const groups = [
@@ -78,12 +73,10 @@ describe("useHeatmapData", () => {
     ];
 
     const { result } = renderHook(() => useHeatmapData({ data, jurors, groups, criteriaConfig: MOCK_CRITERIA }));
-    const { lookup, groupAverages, buildExportRows, jurorWorkflowMap } = result.current;
+    const { lookup, buildExportRows, jurorWorkflowMap } = result.current;
 
     expect(lookup.j1.g1.total).toBe(80);
     expect(lookup.j3.g2.technical).toBe(20);
-    // Average row must ignore editing/non-final jurors.
-    expect(groupAverages).toEqual(["80.00", "60.00"]);
     expect(jurorWorkflowMap.get("j3")).toBe("in_progress");
 
     const exportRows = buildExportRows([jurors[2]]);
@@ -92,86 +85,3 @@ describe("useHeatmapData", () => {
   });
 });
 
-// ── groupAverages edge cases ──────────────────────────────────────────────────
-
-describe("useHeatmapData — groupAverages edge cases", () => {
-  const mkEntry = (total) => ({
-    total,
-    technical: Math.round(total * 0.3), design: Math.round(total * 0.3), delivery: Math.round(total * 0.3), teamwork: total - Math.round(total * 0.3) * 3,
-    status: "completed", editingFlag: "", finalSubmittedAt: "01.01.2026 10:00",
-  });
-
-  qaTest("griddata.02", () => {
-    const jurors = [
-      { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: true },
-    ];
-    const data = [{ jurorId: "j1", projectId: "g1", ...mkEntry(90) }];
-    const { result } = renderHook(() => useHeatmapData({ data, jurors, groups: BASE_GROUPS, criteriaConfig: MOCK_CRITERIA }));
-    // Editing juror excluded → no values → null average
-    expect(result.current.groupAverages[0]).toBeNull();
-  });
-
-  qaTest("griddata.03", () => {
-    const jurors = [
-      { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false, finalSubmittedAt: undefined },
-    ];
-    const data = [{
-      jurorId: "j1", projectId: "g1",
-      total: 80, technical: 24, design: 24, delivery: 24, teamwork: 8,
-      status: "completed", editingFlag: "", finalSubmittedAt: "",
-    }];
-    const { result } = renderHook(() => useHeatmapData({ data, jurors, groups: BASE_GROUPS, criteriaConfig: MOCK_CRITERIA }));
-    // Should be included: finalSubmitted=true and !editEnabled
-    expect(result.current.groupAverages[0]).toBe("80.00");
-  });
-
-  qaTest("griddata.04", () => {
-    const jurors = [
-      { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: true },
-      { key: "j2", name: "Bob",   dept: "CS", finalSubmitted: true, editEnabled: true },
-    ];
-    const data = [
-      { jurorId: "j1", projectId: "g1", ...mkEntry(80) },
-      { jurorId: "j2", projectId: "g1", ...mkEntry(60) },
-    ];
-    const { result } = renderHook(() => useHeatmapData({ data, jurors, groups: BASE_GROUPS, criteriaConfig: MOCK_CRITERIA }));
-    expect(result.current.groupAverages[0]).toBeNull();
-    expect(result.current.groupAverages[1]).toBeNull();
-  });
-
-  qaTest("griddata.05", () => {
-    const jurors = [
-      { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false },
-    ];
-    const data = [{
-      jurorId: "j1", projectId: "g1",
-      total: null, technical: 20, design: null, delivery: null, teamwork: null,
-      status: "in_progress", editingFlag: "", finalSubmittedAt: "01.01.2026 10:00",
-    }];
-    const { result } = renderHook(() => useHeatmapData({ data, jurors, groups: BASE_GROUPS, criteriaConfig: MOCK_CRITERIA }));
-    // partial state → not included in average
-    expect(result.current.groupAverages[0]).toBeNull();
-  });
-
-  qaTest("griddata.06", () => {
-    const jurors = [
-      { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false },
-    ];
-    const data = [{ jurorId: "j1", projectId: "g1", ...mkEntry(0) }];
-    const { result } = renderHook(() => useHeatmapData({ data, jurors, groups: BASE_GROUPS, criteriaConfig: MOCK_CRITERIA }));
-    expect(result.current.groupAverages[0]).toBe("0.00");
-  });
-
-  qaTest("griddata.07", () => {
-    const jurors = [
-      { key: "j1", name: "Alice", dept: "EE", finalSubmitted: true, editEnabled: false },
-      { key: "j2", name: "Bob",   dept: "CS", finalSubmitted: true, editEnabled: false },
-    ];
-    const data = [
-      { jurorId: "j1", projectId: "g1", ...mkEntry(80) },
-      { jurorId: "j2", projectId: "g1", ...mkEntry(60) },
-    ];
-    const { result } = renderHook(() => useHeatmapData({ data, jurors, groups: BASE_GROUPS, criteriaConfig: MOCK_CRITERIA }));
-    expect(result.current.groupAverages[0]).toBe("70.00");
-  });
-});

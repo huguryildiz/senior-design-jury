@@ -60,11 +60,9 @@ export async function deleteJuror(id) {
 
 export async function resetJurorPin({ jurorId, periodId }) {
   if (!jurorId || !periodId) throw new Error("resetJurorPin: jurorId and periodId required");
-  const { data, error } = await supabase.rpc("rpc_jury_authenticate", {
+  const { data, error } = await supabase.rpc("rpc_juror_reset_pin", {
     p_period_id: periodId,
-    p_juror_name: "",
-    p_affiliation: "",
-    p_force_reissue: true,
+    p_juror_id: jurorId,
   });
   if (error) throw error;
   return data;

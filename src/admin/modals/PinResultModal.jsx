@@ -10,6 +10,7 @@
 //   onSendEmail — ({ email, includeQr }) => Promise<void>
 
 import { useState } from "react";
+import { CheckCircle, AlertCircle, Info } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
 
@@ -18,6 +19,8 @@ export default function PinResultModal({ open, onClose, juror, newPin, onSendEma
   const [emailRecipient, setEmailRecipient] = useState("");
   const [includeQr, setIncludeQr] = useState(true);
   const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null); // null | "sent" | "error"
+  const [sendError, setSendError] = useState("");
 
   const handleCopy = () => {
     if (newPin) {
@@ -29,8 +32,20 @@ export default function PinResultModal({ open, onClose, juror, newPin, onSendEma
 
   const handleSend = async () => {
     setSending(true);
+    setSendResult(null);
+    setSendError("");
     try {
-      await onSendEmail?.({ email: emailRecipient.trim(), includeQr });
+      const email = (emailRecipient || juror?.email || "").trim();
+      const result = await onSendEmail?.({ email, includeQr });
+      if (result?.sent === false) {
+        setSendResult("error");
+        setSendError(result?.error || "Email could not be sent.");
+      } else {
+        setSendResult("sent");
+      }
+    } catch (e) {
+      setSendResult("error");
+      setSendError(e?.context?.error || e?.message || "Unexpected error.");
     } finally {
       setSending(false);
     }
@@ -169,6 +184,18 @@ export default function PinResultModal({ open, onClose, juror, newPin, onSendEma
               {sending ? "Sending…" : "Send"}
             </button>
           </div>
+          {sendResult === "sent" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--success, #22c55e)", marginBottom: 8 }}>
+              <CheckCircle size={13} />
+              Email sent successfully.
+            </div>
+          )}
+          {sendResult === "error" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--danger, #e11d48)", marginBottom: 8 }}>
+              <AlertCircle size={13} />
+              {sendError}
+            </div>
+          )}
           <label
             style={{
               display: "flex", alignItems: "flex-start", gap: 7, cursor: "pointer",
@@ -193,11 +220,7 @@ export default function PinResultModal({ open, onClose, juror, newPin, onSendEma
         </div>
 
         <div className="fs-alert info" style={{ marginTop: 10, marginBottom: 0 }}>
-          <div className="fs-alert-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-            </svg>
-          </div>
+          <div className="fs-alert-icon"><Info size={15} /></div>
           <div className="fs-alert-body">
             <div className="fs-alert-title">No email on file?</div>
             <div className="fs-alert-desc">Add the juror's email in their profile to enable PIN delivery.</div>

@@ -10,6 +10,7 @@
 //   error      — string | null
 
 import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 
 export default function EditProjectDrawer({ open, onClose, project, onSave, error }) {
@@ -84,6 +85,7 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
+            <div className="fs-alert-icon"><AlertCircle size={15} /></div>
             <div className="fs-alert-body">{displayError}</div>
           </div>
         )}

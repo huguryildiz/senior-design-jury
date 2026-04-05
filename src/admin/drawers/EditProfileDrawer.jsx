@@ -13,6 +13,7 @@
 //   isSuper      — boolean
 
 import { useState, useEffect, useRef } from "react";
+import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import Avatar from "@/shared/ui/Avatar";
 
@@ -99,6 +100,7 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, erro
       <div className="fs-drawer-body" style={{ gap: 16 }}>
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 4 }}>
+            <div className="fs-alert-icon"><AlertCircle size={15} /></div>
             <div className="fs-alert-body">{displayError}</div>
           </div>
         )}

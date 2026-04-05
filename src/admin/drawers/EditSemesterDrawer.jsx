@@ -12,6 +12,7 @@
 //   error       — string | null
 
 import { useState, useEffect } from "react";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 
 export default function EditSemesterDrawer({ open, onClose, period, onSave, onDelete, error }) {
@@ -81,15 +82,14 @@ export default function EditSemesterDrawer({ open, onClose, period, onSave, onDe
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
+            <div className="fs-alert-icon"><AlertCircle size={15} /></div>
             <div className="fs-alert-body">{displayError}</div>
           </div>
         )}
 
         {locked && (
           <div className="fs-alert warning" style={{ marginBottom: 14 }}>
-            <div className="fs-alert-icon">
-              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
+            <div className="fs-alert-icon"><AlertTriangle size={15} /></div>
             <div className="fs-alert-body">
               <div className="fs-alert-title">Evaluation locked</div>
               <div className="fs-alert-desc">Scores are frozen. Unlock to allow jurors to edit scores again.</div>

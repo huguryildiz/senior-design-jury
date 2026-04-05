@@ -52,3 +52,16 @@ export async function getEntryTokenStatus(periodId) {
     expires_at: data.expires_at,
   };
 }
+
+export async function getActiveEntryToken(periodId) {
+  const { data, error } = await supabase
+    .from("entry_tokens")
+    .select("token")
+    .eq("period_id", periodId)
+    .eq("is_revoked", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.token || null;
+}

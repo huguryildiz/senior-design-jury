@@ -9,7 +9,7 @@ import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
 import { buildExportFilename } from "../utils/exportXLSX";
 import { OutcomeByGroupChart } from "@/charts/OutcomeByGroupChart";
-import { RubricAchievementChart } from "@/charts/RubricAchievementChart";
+import { RubricAchievementChart, BAND_COLORS } from "@/charts/RubricAchievementChart";
 import { ProgrammeAveragesChart } from "@/charts/ProgrammeAveragesChart";
 import { OutcomeAttainmentHeatmap } from "@/charts/OutcomeAttainmentHeatmap";
 import { buildOutcomeAttainmentTrendDataset } from "../analytics/analyticsDatasets";
@@ -335,10 +335,11 @@ export default function AnalyticsPage({
         const wb = buildAnalyticsWorkbook(exportParams);
         XLSX.writeFile(wb, buildExportFilename("Analytics", periodName || "all", "xlsx", tc));
       }
-      _toast.success("Analytics exported");
+      const fmtLabel = format === "pdf" ? "PDF" : format === "csv" ? "CSV" : "Excel";
+      _toast.success(`Analytics exported · ${fmtLabel}${periodName ? ` · ${periodName}` : ""}`);
       setExportOpen(false);
     } catch (e) {
-      _toast.error(e?.message || "Export failed");
+      _toast.error(e?.message || "Analytics export failed — please try again");
     }
   }
 
@@ -619,10 +620,10 @@ export default function AnalyticsPage({
             <RubricAchievementChart submittedData={submittedData} criteria={criteria} />
           </div>
           <div className="chart-legend">
-            <div className="legend-item"><div className="legend-dot" style={{ background: "#22c55e" }} />Excellent</div>
-            <div className="legend-item"><div className="legend-dot" style={{ background: "#a3e635" }} />Good</div>
-            <div className="legend-item"><div className="legend-dot" style={{ background: "#f59e0b" }} />Developing</div>
-            <div className="legend-item"><div className="legend-dot" style={{ background: "#ef4444" }} />Insufficient</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: BAND_COLORS.excellent }} />Excellent</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: BAND_COLORS.good }} />Good</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: BAND_COLORS.developing }} />Developing</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: BAND_COLORS.insufficient }} />Insufficient</div>
           </div>
         </div>
 

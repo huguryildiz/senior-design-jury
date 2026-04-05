@@ -244,7 +244,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
           colWidths: [22, 12, 18, 16, 48],
         });
       }
-      setMessage("Audit log exported");
+      setMessage(`${all.length} audit event${all.length !== 1 ? "s" : ""} exported`);
     } catch (e) {
       setAuditError(e?.message || "Could not export audit logs.");
     } finally {

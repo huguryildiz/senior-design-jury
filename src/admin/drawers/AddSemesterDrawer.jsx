@@ -9,6 +9,7 @@
 //   error           — string | null
 
 import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 
 const EMPTY = {
@@ -77,6 +78,7 @@ export default function AddSemesterDrawer({ open, onClose, onSave, existingPerio
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
+            <div className="fs-alert-icon"><AlertCircle size={15} /></div>
             <div className="fs-alert-body">{displayError}</div>
           </div>
         )}

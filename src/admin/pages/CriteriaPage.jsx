@@ -30,7 +30,7 @@ function CriteriaDeleteModal({ open, criterionLabel, onCancel, onConfirm }) {
   if (!open) return null;
   return (
     <div
-      className="modal-overlay"
+      className="modal-overlay show"
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="modal-card" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>

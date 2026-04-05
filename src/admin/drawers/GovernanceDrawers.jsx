@@ -5,6 +5,7 @@
 // Prototype: vera-premium-prototype.html lines 25671–26130
 
 import { useState, useEffect, useCallback } from "react";
+import { AlertTriangle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import { useToast } from "@/shared/hooks/useToast";
 import { supabase } from "@/shared/lib/supabaseClient";
@@ -514,12 +515,7 @@ export function MaintenanceDrawer({ open, onClose }) {
         )}
 
         <div className="fs-alert warning" style={{ margin: 0 }}>
-          <div className="fs-alert-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <path d="M12 9v4M12 17h.01" />
-            </svg>
-          </div>
+          <div className="fs-alert-icon"><AlertTriangle size={15} /></div>
           <div className="fs-alert-body">
             <div className="fs-alert-title">Maintenance blocks all user access</div>
             <div className="fs-alert-desc">Jurors and org admins will see a maintenance page. Only super admins retain access.</div>

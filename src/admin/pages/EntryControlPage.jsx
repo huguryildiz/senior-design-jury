@@ -166,7 +166,7 @@ export default function EntryControlPage({
       setRevokeModalOpen(false);
     } catch (e) {
       setError(e?.unauthorized ? "Unauthorized — check your session." : "Could not revoke token.");
-      _toast.error("Failed to revoke access");
+      _toast.error("Could not revoke jury access — please try again");
     } finally {
       setRevoking(false);
     }

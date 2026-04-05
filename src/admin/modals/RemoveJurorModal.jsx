@@ -10,24 +10,34 @@
 //   onRemove — () => Promise<void>
 
 import { useState } from "react";
+import { AlertCircle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
 
-export default function RemoveJurorModal({ open, onClose, juror, impact = {}, onRemove }) {
+export default function RemoveJurorModal({ open, onClose, juror, impact = {}, onRemove, periodName }) {
   const [removing, setRemoving] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+
+  const handleClose = () => {
+    setConfirmName("");
+    onClose();
+  };
 
   const handleRemove = async () => {
     setRemoving(true);
     try {
       await onRemove?.();
+      setConfirmName("");
       onClose();
     } finally {
       setRemoving(false);
     }
   };
 
+  const canRemove = confirmName === juror?.name;
+
   return (
-    <Modal open={open} onClose={onClose} size="sm" centered>
+    <Modal open={open} onClose={handleClose} size="sm" centered>
       <div className="fs-modal-header">
         <div className="fs-modal-icon danger">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -39,7 +49,7 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
         <div className="fs-title" style={{ textAlign: "center" }}>Remove Juror?</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
           <strong style={{ color: "var(--text-primary)" }}>{juror?.name}</strong>{" "}
-          will be permanently removed from this evaluation period.
+          will be permanently removed from {periodName || "this evaluation period"}.
         </div>
       </div>
 
@@ -72,11 +82,7 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
         </div>
 
         <div className="fs-alert danger" style={{ margin: 0, textAlign: "left" }}>
-          <div className="fs-alert-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" />
-            </svg>
-          </div>
+          <div className="fs-alert-icon"><AlertCircle size={15} /></div>
           <div className="fs-alert-body">
             <div className="fs-alert-title">All scores will be permanently deleted</div>
             <div className="fs-alert-desc">
@@ -84,6 +90,30 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
               Rankings and analytics for these groups will be recalculated without this juror's input.
             </div>
           </div>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: 12,
+              color: "var(--text-secondary)",
+              marginBottom: 6,
+            }}
+          >
+            Type <strong style={{ color: "var(--text-primary)" }}>{juror?.name}</strong> to confirm
+          </label>
+          <input
+            className="fs-input"
+            type="text"
+            value={confirmName}
+            onChange={(e) => setConfirmName(e.target.value)}
+            placeholder={juror?.name ?? ""}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={removing}
+            style={{ width: "100%", boxSizing: "border-box" }}
+          />
         </div>
       </div>
 
@@ -94,7 +124,7 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
         <button
           type="button"
           className="fs-btn fs-btn-secondary"
-          onClick={onClose}
+          onClick={handleClose}
           disabled={removing}
           style={{ flex: 1 }}
         >
@@ -104,7 +134,7 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
           type="button"
           className="fs-btn fs-btn-danger"
           onClick={handleRemove}
-          disabled={removing}
+          disabled={removing || !canRemove}
           style={{ flex: 1 }}
         >
           {removing ? "Removing…" : "Remove Juror"}

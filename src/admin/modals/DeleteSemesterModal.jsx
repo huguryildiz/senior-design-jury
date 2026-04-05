@@ -10,6 +10,7 @@
 //   onDelete   — () => Promise<void>
 
 import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 
 export default function DeleteSemesterModal({ open, onClose, periodName, impact = {}, onDelete }) {
@@ -58,6 +59,7 @@ export default function DeleteSemesterModal({ open, onClose, periodName, impact 
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
         {deleteError && (
           <div className="fs-alert danger" style={{ marginBottom: 12 }}>
+            <div className="fs-alert-icon"><AlertCircle size={15} /></div>
             <div className="fs-alert-body">{deleteError}</div>
           </div>
         )}

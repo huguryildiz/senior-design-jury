@@ -4,6 +4,7 @@
 // Hooks: useHeatmapData, useGridSort, useGridExport
 
 import { useState, useMemo } from "react";
+import { Download, Send } from "lucide-react";
 import { getCellState, getPartialTotal } from "../utils/scoreHelpers";
 import { useHeatmapData } from "../hooks/useHeatmapData";
 import { useGridSort } from "../hooks/useGridSort";
@@ -12,6 +13,8 @@ import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import { generateTableBlob } from "../utils/downloadTable";
 import SendReportModal from "@/admin/modals/SendReportModal";
+import JurorBadge from "../components/JurorBadge";
+import JurorStatusPill from "../components/JurorStatusPill";
 
 // ── Score color band ──────────────────────────────────────────
 // Returns a CSS variable name for the cell background color.
@@ -25,10 +28,6 @@ function getScoreBgVar(score, max) {
   if (pct >= 60) return "var(--score-low-bg)";
   return "var(--score-poor-bg)";
 }
-
-import JurorBadge from "../components/JurorBadge";
-
-// Criteria tabs are built dynamically from activeCriteria inside the component
 
 // Resolve the display score and max for a cell given the active tab
 function getCellDisplay(entry, activeTab, activeCriteria) {
@@ -81,7 +80,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
   );
 
   // Data hooks
-  const { lookup, jurorFinalMap, jurorWorkflowMap, groupAverages, buildExportRows } =
+  const { lookup, jurorWorkflowMap, buildExportRows } =
     useHeatmapData({ data, jurors: jurors || [], groups: groups || [], criteriaConfig });
 
   const {
@@ -99,7 +98,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
     activeCriteria,
   });
 
-  const _toast = useToast();
+  const toast = useToast();
   const { activeOrganization } = useAuth();
 
   // UI state
@@ -122,6 +121,33 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
     () => computeVisibleAverages(visibleJurors, groups || [], lookup, activeTab, activeCriteria),
     [visibleJurors, groups, lookup, activeTab, activeCriteria]
   );
+
+  // Active tab label + max (for tooltips and avg column)
+  const tabLabel = activeTab === "all"
+    ? "Total"
+    : activeCriteria.find((c) => c.id === activeTab)?.label ?? activeTab;
+  const tabMax = activeTab === "all"
+    ? totalMax
+    : activeCriteria.find((c) => c.id === activeTab)?.max ?? totalMax;
+
+  // Per-juror row average (non-partial scored cells only)
+  const jurorRowAvgs = useMemo(
+    () => visibleJurors.map((juror) => {
+      const scores = (groups || []).reduce((acc, g) => {
+        const entry = lookup[juror.key]?.[g.id];
+        const cell = getCellDisplay(entry, activeTab, activeCriteria);
+        if (cell && !cell.partial) acc.push(cell.score);
+        return acc;
+      }, []);
+      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+    }),
+    [visibleJurors, groups, lookup, activeTab, activeCriteria]
+  );
+
+  const overallAvg = useMemo(() => {
+    const vals = jurorRowAvgs.filter((v) => v != null);
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }, [jurorRowAvgs]);
 
   // Score range for legend (min/max across all visible cells)
   const { rangeMin, rangeMax } = useMemo(() => {
@@ -154,13 +180,14 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
     return sortGroupDir === "asc" ? "ascending" : "descending";
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     try {
-      requestExport(exportFormat);
+      await requestExport(exportFormat);
       setExportOpen(false);
-      _toast.success("Heatmap exported");
+      const fmtLabel = exportFormat === "pdf" ? "PDF" : exportFormat === "csv" ? "CSV" : "Excel";
+      toast.success(`Heatmap exported · ${fmtLabel}`);
     } catch (e) {
-      _toast.error(e?.message || "Export failed");
+      toast.error(e?.message || "Heatmap export failed — please try again");
     }
   }
 
@@ -177,100 +204,89 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
         <div className="analytics-actions">
           <div className="matrix-tabs">
             {criteriaTabs.map((tab) => (
-              <div
+              <button
                 key={tab.id}
+                type="button"
                 className={`matrix-tab${activeTab === tab.id ? " active" : ""}`}
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
-              </div>
+              </button>
             ))}
           </div>
           <button
+            type="button"
             className="btn btn-outline btn-sm"
             onClick={() => setExportOpen((v) => !v)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
+            <Download size={14} style={{ verticalAlign: "-1px" }} />
             {" "}Export
           </button>
         </div>
       </div>
 
       {/* ── Export Panel ── */}
-      {exportOpen && (
-        <div className="export-panel show">
-          <div className="export-panel-header">
-            <div>
-              <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Export Heatmap
-              </h4>
-              <div className="export-panel-sub">
-                Download the juror scoring matrix with per-criterion breakdowns and averages.
-              </div>
+      <div className={`export-panel${exportOpen ? " show" : ""}`}>
+        <div className="export-panel-header">
+          <div>
+            <h4>
+              <Download size={14} style={{ verticalAlign: "-1px", marginRight: 4 }} />
+              Export Heatmap
+            </h4>
+            <div className="export-panel-sub">
+              Download the juror scoring matrix with per-criterion breakdowns and averages.
             </div>
-            <button className="export-panel-close" onClick={() => setExportOpen(false)}>
-              &#215;
+          </div>
+          <button type="button" className="export-panel-close" aria-label="Close export panel" onClick={() => setExportOpen(false)}>
+            &#215;
+          </button>
+        </div>
+
+        <div className="export-options">
+          {Object.entries(EXPORT_FORMAT_META).map(([fmt, meta]) => (
+            <div
+              key={fmt}
+              className={`export-option${exportFormat === fmt ? " selected" : ""}`}
+              onClick={() => setExportFormat(fmt)}
+            >
+              <span className="export-option-selected-pill">Selected</span>
+              <div className={`export-option-icon export-option-icon--${fmt}`}>
+                <span className="file-icon">
+                  <span className="file-icon-label">{meta.iconLabel}</span>
+                </span>
+              </div>
+              <div className="export-option-title">{meta.label}</div>
+              <div className="export-option-desc">{meta.desc}</div>
+              <div className="export-option-hint">{meta.hint}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="export-footer">
+          <div className="export-footer-info">
+            <div className="export-footer-format">
+              {EXPORT_FORMAT_META[exportFormat]?.label} · Heatmap
+            </div>
+            <div className="export-footer-meta">
+              Includes selected criterion tab and per-project averages
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Send size={14} />
+              {" "}Send
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm export-download-btn"
+              onClick={handleDownload}
+            >
+              <Download size={14} />
+              Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "pdf" ? "PDF" : "CSV"}
             </button>
           </div>
-
-          <div className="export-options">
-            {Object.entries(EXPORT_FORMAT_META).map(([fmt, meta]) => (
-              <div
-                key={fmt}
-                className={`export-option${exportFormat === fmt ? " selected" : ""}`}
-                onClick={() => setExportFormat(fmt)}
-              >
-                <span className="export-option-selected-pill">Selected</span>
-                <div className={`export-option-icon export-option-icon--${fmt}`}>
-                  <span className="file-icon">
-                    <span className="file-icon-label">{meta.iconLabel}</span>
-                  </span>
-                </div>
-                <div className="export-option-title">{meta.label}</div>
-                <div className="export-option-desc">{meta.desc}</div>
-                <div className="export-option-hint">{meta.hint}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="export-footer">
-            <div className="export-footer-info">
-              <div className="export-footer-format">
-                {EXPORT_FORMAT_META[exportFormat]?.label} · Heatmap
-              </div>
-              <div className="export-footer-meta">
-                Includes selected criterion tab and per-project averages
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
-                {" "}Send
-              </button>
-              <button
-                className="btn btn-primary btn-sm export-download-btn"
-                onClick={handleDownload}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "pdf" ? "PDF" : "CSV"}
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </div>
 
       <SendReportModal
         open={sendOpen}
@@ -319,7 +335,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
                 }
                 onClick={toggleJurorSort}
               >
-                <span role="rowheader">Juror</span>
+                Juror
               </th>
               {(groups || []).map((g) => (
                 <th
@@ -338,14 +354,30 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
                   <span className="proj-group">{g.title}</span>
                 </th>
               ))}
+              <th className="text-center col-project col-avg" role="columnheader">
+                <span className="proj-name">Avg</span>
+                <span className="proj-group">juror avg</span>
+              </th>
             </tr>
           </thead>
 
           <tbody>
-            {visibleJurors.map((juror) => (
+            {visibleJurors.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={(groups || []).length + 2}
+                  style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-tertiary)" }}
+                >
+                  No jurors to display.
+                </td>
+              </tr>
+            ) : visibleJurors.map((juror, jurorIdx) => (
               <tr key={juror.key}>
                 <td className="sticky-col" role="rowheader">
                   <JurorBadge name={juror.name || juror.juror_name} affiliation={juror.dept || juror.affiliation} size="sm" />
+                  <div style={{ marginTop: 4 }}>
+                    <JurorStatusPill status={jurorWorkflowMap.get(juror.key)} />
+                  </div>
                 </td>
 
                 {(groups || []).map((g) => {
@@ -375,6 +407,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
                       >
                         {cell.score}
                         <span className="m-flag" aria-hidden="true">!</span>
+                        <div className="m-cell-tip">Partial · {cell.score} / {cell.max}</div>
                       </td>
                     );
                   }
@@ -387,9 +420,29 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
                       aria-label={`${g.title}: ${cell.score}`}
                     >
                       {cell.score}
+                      <div className="m-cell-tip">{tabLabel} · {cell.score} / {cell.max}</div>
                     </td>
                   );
                 })}
+
+                {/* Per-juror avg column */}
+                <td
+                  className="m-cell m-cell-avg"
+                  aria-label={`${juror.name || juror.juror_name} average`}
+                >
+                  {jurorRowAvgs[jurorIdx] == null ? (
+                    <span style={{ color: "var(--text-quaternary)" }}>—</span>
+                  ) : (
+                    <>
+                      <span style={{ fontWeight: 700, color: "var(--accent)" }}>
+                        {jurorRowAvgs[jurorIdx].toFixed(1)}
+                      </span>
+                      <span style={{ fontWeight: 400, color: "var(--text-tertiary)", fontSize: "10px" }}>
+                        {" "}/{tabMax}
+                      </span>
+                    </>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -409,13 +462,28 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
                           {avg.toFixed(1)}
                         </span>
                         <span style={{ fontWeight: 400, color: "var(--text-tertiary)", fontSize: "10px" }}>
-                          {" "}/{activeTab === "all" ? totalMax : activeCriteria.find((c) => c.id === activeTab)?.max ?? totalMax}
+                          {" "}/{tabMax}
                         </span>
                       </>
                     )}
                   </td>
                 );
               })}
+              {/* Overall avg across all juror row averages */}
+              <td className="m-cell m-cell-avg" aria-label="Overall juror average">
+                {overallAvg == null ? (
+                  <span style={{ color: "var(--text-quaternary)" }}>—</span>
+                ) : (
+                  <>
+                    <span style={{ fontWeight: 700, color: "var(--accent)" }}>
+                      {overallAvg.toFixed(1)}
+                    </span>
+                    <span style={{ fontWeight: 400, color: "var(--text-tertiary)", fontSize: "10px" }}>
+                      {" "}/{tabMax}
+                    </span>
+                  </>
+                )}
+              </td>
             </tr>
           </tfoot>
         </table>

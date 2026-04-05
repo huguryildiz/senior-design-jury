@@ -28,7 +28,7 @@ function OutcomeDeleteModal({ open, outcomeCode, onCancel, onConfirm }) {
   if (!open) return null;
   return (
     <div
-      className="modal-overlay"
+      className="modal-overlay show"
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="modal-card" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
@@ -346,7 +346,7 @@ export default function OutcomesPage({
       await updateFramework(frameworkId, { default_threshold: val });
       setEditingThresholdFor(null);
       onFrameworksChange?.();
-      _toast.success("Threshold updated");
+      _toast.success(`Passing threshold set to ${val}%`);
     } catch (err) {
       setThresholdError(err?.message || "Failed to save. Try again.");
     } finally {

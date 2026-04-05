@@ -3,7 +3,15 @@
 import { useRef, useState } from "react";
 import { useAuth } from "@/auth";
 import { useTheme } from "../../shared/theme/ThemeProvider";
-import UserAvatarMenu from "../components/UserAvatarMenu";
+import Avatar from "@/shared/ui/Avatar";
+import { LogOutIcon } from "@/shared/ui/Icons";
+
+const AVATAR_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6"];
+function getInitials(name, email) {
+  if (name) { const p = name.trim().split(/\s+/); return p.length >= 2 ? (p[0][0]+p[1][0]).toUpperCase() : p[0][0].toUpperCase(); }
+  return email ? email[0].toUpperCase() : "?";
+}
+function getAvatarColor(name) { return AVATAR_COLORS[(name||"?").charCodeAt(0) % AVATAR_COLORS.length]; }
 
 // Maps adminTab + scoresView → sidebar active state per nav item
 function isActive(itemKey, adminTab, scoresView) {
@@ -286,7 +294,30 @@ export default function AdminSidebar({ adminTab, scoresView, setAdminTab, switch
           <span className="toggle-label">{isDark ? "Light Mode" : "Dark Mode"}</span>
         </button>
 
-        <UserAvatarMenu onLogout={signOut} onNavigate={navTo} />
+        <div className="sb-user">
+          <Avatar
+            avatarUrl={avatarUrl}
+            initials={getInitials(displayName, user?.email)}
+            bg={getAvatarColor(displayName || user?.email)}
+            size={30}
+            style={{ borderRadius: "50%", flexShrink: 0 }}
+          />
+          <div className="sb-user-info">
+            <span className="sb-user-name">{displayName || "Admin"}</span>
+            <span className="sb-user-role">
+              {isSuper ? "Super Admin" : activeOrganization?.name || "Admin"}
+            </span>
+          </div>
+          <button
+            className="sb-signout-btn"
+            type="button"
+            onClick={signOut}
+            aria-label="Sign out"
+            title="Sign Out"
+          >
+            <LogOutIcon size={15} />
+          </button>
+        </div>
       </div>
     </aside>
   );

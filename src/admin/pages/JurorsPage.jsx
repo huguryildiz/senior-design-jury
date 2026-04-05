@@ -8,7 +8,10 @@ import { useManageProjects } from "../hooks/useManageProjects";
 import { useManageJurors } from "../hooks/useManageJurors";
 import PinResultModal from "../modals/PinResultModal";
 import RemoveJurorModal from "../modals/RemoveJurorModal";
+import ResetPinModal from "../modals/ResetPinModal";
 import ImportJurorsModal from "../modals/ImportJurorsModal";
+import AddJurorDrawer from "../drawers/AddJurorDrawer";
+import EditJurorDrawer from "../drawers/EditJurorDrawer";
 import { sendJurorPinEmail } from "@/shared/api";
 import { getRawToken } from "@/shared/storage/adminStorage";
 import { parseJurorsCsv } from "../utils/csvParser";
@@ -177,18 +180,12 @@ export default function JurorsPage({
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
 
-  // Drawer
-  const [drawerJuror, setDrawerJuror] = useState(null);
-
   // Import CSV state
   const [importOpen, setImportOpen] = useState(false);
 
-  // Add/edit juror modal
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-  const [formName, setFormName] = useState("");
-  const [formAffil, setFormAffil] = useState("");
-  const [formSaving, setFormSaving] = useState(false);
+  // Add/edit juror drawers
+  const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [editDrawerJuror, setEditDrawerJuror] = useState(null);
 
   // Reset PIN modal
   const [pinResetJuror, setPinResetJuror] = useState(null);
@@ -274,49 +271,25 @@ export default function JurorsPage({
   // ── Modal handlers ──────────────────────────────────────────
 
   function openAddModal() {
-    setEditTarget(null);
-    setFormName("");
-    setFormAffil("");
-    setAddModalOpen(true);
+    setAddDrawerOpen(true);
   }
 
   function openEditModal(juror) {
-    setEditTarget(juror);
-    setFormName(juror.juror_name || "");
-    setFormAffil(juror.affiliation || "");
-    setAddModalOpen(true);
+    setEditDrawerJuror(juror);
     setOpenMenuId(null);
-    setDrawerJuror(null);
   }
 
-  async function handleSaveJuror() {
-    if (!formName.trim()) return;
-    setFormSaving(true);
-    try {
-      if (editTarget) {
-        await jurorsHook.handleEditJuror({
-          jurorId: editTarget.juror_id || editTarget.jurorId,
-          juror_name: formName.trim(),
-          affiliation: formAffil.trim(),
-        });
-      } else {
-        await jurorsHook.handleAddJuror({
-          juror_name: formName.trim(),
-          affiliation: formAffil.trim(),
-        });
-      }
-      setAddModalOpen(false);
-    } catch (e) {
-      _toast.error(e?.message || "Could not save juror.");
-    } finally {
-      setFormSaving(false);
-    }
+  async function handleSaveAddJuror({ name, affiliation, email }) {
+    await jurorsHook.handleAddJuror({ juror_name: name, affiliation, email });
+  }
+
+  async function handleSaveEditJuror(jurorId, { name, affiliation, email }) {
+    await jurorsHook.handleEditJuror({ jurorId, juror_name: name, affiliation, email });
   }
 
   function openPinResetModal(juror) {
     setPinResetJuror(juror);
     setOpenMenuId(null);
-    setDrawerJuror(null);
   }
 
   async function handleResetPin() {
@@ -348,7 +321,6 @@ export default function JurorsPage({
   function openRemoveModal(juror) {
     setRemoveJuror(juror);
     setOpenMenuId(null);
-    setDrawerJuror(null);
   }
 
   async function handleRemoveJuror() {
@@ -537,7 +509,7 @@ export default function JurorsPage({
       )}
 
       {/* Table */}
-      <div className="table-wrap" style={{ borderRadius: "var(--radius) var(--radius) 0 0" }}>
+      <div className="table-wrap" style={{ borderRadius: "var(--radius) var(--radius) 0 0", overflow: openMenuId ? "visible" : undefined }}>
         <table id="jurors-main-table">
           <thead>
             <tr>
@@ -571,7 +543,7 @@ export default function JurorsPage({
               const lastActive = juror.lastSeenAt || juror.last_activity_at || juror.finalSubmittedAt || juror.final_submitted_at;
 
               return (
-                <tr key={jid} onClick={() => setDrawerJuror(juror)}>
+                <tr key={jid} onClick={() => openEditModal(juror)}>
                   <td>
                     <JurorBadge name={name} affiliation={juror.affiliation} size="sm" />
                   </td>
@@ -622,6 +594,7 @@ export default function JurorsPage({
                             </svg>
                             Reset PIN
                           </div>
+                          <div className="juror-action-sep" />
                           <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); jurorsHook.handleToggleJurorEdit({ jurorId: jid, enabled: true }); }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -666,167 +639,47 @@ export default function JurorsPage({
         </div>
       </div>
 
-      {/* ═══════ JUROR DETAIL DRAWER ═══════ */}
-      {drawerJuror && (
-        <>
-          <div className="juror-drawer-overlay show" onClick={() => setDrawerJuror(null)} />
-          <div className="juror-drawer show">
-            <div className="juror-drawer-header">
-              <span className="jd-title">Juror Details</span>
-              <button className="juror-drawer-close" onClick={() => setDrawerJuror(null)}>×</button>
-            </div>
-            <div className="juror-drawer-profile">
-              <JurorBadge name={drawerJuror.juror_name} affiliation={drawerJuror.affiliation} size="lg" />
-            </div>
-            <div className="juror-drawer-details">
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Status</span>
-                <span className="juror-drawer-row-value">
-                  <span className={statusPillClass(drawerJuror.overviewStatus)} style={{ fontSize: "10px" }}>
-                    <StatusIcon status={drawerJuror.overviewStatus} />
-                    {statusLabel(drawerJuror.overviewStatus)}
-                  </span>
-                </span>
-              </div>
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Groups Scored</span>
-                <span className="juror-drawer-row-value">
-                  {drawerJuror.overviewScoredProjects || 0} / {drawerJuror.overviewTotalProjects || 0}
-                </span>
-              </div>
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Last Active</span>
-                <span className="juror-drawer-row-value">
-                  {formatFull(drawerJuror.last_activity_at || drawerJuror.finalSubmittedAt || drawerJuror.final_submitted_at) || "—"}
-                </span>
-              </div>
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Edit Mode</span>
-                <span className="juror-drawer-row-value">
-                  {(drawerJuror.edit_enabled || drawerJuror.editEnabled) ? "On" : "Off"}
-                </span>
-              </div>
-            </div>
-            <div className="juror-drawer-actions">
-              <button className="btn btn-outline btn-sm" onClick={() => openEditModal(drawerJuror)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                </svg>
-                Edit Juror
-              </button>
-              <button className="btn btn-outline btn-sm" onClick={() => openPinResetModal(drawerJuror)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Reset PIN
-              </button>
-              <button
-                className="btn btn-outline btn-sm"
-                style={{ color: "var(--danger)", borderColor: "rgba(225,29,72,0.3)" }}
-                onClick={() => openRemoveModal(drawerJuror)}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Remove Juror
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* ═══════ MODALS ═══════ */}
 
-      {/* Add/Edit Juror Modal */}
-      {addModalOpen && (
-        <div className="modal-overlay" onClick={() => setAddModalOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{editTarget ? "Edit Juror" : "Add Juror"}</span>
-              <button className="juror-drawer-close" onClick={() => setAddModalOpen(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="modal-field">
-                <label className="modal-label">Full Name <span className="field-req">*</span></label>
-                <input
-                  className="modal-input"
-                  type="text"
-                  placeholder="Doç. Dr. Ayşe Yılmaz"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="modal-field" style={{ marginTop: "12px" }}>
-                <label className="modal-label">Affiliation</label>
-                <input
-                  className="modal-input"
-                  type="text"
-                  placeholder="Hacettepe Üniversitesi / EE"
-                  value={formAffil}
-                  onChange={(e) => setFormAffil(e.target.value)}
-                />
-                <div className="field-helper fh-hint">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-                  University or organization
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={() => setAddModalOpen(false)} disabled={formSaving}>Cancel</button>
-              <button
-                className="btn btn-sm"
-                style={{ background: "var(--accent)", color: "#fff" }}
-                onClick={handleSaveJuror}
-                disabled={formSaving || !formName.trim()}
-              >
-                {formSaving ? "Saving…" : editTarget ? "Save Changes" : "Add Juror"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add Juror Drawer */}
+      <AddJurorDrawer
+        open={addDrawerOpen}
+        onClose={() => setAddDrawerOpen(false)}
+        onSave={handleSaveAddJuror}
+        periodName={periods.viewPeriodLabel}
+      />
+
+      {/* Edit Juror Drawer */}
+      <EditJurorDrawer
+        open={!!editDrawerJuror}
+        onClose={() => setEditDrawerJuror(null)}
+        juror={editDrawerJuror ? {
+          id: editDrawerJuror.juror_id || editDrawerJuror.jurorId,
+          name: editDrawerJuror.juror_name || editDrawerJuror.juryName || "",
+          affiliation: editDrawerJuror.affiliation || "",
+          email: editDrawerJuror.email || "",
+          progress: {
+            scored: editDrawerJuror.overviewScoredProjects ?? 0,
+            total: editDrawerJuror.overviewTotalProjects ?? 0,
+          },
+          lastActive: editDrawerJuror.lastSeenAt || editDrawerJuror.last_activity_at,
+          overviewStatus: editDrawerJuror.overviewStatus,
+        } : null}
+        onSave={handleSaveEditJuror}
+        onResetPin={(j) => { setEditDrawerJuror(null); setPinResetJuror(editDrawerJuror); }}
+        onRemove={(j) => { setEditDrawerJuror(null); setRemoveJuror(editDrawerJuror); }}
+      />
 
       {/* Reset PIN Modal */}
-      {pinResetJuror && !pinReveal && (
-        <div className="modal-overlay" onClick={() => setPinResetJuror(null)}>
-          <div className="modal-card" style={{ maxWidth: "400px" }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">Reset PIN</span>
-              <button className="juror-drawer-close" onClick={() => setPinResetJuror(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--warning-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>Are you sure?</div>
-                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    This will generate a new 4-digit PIN for <strong>{pinResetJuror.juror_name}</strong>. Their current PIN will be invalidated immediately.
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={() => setPinResetJuror(null)} disabled={pinResetting}>Cancel</button>
-              <button
-                className="btn btn-sm"
-                style={{ background: "var(--warning)", color: "#fff" }}
-                onClick={handleResetPin}
-                disabled={pinResetting}
-              >
-                {pinResetting ? "Resetting…" : "Reset PIN"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ResetPinModal
+        open={!!pinResetJuror && !jurorsHook.resetPinInfo}
+        onClose={() => setPinResetJuror(null)}
+        juror={pinResetJuror ? {
+          name: pinResetJuror.juror_name || "",
+          affiliation: pinResetJuror.affiliation || "",
+        } : null}
+        onConfirm={handleResetPin}
+      />
 
       {/* PIN Result Modal */}
       <PinResultModal

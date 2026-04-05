@@ -17,6 +17,7 @@ interface Payload {
   jurorAffiliation?: string;
   tokenUrl?: string;
   periodName?: string;
+  organizationName?: string;
 }
 
 const corsHeaders = {
@@ -64,6 +65,7 @@ function escapeHtml(input: string): string {
 function buildHtml(params: {
   jurorName: string;
   jurorAffiliation: string;
+  organizationName: string;
   pin: string;
   tokenUrl: string;
   periodLabel: string;
@@ -77,14 +79,25 @@ function buildHtml(params: {
     `<span style="display:inline-block;width:52px;height:64px;line-height:64px;text-align:center;background:rgba(255,255,255,0.06);border:2px solid rgba(108,71,255,0.4);border-radius:8px;font-size:36px;font-weight:800;color:#ffffff;font-family:monospace;margin:0 4px;">${escapeHtml(d)}</span>`
   ).join("");
 
+  const qrUrl = params.tokenUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=12&color=ffffff&bgcolor=1a1a2e&data=${encodeURIComponent(params.tokenUrl)}`
+    : "";
+
   const ctaBlock = params.tokenUrl
-    ? `<tr><td align="center" style="padding:4px 48px 28px;">
+    ? `<tr><td align="center" style="padding:8px 48px 20px;">
+        <img src="${qrUrl}" alt="Scan to join evaluation" width="180" height="180" style="display:block;margin:0 auto;border-radius:12px;" />
+        <p style="margin:10px 0 0;font-size:12px;color:#718096;">Scan with your phone camera</p>
+      </td></tr>
+      <tr><td align="center" style="padding:4px 48px 28px;">
         <a href="${escapeHtml(params.tokenUrl)}" style="display:inline-block;background:linear-gradient(135deg,#6c47ff,#a78bfa);color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;padding:14px 36px;border-radius:50px;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(108,71,255,0.45);">Join Evaluation &rarr;</a>
       </td></tr>`
     : "";
 
-  const affilNote = params.jurorAffiliation
-    ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#a0aec0;">${escapeHtml(params.jurorAffiliation)}</p>`
+  const metaParts: string[] = [];
+  if (params.jurorAffiliation) metaParts.push(escapeHtml(params.jurorAffiliation));
+  if (params.organizationName) metaParts.push(escapeHtml(params.organizationName));
+  const affilNote = metaParts.length
+    ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#a0aec0;">${metaParts.join(" &middot; ")}</p>`
     : "";
 
   const periodNote = params.periodLabel
@@ -163,6 +176,7 @@ Deno.serve(async (req: Request) => {
     const html = buildHtml({
       jurorName: payload.jurorName,
       jurorAffiliation: payload.jurorAffiliation || "",
+      organizationName: payload.organizationName || "",
       pin: payload.pin,
       tokenUrl: payload.tokenUrl || "",
       periodLabel,

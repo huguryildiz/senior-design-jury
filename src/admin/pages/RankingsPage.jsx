@@ -356,7 +356,10 @@ export default function RankingsPage({
     if (sortField !== "avg" || sortDir !== "desc") {
       rows = [...rows].sort((a, b) => {
         let va, vb;
-        if (sortField === "avg") {
+        if (sortField === "rank") {
+          va = ranksMap[a.id] ?? 9999;
+          vb = ranksMap[b.id] ?? 9999;
+        } else if (sortField === "avg") {
           va = a.totalAvg;
           vb = b.totalAvg;
         } else if (sortField === "project") {
@@ -366,6 +369,9 @@ export default function RankingsPage({
           const lvl = { high: 0, moderate: 1, disputed: 2 };
           va = lvl[consensusMap[a.id]?.level] ?? 3;
           vb = lvl[consensusMap[b.id]?.level] ?? 3;
+        } else if (sortField === "jurors") {
+          va = a.count ?? 0;
+          vb = b.count ?? 0;
         } else {
           va = a.avg?.[sortField] ?? 0;
           vb = b.avg?.[sortField] ?? 0;
@@ -379,6 +385,7 @@ export default function RankingsPage({
     return rows;
   }, [
     rankedRows,
+    ranksMap,
     searchText,
     consensusFilter,
     minAvg,
@@ -402,7 +409,7 @@ export default function RankingsPage({
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
-      setSortDir(field === "project" ? "asc" : "desc");
+      setSortDir(field === "project" || field === "rank" ? "asc" : "desc");
     }
   }
 
@@ -750,7 +757,13 @@ export default function RankingsPage({
             </colgroup>
             <thead>
               <tr>
-                <th className="col-rank">Rank</th>
+                <th
+                  className={`col-rank sortable${sortField === "rank" ? " sorted" : ""}`}
+                  onClick={() => handleSort("rank")}
+                >
+                  Rank
+                  <SortIcon field="rank" sortField={sortField} sortDir={sortDir} />
+                </th>
                 <th
                   className={`sortable${sortField === "project" ? " sorted" : ""}`}
                   onClick={() => handleSort("project")}
@@ -791,7 +804,13 @@ export default function RankingsPage({
                     >?</span>
                   </div>
                 </th>
-                <th className="text-right">Jurors Evaluated</th>
+                <th
+                  className={`sortable text-right${sortField === "jurors" ? " sorted" : ""}`}
+                  onClick={() => handleSort("jurors")}
+                >
+                  Jurors Evaluated
+                  <SortIcon field="jurors" sortField={sortField} sortDir={sortDir} />
+                </th>
               </tr>
             </thead>
             <tbody>

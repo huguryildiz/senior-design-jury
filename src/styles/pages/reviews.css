@@ -88,7 +88,7 @@
   white-space: nowrap;
   font-family: var(--mono);
   font-size: 10px;
-  color: var(--text-quaternary, var(--text-tertiary));
+  color: var(--text-secondary);
 }
 
 .reviews-table .text-sm { font-size: 12px; }
@@ -335,9 +335,9 @@
 .reviews-table .col-total{font-family:var(--mono);font-size:13px;font-weight:700;text-align:right}
 .reviews-table .col-score{font-family:var(--mono);font-size:12px;font-weight:500;text-align:right;color:var(--text-primary)}
 .reviews-table .col-score.missing{color:var(--text-tertiary)}
-.reviews-table .col-comment{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text-tertiary)}
-.reviews-table .col-comment:hover{white-space:normal;overflow:visible;position:relative;z-index:5}
-.reviews-table .col-submitted{white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--text-quaternary);letter-spacing:-0.2px}
+.reviews-table .col-comment{max-width:220px;font-size:11px;color:var(--text-tertiary)}
+.reviews-table .col-comment-inner{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+.reviews-table .col-submitted{white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--text-secondary);letter-spacing:-0.2px}
 .reviews-table .partial-row .col-total{color:var(--warning)}
 .reviews-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface-1);border-radius:0 0 var(--radius) var(--radius)}
 .reviews-pagination-info{font-size:11px;color:var(--text-tertiary)}

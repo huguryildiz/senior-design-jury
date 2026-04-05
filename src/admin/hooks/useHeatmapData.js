@@ -9,8 +9,6 @@ import { getJurorWorkflowState } from "../utils/scoreHelpers";
 import {
   buildLookup,
   buildJurorFinalMap,
-  filterCompletedJurors,
-  computeGroupAverages,
   buildExportRowsData,
 } from "../selectors/gridSelectors";
 
@@ -35,16 +33,6 @@ export function useHeatmapData({ data, jurors, groups, criteriaConfig }) {
     return map;
   }, [jurors, groups, lookup, jurorFinalMap]);
 
-  const completedJurors = useMemo(
-    () => filterCompletedJurors(jurors),
-    [jurors]
-  );
-
-  const groupAverages = useMemo(
-    () => computeGroupAverages(completedJurors, groups, lookup, activeCriteria),
-    [completedJurors, groups, lookup, activeCriteria]
-  );
-
   const buildExportRows = useCallback(
     (jurorList) => buildExportRowsData(jurorList, groups, lookup, jurorFinalMap, jurorWorkflowMap, activeCriteria),
     [groups, lookup, jurorFinalMap, jurorWorkflowMap, activeCriteria]
@@ -52,9 +40,7 @@ export function useHeatmapData({ data, jurors, groups, criteriaConfig }) {
 
   return {
     lookup,
-    jurorFinalMap,
     jurorWorkflowMap,
-    groupAverages,
     buildExportRows,
   };
 }

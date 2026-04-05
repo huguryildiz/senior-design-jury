@@ -65,9 +65,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
         summaryData: results.flatMap((x) => x.summary),
         tenantCode,
       });
-      _toast.success("Score report downloaded");
+      _toast.success(`Score report downloaded · ${orderedSemesters.length} period${orderedSemesters.length !== 1 ? "s" : ""} · Excel`);
     } catch (e) {
-      _toast.error(e?.message || "Export failed. Please try again.");
+      _toast.error(e?.message || "Score report export failed — please try again");
     } finally {
       setScoresLoading(false);
     }
@@ -104,9 +104,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Groups");
       XLSX.writeFile(wb, buildExportFilename("Projects", "all-periods", "xlsx", tenantCode));
-      _toast.success("Projects exported");
+      _toast.success(`${data.length} project${data.length !== 1 ? "s" : ""} exported · all periods · Excel`);
     } catch (e) {
-      _toast.error(e?.message || "Export failed. Please try again.");
+      _toast.error(e?.message || "Projects export failed — please try again");
     } finally {
       setProjectsLoading(false);
     }
@@ -156,9 +156,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Jurors");
       XLSX.writeFile(wb, buildExportFilename("Jurors", "all-periods", "xlsx", tenantCode));
-      _toast.success("Juror list exported");
+      _toast.success(`${data.length} juror${data.length !== 1 ? "s" : ""} exported · all periods · Excel`);
     } catch (e) {
-      _toast.error(e?.message || "Export failed. Please try again.");
+      _toast.error(e?.message || "Jurors export failed — please try again");
     } finally {
       setJurorsLoading(false);
     }

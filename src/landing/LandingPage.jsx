@@ -180,6 +180,196 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
         </div>
       </div>
 
+      {/* Mobile Mockup — 4 Phone Flow */}
+      <section className="landing-mobile reveal-section">
+        <div className="landing-section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+            <path d="M12 18h.01" />
+          </svg>
+          The juror experience
+        </div>
+        <p style={{ color: "#94a3b8", fontSize: "15px", maxWidth: "520px", margin: "0 auto", lineHeight: 1.6 }}>
+          No app to install, no training needed. Jurors scan a QR code, enter their name, and start scoring.
+        </p>
+        <div className="mobile-flow">
+
+          {/* Phone 1: Identity */}
+          <div>
+            <div className="mobile-frame">
+              <div className="mobile-notch" />
+              <div className="mobile-inner">
+                <div style={{ flex: 1, padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", overflow: "hidden" }}>
+                  <div style={{ width: "38px", height: "38px", borderRadius: "12px", background: "linear-gradient(135deg,rgba(99,102,241,0.22),rgba(139,92,246,0.18))", border: "1px solid rgba(139,92,246,0.25)", display: "grid", placeItems: "center", marginBottom: "9px", marginTop: "6px", boxShadow: "0 4px 12px rgba(99,102,241,0.18)" }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: "11.5px", fontWeight: 700, color: "#f1f5f9", marginBottom: "2px" }}>Jury Information</div>
+                  <div style={{ fontSize: "7.5px", color: "#64748b", marginBottom: "9px", lineHeight: 1.3 }}>Enter your details to begin the evaluation</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "4px", fontSize: "6.5px", color: "#64748b" }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 10 3 12 0v-5" /></svg>
+                    <span>TED University</span>
+                    <span style={{ color: "#334155" }}>·</span>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a4 4 0 0 0-8 0v2" /></svg>
+                    <span>Electrical &amp; Electronics Eng.</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "9px", fontSize: "6.5px", color: "#64748b" }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                    <span>Spring 2026</span>
+                    <span style={{ color: "#334155" }}>·</span>
+                    <span>08 Jun 2026</span>
+                    <span style={{ color: "#334155" }}>·</span>
+                    <span>12 Groups</span>
+                  </div>
+                  <div style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "5px", padding: "5px 7px", borderRadius: "6px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)", marginBottom: "9px", textAlign: "left" }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" style={{ flexShrink: 0, marginTop: "1px" }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+                    <span style={{ fontSize: "6.5px", color: "#93c5fd", lineHeight: 1.35 }}>Name and affiliation cannot be changed once evaluation starts.</span>
+                  </div>
+                  <div style={{ width: "100%", textAlign: "left", marginBottom: "5px" }}>
+                    <div style={{ fontSize: "7.5px", fontWeight: 600, color: "#94a3b8", marginBottom: "2px" }}>Full Name</div>
+                    <div style={{ padding: "5px 7px", borderRadius: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "8.5px", color: "#e2e8f0" }}>Prof. Dr. Ayşe Demir</div>
+                  </div>
+                  <div style={{ width: "100%", textAlign: "left", marginBottom: "5px" }}>
+                    <div style={{ fontSize: "7.5px", fontWeight: 600, color: "#94a3b8", marginBottom: "2px" }}>Affiliation</div>
+                    <div style={{ padding: "5px 7px", borderRadius: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "8.5px", color: "#e2e8f0" }}>TED University / EE</div>
+                  </div>
+                  <div style={{ width: "100%", textAlign: "left", marginBottom: "10px" }}>
+                    <div style={{ fontSize: "7.5px", fontWeight: 600, color: "#94a3b8", marginBottom: "2px" }}>E-mail <span style={{ color: "#475569", fontWeight: 400 }}>(optional)</span></div>
+                    <div style={{ padding: "5px 7px", borderRadius: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "8.5px", color: "#475569" }}>jury@example.com</div>
+                  </div>
+                  <div style={{ width: "100%", padding: "8px", borderRadius: "7px", background: "linear-gradient(180deg,#4b8ef2,#2563eb)", textAlign: "center", fontSize: "9.5px", color: "#fff", fontWeight: 600, boxShadow: "0 3px 10px rgba(37,99,235,0.35)" }}>Start Evaluation →</div>
+                  <div style={{ marginTop: "7px", fontSize: "7.5px", color: "#475569" }}>← Return Home</div>
+                </div>
+              </div>
+            </div>
+            <div className="mobile-step-label">1 · Identity</div>
+          </div>
+
+          <div className="mobile-flow-arrow">→</div>
+
+          {/* Phone 2: Session PIN */}
+          <div>
+            <div className="mobile-frame">
+              <div className="mobile-notch" />
+              <div className="mobile-inner">
+                <div style={{ flex: 1, padding: "16px 14px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,rgba(99,102,241,0.3),rgba(59,130,246,0.2))", border: "1px solid rgba(147,197,253,0.15)", display: "grid", placeItems: "center", marginBottom: "10px", marginTop: "8px" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#f1f5f9", marginBottom: "3px" }}>Your Session PIN</div>
+                  <div style={{ fontSize: "8px", color: "#64748b", marginBottom: "16px", lineHeight: 1.4 }}>Use this PIN to resume if you get disconnected.</div>
+                  <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
+                    {["4","7","2","1"].map((d) => (
+                      <div key={d} style={{ width: "38px", height: "44px", borderRadius: "8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(147,197,253,0.15)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: "18px", fontWeight: 700, color: "#f1f5f9" }}>{d}</div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: "8px", color: "#64748b", padding: "4px 10px", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "6px", marginBottom: "16px" }}>📋 Copy PIN</div>
+                  <div style={{ width: "100%", textAlign: "left", display: "flex", flexDirection: "column", gap: "6px", fontSize: "8.5px", color: "#94a3b8", marginBottom: "14px" }}>
+                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Juror</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Prof. Dr. Ayşe Demir</span></div>
+                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Org</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>TED University — EE</span></div>
+                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Period</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Spring 2026</span></div>
+                  </div>
+                  <div style={{ width: "100%", padding: "9px", borderRadius: "8px", background: "linear-gradient(180deg,#4b8ef2,#2563eb)", textAlign: "center", fontSize: "10px", color: "#fff", fontWeight: 600, marginTop: "auto" }}>Begin Evaluation →</div>
+                </div>
+              </div>
+            </div>
+            <div className="mobile-step-label">2 · Session PIN</div>
+          </div>
+
+          <div className="mobile-flow-arrow">→</div>
+
+          {/* Phone 3: Score */}
+          <div>
+            <div className="mobile-frame">
+              <div className="mobile-notch" />
+              <div className="mobile-inner">
+                <div style={{ padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(148,163,184,0.08)", background: "rgba(6,10,22,0.6)", flexShrink: 0 }}>
+                  <div style={{ fontSize: "8px", color: "#e2e8f0", fontWeight: 600 }}>Prof. Dr. Ayşe Demir</div>
+                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}><span style={{ fontSize: "7px", padding: "2px 6px", borderRadius: "4px", background: "rgba(34,197,94,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>✓ Saved</span></div>
+                </div>
+                <div style={{ padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(148,163,184,0.08)", flexShrink: 0 }}>
+                  <div>
+                    <div style={{ fontSize: "9px", fontWeight: 700, color: "#f1f5f9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "120px" }}>Adaptive RF Harvesting</div>
+                    <div style={{ fontSize: "7px", color: "#475569" }}>Elif A., Berk K., Zeynep T.</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                    <span style={{ fontSize: "8px", color: "#64748b" }}>‹</span>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "#e2e8f0", fontWeight: 600 }}>7/12</span>
+                    <span style={{ fontSize: "8px", color: "#64748b" }}>›</span>
+                  </div>
+                </div>
+                <div style={{ height: "3px", background: "rgba(255,255,255,0.06)", flexShrink: 0 }}>
+                  <div style={{ height: "100%", width: "88%", background: "linear-gradient(90deg,#3b82f6,#6366f1)" }} />
+                </div>
+                <div style={{ flex: 1, padding: "8px", display: "flex", flexDirection: "column", gap: "5px", overflow: "hidden" }}>
+                  {[
+                    { label: "Technical Content", color: "#60a5fa", max: 30, val: 27, pct: "90%" },
+                    { label: "Written Comm.", color: "#4ade80", max: 30, val: 22, pct: "73%" },
+                    { label: "Oral Comm.", color: "#a78bfa", max: 30, val: 24, pct: "80%" },
+                    { label: "Teamwork", color: "#fbbf24", max: 10, val: 8, pct: "80%" },
+                  ].map((c) => (
+                    <div key={c.label} style={{ padding: "8px", borderRadius: "8px", background: "rgba(255,255,255,0.03)", border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `3px solid ${c.color}` }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                        <div style={{ fontSize: "8px", fontWeight: 700, color: "#f1f5f9" }}>{c.label} <span style={{ color: "#4ade80" }}>✓</span></div>
+                        <span style={{ fontSize: "6.5px", padding: "2px 5px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }}>Rubric</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div style={{ width: "28px", height: "24px", borderRadius: "4px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 700, color: "#f1f5f9", textAlign: "center", display: "grid", placeItems: "center" }}>{c.val}</div>
+                        <div style={{ flex: 1, height: "3px", borderRadius: "99px", background: "rgba(255,255,255,0.06)" }}>
+                          <div style={{ height: "100%", width: c.pct, borderRadius: "99px", background: c.color }} />
+                        </div>
+                        <span style={{ fontSize: "7px", color: "#64748b", fontFamily: "var(--mono)" }}>{c.val}/{c.max}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mobile-step-label">3 · Score</div>
+          </div>
+
+          <div className="mobile-flow-arrow">→</div>
+
+          {/* Phone 4: Done */}
+          <div>
+            <div className="mobile-frame">
+              <div className="mobile-notch" />
+              <div className="mobile-inner">
+                <div style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                  <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(135deg,rgba(34,197,94,0.3),rgba(22,163,74,0.2))", border: "1px solid rgba(74,222,128,0.2)", display: "grid", placeItems: "center", marginTop: "8px", marginBottom: "10px" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>
+                  </div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#f1f5f9", marginBottom: "2px" }}>Thank You, Prof. Demir!</div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: "28px", fontWeight: 800, color: "#4ade80", marginBottom: "2px" }}>81</div>
+                  <div style={{ fontSize: "7px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Your Score — Group 7 / 100 pts</div>
+                  <div style={{ fontSize: "8px", color: "#94a3b8", lineHeight: 1.5, marginBottom: "10px" }}>Your evaluations have been submitted. Contact the administrator if you need changes.</div>
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "2px", textAlign: "left", fontSize: "8px" }}>
+                    {[
+                      { g: "Group 1", s: "78", ok: true },
+                      { g: "Group 2", s: "85", ok: true },
+                      { g: "Group 3", s: "72", ok: true },
+                      { g: "Group 4", s: "91", ok: true },
+                      { g: "Group 5", s: "66", ok: true },
+                      { g: "Group 6", s: "—", ok: false },
+                    ].map((row) => (
+                      <div key={row.g} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 7px", borderRadius: "5px", background: "rgba(30,41,59,0.4)", border: "1px solid rgba(148,163,184,0.06)" }}>
+                        <span style={{ color: row.ok ? "#4ade80" : "#fbbf24" }}>{row.ok ? "✓" : "⚠"}</span>
+                        <span style={{ color: "#94a3b8", flex: 1 }}>{row.g}</span>
+                        <span style={{ fontFamily: "var(--mono)", color: row.ok ? "#e2e8f0" : "#475569", fontWeight: row.ok ? 600 : 400 }}>{row.s}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mobile-step-label">4 · Done</div>
+          </div>
+
+        </div>
+      </section>
+
       {/* Trust Band */}
       <section className="landing-trust reveal-section">
         <div className="landing-trust-proof">
@@ -188,6 +378,72 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             Built for every evaluation
+          </div>
+          <div
+            className="trust-feature-grid"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              e.currentTarget.style.setProperty('--spotlight-x', `${x}px`);
+              e.currentTarget.style.setProperty('--spotlight-y', `${y}px`);
+              e.currentTarget.style.setProperty('--spotlight-opacity', '1');
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.setProperty('--spotlight-opacity', '0');
+            }}
+          >
+            <div className="trust-feature-card reveal-child">
+              <div className="tfc-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
+              </div>
+              <div className="tfc-body">
+                <div className="tfc-title">Works on any device</div>
+                <div className="tfc-desc">Mobile, tablet, or desktop — zero installation required</div>
+              </div>
+            </div>
+            <div className="trust-feature-card reveal-child">
+              <div className="tfc-icon tfc-icon--green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+              </div>
+              <div className="tfc-body">
+                <div className="tfc-title">PIN-secured sessions</div>
+                <div className="tfc-desc">Jurors authenticate with a PIN — no accounts needed</div>
+              </div>
+            </div>
+            <div className="trust-feature-card reveal-child">
+              <div className="tfc-icon tfc-icon--violet">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+              </div>
+              <div className="tfc-body">
+                <div className="tfc-title">XLSX &amp; PDF export</div>
+                <div className="tfc-desc">Full score reports in one click, formatted for review</div>
+              </div>
+            </div>
+            <div className="trust-feature-card reveal-child">
+              <div className="tfc-icon tfc-icon--amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
+              </div>
+              <div className="tfc-body">
+                <div className="tfc-title">Real-time analytics</div>
+                <div className="tfc-desc">Live dashboards update as jurors score across projects</div>
+              </div>
+            </div>
+            <div className="trust-feature-card reveal-child">
+              <div className="tfc-icon tfc-icon--rose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><path d="M14 2v6h6" /><path d="m9 15 2 2 4-4" /></svg>
+              </div>
+              <div className="tfc-body">
+                <div className="tfc-title">Accreditation-ready</div>
+                <div className="tfc-desc">Built-in MÜDEK / ABET outcome mapping and programme reports</div>
+              </div>
+            </div>
+          </div>
+          <div className="landing-proof-eyebrow landing-proof-eyebrow--usecase">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+              <circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" />
+            </svg>
+            Works across every context
           </div>
           <div className="trust-usecase-grid">
             <div className="trust-usecase-card">
@@ -399,196 +655,6 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
         </div>
       </section>
 
-      {/* Mobile Mockup — 4 Phone Flow */}
-      <section className="landing-mobile reveal-section">
-        <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-            <path d="M12 18h.01" />
-          </svg>
-          The juror experience
-        </div>
-        <p style={{ color: "#94a3b8", fontSize: "15px", maxWidth: "520px", margin: "0 auto", lineHeight: 1.6 }}>
-          No app to install, no training needed. Jurors scan a QR code, enter their name, and start scoring.
-        </p>
-        <div className="mobile-flow">
-
-          {/* Phone 1: Identity */}
-          <div>
-            <div className="mobile-frame">
-              <div className="mobile-notch" />
-              <div className="mobile-inner">
-                <div style={{ flex: 1, padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", overflow: "hidden" }}>
-                  <div style={{ width: "38px", height: "38px", borderRadius: "12px", background: "linear-gradient(135deg,rgba(99,102,241,0.22),rgba(139,92,246,0.18))", border: "1px solid rgba(139,92,246,0.25)", display: "grid", placeItems: "center", marginBottom: "9px", marginTop: "6px", boxShadow: "0 4px 12px rgba(99,102,241,0.18)" }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  </div>
-                  <div style={{ fontSize: "11.5px", fontWeight: 700, color: "#f1f5f9", marginBottom: "2px" }}>Jury Information</div>
-                  <div style={{ fontSize: "7.5px", color: "#64748b", marginBottom: "9px", lineHeight: 1.3 }}>Enter your details to begin the evaluation</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "4px", fontSize: "6.5px", color: "#64748b" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 10 3 12 0v-5" /></svg>
-                    <span>TED University</span>
-                    <span style={{ color: "#334155" }}>·</span>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a4 4 0 0 0-8 0v2" /></svg>
-                    <span>Electrical &amp; Electronics Eng.</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "9px", fontSize: "6.5px", color: "#64748b" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                    <span>Spring 2026</span>
-                    <span style={{ color: "#334155" }}>·</span>
-                    <span>08 Jun 2026</span>
-                    <span style={{ color: "#334155" }}>·</span>
-                    <span>12 Groups</span>
-                  </div>
-                  <div style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "5px", padding: "5px 7px", borderRadius: "6px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)", marginBottom: "9px", textAlign: "left" }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" style={{ flexShrink: 0, marginTop: "1px" }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-                    <span style={{ fontSize: "6.5px", color: "#93c5fd", lineHeight: 1.35 }}>Name and affiliation cannot be changed once evaluation starts.</span>
-                  </div>
-                  <div style={{ width: "100%", textAlign: "left", marginBottom: "5px" }}>
-                    <div style={{ fontSize: "7.5px", fontWeight: 600, color: "#94a3b8", marginBottom: "2px" }}>Full Name</div>
-                    <div style={{ padding: "5px 7px", borderRadius: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "8.5px", color: "#e2e8f0" }}>Prof. Dr. Ayşe Demir</div>
-                  </div>
-                  <div style={{ width: "100%", textAlign: "left", marginBottom: "5px" }}>
-                    <div style={{ fontSize: "7.5px", fontWeight: 600, color: "#94a3b8", marginBottom: "2px" }}>Affiliation</div>
-                    <div style={{ padding: "5px 7px", borderRadius: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "8.5px", color: "#e2e8f0" }}>TED University / EE</div>
-                  </div>
-                  <div style={{ width: "100%", textAlign: "left", marginBottom: "10px" }}>
-                    <div style={{ fontSize: "7.5px", fontWeight: 600, color: "#94a3b8", marginBottom: "2px" }}>E-mail <span style={{ color: "#475569", fontWeight: 400 }}>(optional)</span></div>
-                    <div style={{ padding: "5px 7px", borderRadius: "5px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", fontSize: "8.5px", color: "#475569" }}>jury@example.com</div>
-                  </div>
-                  <div style={{ width: "100%", padding: "8px", borderRadius: "7px", background: "linear-gradient(180deg,#4b8ef2,#2563eb)", textAlign: "center", fontSize: "9.5px", color: "#fff", fontWeight: 600, boxShadow: "0 3px 10px rgba(37,99,235,0.35)" }}>Start Evaluation →</div>
-                  <div style={{ marginTop: "7px", fontSize: "7.5px", color: "#475569" }}>← Return Home</div>
-                </div>
-              </div>
-            </div>
-            <div className="mobile-step-label">1 · Identity</div>
-          </div>
-
-          <div className="mobile-flow-arrow">→</div>
-
-          {/* Phone 2: Session PIN */}
-          <div>
-            <div className="mobile-frame">
-              <div className="mobile-notch" />
-              <div className="mobile-inner">
-                <div style={{ flex: 1, padding: "16px 14px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,rgba(99,102,241,0.3),rgba(59,130,246,0.2))", border: "1px solid rgba(147,197,253,0.15)", display: "grid", placeItems: "center", marginBottom: "10px", marginTop: "8px" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                  </div>
-                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#f1f5f9", marginBottom: "3px" }}>Your Session PIN</div>
-                  <div style={{ fontSize: "8px", color: "#64748b", marginBottom: "16px", lineHeight: 1.4 }}>Use this PIN to resume if you get disconnected.</div>
-                  <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
-                    {["4","7","2","1"].map((d) => (
-                      <div key={d} style={{ width: "38px", height: "44px", borderRadius: "8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(147,197,253,0.15)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: "18px", fontWeight: 700, color: "#f1f5f9" }}>{d}</div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: "8px", color: "#64748b", padding: "4px 10px", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "6px", marginBottom: "16px" }}>📋 Copy PIN</div>
-                  <div style={{ width: "100%", textAlign: "left", display: "flex", flexDirection: "column", gap: "6px", fontSize: "8.5px", color: "#94a3b8", marginBottom: "14px" }}>
-                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Juror</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Prof. Dr. Ayşe Demir</span></div>
-                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Org</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>TED University — EE</span></div>
-                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Period</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Spring 2026</span></div>
-                  </div>
-                  <div style={{ width: "100%", padding: "9px", borderRadius: "8px", background: "linear-gradient(180deg,#4b8ef2,#2563eb)", textAlign: "center", fontSize: "10px", color: "#fff", fontWeight: 600, marginTop: "auto" }}>Begin Evaluation →</div>
-                </div>
-              </div>
-            </div>
-            <div className="mobile-step-label">2 · Session PIN</div>
-          </div>
-
-          <div className="mobile-flow-arrow">→</div>
-
-          {/* Phone 3: Score */}
-          <div>
-            <div className="mobile-frame">
-              <div className="mobile-notch" />
-              <div className="mobile-inner">
-                <div style={{ padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(148,163,184,0.08)", background: "rgba(6,10,22,0.6)", flexShrink: 0 }}>
-                  <div style={{ fontSize: "8px", color: "#e2e8f0", fontWeight: 600 }}>Prof. Dr. Ayşe Demir</div>
-                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}><span style={{ fontSize: "7px", padding: "2px 6px", borderRadius: "4px", background: "rgba(34,197,94,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>✓ Saved</span></div>
-                </div>
-                <div style={{ padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(148,163,184,0.08)", flexShrink: 0 }}>
-                  <div>
-                    <div style={{ fontSize: "9px", fontWeight: 700, color: "#f1f5f9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "120px" }}>Adaptive RF Harvesting</div>
-                    <div style={{ fontSize: "7px", color: "#475569" }}>Elif A., Berk K., Zeynep T.</div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                    <span style={{ fontSize: "8px", color: "#64748b" }}>‹</span>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: "8px", color: "#e2e8f0", fontWeight: 600 }}>7/12</span>
-                    <span style={{ fontSize: "8px", color: "#64748b" }}>›</span>
-                  </div>
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,0.06)", flexShrink: 0 }}>
-                  <div style={{ height: "100%", width: "88%", background: "linear-gradient(90deg,#3b82f6,#6366f1)" }} />
-                </div>
-                <div style={{ flex: 1, padding: "8px", display: "flex", flexDirection: "column", gap: "5px", overflow: "hidden" }}>
-                  {[
-                    { label: "Technical Content", color: "#60a5fa", max: 30, val: 27, pct: "90%" },
-                    { label: "Written Comm.", color: "#4ade80", max: 30, val: 22, pct: "73%" },
-                    { label: "Oral Comm.", color: "#a78bfa", max: 30, val: 24, pct: "80%" },
-                    { label: "Teamwork", color: "#fbbf24", max: 10, val: 8, pct: "80%" },
-                  ].map((c) => (
-                    <div key={c.label} style={{ padding: "8px", borderRadius: "8px", background: "rgba(255,255,255,0.03)", border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `3px solid ${c.color}` }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                        <div style={{ fontSize: "8px", fontWeight: 700, color: "#f1f5f9" }}>{c.label} <span style={{ color: "#4ade80" }}>✓</span></div>
-                        <span style={{ fontSize: "6.5px", padding: "2px 5px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b" }}>Rubric</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <div style={{ width: "28px", height: "24px", borderRadius: "4px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", fontFamily: "var(--mono)", fontSize: "11px", fontWeight: 700, color: "#f1f5f9", textAlign: "center", display: "grid", placeItems: "center" }}>{c.val}</div>
-                        <div style={{ flex: 1, height: "3px", borderRadius: "99px", background: "rgba(255,255,255,0.06)" }}>
-                          <div style={{ height: "100%", width: c.pct, borderRadius: "99px", background: c.color }} />
-                        </div>
-                        <span style={{ fontSize: "7px", color: "#64748b", fontFamily: "var(--mono)" }}>{c.val}/{c.max}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="mobile-step-label">3 · Score</div>
-          </div>
-
-          <div className="mobile-flow-arrow">→</div>
-
-          {/* Phone 4: Done */}
-          <div>
-            <div className="mobile-frame">
-              <div className="mobile-notch" />
-              <div className="mobile-inner">
-                <div style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(135deg,rgba(34,197,94,0.3),rgba(22,163,74,0.2))", border: "1px solid rgba(74,222,128,0.2)", display: "grid", placeItems: "center", marginTop: "8px", marginBottom: "10px" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>
-                  </div>
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#f1f5f9", marginBottom: "2px" }}>Thank You, Prof. Demir!</div>
-                  <div style={{ fontFamily: "var(--mono)", fontSize: "28px", fontWeight: 800, color: "#4ade80", marginBottom: "2px" }}>81</div>
-                  <div style={{ fontSize: "7px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>Your Score — Group 7 / 100 pts</div>
-                  <div style={{ fontSize: "8px", color: "#94a3b8", lineHeight: 1.5, marginBottom: "10px" }}>Your evaluations have been submitted. Contact the administrator if you need changes.</div>
-                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "2px", textAlign: "left", fontSize: "8px" }}>
-                    {[
-                      { g: "Group 1", s: "78", ok: true },
-                      { g: "Group 2", s: "85", ok: true },
-                      { g: "Group 3", s: "72", ok: true },
-                      { g: "Group 4", s: "91", ok: true },
-                      { g: "Group 5", s: "66", ok: true },
-                      { g: "Group 6", s: "—", ok: false },
-                    ].map((row) => (
-                      <div key={row.g} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 7px", borderRadius: "5px", background: "rgba(30,41,59,0.4)", border: "1px solid rgba(148,163,184,0.06)" }}>
-                        <span style={{ color: row.ok ? "#4ade80" : "#fbbf24" }}>{row.ok ? "✓" : "⚠"}</span>
-                        <span style={{ color: "#94a3b8", flex: 1 }}>{row.g}</span>
-                        <span style={{ fontFamily: "var(--mono)", color: row.ok ? "#e2e8f0" : "#475569", fontWeight: row.ok ? 600 : 400 }}>{row.s}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mobile-step-label">4 · Done</div>
-          </div>
-
-        </div>
-      </section>
-
       {/* Comparison Table */}
       <section className="landing-compare reveal-section">
         <div className="landing-section-label">
@@ -631,32 +697,6 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
               <div className="testimonial-name">Prof. Ahmet Yılmaz</div>
               <div className="testimonial-role">EE Department · Poster Day Coordinator</div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Trust Badge Strip */}
-      <section className="landing-badges reveal-section">
-        <div className="badge-strip">
-          <div className="trust-badge reveal-child">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
-            Works on any device
-          </div>
-          <div className="trust-badge reveal-child">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-            PIN-secured sessions
-          </div>
-          <div className="trust-badge reveal-child">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-            XLSX &amp; PDF export
-          </div>
-          <div className="trust-badge reveal-child">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
-            Real-time analytics
-          </div>
-          <div className="trust-badge reveal-child">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><path d="M14 2v6h6" /><path d="m9 15 2 2 4-4" /></svg>
-            Accreditation-ready
           </div>
         </div>
       </section>

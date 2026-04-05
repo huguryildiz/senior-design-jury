@@ -62,7 +62,7 @@ export {
   listPeriodOutcomes,
 } from "./scores";
 
-export { generateEntryToken, revokeEntryToken, getEntryTokenStatus } from "./tokens";
+export { generateEntryToken, revokeEntryToken, getEntryTokenStatus, getActiveEntryToken } from "./tokens";
 
 export { listAuditLogs } from "./audit";
 

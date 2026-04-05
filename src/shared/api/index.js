@@ -69,6 +69,7 @@ export {
   generateEntryToken,
   revokeEntryToken,
   getEntryTokenStatus,
+  getActiveEntryToken,
   listAuditLogs,
   fullExport,
   upsertProfile,

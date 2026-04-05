@@ -226,6 +226,7 @@ export default function AdminLayout({ onReturnHome }) {
           dept: (j.affiliation || "").trim(),
           finalSubmitted: !!(j.finalSubmittedAt || j.final_submitted_at),
           finalSubmittedAt: j.finalSubmittedAt || j.final_submitted_at || "",
+          editEnabled: j.editEnabled || false,
         });
       }
     });
@@ -446,6 +447,10 @@ export default function AdminLayout({ onReturnHome }) {
               onCurrentSemesterChange={(periodId) => {
                 setSelectedPeriodId(periodId);
                 fetchData();
+              }}
+              onViewReviews={() => {
+                setAdminTab("scores");
+                switchScoresView("details");
               }}
             />
           )}

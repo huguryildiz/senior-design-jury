@@ -9,6 +9,7 @@
 // ============================================================
 
 import { useMemo, useState } from "react";
+import { CheckCircle2, Download, Filter, MessageSquare, Search, Send, X } from "lucide-react";
 import { useReviewsFilters } from "../hooks/useReviewsFilters";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
@@ -26,18 +27,8 @@ import {
 import { formatTs } from "../utils/adminUtils";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import JurorBadge from "../components/JurorBadge";
+import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import "../../styles/pages/reviews.css";
-
-// initials removed — using JurorBadge component
-function _unused_initials(name) {
-  const parts = String(name || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
 // ── Score status pill ─────────────────────────────────────────
 function ScorePill({ status }) {
@@ -72,9 +63,9 @@ function ScorePill({ status }) {
 }
 
 // ── Juror progress pill ───────────────────────────────────────
-function JurorPill({ status }) {
+function JurorPill({ status, submittedTs }) {
   if (status === "completed") {
-    return (
+    const pill = (
       <span className="pill pill-completed">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="m20 6-11 11-5-5" />
@@ -82,6 +73,9 @@ function JurorPill({ status }) {
         Completed
       </span>
     );
+    return submittedTs && submittedTs !== "—"
+      ? <PremiumTooltip text={`Completed: ${submittedTs}`}>{pill}</PremiumTooltip>
+      : pill;
   }
   if (status === "ready_to_submit") {
     return (
@@ -158,8 +152,6 @@ export default function ReviewsPage({
     updatedTo, setUpdatedTo,
     completedFrom, setCompletedFrom,
     completedTo, setCompletedTo,
-    updatedDateError,
-    completedDateError,
     updatedParsedFrom, updatedParsedTo, updatedParsedFromMs, updatedParsedToMs, isUpdatedInvalidRange,
     completedParsedFrom, completedParsedTo, completedParsedFromMs, completedParsedToMs, isCompletedInvalidRange,
     sortKey, setSortKey,
@@ -168,10 +160,10 @@ export default function ReviewsPage({
     currentPage, setCurrentPage,
     multiSearchQuery, setMultiSearchQuery,
     scoreCols, scoreKeys, scoreMaxByKey,
-    buildEmptyFilters, updateScoreFilter,
+    updateScoreFilter,
   } = filters;
 
-  const _toast = useToast();
+  const toast = useToast();
   const { activeOrganization } = useAuth();
   const [showFilter, setShowFilter] = useState(false);
   const [showExport, setShowExport] = useState(false);
@@ -240,14 +232,15 @@ export default function ReviewsPage({
   const pageStart = (safePage - 1) * pageSize;
   const pageRows = sorted.slice(pageStart, pageStart + pageSize);
 
-  // ── KPI stats (from full enriched set) ───────────────────
-  const totalReviews = enriched.length;
-  const uniqueJurors = new Set(enriched.map((r) => r.jurorId || r.juryName)).size;
-  const uniqueProjects = new Set(enriched.map((r) => r.projectId || r.title)).size;
-  const partialCount = enriched.filter((r) => r.effectiveStatus === "partial").length;
-  // Average: only completed jurors (finalSubmitted, not editing) — consistent with Overview & Rankings
-  const scoredRows = enriched.filter(
-    (r) => r.total != null && Number.isFinite(Number(r.total)) && r.finalSubmittedAt && !r.isEditing
+  // ── KPI stats (reflects active filters) ─────────────────
+  const kpiBase = filtered.length !== enriched.length ? filtered : enriched;
+  const totalReviews = kpiBase.length;
+  const uniqueJurors = new Set(kpiBase.map((r) => r.jurorId || r.juryName)).size;
+  const uniqueProjects = new Set(kpiBase.map((r) => r.projectId || r.title)).size;
+  const partialCount = kpiBase.filter((r) => r.effectiveStatus === "partial").length;
+  // Average: only completed jurors — jurorStatus === "completed" mirrors Overview & Rankings logic exactly
+  const scoredRows = kpiBase.filter(
+    (r) => r.total != null && Number.isFinite(Number(r.total)) && r.jurorStatus === "completed"
   );
   const avgScore = scoredRows.length > 0
     ? (scoredRows.reduce((s, r) => s + Number(r.total), 0) / scoredRows.length).toFixed(1)
@@ -315,7 +308,6 @@ export default function ReviewsPage({
     setCompletedFrom("");
     setCompletedTo("");
     setMultiSearchQuery("");
-    const empty = buildEmptyFilters();
     scoreKeys.forEach((key) => {
       updateScoreFilter(key, "min", "");
       updateScoreFilter(key, "max", "");
@@ -328,7 +320,7 @@ export default function ReviewsPage({
       const header = [
         "Juror", "Affiliation",
         ...scoreCols.filter((c) => c.key !== "total").map((c) => c.label),
-        `Total (${criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})`, "Score Status", "Juror Status", "Comment", "Submitted",
+        `Total (${criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})`, "Score Status", "Juror Status", "Comment", "Submitted At",
       ];
       const rows = sorted.map((r) => [
         r.juryName ?? "",
@@ -355,9 +347,10 @@ export default function ReviewsPage({
         colWidths: [24, 24, ...scoreCols.filter((c) => c.key !== "total").map(() => 10), 8, 12, 14, 32, 18],
       });
       setShowExport(false);
-      _toast.success("Reviews exported");
+      const fmtLabel = exportFormat === "pdf" ? "PDF" : exportFormat === "csv" ? "CSV" : "Excel";
+      toast.success(`${sorted.length} review${sorted.length !== 1 ? "s" : ""} · ${uniqueJurors} juror${uniqueJurors !== 1 ? "s" : ""} exported · ${fmtLabel}`);
     } catch (e) {
-      _toast.error(e?.message || "Export failed");
+      toast.error(e?.message || "Reviews export failed — please try again");
     }
   }
 
@@ -391,12 +384,7 @@ export default function ReviewsPage({
         </div>
         <div className="reviews-actions">
           <div style={{ position: "relative" }}>
-            <svg
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-tertiary)", pointerEvents: "none" }}
-            >
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
+            <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)", pointerEvents: "none" }} />
             <input
               className="reviews-search"
               type="text"
@@ -406,12 +394,11 @@ export default function ReviewsPage({
             />
           </div>
           <button
+            type="button"
             className={`btn btn-outline btn-sm${showFilter ? " active" : ""}`}
             onClick={() => { setShowFilter((v) => !v); setShowExport(false); }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-            </svg>
+            <Filter size={14} style={{ verticalAlign: "-1px" }} />
             Filter
             {activeFilterCount > 0 && (
               <span className="filter-badge">{activeFilterCount}</span>
@@ -419,14 +406,11 @@ export default function ReviewsPage({
           </button>
           <div style={{ flex: 1 }} />
           <button
+            type="button"
             className={`btn btn-outline btn-sm${showExport ? " active" : ""}`}
             onClick={() => { setShowExport((v) => !v); setShowFilter(false); }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
+            <Download size={14} style={{ verticalAlign: "-1px" }} />
             Export
           </button>
         </div>
@@ -435,19 +419,18 @@ export default function ReviewsPage({
       {/* Filter status banner */}
       {activeFilterCount > 0 && (
         <div className="fb-banner fbb-success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" />
-          </svg>
+          <CheckCircle2 size={16} />
           <span className="fb-banner-text">
             {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} applied — showing {sorted.length} of {enriched.length} result{enriched.length !== 1 ? "s" : ""}
           </span>
-          <span
+          <button
+            type="button"
             className="fb-banner-action"
-            style={{ color: "var(--fb-success-text)", cursor: "pointer" }}
+            style={{ color: "var(--fb-success-text)" }}
             onClick={handleClearFilters}
           >
             Clear filters →
-          </span>
+          </button>
         </div>
       )}
 
@@ -535,14 +518,12 @@ export default function ReviewsPage({
         <div className="filter-panel-header">
           <div>
             <h4>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 4, opacity: 0.5 }}>
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-              </svg>
+              <Filter size={14} style={{ verticalAlign: "-1px", marginRight: 4, opacity: 0.5 }} />
               Filter Reviews
             </h4>
             <div className="filter-panel-sub">Narrow reviews by juror, project, score state, and progress state.</div>
           </div>
-          <button className="filter-panel-close" onClick={() => setShowFilter(false)}>&#215;</button>
+          <button type="button" className="filter-panel-close" aria-label="Close filter panel" onClick={() => setShowFilter(false)}>&#215;</button>
         </div>
         <div className="filter-row">
           {/* Juror filter */}
@@ -611,10 +592,8 @@ export default function ReviewsPage({
               <option value="editing">Editing</option>
             </select>
           </div>
-          <button className="btn btn-outline btn-sm filter-clear-btn" onClick={handleClearFilters}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-            </svg>
+          <button type="button" className="btn btn-outline btn-sm filter-clear-btn" onClick={handleClearFilters}>
+            <X size={12} style={{ opacity: 0.5 }} />
             Clear all
           </button>
         </div>
@@ -625,31 +604,27 @@ export default function ReviewsPage({
         <div className="export-panel-header">
           <div>
             <h4>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+              <Download size={14} style={{ verticalAlign: "-1px", marginRight: 4 }} />
               Export Reviews
             </h4>
             <div className="export-panel-sub">Download individual juror evaluations with scores, comments, and timestamps.</div>
           </div>
-          <button className="export-panel-close" onClick={() => setShowExport(false)}>&#215;</button>
+          <button type="button" className="export-panel-close" aria-label="Close export panel" onClick={() => setShowExport(false)}>&#215;</button>
         </div>
         <div className="export-options">
           {[
-            { id: "xlsx", label: "Excel (.xlsx)", desc: "All reviews with juror details and comments", hint: "Best for sharing" },
-            { id: "csv", label: "CSV (.csv)", desc: "Raw review data for custom analysis", hint: "Best for analysis" },
-            { id: "pdf", label: "PDF Report", desc: "Formatted review report for print / archive", hint: "Best for archival" },
+            { id: "xlsx", iconLabel: "XLS", label: "Excel (.xlsx)", desc: "All reviews with juror details and comments", hint: "Best for sharing" },
+            { id: "csv",  iconLabel: "CSV", label: "CSV (.csv)",    desc: "Raw review data for custom analysis",           hint: "Best for analysis" },
+            { id: "pdf",  iconLabel: "PDF", label: "PDF Report",    desc: "Formatted review report for print / archive",   hint: "Best for archival" },
           ].map((opt) => (
             <div
               key={opt.id}
               className={`export-option${exportFormat === opt.id ? " selected" : ""}`}
               onClick={() => setExportFormat(opt.id)}
             >
-              {exportFormat === opt.id && <span className="export-option-selected-pill">Selected</span>}
+              <span className="export-option-selected-pill">Selected</span>
               <div className={`export-option-icon export-option-icon--${opt.id}`}>
-                <span className="file-icon"><span className="file-icon-label">{opt.id.toUpperCase()}</span></span>
+                <span className="file-icon"><span className="file-icon-label">{opt.iconLabel}</span></span>
               </div>
               <div className="export-option-title">{opt.label}</div>
               <div className="export-option-desc">{opt.desc}</div>
@@ -663,16 +638,12 @@ export default function ReviewsPage({
             <div className="export-footer-meta">{sorted.length} reviews · {uniqueJurors} jurors{periodName ? ` · ${periodName}` : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
+            <button type="button" className="btn btn-outline btn-sm" aria-label="Send report via email" onClick={() => setSendOpen(true)} style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Send size={14} />
               {" "}Send
             </button>
-            <button className="btn btn-primary btn-sm export-download-btn" onClick={handleExport}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+            <button type="button" className="btn btn-primary btn-sm export-download-btn" onClick={handleExport}>
+              <Download size={14} />
               Download {exportFormat === "xlsx" ? "Excel" : exportFormat === "pdf" ? "PDF" : "CSV"}
             </button>
           </div>
@@ -693,7 +664,7 @@ export default function ReviewsPage({
           const header = [
             "Juror", "Affiliation",
             ...scoreCols.filter((c) => c.key !== "total").map((c) => c.label),
-            `Total (${criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})`, "Score Status", "Juror Status", "Comment", "Submitted",
+            `Total (${criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})`, "Score Status", "Juror Status", "Comment", "Submitted At",
           ];
           const rows = sorted.map((r) => [
             r.juryName ?? "", r.affiliation ?? "",
@@ -736,13 +707,13 @@ export default function ReviewsPage({
                 </th>
               ))}
               <th className="text-right" style={{ cursor: "pointer" }} onClick={() => handleSort("total")}>
-                Total <SortIcon colKey="total" sortKey={sortKey} sortDir={sortDir} />
+                Total ({criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)}) <SortIcon colKey="total" sortKey={sortKey} sortDir={sortDir} />
               </th>
               <th className="text-center">Status</th>
               <th className="text-center">Progress</th>
               <th>Comment</th>
               <th className="text-right" style={{ cursor: "pointer" }} onClick={() => handleSort("finalSubmittedMs")}>
-                Submitted <SortIcon colKey="finalSubmittedMs" sortKey={sortKey} sortDir={sortDir} />
+                Submitted At <SortIcon colKey="finalSubmittedMs" sortKey={sortKey} sortDir={sortDir} />
               </th>
             </tr>
           </thead>
@@ -792,16 +763,16 @@ export default function ReviewsPage({
                       <ScorePill status={row.effectiveStatus} />
                     </td>
                     <td className="text-center">
-                      <JurorPill status={row.jurorStatus} />
+                      <JurorPill status={row.jurorStatus} submittedTs={submittedTs} />
                     </td>
                     <td className="col-comment">
                       {row.comments ? (
-                        <>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: "-1px", marginRight: 3, opacity: 0.4 }}>
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                          </svg>
-                          {row.comments}
-                        </>
+                        <PremiumTooltip text={row.comments}>
+                          <span className="col-comment-inner">
+                            <MessageSquare size={10} style={{ verticalAlign: "-1px", marginRight: 3, opacity: 0.4 }} />
+                            {row.comments}
+                          </span>
+                        </PremiumTooltip>
                       ) : "—"}
                     </td>
                     <td className="col-submitted text-right">
@@ -825,35 +796,40 @@ export default function ReviewsPage({
           </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <button
+              type="button"
               className="reviews-page-btn"
               disabled={safePage === 1}
               onClick={() => setCurrentPage(1)}
-              title="First page"
+              aria-label="First page"
             >«</button>
             <button
+              type="button"
               className="reviews-page-btn"
               disabled={safePage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              title="Previous page"
+              aria-label="Previous page"
             >‹</button>
             {pageNums().map((n) => (
               <button
                 key={n}
+                type="button"
                 className={`reviews-page-btn${n === safePage ? " active" : ""}`}
                 onClick={() => setCurrentPage(n)}
               >{n}</button>
             ))}
             <button
+              type="button"
               className="reviews-page-btn"
               disabled={safePage === totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              title="Next page"
+              aria-label="Next page"
             >›</button>
             <button
+              type="button"
               className="reviews-page-btn"
               disabled={safePage === totalPages}
               onClick={() => setCurrentPage(totalPages)}
-              title="Last page"
+              aria-label="Last page"
             >»</button>
           </div>
           <div className="reviews-page-size">
@@ -861,6 +837,7 @@ export default function ReviewsPage({
             {[15, 25, 50, 100].map((n) => (
               <button
                 key={n}
+                type="button"
                 className={`reviews-page-btn${pageSize === n ? " active" : ""}`}
                 onClick={() => { setPageSize(n); setCurrentPage(1); }}
               >{n}</button>

@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const BAND_COLORS = {
+export const BAND_COLORS = {
   excellent: "#22c55e",
   good: "#a3e635",
   developing: "#f59e0b",

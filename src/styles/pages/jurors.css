@@ -23,8 +23,6 @@
 
 /* ─── Last active tooltip ─────────────────────────────────── */
 .jurors-table-active { position: relative; cursor: default }
-[data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--text-primary); color: var(--bg-card); font-size: 11px; font-weight: 500; white-space: nowrap; padding: 4px 8px; border-radius: 5px; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 100 }
-[data-tooltip]:hover::after { opacity: 1 }
 
 /* ─── Row action button + dropdown ───────────────────────── */
 .juror-action-wrap { position: relative }
@@ -129,10 +127,8 @@
 .jurors-group-bar{width:36px;height:3px;border-radius:99px;background:var(--surface-2);overflow:hidden;flex-shrink:0}
 .jurors-group-bar-fill{height:100%;border-radius:99px;transition:width .2s}
 .jurors-table-active{font-size:12px;color:var(--text-secondary);white-space:nowrap;cursor:default;position:relative}
-[data-tooltip]{position:relative}
-[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);padding:5px 10px;background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:500;border-radius:6px;white-space:nowrap;z-index:50;pointer-events:none;animation:tooltip-in .12s ease-out;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+/* position override: right-align tooltip on last-active cell (would overflow right edge otherwise) */
 .jurors-table-active[data-tooltip]:hover::after{left:auto;right:0;transform:none}
-@keyframes tooltip-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
 /* ─── Table row states ─── */
 #jurors-main-table tbody tr{cursor:pointer;transition:background .1s,box-shadow .1s}

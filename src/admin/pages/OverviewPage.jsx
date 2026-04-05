@@ -3,8 +3,28 @@
 // Single-file overview page: KPIs, juror table, right stack, live feed, completion, charts, top projects.
 import { useMemo, useState, useRef, useEffect } from "react";
 import JurorBadge from "../components/JurorBadge";
+import JurorStatusPill from "../components/JurorStatusPill";
 import { SubmissionTimelineChart } from "@/charts/SubmissionTimelineChart";
 import { ScoreDistributionChart } from "@/charts/ScoreDistributionChart";
+import { getProjectHighlight } from "../utils/scoreHelpers";
+import {
+  UsersLucideIcon,
+  TriangleAlertIcon,
+  CalendarRangeIcon,
+  ActivityIcon,
+  ClockIcon,
+  ChartIcon,
+  BarChart2Icon,
+  TrophyIcon,
+  CheckCircle2Icon,
+  PencilIcon,
+  StarIcon,
+  PlayIcon,
+  LockIcon,
+  CheckIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+} from "@/shared/ui/Icons";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -33,13 +53,14 @@ function jurorStatus(j) {
   if (j.editEnabled) return "editing";
   const done = j.completedProjects || 0;
   const total = j.totalProjects || 0;
-  if (done > 0 && done < total) return "in_progress";
-  if (done >= total && total > 0) return "partial";
+  if (total > 0 && done >= total) return "ready_to_submit";
+  if (done > 0) return "in_progress";
   return "not_started";
 }
 
 function barColor(pct, status) {
-  if (status === "completed" || pct === 100) return "var(--success)";
+  if (status === "completed") return "var(--success)";
+  if (status === "ready_to_submit") return "var(--accent)";
   if (pct > 0) return "var(--warning)";
   return "var(--surface-2)";
 }
@@ -48,57 +69,6 @@ function completionFillColor(pct) {
   if (pct >= 70) return "var(--success)";
   if (pct >= 40) return "var(--warning)";
   return "var(--danger)";
-}
-
-function StatusBadge({ status }) {
-  if (status === "completed") {
-    return (
-      <span className="badge badge-success">
-        <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="9" /><path d="M9.2 12.4 11.3 14.5 15 10.8" />
-        </svg>
-        Completed
-      </span>
-    );
-  }
-  if (status === "editing") {
-    return (
-      <span className="badge badge-editing">
-        <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-        </svg>
-        Editing
-      </span>
-    );
-  }
-  if (status === "in_progress") {
-    return (
-      <span className="badge badge-warning">
-        <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
-        </svg>
-        In Progress
-      </span>
-    );
-  }
-  if (status === "partial") {
-    return (
-      <span className="badge badge-warning">
-        <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="8" strokeDasharray="2.5 2.5" /><circle cx="12" cy="12" r="1.3" />
-        </svg>
-        Partial
-      </span>
-    );
-  }
-  return (
-    <span className="badge badge-neutral">
-      <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-      </svg>
-      Not Started
-    </span>
-  );
 }
 
 // ── Component ─────────────────────────────────────────────────
@@ -111,7 +81,6 @@ export default function OverviewPage({
   criteriaConfig = [],
   loading = false,
   onNavigate,
-  isDemoMode = false,
 }) {
   const [jurorTableExpanded, setJurorTableExpanded] = useState(false);
   const [avgPopoverOpen, setAvgPopoverOpen] = useState(false);
@@ -159,11 +128,22 @@ export default function OverviewPage({
     const totalJ = allJurors.length;
     const completed = allJurors.filter((j) => j.finalSubmitted && !j.editEnabled).length;
     const editing = allJurors.filter((j) => j.editEnabled).length;
-    const inProg = allJurors.filter((j) => !j.finalSubmitted && (j.completedProjects || 0) > 0).length;
-    const notStarted = allJurors.filter((j) => !j.finalSubmitted && !(j.completedProjects > 0)).length;
-    const pct = totalJ > 0 ? Math.round(((completed + editing) / totalJ) * 100) : 0;
+    const readyToSubmit = allJurors.filter((j) => {
+      if (j.finalSubmitted || j.editEnabled) return false;
+      const done = j.completedProjects || 0;
+      const total = j.totalProjects || 0;
+      return total > 0 && done >= total;
+    }).length;
+    const inProg = allJurors.filter((j) => {
+      if (j.finalSubmitted || j.editEnabled) return false;
+      const done = j.completedProjects || 0;
+      const total = j.totalProjects || 0;
+      return done > 0 && done < total;
+    }).length;
+    const notStarted = allJurors.filter((j) => !j.finalSubmitted && !j.editEnabled && !(j.completedProjects > 0)).length;
+    const pct = totalJ > 0 ? Math.round((completed / totalJ) * 100) : 0;
     const completedJurorIds = new Set(
-      allJurors.filter((j) => j.finalSubmitted).map((j) => j.jurorId)
+      allJurors.filter((j) => j.finalSubmitted && !j.editEnabled).map((j) => j.jurorId)
     );
     const completedScores = rawScores.filter(
       (r) => r.total != null && completedJurorIds.has(r.jurorId)
@@ -172,7 +152,7 @@ export default function OverviewPage({
       completedScores.length > 0
         ? (completedScores.reduce((s, r) => s + r.total, 0) / completedScores.length).toFixed(1)
         : null;
-    return { totalJ, completed, editing, inProg, notStarted, pct, avg };
+    return { totalJ, completed, editing, readyToSubmit, inProg, notStarted, pct, avg };
   }, [allJurors, rawScores]);
 
   // ── Per-juror average map ─────────────────────────────────────
@@ -193,7 +173,7 @@ export default function OverviewPage({
   // ── Juror table sort ──────────────────────────────────────────
   const [tableSort, setTableSort] = useState({ col: "active", dir: "desc" });
 
-  const STATUS_ORDER = { completed: 0, editing: 1, in_progress: 2, partial: 3, not_started: 4 };
+  const STATUS_ORDER = { completed: 0, editing: 1, ready_to_submit: 2, in_progress: 3, not_started: 4 };
 
   function toggleSort(col) {
     setTableSort((prev) =>
@@ -255,7 +235,7 @@ export default function OverviewPage({
   }, [criteriaConfig]);
 
   // ── Needs attention items ─────────────────────────────────────
-  // types: "critical" (red) | "warn" (yellow) | "editing" (purple) | "ok" (green)
+  // types: "critical" (red) | "warn" (yellow) | "ready" (blue) | "editing" (purple) | "ok" (green)
   const attentionItems = useMemo(() => {
     const items = [];
     if (kpi.notStarted > 0) {
@@ -265,6 +245,10 @@ export default function OverviewPage({
     if (kpi.editing > 0) {
       const n = kpi.editing;
       items.push({ type: "editing", text: `${n} juror${n > 1 ? "s are" : " is"} editing a submitted evaluation` });
+    }
+    if (kpi.readyToSubmit > 0) {
+      const n = kpi.readyToSubmit;
+      items.push({ type: "ready", text: `${n} juror${n > 1 ? "s have" : " has"} scored all projects but haven't submitted yet` });
     }
     if (kpi.inProg > 0) {
       const n = kpi.inProg;
@@ -300,6 +284,7 @@ export default function OverviewPage({
           <div className="kpi-sub" style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px" }}>
             <span style={{ color: "var(--success)" }}>{kpi.completed} completed</span>
             {kpi.editing > 0 && <span style={{ color: "#8b5cf6" }}>{kpi.editing} editing</span>}
+            {kpi.readyToSubmit > 0 && <span style={{ color: "var(--accent)" }}>{kpi.readyToSubmit} ready to submit</span>}
             {kpi.inProg > 0 && <span style={{ color: "var(--warning)" }}>{kpi.inProg} in progress</span>}
             {kpi.notStarted > 0 && <span style={{ color: "var(--text-secondary)" }}>{kpi.notStarted} not started</span>}
           </div>
@@ -312,7 +297,7 @@ export default function OverviewPage({
         <div className="card kpi">
           <div className="kpi-label">Completion</div>
           <div className="kpi-value">{kpi.totalJ > 0 ? `${kpi.pct}%` : "—"}</div>
-          <div className="kpi-sub">{kpi.completed} of {kpi.totalJ} submitted</div>
+          <div className="kpi-sub">{kpi.completed} of {kpi.totalJ} completed</div>
         </div>
         <div className="card kpi">
           <div className="kpi-label">Average Score</div>
@@ -328,9 +313,7 @@ export default function OverviewPage({
         <div className="card" style={{ padding: 0 }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div className="card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                <circle cx="12" cy="8" r="4" /><path d="M20 20c0-4.4-3.6-8-8-8s-8 3.6-8 8" />
-              </svg>
+              <UsersLucideIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
               Live Jury Activity
             </div>
             <span className="text-xs text-muted">
@@ -373,7 +356,7 @@ export default function OverviewPage({
                       <td>
                         <JurorBadge name={j.juryName} affiliation={j.affiliation} size="sm" />
                       </td>
-                      <td><StatusBadge status={status} /></td>
+                      <td><JurorStatusPill status={status} /></td>
                       <td className="text-center">
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ flex: 1, height: 4, background: "var(--surface-2)", borderRadius: 99, overflow: "hidden" }}>
@@ -408,9 +391,9 @@ export default function OverviewPage({
                 onClick={() => setJurorTableExpanded((v) => !v)}
               >
                 {jurorTableExpanded ? (
-                  <>View fewer jurors <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ verticalAlign: "-1px", marginLeft: 2 }}><path d="m18 15-6-6-6 6" /></svg></>
+                  <>View fewer jurors <ChevronUpIcon size={10} style={{ verticalAlign: "-1px", marginLeft: 2 }} /></>
                 ) : (
-                  <>View all {kpi.totalJ} jurors <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ verticalAlign: "-1px", marginLeft: 2 }}><path d="m6 9 6 6 6-6" /></svg></>
+                  <>View all {kpi.totalJ} jurors <ChevronDownIcon size={10} style={{ verticalAlign: "-1px", marginLeft: 2 }} /></>
                 )}
               </button>
             </div>
@@ -424,10 +407,7 @@ export default function OverviewPage({
           <div className="card" id="needs-attention">
             <div className="card-header">
               <div className="card-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
+                <TriangleAlertIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
                 Needs Attention
               </div>
             </div>
@@ -436,6 +416,7 @@ export default function OverviewPage({
                 const bulletColor =
                   item.type === "ok"       ? "var(--success)" :
                   item.type === "editing"  ? "#8b5cf6" :
+                  item.type === "ready"    ? "var(--accent)" :
                   item.type === "critical" ? "var(--danger, #ef4444)" :
                                              "var(--warning)";
                 return (
@@ -456,9 +437,7 @@ export default function OverviewPage({
           <div className="card">
             <div className="card-header">
               <div className="card-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                </svg>
+                <CalendarRangeIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
                 Period Snapshot
               </div>
             </div>
@@ -475,16 +454,12 @@ export default function OverviewPage({
               <div>
                 {selectedPeriod?.eval_locked ? (
                   <span className="badge badge-neutral" style={{ fontSize: 10 }}>
-                    <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
+                    <LockIcon size={10} className="badge-ico" />
                     Locked
                   </span>
                 ) : selectedPeriod ? (
                   <span className="badge badge-success" style={{ fontSize: 10 }}>
-                    <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
+                    <CheckIcon size={10} className="badge-ico" />
                     Active · Unlocked
                   </span>
                 ) : (
@@ -503,9 +478,7 @@ export default function OverviewPage({
         <div className="card live-feed-card">
           <div className="live-feed-head">
             <div className="card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                <path d="M22 12h-4l-3 9-6-18-3 9H2" />
-              </svg>
+              <ActivityIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
               Live Feed
             </div>
             <span className="live-feed-dot" aria-hidden="true" />
@@ -521,36 +494,24 @@ export default function OverviewPage({
               recentActivity.map((j) => {
                 const status = jurorStatus(j);
                 const iconType =
-                  status === "completed"   ? "done"  :
-                  status === "editing"     ? "edit"  :
-                  status === "in_progress" ? "score" :
-                  status === "partial"     ? "score" :
-                                             "start";
+                  status === "completed"        ? "done"  :
+                  status === "editing"          ? "edit"  :
+                  status === "ready_to_submit"  ? "score" :
+                  status === "in_progress"      ? "score" :
+                                                  "start";
                 const feedText =
-                  status === "completed"   ? "completed all evaluations" :
-                  status === "editing"     ? "is editing a submitted evaluation" :
-                  status === "in_progress" ? `scored ${j.completedProjects} of ${j.totalProjects} projects` :
-                  status === "partial"     ? "scored all projects — awaiting submission" :
-                                             "hasn't started scoring yet";
+                  status === "completed"        ? "completed all evaluations" :
+                  status === "editing"          ? "is editing a submitted evaluation" :
+                  status === "ready_to_submit"  ? "scored all projects — awaiting submission" :
+                  status === "in_progress"      ? `scored ${j.completedProjects} of ${j.totalProjects} projects` :
+                                                  "hasn't started scoring yet";
                 return (
                   <div className="live-feed-item" key={j.jurorId || j.juryName}>
                     <div className={`live-feed-icon ${iconType}`} aria-hidden="true">
-                      {iconType === "done" ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 2v6" /><path d="M12 22v-2" /><path d="M6.2 6.2 7.6 7.6" /><path d="m16.4 16.4 1.4 1.4" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.2 17.8 1.4-1.4" /><path d="m16.4 7.6 1.4-1.4" /><circle cx="12" cy="12" r="4" />
-                        </svg>
-                      ) : iconType === "edit" ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
-                        </svg>
-                      ) : iconType === "score" ? (
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                          <path d="m12 2.7 2.75 5.57 6.15.9-4.45 4.34 1.05 6.14L12 16.8l-5.5 2.9 1.05-6.14L3.1 9.17l6.15-.9Z" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z" /></svg>
-                      )}
+                      {iconType === "done"  ? <CheckCircle2Icon size={14} /> :
+                       iconType === "edit"  ? <PencilIcon size={14} /> :
+                       iconType === "score" ? <StarIcon size={14} /> :
+                                              <PlayIcon size={14} />}
                     </div>
                     <div className="live-feed-main">
                       <div className="live-feed-text">
@@ -568,9 +529,7 @@ export default function OverviewPage({
         <div className="card completion-card">
           <div className="completion-head">
             <div className="card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                <path d="M12 3a9 9 0 1 0 9 9" /><path d="M12 7v5l3 3" />
-              </svg>
+              <ClockIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
               Completion
             </div>
           </div>
@@ -602,9 +561,7 @@ export default function OverviewPage({
         <div className="card chart-card">
           <div className="card-header">
             <div className="card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                <path d="M3 3v18h18" /><path d="m7 14 4-4 4 4 6-6" />
-              </svg>
+              <ChartIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
               Submission Timeline
             </div>
           </div>
@@ -614,11 +571,7 @@ export default function OverviewPage({
         <div className="card chart-card">
           <div className="card-header">
             <div className="card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-                <path d="M3 3v18h18" />
-                <rect x="7" y="10" width="3" height="8" rx="1" />
-                <rect x="14" y="6" width="3" height="12" rx="1" />
-              </svg>
+              <BarChart2Icon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
               Score Distribution
             </div>
           </div>
@@ -631,10 +584,7 @@ export default function OverviewPage({
       <div className="card">
         <div className="card-header">
           <div className="card-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: 6 }}>
-              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 12 7s5-3 7.5-3a2.5 2.5 0 0 1 0 5H18" />
-              <path d="M18 14v-3H6v3" /><path d="M6 14a6 6 0 0 0 12 0" />
-            </svg>
+            <TrophyIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
             Top Projects
           </div>
           <a className="form-link text-xs" style={{ cursor: "pointer" }} onClick={() => onNavigate?.("scores")}>
@@ -677,7 +627,7 @@ export default function OverviewPage({
                       {typeof p.totalAvg === "number" ? p.totalAvg.toFixed(1) : "—"}
                     </td>
                     <td className="text-xs text-muted">
-                      {p.count != null ? `Scored by ${p.count} juror${p.count !== 1 ? "s" : ""}` : "—"}
+                      {getProjectHighlight(p, criteriaConfig) ?? (p.count != null ? `Scored by ${p.count} juror${p.count !== 1 ? "s" : ""}` : "—")}
                     </td>
                   </tr>
                 ))

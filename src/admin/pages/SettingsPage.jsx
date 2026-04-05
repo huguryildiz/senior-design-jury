@@ -249,9 +249,9 @@ export default function SettingsPage({ organizationId }) {
     }
 
     if (!avatarFile && (trimmedEmail === user?.email || !trimmedEmail)) {
-      _toast.success("Profile updated");
+      _toast.success("Display name saved");
     } else if (avatarFile && trimmedEmail === user?.email) {
-      _toast.success("Profile updated");
+      _toast.success("Profile saved");
     }
   }, [setDisplayName, setAvatarUrl, user, _toast]);
 
@@ -711,9 +711,9 @@ export default function SettingsPage({ organizationId }) {
                     const wb = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb, ws, "Memberships");
                     XLSX.writeFile(wb, "memberships.xlsx");
-                    _toast.success("Memberships exported");
+                    _toast.success(`${crossOrgAdmins.length} admin${crossOrgAdmins.length !== 1 ? "s" : ""} exported · Excel`);
                   } catch (e) {
-                    _toast.error(e?.message || "Export failed");
+                    _toast.error(e?.message || "Memberships export failed — please try again");
                   }
                 }}
                 disabled={crossOrgAdmins.length === 0}

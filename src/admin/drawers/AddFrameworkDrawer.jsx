@@ -10,6 +10,7 @@
 //   error        — string | null
 
 import { useState, useEffect } from "react";
+import { AlertCircle, Info } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 
 const TYPES = [
@@ -185,6 +186,7 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
 
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
+            <div className="fs-alert-icon"><AlertCircle size={15} /></div>
             <div className="fs-alert-body">{displayError}</div>
           </div>
         )}
@@ -337,12 +339,7 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
         {showSeeds && (
           <div className="fw-template-body">
             <div className="fs-alert info" style={{ margin: "10px 0", padding: "10px 12px" }}>
-              <div className="fs-alert-icon" style={{ width: 24, height: 24 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4M12 8h.01" />
-                </svg>
-              </div>
+              <div className="fs-alert-icon" style={{ width: 24, height: 24 }}><Info size={15} /></div>
               <div className="fs-alert-body">
                 <div className="fs-alert-desc" style={{ fontSize: 11 }}>
                   Pre-populate your framework with initial outcomes. You can always add, edit, or remove

@@ -101,6 +101,10 @@ import {
   Code,
   University,
   RefreshCcw,
+  Activity,
+  BarChart2,
+  Star,
+  Play,
 } from "lucide-react";
 
 export function HomeIcon({ size = 16, className = "", ...props }) {
@@ -489,6 +493,22 @@ export function UniversityIcon({ size = 16, className = "", ...props }) {
 
 export function RefreshCcwIcon({ size = 16, className = "", ...props }) {
   return <RefreshCcw size={size} className={className} {...props} />;
+}
+
+export function ActivityIcon({ size = 16, className = "", ...props }) {
+  return <Activity size={size} className={className} {...props} />;
+}
+
+export function BarChart2Icon({ size = 16, className = "", ...props }) {
+  return <BarChart2 size={size} className={className} {...props} />;
+}
+
+export function StarIcon({ size = 16, className = "", ...props }) {
+  return <Star size={size} className={className} {...props} />;
+}
+
+export function PlayIcon({ size = 16, className = "", ...props }) {
+  return <Play size={size} className={className} {...props} />;
 }
 
 // Brand icon — no lucide equivalent, kept as inline SVG

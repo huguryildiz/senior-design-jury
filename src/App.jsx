@@ -56,13 +56,20 @@ export default function App() {
   const token = readToken();
   const { user, isSuper, loading: authLoading } = useAuth();
 
-  // When auth session is cleared from anywhere (sidebar, settings, etc.),
-  // always return to the landing page.
+  // Track whether we've ever had a logged-in user this session.
+  // Only redirect to home if auth was previously established and then cleared
+  // (i.e. logout), not when navigating to /admin without a session yet.
+  const [hadUser, setHadUser] = useState(false);
   useEffect(() => {
-    if (!authLoading && !user && page === "admin") {
+    if (user) setHadUser(true);
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && !user && hadUser && page === "admin") {
+      setHadUser(false);
       setPage("home");
     }
-  }, [user, authLoading, page]);
+  }, [user, authLoading, hadUser, page]);
   const [maintenance, setMaintenance] = useState(null);
 
   useEffect(() => {

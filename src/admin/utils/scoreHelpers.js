@@ -124,6 +124,51 @@ export const jurorStatusMeta = {
   },
 };
 
+// ── Top-project highlight phrase ──────────────────────────────
+// Pure function: derives a qualitative highlight from per-criterion averages.
+// Rules (evaluated in priority order):
+//   1. totalAvg ≥ 85                       → "Outstanding overall performance"
+//   2. All criteria within 10 pct-pt range → "Consistent across all criteria"
+//   3. Top criterion >15 pct-pt above next → "High [criterion]"
+//   4. Top two criteria both >80 pct       → "Strong [crit1] & [crit2]"
+//   5. Fallback                            → "Strongest in [criterion]"
+//
+// @param {object}   project        - summaryData row: { avg: { [id]: number }, totalAvg }
+// @param {object[]} criteriaConfig - [{ id, max, shortLabel, label }]
+// @returns {string|null}
+export function getProjectHighlight(project, criteriaConfig = []) {
+  if (!project?.avg || criteriaConfig.length === 0) return null;
+
+  const entries = criteriaConfig
+    .map((c) => {
+      const raw = project.avg[c.id];
+      if (raw == null || !c.max) return null;
+      return { label: c.shortLabel || c.label || c.id, pct: (raw / c.max) * 100 };
+    })
+    .filter(Boolean);
+
+  if (entries.length === 0) return null;
+
+  const sorted = [...entries].sort((a, b) => b.pct - a.pct);
+
+  if (project.totalAvg != null && project.totalAvg >= 85) return "Outstanding overall performance";
+
+  if (entries.length >= 2) {
+    const range = sorted[0].pct - sorted[sorted.length - 1].pct;
+    if (range <= 10) return "Consistent across all criteria";
+  }
+
+  if (sorted.length >= 2 && sorted[0].pct - sorted[1].pct > 15) {
+    return `High ${sorted[0].label}`;
+  }
+
+  if (sorted.length >= 2 && sorted[0].pct > 80 && sorted[1].pct > 80) {
+    return `Strong ${sorted[0].label} & ${sorted[1].label}`;
+  }
+
+  return `Strongest in ${sorted[0].label}`;
+}
+
 // ── Overview dashboard metrics ─────────────────────────────────
 // Pure function: no React deps. Extracted from AdminPanel.jsx useMemo
 // so it can be unit-tested independently.

@@ -336,9 +336,10 @@ export default function PeriodsPage({
                 header, rows, colWidths: [28, 14, 10, 10, 18],
               });
               setExportOpen(false);
-              _toast.success("Periods exported");
+              const fmtLabel = fmt === "pdf" ? "PDF" : fmt === "csv" ? "CSV" : "Excel";
+              _toast.success(`${filteredList.length} period${filteredList.length !== 1 ? "s" : ""} exported · ${fmtLabel}`);
             } catch (e) {
-              _toast.error(e?.message || "Export failed");
+              _toast.error(e?.message || "Periods export failed — please try again");
             }
           }}
         />
@@ -493,7 +494,7 @@ export default function PeriodsPage({
 
       {/* Set Current Period confirmation modal */}
       {switchTarget && (
-        <div className="modal-overlay" onClick={() => setSwitchTarget(null)}>
+        <div className="modal-overlay show" onClick={() => setSwitchTarget(null)}>
           <div className="modal-card" style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">Set as Current Period</span>
@@ -534,7 +535,7 @@ export default function PeriodsPage({
 
       {/* Add / Edit period modal */}
       {addModalOpen && (
-        <div className="modal-overlay" onClick={() => setAddModalOpen(false)}>
+        <div className="modal-overlay show" onClick={() => setAddModalOpen(false)}>
           <div className="modal-card" style={{ maxWidth: "440px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">{editTarget ? "Edit Period" : "Add Period"}</span>

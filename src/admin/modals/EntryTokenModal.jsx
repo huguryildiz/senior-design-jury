@@ -11,6 +11,7 @@
 //   onSendEmail    — (email: string) => Promise<void>
 
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 
 export default function EntryTokenModal({
@@ -182,12 +183,7 @@ export default function EntryTokenModal({
         </div>
 
         <div className="fs-alert warning" style={{ marginTop: 10, marginBottom: 0 }}>
-          <div className="fs-alert-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <path d="M12 9v4M12 17h.01" />
-            </svg>
-          </div>
+          <div className="fs-alert-icon"><AlertTriangle size={15} /></div>
           <div className="fs-alert-body">
             <div className="fs-alert-title">Token expires in under 24h</div>
             <div className="fs-alert-desc">Revoking generates a new token with a fresh 24h window.</div>

@@ -1,37 +1,29 @@
-// src/admin/modals/ResetPinModal.jsx
-// Modal: confirm before resetting a juror's PIN (step 1 of 2).
+// src/admin/modals/PinResetConfirmModal.jsx
+// Step 1 of 2 in the PIN reset flow.
+// Shows juror identity, current PIN mask, and a warning before confirming.
 //
 // Props:
-//   open      — boolean
-//   onClose   — () => void
-//   juror     — { name, affiliation, initials, color }
-//   onConfirm — () => Promise<void>
+//   open    — boolean
+//   onClose — () => void
+//   juror   — { juror_name, juryName, affiliation }
+//   loading — boolean
+//   onConfirm — () => void
 
-import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
 
-export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
-  const [confirming, setConfirming] = useState(false);
-
-  const handleConfirm = async () => {
-    setConfirming(true);
-    try {
-      await onConfirm?.();
-    } finally {
-      setConfirming(false);
-    }
-  };
+export default function PinResetConfirmModal({ open, onClose, juror, loading, onConfirm }) {
+  const name = juror?.juryName || juror?.juror_name || "";
 
   return (
     <Modal open={open} onClose={onClose} size="sm">
       <div className="fs-modal-header">
         <div className="fs-modal-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="fs-icon accent">
+            <div className="fs-icon" style={{ background: "var(--surface-2)" }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect width="18" height="11" x="3" y="11" rx="2" />
+                <rect x="3" y="11" width="18" height="10" rx="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
@@ -49,6 +41,7 @@ export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
       </div>
 
       <div className="fs-modal-body">
+        {/* Step indicator */}
         <div className="fs-steps">
           <div className="fs-step active">
             <div className="fs-step-dot">1</div>
@@ -61,6 +54,7 @@ export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
           </div>
         </div>
 
+        {/* Juror card */}
         {juror && (
           <div
             style={{
@@ -69,11 +63,16 @@ export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
               borderRadius: "var(--radius)", marginBottom: 12,
             }}
           >
-            <JurorBadge name={juror.name} affiliation={`${juror.affiliation || ""} · Current PIN: ****`} size="md" />
+            <JurorBadge
+              name={name}
+              affiliation={`${juror.affiliation || ""}  ·  Current PIN: ****`}
+              size="md"
+            />
           </div>
         )}
 
-        <div className="fs-alert warning" style={{ margin: 0 }}>
+        {/* Warning banner */}
+        <div className="fs-alert warning" style={{ marginBottom: 0 }}>
           <div className="fs-alert-icon"><AlertTriangle size={15} /></div>
           <div className="fs-alert-body">
             <div className="fs-alert-title">Current PIN will stop working</div>
@@ -83,16 +82,16 @@ export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
       </div>
 
       <div className="fs-modal-footer">
-        <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={confirming}>
+        <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={loading}>
           Cancel
         </button>
         <button
           className="fs-btn fs-btn-primary"
           type="button"
-          onClick={handleConfirm}
-          disabled={confirming}
+          onClick={onConfirm}
+          disabled={loading}
         >
-          {confirming ? "Resetting…" : "Reset PIN"}
+          {loading ? "Resetting…" : "Reset PIN"}
         </button>
       </div>
     </Modal>

@@ -45,32 +45,42 @@ export default function UserAvatarMenu({ onLogout, onNavigate }) {
   const initials = getInitials(displayName, user?.email);
   const avatarBg = getAvatarColor(displayName || user?.email);
 
-  // Right-anchored positioning — dropdown aligns its right edge to trigger's right edge
+  // Smart positioning — opens toward center of viewport, stays within bounds
   useLayoutEffect(() => {
     if (!menuOpen) return;
     function update() {
       const trigger = triggerRef.current;
+      const panel = panelRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
       const vw = window.innerWidth;
       const vh = window.innerHeight;
+      const pw = panel?.offsetWidth || 280;
+      const ph = panel?.offsetHeight || 200;
 
-      let right = vw - rect.right;
-      right = Math.max(8, right);
-
+      // Vertical: below trigger, or above if not enough space below
       let top = rect.bottom + 6;
-      if (panelRef.current) {
-        const ph = panelRef.current.offsetHeight;
-        if (top + ph > vh - 12) {
-          const above = rect.top - ph - 6;
-          top = above >= 8 ? above : Math.max(8, vh - ph - 12);
-        }
+      if (top + ph > vh - 12) {
+        const above = rect.top - ph - 6;
+        top = above >= 8 ? above : Math.max(8, vh - ph - 12);
       }
+
+      // Horizontal: align to trigger's near edge, clamped within viewport
+      const triggerCenterX = (rect.left + rect.right) / 2;
+      let left;
+      if (triggerCenterX > vw / 2) {
+        // Right side — align right edges
+        left = rect.right - pw;
+      } else {
+        // Left side — align left edges
+        left = rect.left;
+      }
+      left = Math.max(8, Math.min(left, vw - pw - 8));
 
       setPanelStyle({
         position: "fixed",
         top: `${Math.round(top)}px`,
-        right: `${Math.round(right)}px`,
+        left: `${Math.round(left)}px`,
       });
     }
     update();

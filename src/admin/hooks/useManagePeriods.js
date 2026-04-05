@@ -380,10 +380,12 @@ export function useManagePeriods({
     setMessage("");
     clearPanelError("period");
     incLoading();
+    const periodToDelete = periodList.find((p) => p.id === periodId);
+    const deletedPeriodName = String(periodToDelete?.name || "").trim();
     try {
       await deletePeriod(periodId);
       removePeriod(periodId);
-      setMessage("Period deleted");
+      setMessage(deletedPeriodName ? `Period "${deletedPeriodName}" deleted` : "Period deleted");
     } catch (e) {
       setPanelError("period", e?.message || "Could not delete period. Try again.");
     } finally {

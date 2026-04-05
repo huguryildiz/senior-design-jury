@@ -29,11 +29,12 @@ export async function sendEntryTokenEmail({ recipientEmail, tokenUrl, expiresIn,
  * @param {string} [params.jurorAffiliation]
  * @param {string} [params.tokenUrl]
  * @param {string} [params.periodName]
+ * @param {string} [params.organizationName]
  * @returns {Promise<{ ok: boolean, sent: boolean, error?: string }>}
  */
-export async function sendJurorPinEmail({ recipientEmail, jurorName, pin, jurorAffiliation, tokenUrl, periodName }) {
+export async function sendJurorPinEmail({ recipientEmail, jurorName, pin, jurorAffiliation, tokenUrl, periodName, organizationName }) {
   const { data, error } = await supabase.functions.invoke("send-juror-pin-email", {
-    body: { recipientEmail, jurorName, pin, jurorAffiliation, tokenUrl, periodName },
+    body: { recipientEmail, jurorName, pin, jurorAffiliation, tokenUrl, periodName, organizationName },
   });
   if (error) throw error;
   return data;
