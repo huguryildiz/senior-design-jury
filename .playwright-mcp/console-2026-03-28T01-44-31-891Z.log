@@ -1,6 +1,0 @@
-[ 1327722ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/admin/ManageSemesterPanel.jsx?t=1774663599593:0
-[ 1327732ms] [ERROR] [hmr] Failed to reload /src/admin/ManageSemesterPanel.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:297
-[14144313ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/src/styles/admin-manage.css?t=1774676416201:0
-[14144313ms] [ERROR] [hmr] Failed to reload /src/styles/admin-manage.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:297
-[15165288ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/src/styles/jury.css?t=1774677437176:0
-[15165288ms] [ERROR] [hmr] Failed to reload /src/styles/jury.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:297

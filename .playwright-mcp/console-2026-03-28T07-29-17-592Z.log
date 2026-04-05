@@ -1,4 +1,0 @@
-[   15733ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://etxgvkvxvbyserhrugjw.supabase.co/auth/v1/authorize?provider=google&redirect_to=http%3A%2F%2Flocalhost%3A5173%3Fpage%3Dadmin:0
-[   15770ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://etxgvkvxvbyserhrugjw.supabase.co/favicon.ico:0
-[   24932ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://etxgvkvxvbyserhrugjw.supabase.co/rest/v1/rpc/rpc_admin_tenant_list_public:0
-[   24959ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://etxgvkvxvbyserhrugjw.supabase.co/rest/v1/rpc/rpc_admin_tenant_list_public:0

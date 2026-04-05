@@ -1,4 +1,0 @@
-[      88ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8321/src/assets/vera_logo_dark.png:0
-[      88ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8321/src/assets/favicon/web-app-manifest-512x512.png:0
-[     121ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8321/src/assets/favicon/web-app-manifest-512x512.png:0
-[     274ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8321/favicon.ico:0

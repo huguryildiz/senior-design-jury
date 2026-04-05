@@ -1,4 +1,0 @@
-[   11253ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://kmprsxrofnemmsryjhfj.supabase.co/rest/v1/rpc/rpc_admin_auth_get_session:0
-[   11253ms] [ERROR] Failed to fetch session memberships: unauthorized @ https://demo.vera-eval.app/assets/index-66219b0b.js:52
-[   11994ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://kmprsxrofnemmsryjhfj.supabase.co/functions/v1/rpc-proxy:0
-[   11998ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://kmprsxrofnemmsryjhfj.supabase.co/functions/v1/rpc-proxy:0

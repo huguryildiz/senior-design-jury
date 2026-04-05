@@ -1,2 +1,0 @@
-[    1487ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5174/node_modules/.vite/deps/chunk-WW4AH6NN.js?v=24d181f7:21579
-[   13355ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://etxgvkvxvbyserhrugjw.supabase.co/auth/v1/token?grant_type=password:0

@@ -28,11 +28,29 @@ supabase/functions/.env.local
 # AI / local dev guides
 CLAUDE.md
 AGENTS.md
+GEMINI.md
 .claude/
 .superpowers/
+.cursorrules
+.cursor/
+.copilot/
+.aider*
 
 # Git worktrees
 .worktrees/
 
 # Playwright MCP session artifacts
 .playwright-mcp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Supabase local
+supabase/.temp/
