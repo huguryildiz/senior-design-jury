@@ -10,10 +10,10 @@ import PinResultModal from "../modals/PinResultModal";
 import RemoveJurorModal from "../modals/RemoveJurorModal";
 import ResetPinModal from "../modals/ResetPinModal";
 import ImportJurorsModal from "../modals/ImportJurorsModal";
+import EnableEditingModal from "../modals/EnableEditingModal";
 import AddJurorDrawer from "../drawers/AddJurorDrawer";
 import EditJurorDrawer from "../drawers/EditJurorDrawer";
-import { sendJurorPinEmail } from "@/shared/api";
-import { getRawToken } from "@/shared/storage/adminStorage";
+import { sendJurorPinEmail, getActiveEntryTokenPlain } from "@/shared/api";
 import { parseJurorsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
@@ -22,6 +22,7 @@ import "../../styles/pages/jurors.css";
 // ── Helpers ──────────────────────────────────────────────────
 
 import JurorBadge from "../components/JurorBadge";
+import JurorStatusPill from "../components/JurorStatusPill";
 
 function formatRelative(ts) {
   if (!ts) return "—";
@@ -48,16 +49,21 @@ function formatFull(ts) {
 const JUROR_COLUMNS = [
   { key: "name",       label: "Juror Name",         exportWidth: 28 },
   { key: "progress",   label: "Projects Evaluated",  exportWidth: 20 },
+  { key: "avgScore",   label: "Avg. Score",          exportWidth: 14 },
   { key: "status",     label: "Status",              exportWidth: 14 },
   { key: "lastActive", label: "Last Active",          exportWidth: 18 },
 ];
 
-function getJurorCell(j, key) {
+function getJurorCell(j, key, avgMap) {
   if (key === "name")       return j.juryName || j.juror_name || "";
   if (key === "progress") {
     const scored = j.overviewScoredProjects ?? 0;
     const total  = j.overviewTotalProjects  ?? 0;
     return `${scored} / ${total}`;
+  }
+  if (key === "avgScore") {
+    const jid = String(j.jurorId || j.juror_id || "");
+    return avgMap?.get(jid) ?? "—";
   }
   if (key === "status")     return j.overviewStatus || "";
   if (key === "lastActive") {
@@ -67,38 +73,6 @@ function getJurorCell(j, key) {
   return "";
 }
 
-function statusPillClass(status) {
-  switch (status) {
-    case "editing": return "pill pill-editing";
-    case "completed": return "pill pill-completed";
-    case "in_progress": return "pill pill-progress";
-    case "ready_to_submit": return "pill pill-ready";
-    default: return "pill pill-not-started";
-  }
-}
-
-function statusLabel(status) {
-  switch (status) {
-    case "editing": return "Editing";
-    case "completed": return "Completed";
-    case "in_progress": return "In Progress";
-    case "ready_to_submit": return "Ready to Submit";
-    default: return "Not Started";
-  }
-}
-
-function StatusIcon({ status }) {
-  if (status === "editing") {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
-  }
-  if (status === "completed") {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5" /></svg>;
-  }
-  if (status === "in_progress") {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
-  }
-  return null;
-}
 
 function groupBarColor(scored, total) {
   if (total === 0) return "var(--text-tertiary)";
@@ -194,6 +168,9 @@ export default function JurorsPage({
   // Remove juror modal
   const [removeJuror, setRemoveJuror] = useState(null);
 
+  // Enable editing mode modal
+  const [editModeJuror, setEditModeJuror] = useState(null);
+
   // ── Data loading ────────────────────────────────────────────
   useEffect(() => {
     incLoading();
@@ -230,6 +207,7 @@ export default function JurorsPage({
   }, [openMenuId]);
 
   const jurorList = jurorsHook.jurors || [];
+  const periodMaxScore = jurorsHook.periodMaxScore;
 
   // Unique affiliations for filter
   const affiliations = useMemo(() => {
@@ -257,6 +235,21 @@ export default function JurorsPage({
     return list;
   }, [jurorList, statusFilter, affilFilter, search]);
 
+  // Per-juror average score map (only completed scores, i.e. total != null)
+  const jurorAvgMap = useMemo(() => {
+    const byJuror = new Map();
+    for (const r of jurorsHook.scoreRows || []) {
+      if (r.total == null || !r.jurorId) continue;
+      if (!byJuror.has(r.jurorId)) byJuror.set(r.jurorId, []);
+      byJuror.get(r.jurorId).push(r.total);
+    }
+    const result = new Map();
+    for (const [id, totals] of byJuror) {
+      result.set(id, (totals.reduce((s, v) => s + v, 0) / totals.length).toFixed(1));
+    }
+    return result;
+  }, [jurorsHook.scoreRows]);
+
   // KPI stats
   const totalJurors = jurorList.length;
   const completedJurors = jurorList.filter((j) => j.overviewStatus === "completed").length;
@@ -265,8 +258,7 @@ export default function JurorsPage({
   const readyJurors = jurorList.filter((j) => j.overviewStatus === "ready_to_submit").length;
   const notStartedJurors = jurorList.filter((j) => j.overviewStatus === "not_started").length;
 
-  // Editing banner (first juror with editing enabled)
-  const editingBannerJuror = jurorList.find((j) => j.overviewStatus === "editing");
+  const editingBannerJurors = jurorList.filter((j) => j.overviewStatus === "editing");
 
   // ── Modal handlers ──────────────────────────────────────────
 
@@ -284,8 +276,21 @@ export default function JurorsPage({
   }
 
   async function handleSaveEditJuror(jurorId, { name, affiliation, email }) {
-    await jurorsHook.handleEditJuror({ jurorId, juror_name: name, affiliation, email });
+    const result = await jurorsHook.handleEditJuror({ jurorId, juror_name: name, affiliation, email });
+    if (!result?.ok) throw new Error(result?.message || "Could not update juror.");
   }
+
+  const handleEnableEditMode = async ({ reason, durationMinutes }) => {
+    const jurorId = editModeJuror?.juror_id || editModeJuror?.jurorId;
+    const result = await jurorsHook.handleToggleJurorEdit({
+      jurorId,
+      enabled: true,
+      reason,
+      durationMinutes,
+    });
+    if (!result?.ok) throw new Error(result?.message || "Could not enable editing mode.");
+    setEditModeJuror(null);
+  };
 
   function openPinResetModal(juror) {
     setPinResetJuror(juror);
@@ -305,12 +310,15 @@ export default function JurorsPage({
     if (!info?.pin_plain_once || !email) return;
     let tokenUrl;
     if (includeQr) {
-      const raw = getRawToken(periods.viewPeriodId);
-      if (raw) tokenUrl = `${window.location.origin}?eval=${encodeURIComponent(raw)}`;
+      const pid = selectedPeriodId || periods.viewPeriodId;
+      if (pid) {
+        const plain = await getActiveEntryTokenPlain(pid);
+        if (plain) tokenUrl = `${window.location.origin}?eval=${encodeURIComponent(plain)}`;
+      }
     }
     await sendJurorPinEmail({
       recipientEmail: email,
-      jurorName: target?.juror_name || info?.juror_name || "",
+      jurorName: target?.juryName || target?.juror_name || info?.juror_name || "",
       jurorAffiliation: target?.affiliation || info?.affiliation || "",
       pin: info.pin_plain_once,
       tokenUrl,
@@ -335,19 +343,25 @@ export default function JurorsPage({
 
   return (
     <div>
-      {/* Editing mode banner */}
-      {editingBannerJuror && (
-        <div className="fb-banner fbb-editing">
+      {/* Editing mode banners */}
+      {editingBannerJurors.map((j) => (
+        <div key={j.jurorId || j.juror_id} className="fb-banner fbb-editing">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
           <span className="fb-banner-text">
-            Editing enabled for <strong>{editingBannerJuror.juror_name}</strong> — changes will overwrite existing scores
+            Editing enabled for <strong>{j.juryName || j.juror_name}</strong> — changes will overwrite existing scores
           </span>
-          <span className="fb-banner-action" style={{ color: "var(--fb-editing-text)" }}>Disable editing →</span>
+          <button
+            className="fb-banner-action"
+            style={{ color: "var(--fb-editing-text)", background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
+            onClick={() => jurorsHook.handleForceCloseJurorEdit({ jurorId: j.jurorId || j.juror_id })}
+          >
+            Disable editing →
+          </button>
         </div>
-      )}
+      ))}
 
       {/* Header */}
       <div className="jurors-page-header">
@@ -471,7 +485,7 @@ export default function JurorsPage({
           onClose={() => setExportOpen(false)}
           generateFile={async (fmt) => {
     const header = JUROR_COLUMNS.map((c) => c.label);
-    const rows = filteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key)));
+    const rows = filteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key, jurorAvgMap)));
     return generateTableBlob(fmt, {
       filenameType: "Jurors", sheetName: "Jurors",
       periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
@@ -483,7 +497,7 @@ export default function JurorsPage({
           onExport={async (fmt) => {
     try {
       const header = JUROR_COLUMNS.map((c) => c.label);
-      const rows = filteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key)));
+      const rows = filteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key, jurorAvgMap)));
       await downloadTable(fmt, {
         filenameType: "Jurors", sheetName: "Jurors",
         periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
@@ -515,6 +529,7 @@ export default function JurorsPage({
             <tr>
               <th>Juror Name</th>
               <th className="text-center">Projects Evaluated</th>
+              <th className="text-center">Avg. Score{periodMaxScore != null ? ` / ${periodMaxScore}` : ""}</th>
               <th>Status</th>
               <th>Last Active</th>
               <th style={{ width: "48px" }}>Actions</th>
@@ -523,13 +538,13 @@ export default function JurorsPage({
           <tbody>
             {loadingCount > 0 && filteredList.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
+                <td colSpan={6} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
                   Loading jurors…
                 </td>
               </tr>
             ) : filteredList.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
+                <td colSpan={6} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
                   No jurors found.
                 </td>
               </tr>
@@ -555,11 +570,18 @@ export default function JurorsPage({
                       </span>
                     </span>
                   </td>
+                  <td className="text-center avg-score-cell">
+                    {jurorAvgMap.get(String(jid)) ? (
+                      <>
+                        <span className="avg-score-value">{jurorAvgMap.get(String(jid))}</span>
+                        {periodMaxScore != null && <span className="avg-score-max"> /{periodMaxScore}</span>}
+                      </>
+                    ) : (
+                      <span className="avg-score-empty">—</span>
+                    )}
+                  </td>
                   <td>
-                    <span className={statusPillClass(status)}>
-                      <StatusIcon status={status} />
-                      {statusLabel(status)}
-                    </span>
+                    <JurorStatusPill status={status} />
                   </td>
                   <td className="jurors-table-active" data-tooltip={formatFull(lastActive)}>
                     {formatRelative(lastActive)}
@@ -595,12 +617,38 @@ export default function JurorsPage({
                             Reset PIN
                           </div>
                           <div className="juror-action-sep" />
-                          <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); jurorsHook.handleToggleJurorEdit({ jurorId: jid, enabled: true }); }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                            Enable Editing Mode
-                          </div>
+                          {status !== "editing" && (
+                            status === "completed" ? (
+                              <div
+                                className="juror-action-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId(null);
+                                  setEditModeJuror(juror);
+                                }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                                  <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                                  <path d="M11 15h1v2" />
+                                </svg>
+                                Enable Editing Mode
+                              </div>
+                            ) : (
+                              <span
+                                className="juror-action-item-tooltip-wrap"
+                                data-tooltip="Juror must complete their submission before editing can be unlocked."
+                              >
+                                <div className="juror-action-item disabled">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                    <rect x="14" y="11" width="7" height="10" rx="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                                  </svg>
+                                  Enable Editing Mode
+                                </div>
+                              </span>
+                            )
+                          )}
                           <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); onViewReviews?.(juror); }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
@@ -675,7 +723,7 @@ export default function JurorsPage({
         open={!!pinResetJuror && !jurorsHook.resetPinInfo}
         onClose={() => setPinResetJuror(null)}
         juror={pinResetJuror ? {
-          name: pinResetJuror.juror_name || "",
+          name: pinResetJuror.juryName || pinResetJuror.juror_name || "",
           affiliation: pinResetJuror.affiliation || "",
         } : null}
         onConfirm={handleResetPin}
@@ -685,7 +733,11 @@ export default function JurorsPage({
       <PinResultModal
         open={!!jurorsHook.resetPinInfo}
         onClose={jurorsHook.closeResetPinDialog}
-        juror={jurorsHook.pinResetTarget}
+        juror={jurorsHook.pinResetTarget ? {
+          name: jurorsHook.pinResetTarget.juryName || jurorsHook.pinResetTarget.juror_name || "",
+          affiliation: jurorsHook.pinResetTarget.affiliation || "",
+          email: jurorsHook.pinResetTarget.email || "",
+        } : null}
         newPin={jurorsHook.resetPinInfo?.pin_plain_once}
         onSendEmail={handleSendPinEmail}
       />
@@ -705,6 +757,17 @@ export default function JurorsPage({
         }}
         periodName={periods.viewPeriodLabel}
         onRemove={handleRemoveJuror}
+      />
+
+      {/* Enable Editing Mode Modal */}
+      <EnableEditingModal
+        open={!!editModeJuror}
+        onClose={() => setEditModeJuror(null)}
+        juror={editModeJuror ? {
+          name: editModeJuror.juryName || editModeJuror.juror_name || "",
+          affiliation: editModeJuror.affiliation || "",
+        } : null}
+        onEnable={handleEnableEditMode}
       />
 
       <ImportJurorsModal
