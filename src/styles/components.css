@@ -2736,3 +2736,66 @@ body:not(.dark-mode) .profile-modal-btn--ghost {
   border: 1px solid var(--border);
 }
 .profile-modal-btn--ghost:hover:not(:disabled) { background: var(--muted, rgba(128,128,128,0.1)); }
+
+/* ── Avatar menu multi-view ────────────────────────────────── */
+
+.ph-avatar-menu-views {
+  position: relative;
+  overflow: hidden;
+}
+.ph-avatar-menu-view {
+  width: 100%;
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 180ms ease;
+}
+.ph-avatar-menu-view--hidden-right {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(100%);
+  pointer-events: none;
+  opacity: 0;
+}
+.ph-avatar-menu-view--hidden-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-100%);
+  pointer-events: none;
+  opacity: 0;
+}
+.ph-avatar-view-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.ph-avatar-view-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.ph-avatar-view-back:hover { background: var(--accent); color: var(--text-primary); }
+.ph-avatar-view-back svg { width: 13px; height: 13px; }
+.ph-avatar-view-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body:not(.dark-mode) .ph-avatar-view-back:hover { background: #f1f5f9; }

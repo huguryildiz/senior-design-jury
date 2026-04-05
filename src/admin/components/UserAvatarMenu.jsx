@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "@/auth";
 import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import { useProfileEdit } from "../hooks/useProfileEdit";
+import { listOrganizations } from "@/shared/api";
 import {
   UserPenIcon,
   KeyRoundIcon,
@@ -58,6 +59,12 @@ export default function UserAvatarMenu({ onLogout }) {
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
   const [panelStyle, setPanelStyle] = useState(null);
+  const [menuView, setMenuView] = useState("main"); // "main" | "team" | "detail"
+  const [prevView, setPrevView] = useState("main");
+  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [orgList, setOrgList] = useState([]);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgError, setOrgError] = useState("");
 
   // Right-anchored positioning — dropdown aligns its right edge to trigger's right edge
   useLayoutEffect(() => {
@@ -106,6 +113,8 @@ export default function UserAvatarMenu({ onLogout }) {
       if (triggerRef.current?.contains(e.target)) return;
       if (panelRef.current?.contains(e.target)) return;
       setMenuOpen(false);
+      setMenuView("main");
+      setSelectedAdmin(null);
     }
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
@@ -115,17 +124,35 @@ export default function UserAvatarMenu({ onLogout }) {
   useEffect(() => {
     if (!menuOpen) return;
     function handleKey(e) {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setMenuView("main");
+        setSelectedAdmin(null);
+      }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [menuOpen]);
+
+  // Fetch org/admin data when menu opens (super-admin only)
+  useEffect(() => {
+    if (!menuOpen || !isSuper) return;
+    setOrgLoading(true);
+    setOrgError("");
+    listOrganizations()
+      .then((data) => setOrgList(data))
+      .catch((e) => setOrgError(e?.message || "Could not load admins."))
+      .finally(() => setOrgLoading(false));
+  }, [menuOpen, isSuper]);
 
   const initials = getInitials(displayName, user?.email);
   const avatarBg = getAvatarColor(displayName || user?.email);
 
   const handleMenuAction = useCallback((action) => {
     setMenuOpen(false);
+    setMenuView("main");
+    setPrevView("main");
+    setSelectedAdmin(null);
     if (action === "profile") profile.openModal("profile");
     else if (action === "password") profile.openModal("password");
     else if (action === "logout") onLogout();
@@ -156,41 +183,64 @@ export default function UserAvatarMenu({ onLogout }) {
           role="menu"
           aria-label="Account menu"
         >
-          {/* Header */}
-          <div className="ph-avatar-menu-header">
-            <div
-              className="ph-avatar-circle-lg"
-              style={{ background: avatarBg }}
-              aria-hidden="true"
-            >
-              {initials}
+          <div className="ph-avatar-menu-views">
+            {/* Main view */}
+            <div className={`ph-avatar-menu-view${menuView !== "main" ? " ph-avatar-menu-view--hidden-left" : ""}`}>
+              {/* Header */}
+              <div className="ph-avatar-menu-header">
+                <div className="ph-avatar-circle-lg" style={{ background: avatarBg }} aria-hidden="true">
+                  {initials}
+                </div>
+                <div className="ph-avatar-menu-identity">
+                  <span className="ph-avatar-menu-name">{displayName || "Admin"}</span>
+                  <span className="ph-avatar-menu-email">{user?.email}</span>
+                  <span className={`ph-avatar-role-badge${isSuper ? " ph-avatar-role-badge--super" : ""}`}>
+                    {roleBadgeLabel(isSuper)}
+                  </span>
+                  {!isSuper && activeOrganization && (
+                    <span className="ph-avatar-menu-tenant">{activeOrganization.name}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="ph-avatar-menu-divider" />
+
+              <button className="ph-avatar-menu-item" role="menuitem" onClick={() => handleMenuAction("profile")}>
+                <UserPenIcon /> My Profile
+              </button>
+              <button className="ph-avatar-menu-item" role="menuitem" onClick={() => handleMenuAction("password")}>
+                <KeyRoundIcon /> Change Password
+              </button>
+
+              <div className="ph-avatar-menu-divider" />
+
+              <button className="ph-avatar-menu-item ph-avatar-menu-item--danger" role="menuitem" onClick={() => handleMenuAction("logout")}>
+                <LogOutIcon /> Sign Out
+              </button>
             </div>
-            <div className="ph-avatar-menu-identity">
-              <span className="ph-avatar-menu-name">{displayName || "Admin"}</span>
-              <span className="ph-avatar-menu-email">{user?.email}</span>
-              <span className={`ph-avatar-role-badge${isSuper ? " ph-avatar-role-badge--super" : ""}`}>
-                {roleBadgeLabel(isSuper)}
-              </span>
-              {!isSuper && activeOrganization && (
-                <span className="ph-avatar-menu-tenant">{activeOrganization.name}</span>
-              )}
+
+            {/* Team list view — placeholder, filled in Task 4 */}
+            <div className={`ph-avatar-menu-view${menuView !== "team" ? " ph-avatar-menu-view--hidden-right" : ""}`}>
+              <div className="ph-avatar-view-header">
+                <button className="ph-avatar-view-back" onClick={() => setMenuView("main")} aria-label="Back">
+                  ← <span>Back</span>
+                </button>
+                <span className="ph-avatar-view-title">All Admins</span>
+              </div>
+              <div style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-tertiary)" }}>Loading…</div>
+            </div>
+
+            {/* Admin detail view — placeholder, filled in Task 5 */}
+            <div className={`ph-avatar-menu-view${menuView !== "detail" ? " ph-avatar-menu-view--hidden-right" : ""}`}>
+              <div className="ph-avatar-view-header">
+                <button className="ph-avatar-view-back" onClick={() => setMenuView(prevView)} aria-label="Back">
+                  ← <span>Back</span>
+                </button>
+                <span className="ph-avatar-view-title">Admin Profile</span>
+              </div>
+              <div style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-tertiary)" }}>Loading…</div>
             </div>
           </div>
-
-          <div className="ph-avatar-menu-divider" />
-
-          <button className="ph-avatar-menu-item" role="menuitem" onClick={() => handleMenuAction("profile")}>
-            <UserPenIcon /> My Profile
-          </button>
-          <button className="ph-avatar-menu-item" role="menuitem" onClick={() => handleMenuAction("password")}>
-            <KeyRoundIcon /> Change Password
-          </button>
-
-          <div className="ph-avatar-menu-divider" />
-
-          <button className="ph-avatar-menu-item ph-avatar-menu-item--danger" role="menuitem" onClick={() => handleMenuAction("logout")}>
-            <LogOutIcon /> Sign Out
-          </button>
         </div>,
         document.body
       )}
