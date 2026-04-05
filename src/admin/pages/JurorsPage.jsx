@@ -7,17 +7,23 @@ import { useManagePeriods } from "../hooks/useManagePeriods";
 import { useManageProjects } from "../hooks/useManageProjects";
 import { useManageJurors } from "../hooks/useManageJurors";
 import PinResultModal from "../modals/PinResultModal";
+import PinResetConfirmModal from "../modals/PinResetConfirmModal";
 import ImportJurorsModal from "../modals/ImportJurorsModal";
-import { sendJurorPinEmail } from "@/shared/api";
+import Modal from "@/shared/ui/Modal";
+import AddJurorDrawer from "../drawers/AddJurorDrawer";
+import EditJurorDrawer from "../drawers/EditJurorDrawer";
+import { sendJurorPinEmail, getActiveEntryToken } from "@/shared/api";
 import { getRawToken } from "@/shared/storage/adminStorage";
 import { parseJurorsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
+import { AlertCircle } from "lucide-react";
 import "../../styles/pages/jurors.css";
 
 // ── Helpers ──────────────────────────────────────────────────
 
 import JurorBadge from "../components/JurorBadge";
+import JurorStatusPill from "../components/JurorStatusPill";
 
 function formatRelative(ts) {
   if (!ts) return "—";
@@ -38,38 +44,6 @@ function formatFull(ts) {
   } catch { return ""; }
 }
 
-function statusPillClass(status) {
-  switch (status) {
-    case "editing": return "pill pill-editing";
-    case "completed": return "pill pill-completed";
-    case "in_progress": return "pill pill-progress";
-    case "ready_to_submit": return "pill pill-ready";
-    default: return "pill pill-not-started";
-  }
-}
-
-function statusLabel(status) {
-  switch (status) {
-    case "editing": return "Editing";
-    case "completed": return "Completed";
-    case "in_progress": return "In Progress";
-    case "ready_to_submit": return "Ready to Submit";
-    default: return "Not Started";
-  }
-}
-
-function StatusIcon({ status }) {
-  if (status === "editing") {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
-  }
-  if (status === "completed") {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5" /></svg>;
-  }
-  if (status === "in_progress") {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
-  }
-  return null;
-}
 
 function groupBarColor(scored, total) {
   if (total === 0) return "var(--text-tertiary)";
@@ -83,6 +57,37 @@ function groupTextClass(scored, total) {
   if (scored >= total) return "jurors-table-groups jt-done";
   if (scored > 0) return "jurors-table-groups jt-partial";
   return "jurors-table-groups jt-zero";
+}
+
+// ── Column config — single source of truth for table headers and export ──
+
+const JUROR_COLUMNS = [
+  { key: "name",       label: "Juror Name",         exportWidth: 28 },
+  { key: "progress",   label: "Projects Evaluated",  exportWidth: 20 },
+  { key: "status",     label: "Status",              exportWidth: 14 },
+  { key: "lastActive", label: "Last Active",          exportWidth: 18 },
+];
+
+function getJurorCell(j, key) {
+  if (key === "name")       return j.juryName || j.juror_name || "";
+  if (key === "progress") {
+    const scored = j.overviewScoredProjects ?? 0;
+    const total  = j.overviewTotalProjects  ?? 0;
+    return `${scored} / ${total}`;
+  }
+  if (key === "status")     return j.overviewStatus || "";
+  if (key === "lastActive") {
+    const ts = j.lastSeenAt || j.last_activity_at || j.finalSubmittedAt || j.final_submitted_at;
+    return formatFull(ts);
+  }
+  return "";
+}
+
+// ── Sort icon ────────────────────────────────────────────────
+
+function SortIcon({ colKey, sortKey, sortDir }) {
+  if (sortKey !== colKey) return <span className="sort-icon sort-icon-inactive">▲</span>;
+  return <span className="sort-icon sort-icon-active">{sortDir === "asc" ? "▲" : "▼"}</span>;
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -146,32 +151,35 @@ export default function JurorsPage({
   const [exportOpen, setExportOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [affilFilter, setAffilFilter] = useState("all");
+  const [sortKey, setSortKey] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
 
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
 
-  // Drawer
-  const [drawerJuror, setDrawerJuror] = useState(null);
+  // Edit juror drawer
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [editDrawerJuror, setEditDrawerJuror] = useState(null);
+
+  // Enable Editing Mode modal
+  const [enableEditOpen, setEnableEditOpen] = useState(false);
+  const [enableEditJuror, setEnableEditJuror] = useState(null);
+  const [enableEditDuration, setEnableEditDuration] = useState("30m");
+  const [enableEditReason, setEnableEditReason] = useState("");
+  const [enableEditBusy, setEnableEditBusy] = useState(false);
+
+  // View Reviews modal
+  const [viewReviewsOpen, setViewReviewsOpen] = useState(false);
+  const [viewReviewsJuror, setViewReviewsJuror] = useState(null);
 
   // Import CSV state
-  const csvInputRef = useRef(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [importFile, setImportFile] = useState(null);
-  const [importRows, setImportRows] = useState([]);
-  const [importStats, setImportStats] = useState({ valid: 0, duplicate: 0, error: 0, total: 0 });
-  const [importWarning, setImportWarning] = useState(null);
-  const [importBusy, setImportBusy] = useState(false);
 
-  // Add/edit juror modal
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-  const [formName, setFormName] = useState("");
-  const [formAffil, setFormAffil] = useState("");
-  const [formSaving, setFormSaving] = useState(false);
+  // Add juror drawer
+  const [addDrawerOpen, setAddDrawerOpen] = useState(false);
 
   // Reset PIN modal
   const [pinResetJuror, setPinResetJuror] = useState(null);
-  const [pinResetting, setPinResetting] = useState(false);
 
   // Remove juror modal
   const [removeJuror, setRemoveJuror] = useState(null);
@@ -221,7 +229,7 @@ export default function JurorsPage({
     return [...set].sort();
   }, [jurorList]);
 
-  // Filtered + searched list
+  // Filtered + searched + sorted list
   const filteredList = useMemo(() => {
     let list = jurorList;
     if (statusFilter !== "all") {
@@ -237,8 +245,41 @@ export default function JurorsPage({
         (j.affiliation || "").toLowerCase().includes(q)
       );
     }
+    list = [...list].sort((a, b) => {
+      let va, vb;
+      if (sortKey === "name") {
+        va = (a.juryName || a.juror_name || "").toLowerCase();
+        vb = (b.juryName || b.juror_name || "").toLowerCase();
+        return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      if (sortKey === "progress") {
+        const pa = a.overviewTotalProjects > 0 ? a.overviewScoredProjects / a.overviewTotalProjects : -1;
+        const pb = b.overviewTotalProjects > 0 ? b.overviewScoredProjects / b.overviewTotalProjects : -1;
+        return sortDir === "asc" ? pa - pb : pb - pa;
+      }
+      if (sortKey === "status") {
+        va = a.overviewStatus || "";
+        vb = b.overviewStatus || "";
+        return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      if (sortKey === "lastActive") {
+        va = new Date(a.lastSeenAt || a.last_activity_at || a.finalSubmittedAt || a.final_submitted_at || 0).getTime();
+        vb = new Date(b.lastSeenAt || b.last_activity_at || b.finalSubmittedAt || b.final_submitted_at || 0).getTime();
+        return sortDir === "asc" ? va - vb : vb - va;
+      }
+      return 0;
+    });
     return list;
-  }, [jurorList, statusFilter, affilFilter, search]);
+  }, [jurorList, statusFilter, affilFilter, search, sortKey, sortDir]);
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   // KPI stats
   const totalJurors = jurorList.length;
@@ -254,49 +295,72 @@ export default function JurorsPage({
   // ── Modal handlers ──────────────────────────────────────────
 
   function openAddModal() {
-    setEditTarget(null);
-    setFormName("");
-    setFormAffil("");
-    setAddModalOpen(true);
+    setAddDrawerOpen(true);
   }
 
-  function openEditModal(juror) {
-    setEditTarget(juror);
-    setFormName(juror.juror_name || "");
-    setFormAffil(juror.affiliation || "");
-    setAddModalOpen(true);
+  function openEditDrawer(juror) {
+    setEditDrawerJuror(juror);
+    setEditDrawerOpen(true);
     setOpenMenuId(null);
-    setDrawerJuror(null);
   }
 
-  async function handleSaveJuror() {
-    if (!formName.trim()) return;
-    setFormSaving(true);
-    try {
-      if (editTarget) {
-        await jurorsHook.handleEditJuror({
-          jurorId: editTarget.juror_id || editTarget.jurorId,
-          juror_name: formName.trim(),
-          affiliation: formAffil.trim(),
-        });
-      } else {
-        await jurorsHook.handleAddJuror({
-          juror_name: formName.trim(),
-          affiliation: formAffil.trim(),
-        });
-      }
-      setAddModalOpen(false);
-    } catch (e) {
-      _toast.error(e?.message || "Could not save juror.");
-    } finally {
-      setFormSaving(false);
+  async function handleAddJurorDrawer({ name, affiliation, email }) {
+    const result = await jurorsHook.handleAddJuror({
+      juror_name: name,
+      affiliation,
+      email: email || null,
+    });
+    if (result?.ok === false) {
+      const errMsg = result?.fieldErrors?.duplicate || "Could not add juror.";
+      throw new Error(errMsg);
+    }
+  }
+
+  async function handleEditJurorSave(id, { name, affiliation, email }) {
+    const result = await jurorsHook.handleEditJuror({
+      jurorId: id,
+      juror_name: name,
+      affiliation,
+      email: email || null,
+    });
+    if (result?.ok === false) {
+      throw new Error("Could not update juror.");
     }
   }
 
   function openPinResetModal(juror) {
     setPinResetJuror(juror);
     setOpenMenuId(null);
-    setDrawerJuror(null);
+  }
+
+  function openEnableEditModal(juror) {
+    setEnableEditJuror(juror);
+    setEnableEditDuration("30m");
+    setEnableEditReason("");
+    setEnableEditOpen(true);
+    setOpenMenuId(null);
+  }
+
+  async function handleConfirmEnableEdit() {
+    if (!enableEditJuror || !enableEditReason.trim()) return;
+    setEnableEditBusy(true);
+    try {
+      await jurorsHook.handleToggleJurorEdit({
+        jurorId: enableEditJuror.juror_id || enableEditJuror.jurorId,
+        enabled: true,
+      });
+      setEnableEditOpen(false);
+    } catch (e) {
+      _toast.error(e?.message || "Could not enable editing mode.");
+    } finally {
+      setEnableEditBusy(false);
+    }
+  }
+
+  function openViewReviews(juror) {
+    setViewReviewsJuror(juror);
+    setViewReviewsOpen(true);
+    setOpenMenuId(null);
   }
 
   async function handleResetPin() {
@@ -311,30 +375,34 @@ export default function JurorsPage({
     const target = jurorsHook.pinResetTarget;
     if (!info?.pin_plain_once || !email) return;
     let tokenUrl;
-    if (includeQr) {
-      const raw = getRawToken(periods.viewPeriodId);
+    if (includeQr && periods.viewPeriodId) {
+      let raw = getRawToken(periods.viewPeriodId);
+      if (!raw) {
+        try { raw = await getActiveEntryToken(periods.viewPeriodId); } catch {}
+      }
       if (raw) tokenUrl = `${window.location.origin}?eval=${encodeURIComponent(raw)}`;
     }
-    await sendJurorPinEmail({
+    const result = await sendJurorPinEmail({
       recipientEmail: email,
-      jurorName: target?.juror_name || info?.juror_name || "",
+      jurorName: target?.juror_name || target?.juryName || info?.juror_name || "",
       jurorAffiliation: target?.affiliation || info?.affiliation || "",
       pin: info.pin_plain_once,
       tokenUrl,
       periodName: periods.viewPeriodLabel,
+      organizationName: activeOrganization?.name || "",
     });
+    return result;
   }
 
   function openRemoveModal(juror) {
     setRemoveJuror(juror);
     setRemoveConfirm("");
     setOpenMenuId(null);
-    setDrawerJuror(null);
   }
 
   async function handleRemoveJuror() {
     if (!removeJuror) return;
-    const name = removeJuror.juror_name || "";
+    const name = removeJuror.juryName || removeJuror.juror_name || "";
     if (removeConfirm.trim() !== name.trim()) return;
     try {
       await jurorsHook.handleDeleteJuror(removeJuror.juror_id || removeJuror.jurorId);
@@ -344,18 +412,10 @@ export default function JurorsPage({
     }
   }
 
-  async function handleImport() {
-    const validRows = importRows.filter((r) => r.status === "ok");
-    if (validRows.length === 0) return;
-    setImportBusy(true);
-    try {
-      const result = await jurorsHook.handleImportJurors(validRows);
-      if (result?.ok !== false) {
-        setImportOpen(false);
-        _toast.success(`Imported ${validRows.length - (result?.skipped || 0)} juror${validRows.length !== 1 ? "s" : ""}`);
-      }
-    } finally {
-      setImportBusy(false);
+  async function handleImport(validRows) {
+    const result = await jurorsHook.handleImportJurors(validRows);
+    if (result?.ok !== false) {
+      _toast.success(`Imported ${validRows.length - (result?.skipped || 0)} juror${validRows.length !== 1 ? "s" : ""}`);
     }
   }
 
@@ -425,7 +485,7 @@ export default function JurorsPage({
           </svg>
           {" "}Export
         </button>
-        <button className="btn btn-outline btn-sm" onClick={() => csvInputRef.current?.click()}>
+        <button className="btn btn-outline btn-sm" onClick={() => setImportOpen(true)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
@@ -433,23 +493,6 @@ export default function JurorsPage({
           </svg>
           {" "}Import
         </button>
-        <input
-          ref={csvInputRef}
-          type="file"
-          accept=".csv"
-          style={{ display: "none" }}
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (!file) return;
-            const parsed = await parseJurorsCsv(file);
-            setImportFile(parsed.file);
-            setImportRows(parsed.rows);
-            setImportStats(parsed.stats);
-            setImportWarning(parsed.warningMessage);
-            setImportOpen(true);
-          }}
-        />
         <button
           className="btn btn-primary btn-sm"
           style={{ width: "auto", padding: "6px 14px", fontSize: "12px", background: "var(--accent)", boxShadow: "none" }}
@@ -461,7 +504,7 @@ export default function JurorsPage({
 
       {/* Filter panel */}
       {filterOpen && (
-        <div className="filter-panel">
+        <div className="filter-panel show">
           <div className="filter-panel-header">
             <div>
               <h4>
@@ -513,35 +556,32 @@ export default function JurorsPage({
           organization={activeOrganization?.name || ""}
           onClose={() => setExportOpen(false)}
           generateFile={async (fmt) => {
-            const header = ["Juror Name", "Affiliation", "Status", "Completed", "Total Projects"];
-            const rows = filteredList.map((j) => [
-              j.juryName || j.juror_name || "", j.affiliation || "", j.overviewStatus || "",
-              j.completedProjects ?? "", j.totalProjects ?? "",
-            ]);
+            const header = JUROR_COLUMNS.map((c) => c.label);
+            const rows = filteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key)));
             return generateTableBlob(fmt, {
               filenameType: "Jurors", sheetName: "Jurors",
               periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
               organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
-              pdfTitle: "VERA — Jurors", header, rows, colWidths: [28, 28, 14, 10, 10],
+              pdfTitle: "VERA — Jurors", header, rows,
+              colWidths: JUROR_COLUMNS.map((c) => c.exportWidth),
             });
           }}
           onExport={async (fmt) => {
             try {
-              const header = ["Juror Name", "Affiliation", "Status", "Completed", "Total Projects"];
-              const rows = filteredList.map((j) => [
-                j.juryName || j.juror_name || "", j.affiliation || "", j.overviewStatus || "",
-                j.completedProjects ?? "", j.totalProjects ?? "",
-              ]);
+              const header = JUROR_COLUMNS.map((c) => c.label);
+              const rows = filteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key)));
               await downloadTable(fmt, {
                 filenameType: "Jurors", sheetName: "Jurors",
                 periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
                 organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
-                pdfTitle: "VERA — Jurors", header, rows, colWidths: [28, 28, 14, 10, 10],
+                pdfTitle: "VERA — Jurors", header, rows,
+                colWidths: JUROR_COLUMNS.map((c) => c.exportWidth),
               });
               setExportOpen(false);
-              _toast.success("Jurors exported");
+              const fmtLabel = fmt === "pdf" ? "PDF" : fmt === "csv" ? "CSV" : "Excel";
+              _toast.success(`${filteredList.length} juror${filteredList.length !== 1 ? "s" : ""} exported · ${fmtLabel}`);
             } catch (e) {
-              _toast.error(e?.message || "Export failed");
+              _toast.error(e?.message || "Jurors export failed — please try again");
             }
           }}
         />
@@ -550,7 +590,10 @@ export default function JurorsPage({
       {/* Error */}
       {panelError && (
         <div className="fb-alert fba-danger" style={{ marginBottom: "12px" }}>
-          <div className="fb-alert-body">{panelError}</div>
+          <div className="fb-alert-body" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <AlertCircle size={15} style={{ flexShrink: 0 }} />
+            {panelError}
+          </div>
         </div>
       )}
 
@@ -559,10 +602,15 @@ export default function JurorsPage({
         <table id="jurors-main-table">
           <thead>
             <tr>
-              <th>Juror Name</th>
-              <th className="text-center">Projects Evaluated</th>
-              <th>Status</th>
-              <th>Last Active</th>
+              {JUROR_COLUMNS.map((c) => (
+                <th
+                  key={c.key}
+                  className={`${c.key === "progress" ? "text-center " : ""}sortable${sortKey === c.key ? " sorted" : ""}`}
+                  onClick={() => handleSort(c.key)}
+                >
+                  {c.label} <SortIcon colKey={c.key} sortKey={sortKey} sortDir={sortDir} />
+                </th>
+              ))}
               <th style={{ width: "48px" }}>Actions</th>
             </tr>
           </thead>
@@ -589,7 +637,7 @@ export default function JurorsPage({
               const lastActive = juror.lastSeenAt || juror.last_activity_at || juror.finalSubmittedAt || juror.final_submitted_at;
 
               return (
-                <tr key={jid} onClick={() => setDrawerJuror(juror)}>
+                <tr key={jid} onClick={() => openEditDrawer(juror)}>
                   <td>
                     <JurorBadge name={name} affiliation={juror.affiliation} size="sm" />
                   </td>
@@ -602,10 +650,7 @@ export default function JurorsPage({
                     </span>
                   </td>
                   <td>
-                    <span className={statusPillClass(status)}>
-                      <StatusIcon status={status} />
-                      {statusLabel(status)}
-                    </span>
+                    <JurorStatusPill status={status} />
                   </td>
                   <td className="jurors-table-active" data-tooltip={formatFull(lastActive)}>
                     {formatRelative(lastActive)}
@@ -618,7 +663,7 @@ export default function JurorsPage({
                           e.stopPropagation();
                           setOpenMenuId((prev) => (prev === jid ? null : jid));
                         }}
-                        title="Actions"
+                        aria-label="Actions"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                           <circle cx="12" cy="5" r="2" />
@@ -628,7 +673,7 @@ export default function JurorsPage({
                       </button>
                       {openMenuId === jid && (
                         <div className="juror-action-menu open">
-                          <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); openEditModal(juror); }}>
+                          <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); openEditDrawer(juror); }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                               <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
                             </svg>
@@ -639,6 +684,20 @@ export default function JurorsPage({
                               <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                             </svg>
                             Reset PIN
+                          </div>
+                          <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); openEnableEditModal(juror); }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            Enable Editing Mode
+                          </div>
+                          <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); openViewReviews(juror); }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            View Reviews
                           </div>
                           <div className="juror-action-sep" />
                           <div className="juror-action-item danger" onClick={(e) => { e.stopPropagation(); openRemoveModal(juror); }}>
@@ -672,167 +731,175 @@ export default function JurorsPage({
         </div>
       </div>
 
-      {/* ═══════ JUROR DETAIL DRAWER ═══════ */}
-      {drawerJuror && (
-        <>
-          <div className="juror-drawer-overlay show" onClick={() => setDrawerJuror(null)} />
-          <div className="juror-drawer show">
-            <div className="juror-drawer-header">
-              <span className="jd-title">Juror Details</span>
-              <button className="juror-drawer-close" onClick={() => setDrawerJuror(null)}>×</button>
-            </div>
-            <div className="juror-drawer-profile">
-              <JurorBadge name={drawerJuror.juror_name} affiliation={drawerJuror.affiliation} size="lg" />
-            </div>
-            <div className="juror-drawer-details">
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Status</span>
-                <span className="juror-drawer-row-value">
-                  <span className={statusPillClass(drawerJuror.overviewStatus)} style={{ fontSize: "10px" }}>
-                    <StatusIcon status={drawerJuror.overviewStatus} />
-                    {statusLabel(drawerJuror.overviewStatus)}
-                  </span>
-                </span>
-              </div>
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Groups Scored</span>
-                <span className="juror-drawer-row-value">
-                  {drawerJuror.overviewScoredProjects || 0} / {drawerJuror.overviewTotalProjects || 0}
-                </span>
-              </div>
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Last Active</span>
-                <span className="juror-drawer-row-value">
-                  {formatFull(drawerJuror.last_activity_at || drawerJuror.finalSubmittedAt || drawerJuror.final_submitted_at) || "—"}
-                </span>
-              </div>
-              <div className="juror-drawer-row">
-                <span className="juror-drawer-row-label">Edit Mode</span>
-                <span className="juror-drawer-row-value">
-                  {(drawerJuror.edit_enabled || drawerJuror.editEnabled) ? "On" : "Off"}
-                </span>
-              </div>
-            </div>
-            <div className="juror-drawer-actions">
-              <button className="btn btn-outline btn-sm" onClick={() => openEditModal(drawerJuror)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                </svg>
-                Edit Juror
-              </button>
-              <button className="btn btn-outline btn-sm" onClick={() => openPinResetModal(drawerJuror)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Reset PIN
-              </button>
-              <button
-                className="btn btn-outline btn-sm"
-                style={{ color: "var(--danger)", borderColor: "rgba(225,29,72,0.3)" }}
-                onClick={() => openRemoveModal(drawerJuror)}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Remove Juror
-              </button>
-            </div>
-          </div>
-        </>
-      )}
 
-      {/* ═══════ MODALS ═══════ */}
+      {/* ═══════ MODALS / DRAWERS ═══════ */}
 
-      {/* Add/Edit Juror Modal */}
-      {addModalOpen && (
-        <div className="modal-overlay" onClick={() => setAddModalOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      {/* Add Juror Drawer */}
+      <AddJurorDrawer
+        open={addDrawerOpen}
+        onClose={() => setAddDrawerOpen(false)}
+        onSave={handleAddJurorDrawer}
+        periodName={periods.viewPeriodLabel}
+      />
+
+      {/* Edit Juror Drawer */}
+      <EditJurorDrawer
+        open={editDrawerOpen}
+        onClose={() => { setEditDrawerOpen(false); setEditDrawerJuror(null); }}
+        juror={editDrawerJuror ? {
+          id: editDrawerJuror.juror_id || editDrawerJuror.jurorId,
+          name: editDrawerJuror.juryName || editDrawerJuror.juror_name || "",
+          affiliation: editDrawerJuror.affiliation || "",
+          email: editDrawerJuror.email || "",
+          progress: {
+            scored: editDrawerJuror.overviewScoredProjects || 0,
+            total: editDrawerJuror.overviewTotalProjects || 0,
+          },
+          lastActive: editDrawerJuror.lastSeenAt || editDrawerJuror.last_activity_at || editDrawerJuror.finalSubmittedAt || editDrawerJuror.final_submitted_at || null,
+          overviewStatus: editDrawerJuror.overviewStatus || "not_started",
+        } : null}
+        onSave={handleEditJurorSave}
+        onResetPin={(juror) => { setEditDrawerOpen(false); openPinResetModal(editDrawerJuror); }}
+        onRemove={(juror) => { setEditDrawerOpen(false); openRemoveModal(editDrawerJuror); }}
+      />
+
+      {/* Reset PIN — Step 1: Confirm */}
+      <PinResetConfirmModal
+        open={!!pinResetJuror}
+        onClose={() => setPinResetJuror(null)}
+        juror={pinResetJuror}
+        loading={jurorsHook.pinResetLoading}
+        onConfirm={handleResetPin}
+      />
+
+      {/* Enable Editing Mode Modal */}
+      {enableEditOpen && enableEditJuror && (
+        <div className="modal-overlay show" onClick={() => setEnableEditOpen(false)}>
+          <div className="modal-card" style={{ maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">{editTarget ? "Edit Juror" : "Add Juror"}</span>
-              <button className="juror-drawer-close" onClick={() => setAddModalOpen(false)}>×</button>
+              <span className="modal-title">Enable Editing Mode</span>
+              <button className="juror-drawer-close" onClick={() => setEnableEditOpen(false)}>×</button>
             </div>
             <div className="modal-body">
+              <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "14px" }}>
+                Allow <strong>{enableEditJuror.juryName || enableEditJuror.juror_name}</strong> to modify their submitted scores.
+              </div>
               <div className="modal-field">
-                <label className="modal-label">Full Name <span className="field-req">*</span></label>
-                <input
+                <label className="modal-label">Duration</label>
+                <select
                   className="modal-input"
-                  type="text"
-                  placeholder="Doç. Dr. Ayşe Yılmaz"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  autoFocus
-                />
+                  value={enableEditDuration}
+                  onChange={(e) => setEnableEditDuration(e.target.value)}
+                  style={{ height: "36px", fontSize: "13px" }}
+                >
+                  <option value="15m">15 minutes</option>
+                  <option value="30m">30 minutes</option>
+                  <option value="1h">1 hour</option>
+                  <option value="session">Until resubmission</option>
+                </select>
               </div>
               <div className="modal-field" style={{ marginTop: "12px" }}>
-                <label className="modal-label">Affiliation</label>
-                <input
+                <label className="modal-label">Reason <span className="field-req">*</span></label>
+                <textarea
                   className="modal-input"
-                  type="text"
-                  placeholder="Hacettepe Üniversitesi / EE"
-                  value={formAffil}
-                  onChange={(e) => setFormAffil(e.target.value)}
+                  placeholder="e.g. Juror requested correction to Group 3 scores"
+                  value={enableEditReason}
+                  onChange={(e) => setEnableEditReason(e.target.value)}
+                  rows={3}
+                  style={{ resize: "vertical", fontSize: "13px" }}
                 />
-                <div className="field-helper fh-hint">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
-                  University or organization
-                </div>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={() => setAddModalOpen(false)} disabled={formSaving}>Cancel</button>
+              <button className="btn btn-outline btn-sm" onClick={() => setEnableEditOpen(false)} disabled={enableEditBusy}>Cancel</button>
               <button
                 className="btn btn-sm"
                 style={{ background: "var(--accent)", color: "#fff" }}
-                onClick={handleSaveJuror}
-                disabled={formSaving || !formName.trim()}
+                onClick={handleConfirmEnableEdit}
+                disabled={enableEditBusy || !enableEditReason.trim()}
               >
-                {formSaving ? "Saving…" : editTarget ? "Save Changes" : "Add Juror"}
+                {enableEditBusy ? "Enabling…" : "Enable Editing"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Reset PIN Modal */}
-      {pinResetJuror && !pinReveal && (
-        <div className="modal-overlay" onClick={() => setPinResetJuror(null)}>
-          <div className="modal-card" style={{ maxWidth: "400px" }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">Reset PIN</span>
-              <button className="juror-drawer-close" onClick={() => setPinResetJuror(null)}>×</button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--warning-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                </div>
+      {/* View Reviews Modal */}
+      {viewReviewsOpen && viewReviewsJuror && (() => {
+        const jid = String(viewReviewsJuror.juror_id || viewReviewsJuror.jurorId || "");
+        const reviews = (jurorsHook.scoreRows || []).filter((r) => String(r.jurorId || "") === jid);
+        return (
+          <div className="modal-overlay show" onClick={() => setViewReviewsOpen(false)}>
+            <div className="modal-card" style={{ maxWidth: "620px", width: "95vw" }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>Are you sure?</div>
-                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    This will generate a new 4-digit PIN for <strong>{pinResetJuror.juror_name}</strong>. Their current PIN will be invalidated immediately.
+                  <span className="modal-title">Reviews</span>
+                  <div style={{ fontSize: "12px", color: "var(--text-tertiary)", marginTop: "2px" }}>
+                    {viewReviewsJuror.juryName || viewReviewsJuror.juror_name} · {reviews.length} evaluation{reviews.length !== 1 ? "s" : ""}
                   </div>
                 </div>
+                <button className="juror-drawer-close" onClick={() => setViewReviewsOpen(false)}>×</button>
+              </div>
+              <div className="modal-body" style={{ padding: 0 }}>
+                {reviews.length === 0 ? (
+                  <div style={{ padding: "32px", textAlign: "center", color: "var(--text-tertiary)", fontSize: "13px" }}>
+                    No evaluations found for this juror.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                          <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>Group</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Project</th>
+                          <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-secondary)" }}>Score</th>
+                          <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-secondary)" }}>Status</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reviews.map((r, i) => (
+                          <tr key={r.id || i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                            <td style={{ padding: "10px 14px", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                              {r.groupNo != null ? `#${r.groupNo}` : "—"}
+                            </td>
+                            <td style={{ padding: "10px 14px", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {r.projectName || "—"}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>
+                              {r.total != null ? r.total : "—"}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                              <span style={{
+                                display: "inline-block",
+                                padding: "2px 8px",
+                                borderRadius: "999px",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                background: r.status === "submitted" ? "var(--success-soft, rgba(34,197,94,0.1))" : "var(--warning-soft, rgba(234,179,8,0.1))",
+                                color: r.status === "submitted" ? "var(--success)" : "var(--warning)",
+                              }}>
+                                {r.status === "submitted" ? "Submitted" : "Draft"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 14px", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                              {r.updatedAt ? formatFull(r.updatedAt) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline btn-sm" onClick={() => setViewReviewsOpen(false)}>Close</button>
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline btn-sm" onClick={() => setPinResetJuror(null)} disabled={pinResetting}>Cancel</button>
-              <button
-                className="btn btn-sm"
-                style={{ background: "var(--warning)", color: "#fff" }}
-                onClick={handleResetPin}
-                disabled={pinResetting}
-              >
-                {pinResetting ? "Resetting…" : "Reset PIN"}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* PIN Result Modal */}
       <PinResultModal
@@ -845,7 +912,7 @@ export default function JurorsPage({
 
       {/* Remove Juror Modal */}
       {removeJuror && (
-        <div className="modal-overlay" onClick={() => setRemoveJuror(null)}>
+        <div className="modal-overlay show" onClick={() => setRemoveJuror(null)}>
           <div className="modal-card" style={{ maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title" style={{ color: "var(--danger)" }}>Remove Juror</span>
@@ -862,7 +929,7 @@ export default function JurorsPage({
                 <div>
                   <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>This action cannot be undone</div>
                   <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    Removing <strong>{removeJuror.juror_name}</strong> will delete all their scores and evaluation data for this evaluation period. Type the juror's name to confirm.
+                    Removing <strong>{removeJuror.juryName || removeJuror.juror_name}</strong> will delete all their scores and evaluation data for this evaluation period. Type the juror's name to confirm.
                   </div>
                   <input
                     className="modal-input"
@@ -881,7 +948,7 @@ export default function JurorsPage({
                 className="btn btn-sm"
                 style={{ background: "var(--danger)", color: "#fff" }}
                 onClick={handleRemoveJuror}
-                disabled={removeConfirm.trim() !== (removeJuror.juror_name || "").trim()}
+                disabled={removeConfirm.trim() !== (removeJuror.juryName || removeJuror.juror_name || "").trim()}
               >
                 Remove Juror
               </button>
@@ -893,13 +960,8 @@ export default function JurorsPage({
       <ImportJurorsModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        file={importFile}
-        rows={importRows}
-        stats={importStats}
-        warningMessage={importWarning}
+        parseFile={(f) => parseJurorsCsv(f, jurorsHook.jurors)}
         onImport={handleImport}
-        onReplaceFile={() => csvInputRef.current?.click()}
-        busy={importBusy}
       />
     </div>
   );
