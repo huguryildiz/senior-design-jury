@@ -115,6 +115,9 @@ export default function UserAvatarMenu({ onLogout }) {
       setMenuOpen(false);
       setMenuView("main");
       setSelectedAdmin(null);
+      setOrgList([]);
+      setOrgError("");
+      setOrgLoading(false);
     }
     document.addEventListener("mousedown", handleOutside);
     return () => document.removeEventListener("mousedown", handleOutside);
@@ -128,6 +131,9 @@ export default function UserAvatarMenu({ onLogout }) {
         setMenuOpen(false);
         setMenuView("main");
         setSelectedAdmin(null);
+        setOrgList([]);
+        setOrgError("");
+        setOrgLoading(false);
       }
     }
     document.addEventListener("keydown", handleKey);
@@ -137,12 +143,14 @@ export default function UserAvatarMenu({ onLogout }) {
   // Fetch org/admin data when menu opens (super-admin only)
   useEffect(() => {
     if (!menuOpen || !isSuper) return;
+    let isMounted = true;
     setOrgLoading(true);
     setOrgError("");
     listOrganizations()
-      .then((data) => setOrgList(data))
-      .catch((e) => setOrgError(e?.message || "Could not load admins."))
-      .finally(() => setOrgLoading(false));
+      .then((data) => { if (isMounted) setOrgList(data); })
+      .catch((e) => { if (isMounted) setOrgError(e?.message || "Could not load admins."); })
+      .finally(() => { if (isMounted) setOrgLoading(false); });
+    return () => { isMounted = false; };
   }, [menuOpen, isSuper]);
 
   const initials = getInitials(displayName, user?.email);
@@ -153,6 +161,9 @@ export default function UserAvatarMenu({ onLogout }) {
     setMenuView("main");
     setPrevView("main");
     setSelectedAdmin(null);
+    setOrgList([]);
+    setOrgError("");
+    setOrgLoading(false);
     if (action === "profile") profile.openModal("profile");
     else if (action === "password") profile.openModal("password");
     else if (action === "logout") onLogout();
