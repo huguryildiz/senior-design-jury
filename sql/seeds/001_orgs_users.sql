@@ -5,11 +5,13 @@ SELECT setseed(0.20260402);
 BEGIN;
 
 -- Pre-seed Cleanup
-TRUNCATE TABLE 
+TRUNCATE TABLE
   audit_logs,
   entry_tokens,
   score_sheet_items,
   score_sheets,
+  juror_period_auth,
+  jurors,
   projects,
   period_criterion_outcome_maps,
   period_criteria,
