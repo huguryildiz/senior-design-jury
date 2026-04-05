@@ -52,6 +52,7 @@ export {
 
 export {
   getScores,
+  getPeriodMaxScore,
   listJurorsSummary,
   getProjectSummary,
   getOutcomeTrends,
@@ -62,7 +63,7 @@ export {
   listPeriodOutcomes,
 } from "./scores";
 
-export { generateEntryToken, revokeEntryToken, getEntryTokenStatus, getActiveEntryToken } from "./tokens";
+export { generateEntryToken, revokeEntryToken, getEntryTokenStatus, getActiveEntryToken, getActiveEntryTokenPlain } from "./tokens";
 
 export { listAuditLogs } from "./audit";
 

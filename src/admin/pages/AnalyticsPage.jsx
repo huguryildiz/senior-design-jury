@@ -18,6 +18,7 @@ import { ThresholdGapChart } from "@/charts/ThresholdGapChart";
 import { GroupAttainmentHeatmap } from "@/charts/GroupAttainmentHeatmap";
 import { JurorConsistencyHeatmap } from "@/charts/JurorConsistencyHeatmap";
 import { CoverageMatrix } from "@/charts/CoverageMatrix";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import "../../styles/pages/analytics.css";
 
 // ── Insight icon ──────────────────────────────────────────────
@@ -225,8 +226,14 @@ function ExportPanel({ onClose, onExport, periodName, organization, department, 
               {" "}Send
             </button>
             <button className="btn btn-primary btn-sm export-download-btn" onClick={handleDownload} disabled={exporting} type="button">
-              {exporting ? <span className="export-btn-spinner" /> : <DownloadIcon />}
-              {exporting ? "Downloading…" : `Download ${format === "xlsx" ? "Excel" : format === "pdf" ? "PDF" : "CSV"}`}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={exporting} loadingText="Downloading…">
+                  <>
+                    <DownloadIcon />
+                    {`Download ${format === "xlsx" ? "Excel" : format === "pdf" ? "PDF" : "CSV"}`}
+                  </>
+                </AsyncButtonContent>
+              </span>
             </button>
           </div>
         </div>

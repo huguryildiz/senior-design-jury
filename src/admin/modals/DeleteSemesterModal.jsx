@@ -12,6 +12,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function DeleteSemesterModal({ open, onClose, periodName, impact = {}, onDelete }) {
   const [typed, setTyped] = useState("");
@@ -86,7 +87,7 @@ export default function DeleteSemesterModal({ open, onClose, periodName, impact 
           <input
             className="fs-typed-input"
             type="text"
-            placeholder={periodName}
+            placeholder={periodName ? `Type ${periodName} to confirm` : "Type the period name to confirm"}
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             disabled={deleting}
@@ -114,7 +115,9 @@ export default function DeleteSemesterModal({ open, onClose, periodName, impact 
           disabled={deleting || !confirmed}
           style={{ flex: 1 }}
         >
-          {deleting ? "Deleting…" : "Delete"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={deleting} loadingText="Deleting…">Delete</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Modal>

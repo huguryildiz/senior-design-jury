@@ -6,7 +6,7 @@
 // Hierarchy (visual dominance):
 //   1. GroupLabel   — FolderKanban icon + bold text
 //   2. ProjectTitle — Presentation icon + normal weight text
-//   3. StudentNames — Users icon      + italic text
+//   3. StudentNames — avatar + initials + full names
 //
 // Usage:
 //   <GroupLabel text={`Group ${groupNo}`} />
@@ -14,7 +14,7 @@
 //   <StudentNames names={studentNamesArray} />
 // ============================================================
 
-import { FolderKanbanIcon, FileTextIcon, UsersRoundIcon } from "./Icons";
+import { FolderKanbanIcon, FileTextIcon } from "./Icons";
 
 export function GroupLabel({ text, shortText }) {
   const resolvedShortText = shortText || text;
@@ -39,12 +39,39 @@ export function ProjectTitle({ text }) {
   );
 }
 
-export function StudentNames({ names }) {
-  if (!names || names.length === 0) return null;
+function normalizeNames(names) {
+  if (!names) return [];
+  if (Array.isArray(names)) {
+    return names
+      .map((entry) => (entry?.name ?? entry ?? "").toString().trim())
+      .filter(Boolean);
+  }
+  return String(names)
+    .split(/[;,\n]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function getInitial(name) {
+  return (name || "").trim().charAt(0).toLocaleUpperCase("tr-TR") || "?";
+}
+
+export function TeamMembersInline({ names, className = "" }) {
+  const list = normalizeNames(names);
+  if (list.length === 0) return null;
+
   return (
-    <span className="entity-student-names">
-      <UsersRoundIcon aria-hidden="true" />
-      <span className="swipe-x">{names.join(" · ")}</span>
+    <span className={`team-members-inline ${className}`.trim()}>
+      {list.map((name, index) => (
+        <span key={`${name}-${index}`} className="team-member-chip">
+          <span className="team-member-avatar" aria-hidden="true">{getInitial(name)}</span>
+          <span className="team-member-name" title={name}>{name}</span>
+        </span>
+      ))}
     </span>
   );
+}
+
+export function StudentNames({ names }) {
+  return <TeamMembersInline names={names} className="entity-student-names" />;
 }

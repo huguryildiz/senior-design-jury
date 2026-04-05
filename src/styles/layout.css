@@ -109,7 +109,7 @@
 .header-last-updated{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:158px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:linear-gradient(180deg,#fff,#f8fafc);line-height:1.15}
 .header-last-updated-label{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-tertiary)}
 .header-last-updated-label svg{width:10px;height:10px;opacity:0.85}
-.header-last-updated-value{font-size:11px;font-weight:600;color:var(--text-secondary);margin-top:2px}
+.header-last-updated-value{font-size:11px;font-weight:400;color:var(--text-tertiary);margin-top:2px;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .header-refresh-btn{gap:6px;white-space:nowrap}
 .header-refresh-btn svg{transition:transform .45s ease}
 
@@ -395,7 +395,7 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
 .header-last-updated{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:158px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:linear-gradient(180deg,#fff,#f8fafc);line-height:1.15}
 .header-last-updated-label{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-tertiary)}
 .header-last-updated-label svg{width:10px;height:10px;opacity:0.85}
-.header-last-updated-value{font-size:11px;font-weight:600;color:var(--text-secondary);margin-top:2px}
+.header-last-updated-value{font-size:11px;font-weight:400;color:var(--text-tertiary);margin-top:2px;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .header-refresh-btn{gap:6px;white-space:nowrap;height:32px;padding:0 12px}
 .header-refresh-btn svg{transition:transform .45s ease}
 .admin-header .dropdown-trigger{height:auto;min-height:32px;padding:4px 12px;font-size:12px;border-radius:8px}
@@ -1635,6 +1635,7 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
   .scores-header-actions .btn {
     flex: 1; min-width: 0; font-size: 11px; padding: 6px 10px;
   }
+  .scores-header-actions .scores-action-sep { display: none !important; }
 
   /* ── 4B. Analytics header: stack ── */
   .analytics-header {
@@ -2806,7 +2807,7 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
   /* Global sortable headers: keep label + sort icon on one horizontal line */
   th.sortable,
   .ranking-table th.sortable,
-  .reviews-table th[onclick],
+  .reviews-table th.sortable,
   .acc-sort-th,
   .matrix-table th.sortable-col {
     white-space: nowrap !important;
@@ -3355,4 +3356,3 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
     height: 30px; font-size: 10px; padding: 0 8px;
   }
 }
-

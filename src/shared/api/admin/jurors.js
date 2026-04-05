@@ -70,22 +70,19 @@ export async function resetJurorPin({ jurorId, periodId }) {
 
 export async function setJurorEditMode({ jurorId, periodId, enabled, reason, durationMinutes }) {
   if (!jurorId || !periodId) throw new Error("setJurorEditMode: jurorId and periodId required");
-  const patch = enabled
-    ? {
-        edit_enabled: true,
-        edit_reason: reason || null,
-        edit_expires_at: new Date(Date.now() + (durationMinutes || 30) * 60_000).toISOString(),
-      }
-    : {
-        edit_enabled: false,
-        edit_reason: null,
-        edit_expires_at: null,
-      };
-  const { error } = await supabase
-    .from("juror_period_auth")
-    .update(patch)
-    .match({ juror_id: jurorId, period_id: periodId });
+  const safeDuration = Number.isFinite(Number(durationMinutes))
+    ? Math.trunc(Number(durationMinutes))
+    : 30;
+  const { data, error } = await supabase.rpc("rpc_juror_toggle_edit_mode_v2", {
+    p_period_id: periodId,
+    p_juror_id: jurorId,
+    p_enabled: !!enabled,
+    p_reason: enabled ? (reason || null) : null,
+    p_duration_minutes: enabled ? safeDuration : null,
+  });
   if (error) throw error;
+  if (data?.error_code) throw new Error(data.error_code);
+  return data;
 }
 
 export async function forceCloseJurorEditMode({ jurorId, periodId }) {

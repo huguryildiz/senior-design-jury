@@ -8,7 +8,7 @@ export default function LastActivity({ value, className = "" }) {
   const label = formatTs(value);
   if (!label || label === "—") return null;
   return (
-    <div className={["vera-last-activity", className].filter(Boolean).join(" ")} title={label} aria-label={`Last activity ${label}`}>
+    <div className={["vera-last-activity", "vera-datetime-text", className].filter(Boolean).join(" ")} title={label} aria-label={`Last activity ${label}`}>
       <span className="vera-last-activity__icon" aria-hidden="true">
         <HistoryIcon />
       </span>

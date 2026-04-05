@@ -9,7 +9,7 @@
 //   criteriaConfig — Criterion[] — { id, label, shortLabel, max }
 //   rawScores     — raw juror score rows for sigma computation
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   RadarChart,
   Radar,
@@ -19,7 +19,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 
 // Compute σ of per-juror total scores for one project.
@@ -86,6 +86,33 @@ export default function CompareProjectsModal({
 }) {
   const [aId, setAId] = useState(() => projects[0]?.id ?? "");
   const [bId, setBId] = useState(() => projects[1]?.id ?? "");
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const selectorsRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const hasA = projects.some((p) => p.id === aId);
+    const hasB = projects.some((p) => p.id === bId);
+    if (!hasA) setAId(projects[0]?.id ?? "");
+    if (!hasB) setBId(projects[1]?.id ?? projects[0]?.id ?? "");
+  }, [open, projects, aId, bId]);
+
+  useEffect(() => {
+    if (!openDropdown) return;
+    function handleOutside(e) {
+      if (selectorsRef.current?.contains(e.target)) return;
+      setOpenDropdown(null);
+    }
+    function handleEscape(e) {
+      if (e.key === "Escape") setOpenDropdown(null);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openDropdown]);
 
   const projectA = useMemo(
     () => projects.find((p) => p.id === aId) ?? projects[0],
@@ -148,32 +175,74 @@ export default function CompareProjectsModal({
       {/* ── Body ───────────────────────────────────────────── */}
       <div className="fs-modal-body">
         {/* Project selectors */}
-        <div className="compare-selectors">
-          <select
-            className="compare-select"
-            value={aId}
-            onChange={(e) => setAId(e.target.value)}
-            aria-label="Project A"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title || p.name}
-              </option>
-            ))}
-          </select>
+        <div className="compare-selectors" ref={selectorsRef}>
+          <div className="compare-select-wrap">
+            <button
+              type="button"
+              className={`filter-dropdown-trigger compare-select${openDropdown === "a" ? " open" : ""}`}
+              aria-haspopup="listbox"
+              aria-expanded={openDropdown === "a"}
+              aria-label="Project A"
+              onClick={() => setOpenDropdown((v) => (v === "a" ? null : "a"))}
+            >
+              <span className="compare-select-value">{nameA}</span>
+              <ChevronDown size={16} />
+            </button>
+            <div className={`filter-dropdown-menu compare-select-menu${openDropdown === "a" ? " show" : ""}`} role="listbox" aria-label="Project A">
+              {projects.map((p) => {
+                const label = p.title || p.name;
+                const selected = p.id === aId;
+                return (
+                  <div
+                    key={p.id}
+                    role="option"
+                    aria-selected={selected}
+                    className={`filter-dropdown-option${selected ? " selected" : ""}`}
+                    onClick={() => {
+                      setAId(p.id);
+                      setOpenDropdown(null);
+                    }}
+                  >
+                    {label}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           <span className="compare-vs">vs</span>
-          <select
-            className="compare-select"
-            value={bId}
-            onChange={(e) => setBId(e.target.value)}
-            aria-label="Project B"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title || p.name}
-              </option>
-            ))}
-          </select>
+          <div className="compare-select-wrap">
+            <button
+              type="button"
+              className={`filter-dropdown-trigger compare-select${openDropdown === "b" ? " open" : ""}`}
+              aria-haspopup="listbox"
+              aria-expanded={openDropdown === "b"}
+              aria-label="Project B"
+              onClick={() => setOpenDropdown((v) => (v === "b" ? null : "b"))}
+            >
+              <span className="compare-select-value">{nameB}</span>
+              <ChevronDown size={16} />
+            </button>
+            <div className={`filter-dropdown-menu compare-select-menu${openDropdown === "b" ? " show" : ""}`} role="listbox" aria-label="Project B">
+              {projects.map((p) => {
+                const label = p.title || p.name;
+                const selected = p.id === bId;
+                return (
+                  <div
+                    key={p.id}
+                    role="option"
+                    aria-selected={selected}
+                    className={`filter-dropdown-option${selected ? " selected" : ""}`}
+                    onClick={() => {
+                      setBId(p.id);
+                      setOpenDropdown(null);
+                    }}
+                  >
+                    {label}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Legend */}

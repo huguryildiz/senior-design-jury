@@ -5,9 +5,9 @@
  * Add only page-specific overrides here that are not covered by vera.css.
  */
 
-/* Keep the heading clear of the sticky admin header. */
-#page-overview{padding-top:6px}
-#page-overview .overview-heading-row{padding-top:4px}
+/* Keep Overview content flush with the header edge. */
+#page-overview{padding-top:0}
+#page-overview .overview-heading-row{padding-top:0}
 
 /* Use a real button for the expand control without changing the visual style. */
 .overview-juror-toggle{
@@ -21,6 +21,112 @@
 }
 
 @media (max-width: 768px) {
-  #page-overview{padding-top:10px}
-  #page-overview .overview-heading-row{padding-top:8px}
+  #page-overview{padding-top:0}
+  #page-overview .overview-heading-row{padding-top:0}
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  .overview-top-projects-card {
+    border-radius: 16px;
+    border-color: rgba(59, 130, 246, 0.16);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+    background:
+      radial-gradient(120% 80% at 100% 0%, rgba(59, 130, 246, 0.08), transparent 45%),
+      var(--bg-card);
+  }
+
+  .overview-top-projects-card .card-header {
+    padding: 14px 14px 10px;
+  }
+
+  .overview-top-projects-card .card-title {
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .overview-top-projects-wrap {
+    padding: 0 10px 10px;
+    overflow: visible;
+  }
+
+  .overview-top-projects-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+
+  .overview-top-projects-table thead {
+    display: none;
+  }
+
+  .overview-top-projects-table tbody tr {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank project avg"
+      "rank highlight highlight";
+    gap: 6px 10px;
+    padding: 12px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--bg-card), var(--surface-1));
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  }
+
+  .overview-top-projects-table td {
+    display: block;
+    padding: 0;
+    border: none;
+    min-width: 0;
+  }
+
+  .overview-top-projects-table td:nth-child(1) { grid-area: rank; align-self: start; }
+  .overview-top-projects-table td:nth-child(2) { grid-area: project; }
+  .overview-top-projects-table td:nth-child(3) { grid-area: avg; justify-self: end; align-self: start; }
+  .overview-top-projects-table td:nth-child(4) { grid-area: highlight; }
+
+  .overview-top-rank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .overview-top-projects-table td:nth-child(2) {
+    font-size: 15px;
+    line-height: 1.34;
+    letter-spacing: -0.01em;
+  }
+
+  .overview-top-projects-table td:nth-child(2) .team-members-inline {
+    margin-top: 6px;
+    row-gap: 5px;
+  }
+
+  .overview-top-avg {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    min-height: 28px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .overview-top-highlight {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary) !important;
+  }
 }

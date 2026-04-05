@@ -11,6 +11,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const EMPTY = {
   name: "",
@@ -235,7 +236,9 @@ export default function CreateOrganizationDrawer({ open, onClose, onSave, error 
           onClick={handleSave}
           disabled={saving || !canSave}
         >
-          {saving ? "Creating…" : "Create Organization"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Creating…">Create Organization</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

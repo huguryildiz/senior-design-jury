@@ -22,6 +22,7 @@ import {
 import AlertCard from "@/shared/ui/AlertCard";
 import Tooltip from "@/shared/ui/Tooltip";
 import ConfirmDialog from "@/shared/ui/ConfirmDialog";
+import CustomSelect from "@/shared/ui/CustomSelect";
 import LastActivity from "../components/LastActivity";
 
 // ── Status badge ─────────────────────────────────────────────
@@ -530,15 +531,17 @@ export default function ManageOrganizationsPanel({
               />
 
               <FieldLabel>Status</FieldLabel>
-              <select
+              <CustomSelect
                 className="vera-field-input"
                 value={editForm.status}
-                onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-              >
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-                <option value="archived">Archived</option>
-              </select>
+                onChange={(v) => setEditForm((f) => ({ ...f, status: v }))}
+                options={[
+                  { value: "active", label: "Active" },
+                  { value: "disabled", label: "Disabled" },
+                  { value: "archived", label: "Archived" },
+                ]}
+                ariaLabel="Status"
+              />
 
               <FieldError>{editError}</FieldError>
             </ModalBody>

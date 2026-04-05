@@ -8,6 +8,7 @@ import { useToast } from "@/shared/hooks/useToast";
 import { useAuditLogFilters } from "../hooks/useAuditLogFilters";
 import { usePageRealtime } from "../hooks/usePageRealtime";
 import ExportPanel from "../components/ExportPanel";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 // ── Chip helpers ──────────────────────────────────────────────
 const CHIP_MAP = {
@@ -220,17 +221,19 @@ export default function AuditLogPage({ organizationId }) {
             <div className="filter-group">
               <label>Date Range</label>
               <div className="filter-dropdown" style={{ position: "relative" }}>
-                <select
-                  style={{ height: 32, padding: "0 8px", border: "1px solid var(--field-border)", borderRadius: 6, fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-primary)", background: "var(--field-bg)", cursor: "pointer" }}
+                <CustomSelect
+                  compact
                   value={datePreset}
-                  onChange={(e) => applyDatePreset(e.target.value)}
-                >
-                  <option value="all">All time</option>
-                  <option value="today">Today</option>
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="custom">Custom range…</option>
-                </select>
+                  onChange={(v) => applyDatePreset(v)}
+                  options={[
+                    { value: "all", label: "All time" },
+                    { value: "today", label: "Today" },
+                    { value: "7d", label: "Last 7 days" },
+                    { value: "30d", label: "Last 30 days" },
+                    { value: "custom", label: "Custom range…" },
+                  ]}
+                  ariaLabel="Date range"
+                />
               </div>
             </div>
             {datePreset === "custom" && (

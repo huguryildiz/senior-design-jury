@@ -5,6 +5,7 @@ import "../../styles/jury.css";
 import RubricSheet from "../components/RubricSheet";
 import SpotlightTour from "../components/SpotlightTour";
 import { useTheme } from "../../shared/theme/ThemeProvider";
+import { StudentNames } from "@/shared/ui/EntityMeta";
 
 // Per-criterion color scheme (matches prototype djCriteria color map)
 const CRIT_PALETTE = [
@@ -114,7 +115,7 @@ export default function EvalStep({ state, onBack }) {
         <div className="dj-group-bar">
           <div className="dj-group-bar-info">
             <div className="dj-group-bar-title">{state.project.title}</div>
-            <div className="dj-group-bar-sub">{state.project.members || ""}</div>
+            <div className="dj-group-bar-sub"><StudentNames names={state.project.members} /></div>
           </div>
           <div className="dj-group-bar-nav" onClick={(e) => e.stopPropagation()}>
             <button className="dj-nav-btn" onClick={() => hasPrev && state.handleNavigate(projIdx - 1)} disabled={!hasPrev} style={{ height: 30, padding: "0 8px", borderRadius: 7 }}>

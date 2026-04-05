@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { Info } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function ProgrammeOutcomesManagerDrawer({
   open,
@@ -150,7 +151,9 @@ export default function ProgrammeOutcomesManagerDrawer({
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? "Saving…" : "Save Outcomes"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Outcomes</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

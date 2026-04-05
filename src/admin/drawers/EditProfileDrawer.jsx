@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import Avatar from "@/shared/ui/Avatar";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function EditProfileDrawer({ open, onClose, profile, onSave, error, initials, avatarBg, isSuper }) {
   const [displayName, setDisplayName] = useState("");
@@ -211,7 +212,9 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, erro
           onClick={handleSave}
           disabled={saving || !isDirty || !displayName.trim()}
         >
-          {saving ? "Saving…" : "Save Changes"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Changes</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

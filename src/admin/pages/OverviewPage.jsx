@@ -25,6 +25,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
 } from "@/shared/ui/Icons";
+import { StudentNames } from "@/shared/ui/EntityMeta";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -368,7 +369,7 @@ export default function OverviewPage({
                       <td className="mono text-right">
                         {avg != null ? avg : <span className="text-muted">—</span>}
                       </td>
-                      <td className="text-xs text-muted text-right">{relativeTime(j.lastSeenMs)}</td>
+                      <td className="text-right vera-datetime-text">{relativeTime(j.lastSeenMs)}</td>
                     </tr>
                   );
                 })}
@@ -517,7 +518,7 @@ export default function OverviewPage({
                       <div className="live-feed-text">
                         <strong>{j.juryName}</strong>{" "}{feedText}
                       </div>
-                      <div className="live-feed-time">{j.lastSeenMs ? relativeTime(j.lastSeenMs) : "Never seen"}</div>
+                      <div className="live-feed-time vera-datetime-text">{j.lastSeenMs ? relativeTime(j.lastSeenMs) : "Never seen"}</div>
                     </div>
                   </div>
                 );
@@ -581,7 +582,7 @@ export default function OverviewPage({
       </div>
 
       {/* Top Projects */}
-      <div className="card">
+      <div className="card overview-top-projects-card">
         <div className="card-header">
           <div className="card-title">
             <TrophyIcon size={14} style={{ verticalAlign: "-1px", marginRight: 6, color: "var(--accent)" }} />
@@ -591,8 +592,8 @@ export default function OverviewPage({
             Open rankings →
           </a>
         </div>
-        <div className="table-wrap" style={{ border: "none" }}>
-          <table>
+        <div className="table-wrap overview-top-projects-wrap" style={{ border: "none" }}>
+          <table className="overview-top-projects-table">
             <thead>
               <tr>
                 <th style={{ width: 32 }}>#</th>
@@ -617,16 +618,21 @@ export default function OverviewPage({
                 topProjects.map((p, i) => (
                   <tr key={p.id}>
                     <td className="mono text-center" style={{ fontWeight: 700, color: i === 0 ? "var(--accent)" : undefined }}>
-                      {i + 1}
+                      <span className="overview-top-rank">{i + 1}</span>
                     </td>
                     <td style={{ fontWeight: 600 }}>
                       {p.title}
-                      {p.members && <><br /><span className="text-xs text-muted">{p.members}</span></>}
+                      {p.members && (
+                        <>
+                          <br />
+                          <StudentNames names={p.members} />
+                        </>
+                      )}
                     </td>
                     <td className="mono text-right" style={{ fontWeight: 700 }}>
-                      {typeof p.totalAvg === "number" ? p.totalAvg.toFixed(1) : "—"}
+                      <span className="overview-top-avg">{typeof p.totalAvg === "number" ? p.totalAvg.toFixed(1) : "—"}</span>
                     </td>
-                    <td className="text-xs text-muted">
+                    <td className="text-xs text-muted overview-top-highlight">
                       {getProjectHighlight(p, criteriaConfig) ?? (p.count != null ? `Scored by ${p.count} juror${p.count !== 1 ? "s" : ""}` : "—")}
                     </td>
                   </tr>

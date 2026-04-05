@@ -11,6 +11,7 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
   const [confirming, setConfirming] = useState(false);
@@ -92,7 +93,9 @@ export default function ResetPinModal({ open, onClose, juror, onConfirm }) {
           onClick={handleConfirm}
           disabled={confirming}
         >
-          {confirming ? "Resetting…" : "Reset PIN"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={confirming} loadingText="Resetting…">Reset PIN</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Modal>

@@ -10,6 +10,8 @@ import Drawer from "@/shared/ui/Drawer";
 import { useToast } from "@/shared/hooks/useToast";
 import { supabase } from "@/shared/lib/supabaseClient";
 import { getMaintenanceConfig, setMaintenance, cancelMaintenance } from "@/shared/api/admin/maintenance";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 // ── Shared primitives ──────────────────────────────────────────
 
@@ -75,17 +77,12 @@ function ToggleRow({ title, desc, checked, onChange, disabled, badge }) {
   );
 }
 
-function DrawerHeader({ icon, iconBg, iconBorder, iconStroke, title, subtitle, onClose }) {
+function DrawerHeader({ icon, iconStroke, title, subtitle, onClose }) {
   return (
     <div className="fs-drawer-header">
       <div className="fs-drawer-header-row">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 36, height: 36, borderRadius: 9, display: "grid", placeItems: "center",
-              background: iconBg, border: `1px solid ${iconBorder}`,
-            }}
-          >
+          <div className="vera-icon-surface" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 9 }}>
             {icon(iconStroke)}
           </div>
           <div>
@@ -128,8 +125,6 @@ export function GlobalSettingsDrawer({ open, onClose }) {
             <circle cx="12" cy="12" r="3" />
           </svg>
         )}
-        iconBg="rgba(59,130,246,0.08)"
-        iconBorder="rgba(59,130,246,0.12)"
         iconStroke="var(--accent)"
         title="Global Settings"
         subtitle="Platform-wide defaults and configuration"
@@ -150,11 +145,16 @@ export function GlobalSettingsDrawer({ open, onClose }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div className="fs-field-row">
             <label className="fs-label">Default Scoring Scale</label>
-            <select className="fs-input" style={{ cursor: "pointer" }} value={form.defaultScale} onChange={(e) => set("defaultScale", e.target.value)}>
-              <option value="percentage">0–100 (Percentage)</option>
-              <option value="weighted">0–30 (Weighted)</option>
-              <option value="likert">1–5 (Likert)</option>
-            </select>
+            <CustomSelect
+              value={form.defaultScale}
+              onChange={(v) => set("defaultScale", v)}
+              options={[
+                { value: "percentage", label: "0–100 (Percentage)" },
+                { value: "weighted", label: "0–30 (Weighted)" },
+                { value: "likert", label: "1–5 (Likert)" },
+              ]}
+              ariaLabel="Default scoring scale"
+            />
           </div>
           <div className="fs-field-row">
             <label className="fs-label">Max Criteria per Period</label>
@@ -177,12 +177,17 @@ export function GlobalSettingsDrawer({ open, onClose }) {
         <SectionLabel style={{ marginTop: 4 }}>Email &amp; Notifications</SectionLabel>
         <div className="fs-field-row">
           <label className="fs-label">Notification Provider</label>
-          <select className="fs-input" style={{ cursor: "pointer" }} value={form.notificationProvider} onChange={(e) => set("notificationProvider", e.target.value)}>
-            <option value="resend">Resend</option>
-            <option value="sendgrid">SendGrid</option>
-            <option value="ses">AWS SES</option>
-            <option value="disabled">Disabled</option>
-          </select>
+          <CustomSelect
+            value={form.notificationProvider}
+            onChange={(v) => set("notificationProvider", v)}
+            options={[
+              { value: "resend", label: "Resend" },
+              { value: "sendgrid", label: "SendGrid" },
+              { value: "ses", label: "AWS SES" },
+              { value: "disabled", label: "Disabled" },
+            ]}
+            ariaLabel="Notification provider"
+          />
         </div>
         <ToggleRow
           title="Send Welcome Emails"
@@ -225,8 +230,6 @@ export function AuditCenterDrawer({ open, onClose }) {
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
         )}
-        iconBg="rgba(139,92,246,0.08)"
-        iconBorder="rgba(139,92,246,0.12)"
         iconStroke="#8b5cf6"
         title="Audit Center"
         subtitle="Platform-wide activity log and compliance events"
@@ -234,19 +237,31 @@ export function AuditCenterDrawer({ open, onClose }) {
       />
       <div className="fs-drawer-body" style={{ gap: 10 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-          <select className="fs-input" style={{ flex: 1, cursor: "pointer", fontSize: 12, padding: "7px 10px" }}>
-            <option>All Events</option>
-            <option>Authentication</option>
-            <option>Organization Changes</option>
-            <option>Admin Actions</option>
-            <option>Score Modifications</option>
-          </select>
-          <select className="fs-input" style={{ flex: 1, cursor: "pointer", fontSize: 12, padding: "7px 10px" }}>
-            <option>All Organizations</option>
-            <option>TEDU-EE</option>
-            <option>BOUN-CHEM</option>
-            <option>METU-IE</option>
-          </select>
+          <CustomSelect
+            compact
+            value="All Events"
+            onChange={() => {}}
+            options={[
+              { value: "All Events", label: "All Events" },
+              { value: "Authentication", label: "Authentication" },
+              { value: "Organization Changes", label: "Organization Changes" },
+              { value: "Admin Actions", label: "Admin Actions" },
+              { value: "Score Modifications", label: "Score Modifications" },
+            ]}
+            ariaLabel="Audit event filter"
+          />
+          <CustomSelect
+            compact
+            value="All Organizations"
+            onChange={() => {}}
+            options={[
+              { value: "All Organizations", label: "All Organizations" },
+              { value: "TEDU-EE", label: "TEDU-EE" },
+              { value: "BOUN-CHEM", label: "BOUN-CHEM" },
+              { value: "METU-IE", label: "METU-IE" },
+            ]}
+            ariaLabel="Audit organization filter"
+          />
         </div>
         <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
           {AUDIT_EVENTS.map((ev, i) => (
@@ -305,8 +320,6 @@ export function ExportBackupDrawer({ open, onClose }) {
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
         )}
-        iconBg="rgba(59,130,246,0.08)"
-        iconBorder="rgba(59,130,246,0.12)"
         iconStroke="var(--accent)"
         title="Export & Backup"
         subtitle="Platform-wide data export and backup controls"
@@ -316,22 +329,32 @@ export function ExportBackupDrawer({ open, onClose }) {
         <SectionLabel>Export Scope</SectionLabel>
         <div className="fs-field-row">
           <label className="fs-label">Organization</label>
-          <select className="fs-input" style={{ cursor: "pointer" }}>
-            <option>All Organizations</option>
-            <option>TEDU-EE</option>
-            <option>BOUN-CHEM</option>
-            <option>METU-IE</option>
-          </select>
+          <CustomSelect
+            value="All Organizations"
+            onChange={() => {}}
+            options={[
+              { value: "All Organizations", label: "All Organizations" },
+              { value: "TEDU-EE", label: "TEDU-EE" },
+              { value: "BOUN-CHEM", label: "BOUN-CHEM" },
+              { value: "METU-IE", label: "METU-IE" },
+            ]}
+            ariaLabel="Organization"
+          />
         </div>
         <div className="fs-field-row">
           <label className="fs-label">Data Type</label>
-          <select className="fs-input" style={{ cursor: "pointer" }}>
-            <option>Full Database Backup</option>
-            <option>Scores Only</option>
-            <option>User &amp; Membership Data</option>
-            <option>Audit Logs</option>
-            <option>Configuration</option>
-          </select>
+          <CustomSelect
+            value="Full Database Backup"
+            onChange={() => {}}
+            options={[
+              { value: "Full Database Backup", label: "Full Database Backup" },
+              { value: "Scores Only", label: "Scores Only" },
+              { value: "User & Membership Data", label: "User & Membership Data" },
+              { value: "Audit Logs", label: "Audit Logs" },
+              { value: "Configuration", label: "Configuration" },
+            ]}
+            ariaLabel="Data type"
+          />
         </div>
         <div className="fs-field-row">
           <label className="fs-label">Format</label>
@@ -491,8 +514,6 @@ export function MaintenanceDrawer({ open, onClose }) {
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
           </svg>
         )}
-        iconBg="rgba(217,119,6,0.08)"
-        iconBorder="rgba(217,119,6,0.12)"
         iconStroke="var(--warning)"
         title="Maintenance Mode"
         subtitle="Schedule or activate platform maintenance"
@@ -563,16 +584,12 @@ export function MaintenanceDrawer({ open, onClose }) {
             </div>
             <div className="fs-field-row">
               <label className="fs-label">Estimated Duration</label>
-              <select
-                className="fs-input"
-                style={{ cursor: "pointer" }}
+              <CustomSelect
                 value={durationMin ?? ""}
-                onChange={(e) => setDurationMin(e.target.value === "" ? null : Number(e.target.value))}
-              >
-                {DURATION_OPTIONS.map((o) => (
-                  <option key={o.label} value={o.value ?? ""}>{o.label}</option>
-                ))}
-              </select>
+                onChange={(v) => setDurationMin(v === "" ? null : Number(v))}
+                options={DURATION_OPTIONS.map((o) => ({ value: o.value ?? "", label: o.label }))}
+                ariaLabel="Estimated duration"
+              />
             </div>
           </div>
         )}
@@ -580,16 +597,12 @@ export function MaintenanceDrawer({ open, onClose }) {
         {mode === "immediate" && (
           <div className="fs-field-row">
             <label className="fs-label">Estimated Duration</label>
-            <select
-              className="fs-input"
-              style={{ cursor: "pointer" }}
+            <CustomSelect
               value={durationMin ?? ""}
-              onChange={(e) => setDurationMin(e.target.value === "" ? null : Number(e.target.value))}
-            >
-              {DURATION_OPTIONS.map((o) => (
-                <option key={o.label} value={o.value ?? ""}>{o.label}</option>
-              ))}
-            </select>
+              onChange={(v) => setDurationMin(v === "" ? null : Number(v))}
+              options={DURATION_OPTIONS.map((o) => ({ value: o.value ?? "", label: o.label }))}
+              ariaLabel="Estimated duration"
+            />
           </div>
         )}
 
@@ -623,7 +636,9 @@ export function MaintenanceDrawer({ open, onClose }) {
               disabled={cancelling}
               onClick={handleCancel}
             >
-              {cancelling ? "Cancelling…" : "Cancel Maintenance"}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={cancelling} loadingText="Cancelling…">Cancel Maintenance</AsyncButtonContent>
+              </span>
             </button>
           </>
         ) : (
@@ -636,7 +651,11 @@ export function MaintenanceDrawer({ open, onClose }) {
               disabled={saving}
               onClick={handleSchedule}
             >
-              {saving ? "Saving…" : mode === "immediate" ? "Activate Now" : "Schedule Maintenance"}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={saving} loadingText="Saving…">
+                  {mode === "immediate" ? "Activate Now" : "Schedule Maintenance"}
+                </AsyncButtonContent>
+              </span>
             </button>
           </>
         )}
@@ -679,8 +698,6 @@ export function FeatureFlagsDrawer({ open, onClose }) {
             <line x1="4" y1="22" x2="4" y2="15" />
           </svg>
         )}
-        iconBg="rgba(139,92,246,0.08)"
-        iconBorder="rgba(139,92,246,0.12)"
         iconStroke="#8b5cf6"
         title="Feature Flags"
         subtitle="Toggle platform features on or off globally"
@@ -845,8 +862,6 @@ export function SystemHealthDrawer({ open, onClose }) {
             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
           </svg>
         )}
-        iconBg="rgba(22,163,74,0.08)"
-        iconBorder="rgba(22,163,74,0.12)"
         iconStroke="var(--success)"
         title="System Health"
         subtitle="Real-time platform status and performance metrics"
@@ -942,7 +957,9 @@ export function SystemHealthDrawer({ open, onClose }) {
       <div className="fs-drawer-footer">
         <div style={{ flex: 1, fontSize: 11, color: "var(--text-tertiary)" }}>{refreshedLabel}</div>
         <button className="fs-btn fs-btn-secondary" type="button" onClick={runChecks} disabled={checking}>
-          {checking ? "Checking…" : "Refresh"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={checking} loadingText="Checking…">Refresh</AsyncButtonContent>
+          </span>
         </button>
         <button className="fs-btn fs-btn-primary" type="button" onClick={onClose}>Close</button>
       </div>

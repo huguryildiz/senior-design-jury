@@ -9,6 +9,8 @@ import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
 import { GitCompare } from "lucide-react";
 import CompareProjectsModal from "@/admin/modals/CompareProjectsModal";
+import { StudentNames } from "@/shared/ui/EntityMeta";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 // ── Competition ranking ──────────────────────────────────────────
 // Tied scores share the same rank; next rank skips (1,1,3,4,…).
@@ -464,7 +466,7 @@ export default function RankingsPage({
 
   return (
     <>
-    <div>
+    <div className="rankings-page">
       {/* ── Header ───────────────────────────────────────────── */}
       <div className="scores-header">
         <div className="scores-header-left">
@@ -472,30 +474,30 @@ export default function RankingsPage({
           <div className="page-desc">Project rankings by weighted average score.</div>
         </div>
         <div className="scores-header-actions">
-          <button
-            className={`btn btn-outline btn-sm${filterPanelOpen ? " active" : ""}`}
-            onClick={() => setFilterPanelOpen((o) => !o)}
-          >
-            <FilterIcon /> Filter
-          </button>
-          <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
-          <button
-            className={`btn btn-outline btn-sm${exportPanelOpen ? " active" : ""}`}
-            onClick={() => setExportPanelOpen((o) => !o)}
-          >
-            <DownloadIcon style={{ verticalAlign: "-1px" }} /> Export
-          </button>
           {summaryData.length >= 2 && (
             <>
-              <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
               <button
                 className="btn btn-outline btn-sm"
                 onClick={() => setCompareOpen(true)}
               >
                 <GitCompare size={14} style={{ verticalAlign: "-1px" }} /> Compare
               </button>
+              <div className="scores-action-sep" />
             </>
           )}
+          <button
+            className={`btn btn-outline btn-sm${filterPanelOpen ? " active" : ""}`}
+            onClick={() => setFilterPanelOpen((o) => !o)}
+          >
+            <FilterIcon /> Filter
+          </button>
+          <div className="scores-action-sep" />
+          <button
+            className={`btn btn-outline btn-sm${exportPanelOpen ? " active" : ""}`}
+            onClick={() => setExportPanelOpen((o) => !o)}
+          >
+            <DownloadIcon style={{ verticalAlign: "-1px" }} /> Export
+          </button>
         </div>
       </div>
 
@@ -556,12 +558,17 @@ export default function RankingsPage({
           </div>
           <div className="filter-group">
             <label>Consensus</label>
-            <select value={consensusFilter} onChange={(e) => setConsensusFilter(e.target.value)}>
-              <option value="all">All levels</option>
-              <option value="high">High only</option>
-              <option value="moderate">Moderate only</option>
-              <option value="disputed">Disputed only</option>
-            </select>
+            <CustomSelect
+              value={consensusFilter}
+              onChange={(v) => setConsensusFilter(v)}
+              options={[
+                { value: "all", label: "All levels" },
+                { value: "high", label: "High only" },
+                { value: "moderate", label: "Moderate only" },
+                { value: "disputed", label: "Disputed only" },
+              ]}
+              ariaLabel="Consensus"
+            />
           </div>
           <div className="filter-group">
             <label>Average Range</label>
@@ -588,14 +595,18 @@ export default function RankingsPage({
           </div>
           <div className="filter-group">
             <label>Criterion</label>
-            <select value={criterionFilter} onChange={(e) => setCriterionFilter(e.target.value)}>
-              <option value="all">All criteria</option>
-              {criteriaConfig.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.shortLabel || c.label} ≥ {criterionThresholds[c.id]}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={criterionFilter}
+              onChange={(v) => setCriterionFilter(v)}
+              options={[
+                { value: "all", label: "All criteria" },
+                ...criteriaConfig.map((c) => ({
+                  value: c.id,
+                  label: `${c.shortLabel || c.label} ≥ ${criterionThresholds[c.id]}`,
+                })),
+              ]}
+              ariaLabel="Criterion"
+            />
           </div>
           <button className="btn btn-outline btn-sm filter-clear-btn" onClick={clearFilters}>
             <svg
@@ -861,7 +872,7 @@ export default function RankingsPage({
                         <MedalCell rank={rank} />
                       </td>
                       <td className="col-project">{title}</td>
-                      <td className="col-students">{members}</td>
+                      <td className="col-students"><StudentNames names={members} /></td>
                       {criteriaConfig.map((c) => (
                         <HeatCell
                           key={c.id}

@@ -12,6 +12,8 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, Info } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 const TYPES = [
   {
@@ -248,17 +250,17 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
         {/* Evaluation Period */}
         <div className="fw-form-group">
           <label className="fw-form-label">Apply to Evaluation Period</label>
-          <select
+          <CustomSelect
             className="fw-form-select"
             value={form.periodId}
-            onChange={(e) => set("periodId", e.target.value)}
+            onChange={(v) => set("periodId", v)}
             disabled={saving}
-          >
-            <option value="">All future periods</option>
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "All future periods" },
+              ...periods.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            ariaLabel="Apply to evaluation period"
+          />
           <div className="fw-form-hint">
             The framework will be available for outcome mapping in the selected period.
           </div>
@@ -410,10 +412,19 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
           onClick={handleSave}
           disabled={saving || !canSave}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {saving ? "Creating…" : "Create Framework"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent
+              loading={saving}
+              loadingText="Creating…"
+            >
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Create Framework
+              </>
+            </AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

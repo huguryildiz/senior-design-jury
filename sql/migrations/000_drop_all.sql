@@ -57,6 +57,7 @@ DROP FUNCTION IF EXISTS public.rpc_jury_finalize_submission(UUID, UUID, TEXT)   
 DROP FUNCTION IF EXISTS public.rpc_admin_approve_application(UUID)                      CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_juror_reset_pin(UUID, UUID)                          CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_juror_toggle_edit_mode(UUID, UUID, BOOLEAN, TEXT, INT) CASCADE;
+DROP FUNCTION IF EXISTS public.rpc_juror_toggle_edit_mode_v2(UUID, UUID, BOOLEAN, TEXT, INT) CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_juror_unlock_pin(UUID, UUID)                         CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_entry_token_generate(UUID)                           CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_entry_token_revoke(UUID)                             CASCADE;

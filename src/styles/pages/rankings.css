@@ -3,3 +3,24 @@
  * .consensus-badge, .scores-kpi-strip, .filter-panel, .export-panel, …).
  * Add page-specific overrides here only.
  */
+
+/* Keep Rankings heading aligned like Overview on all breakpoints. */
+.rankings-page .scores-header {
+  align-items: flex-start;
+}
+
+.rankings-page .scores-header-left {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.rankings-page .scores-header-left .page-title,
+.rankings-page .scores-header-left .page-desc {
+  width: 100%;
+  text-align: left;
+  margin-left: 0;
+}

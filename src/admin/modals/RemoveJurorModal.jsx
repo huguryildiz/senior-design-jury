@@ -13,6 +13,7 @@ import { useState } from "react";
 import { AlertCircle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function RemoveJurorModal({ open, onClose, juror, impact = {}, onRemove, periodName }) {
   const [removing, setRemoving] = useState(false);
@@ -35,6 +36,9 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
   };
 
   const canRemove = confirmName === juror?.name;
+  const confirmPlaceholder = juror?.name
+    ? `Type ${juror.name} to confirm`
+    : "Type the juror name to confirm";
 
   return (
     <Modal open={open} onClose={handleClose} size="sm" centered>
@@ -60,6 +64,7 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
               display: "flex", alignItems: "center", gap: 10,
               padding: "10px 12px", background: "var(--surface-1)",
               borderRadius: "var(--radius)", marginBottom: 12,
+              textAlign: "left",
             }}
           >
             <JurorBadge name={juror.name} affiliation={juror.affiliation} size="md" />
@@ -104,15 +109,14 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
             Type <strong style={{ color: "var(--text-primary)" }}>{juror?.name}</strong> to confirm
           </label>
           <input
-            className="fs-input"
+            className="fs-typed-input"
             type="text"
             value={confirmName}
             onChange={(e) => setConfirmName(e.target.value)}
-            placeholder={juror?.name ?? ""}
+            placeholder={confirmPlaceholder}
             autoComplete="off"
             spellCheck={false}
             disabled={removing}
-            style={{ width: "100%", boxSizing: "border-box" }}
           />
         </div>
       </div>
@@ -137,7 +141,9 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
           disabled={removing || !canRemove}
           style={{ flex: 1 }}
         >
-          {removing ? "Removing…" : "Remove Juror"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={removing} loadingText="Removing…">Remove Juror</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Modal>

@@ -6,6 +6,8 @@ import { useAuth } from "@/auth";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import ExportPanel from "../components/ExportPanel";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import CustomSelect from "@/shared/ui/CustomSelect";
 import "../../styles/pages/periods.css";
 
 function formatUpdated(ts) {
@@ -278,20 +280,32 @@ export default function PeriodsPage({
           <div className="filter-row">
             <div className="filter-group">
               <label>Status</label>
-              <select className="modal-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ height: "32px", fontSize: "12px" }}>
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="locked">Locked</option>
-              </select>
+              <CustomSelect
+                compact
+                value={statusFilter}
+                onChange={(v) => setStatusFilter(v)}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "active", label: "Active" },
+                  { value: "completed", label: "Completed" },
+                  { value: "locked", label: "Locked" },
+                ]}
+                ariaLabel="Status"
+              />
             </div>
             <div className="filter-group">
               <label>Eval Lock</label>
-              <select className="modal-input" value={lockFilter} onChange={(e) => setLockFilter(e.target.value)} style={{ height: "32px", fontSize: "12px" }}>
-                <option value="all">All</option>
-                <option value="Unlocked">Unlocked</option>
-                <option value="Locked">Locked</option>
-              </select>
+              <CustomSelect
+                compact
+                value={lockFilter}
+                onChange={(v) => setLockFilter(v)}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "Unlocked", label: "Unlocked" },
+                  { value: "Locked", label: "Locked" },
+                ]}
+                ariaLabel="Eval lock"
+              />
             </div>
             <button className="btn btn-outline btn-sm filter-clear-btn" onClick={() => { setStatusFilter("all"); setLockFilter("all"); }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
@@ -425,7 +439,7 @@ export default function PeriodsPage({
                     )}
                   </td>
                   <td><StatusPill status={status} /></td>
-                  <td><span className="sem-updated">{formatUpdated(period.updated_at)}</span></td>
+                  <td><span className="sem-updated vera-datetime-text">{formatUpdated(period.updated_at)}</span></td>
                   <td>
                     <div className="sem-action-wrap" ref={openMenuId === period.id ? menuRef : null}>
                       <button
@@ -526,7 +540,9 @@ export default function PeriodsPage({
                 onClick={confirmSetCurrent}
                 disabled={switchLoading}
               >
-                {switchLoading ? "Switching…" : "Set as Current"}
+                <span className="btn-loading-content">
+                  <AsyncButtonContent loading={switchLoading} loadingText="Switching…">Set as Current</AsyncButtonContent>
+                </span>
               </button>
             </div>
           </div>
@@ -570,7 +586,11 @@ export default function PeriodsPage({
                 onClick={handleSavePeriod}
                 disabled={formSaving || !formName.trim()}
               >
-                {formSaving ? "Saving…" : editTarget ? "Save Changes" : "Add Period"}
+                <span className="btn-loading-content">
+                  <AsyncButtonContent loading={formSaving} loadingText="Saving…">
+                    {editTarget ? "Save Changes" : "Add Period"}
+                  </AsyncButtonContent>
+                </span>
               </button>
             </div>
           </div>

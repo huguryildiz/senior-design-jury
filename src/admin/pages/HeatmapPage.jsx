@@ -356,7 +356,7 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
               ))}
               <th className="text-center col-project col-avg" role="columnheader">
                 <span className="proj-name">Avg</span>
-                <span className="proj-group">juror avg</span>
+                <span className="proj-group">Juror Average</span>
               </th>
             </tr>
           </thead>
@@ -427,19 +427,15 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
 
                 {/* Per-juror avg column */}
                 <td
-                  className="m-cell m-cell-avg"
+                  className="m-cell m-cell-avg avg-score-cell"
                   aria-label={`${juror.name || juror.juror_name} average`}
                 >
                   {jurorRowAvgs[jurorIdx] == null ? (
-                    <span style={{ color: "var(--text-quaternary)" }}>—</span>
+                    <span className="avg-score-empty">—</span>
                   ) : (
                     <>
-                      <span style={{ fontWeight: 700, color: "var(--accent)" }}>
-                        {jurorRowAvgs[jurorIdx].toFixed(1)}
-                      </span>
-                      <span style={{ fontWeight: 400, color: "var(--text-tertiary)", fontSize: "10px" }}>
-                        {" "}/{tabMax}
-                      </span>
+                      <span className="avg-score-value">{jurorRowAvgs[jurorIdx].toFixed(1)}</span>
+                      <span className="avg-score-max"> /{tabMax}</span>
                     </>
                   )}
                 </td>
@@ -455,32 +451,24 @@ export default function HeatmapPage({ data, jurors, groups, periodName, organiza
                 return (
                   <td key={g.id} className="m-cell" aria-label={`${g.title} average`}>
                     {avg == null ? (
-                      <span style={{ color: "var(--text-quaternary)" }}>—</span>
+                      <span className="avg-score-empty">—</span>
                     ) : (
                       <>
-                        <span style={{ fontWeight: 700, color: "var(--accent)" }}>
-                          {avg.toFixed(1)}
-                        </span>
-                        <span style={{ fontWeight: 400, color: "var(--text-tertiary)", fontSize: "10px" }}>
-                          {" "}/{tabMax}
-                        </span>
+                        <span className="avg-score-value">{avg.toFixed(1)}</span>
+                        <span className="avg-score-max"> /{tabMax}</span>
                       </>
                     )}
                   </td>
                 );
               })}
               {/* Overall avg across all juror row averages */}
-              <td className="m-cell m-cell-avg" aria-label="Overall juror average">
+              <td className="m-cell m-cell-avg avg-score-cell" aria-label="Overall juror average">
                 {overallAvg == null ? (
-                  <span style={{ color: "var(--text-quaternary)" }}>—</span>
+                  <span className="avg-score-empty">—</span>
                 ) : (
                   <>
-                    <span style={{ fontWeight: 700, color: "var(--accent)" }}>
-                      {overallAvg.toFixed(1)}
-                    </span>
-                    <span style={{ fontWeight: 400, color: "var(--text-tertiary)", fontSize: "10px" }}>
-                      {" "}/{tabMax}
-                    </span>
+                    <span className="avg-score-value">{overallAvg.toFixed(1)}</span>
+                    <span className="avg-score-max"> /{tabMax}</span>
                   </>
                 )}
               </td>

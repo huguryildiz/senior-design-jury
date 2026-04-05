@@ -10,6 +10,7 @@
 import { useCallback, useRef, useState } from "react";
 import { AlertCircle, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const STATUS_LABELS = { ok: "Valid", skip: "Duplicate", err: "Error" };
 
@@ -291,7 +292,11 @@ export default function ImportCsvModal({ open, onClose, parseFile, onImport }) {
               onClick={handleImport}
               disabled={importing || !file || validCount === 0}
             >
-              {importing ? "Importing…" : file ? `Import ${validCount} Group${validCount !== 1 ? "s" : ""}` : "Import Groups"}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={importing} loadingText="Importing…">
+                  {file ? `Import ${validCount} Group${validCount !== 1 ? "s" : ""}` : "Import Groups"}
+                </AsyncButtonContent>
+              </span>
             </button>
           </div>
         </>

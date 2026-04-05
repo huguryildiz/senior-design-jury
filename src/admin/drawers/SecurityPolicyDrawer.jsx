@@ -15,6 +15,8 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 const DEFAULT_POLICY = {
   googleOAuth: true,
@@ -210,18 +212,18 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
         <SectionLabel>Jury Access</SectionLabel>
         <div className="fs-field-row">
           <label className="fs-label">Entry Token TTL</label>
-          <select
-            className="fs-input"
-            style={{ cursor: "pointer" }}
+          <CustomSelect
             value={form.tokenTtl}
-            onChange={(e) => set("tokenTtl", e.target.value)}
+            onChange={(v) => set("tokenTtl", v)}
             disabled={saving}
-          >
-            <option value="12h">12 hours</option>
-            <option value="24h">24 hours</option>
-            <option value="48h">48 hours</option>
-            <option value="7d">7 days</option>
-          </select>
+            options={[
+              { value: "12h", label: "12 hours" },
+              { value: "24h", label: "24 hours" },
+              { value: "48h", label: "48 hours" },
+              { value: "7d", label: "7 days" },
+            ]}
+            ariaLabel="Entry token TTL"
+          />
           <div className="fs-field-helper hint">
             How long jury entry tokens remain valid after generation.
           </div>
@@ -245,7 +247,9 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? "Saving…" : "Save Policy"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Policy</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

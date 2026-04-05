@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import OutcomeEditor from "../components/OutcomeEditor";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import "../../styles/pages/outcomes.css";
 
 // ── Coverage helpers ─────────────────────────────────────────
@@ -472,7 +473,9 @@ export default function OutcomesPage({
                             onClick={() => handleThresholdSave(fw.id)}
                             disabled={thresholdSaving}
                           >
-                            {thresholdSaving ? "Saving…" : "Save"}
+                            <span className="btn-loading-content">
+                              <AsyncButtonContent loading={thresholdSaving} loadingText="Saving…">Save</AsyncButtonContent>
+                            </span>
                           </button>
                           <button
                             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", fontSize: 16, lineHeight: 1, padding: "0 2px" }}

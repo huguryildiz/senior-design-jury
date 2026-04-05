@@ -5,18 +5,6 @@
 #projects-main-table tbody tr:hover { background: rgba(59,130,246,.03) }
 #projects-main-table tbody tr.row-menu-open { background: var(--surface-1); box-shadow: inset 3px 0 0 var(--accent) }
 
-/* ─── Member avatar chips ─────────────────────────────────── */
-.proj-member-list { display: flex; flex-direction: column; gap: 5px }
-.proj-member-chip { display: flex; align-items: center; gap: 7px }
-.proj-member-avatar {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(99,102,241,.12); color: var(--accent);
-  font-size: 9px; font-weight: 700; letter-spacing: 0;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; border: 1px solid rgba(99,102,241,.18);
-}
-.proj-member-name { font-size: 12px; color: var(--text-secondary); line-height: 1 }
-
 /* ─── Manage team members modal list ─────────────────────── */
 .manage-student-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px }
 .manage-student-row .modal-input { flex: 1 }

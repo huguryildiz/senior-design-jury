@@ -12,6 +12,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function EditProjectDrawer({ open, onClose, project, onSave, error }) {
   const [form, setForm] = useState({ title: "", advisor: "", description: "", members: [""] });
@@ -190,7 +191,9 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
           onClick={handleSave}
           disabled={saving || !form.title.trim()}
         >
-          {saving ? "Saving…" : "Save Changes"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Changes</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCodeStyling from "qr-code-styling";
 import veraLogo from "@/assets/vera_logo.png";
-import { generateEntryToken, revokeEntryToken, getEntryTokenStatus, sendEntryTokenEmail } from "@/shared/api";
+import { generateEntryToken, revokeEntryToken, getEntryTokenStatus, getActiveEntryTokenPlain, sendEntryTokenEmail } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import {
   getRawToken as storageGetRawToken,
@@ -13,6 +13,7 @@ import {
   clearRawToken as storageClearRawToken,
 } from "@/shared/storage/adminStorage";
 import JuryRevokeConfirmDialog from "../settings/JuryRevokeConfirmDialog";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 function fmtDate(ts) {
   if (!ts) return "—";
@@ -117,8 +118,15 @@ export default function EntryControlPage({
       return;
     }
     const saved = storageGetRawToken(periodId);
-    setRawToken(saved || "");
+    if (saved) {
+      setRawToken(saved);
+    }
     loadStatus();
+    if (!saved) {
+      getActiveEntryTokenPlain(periodId)
+        .then((plain) => { if (plain) setRawToken(plain); })
+        .catch(() => {});
+    }
   }, [periodId, loadStatus]);
 
   useEffect(() => {
@@ -305,7 +313,7 @@ export default function EntryControlPage({
       </div>
 
       {error && (
-        <div className="fb-alert fba-error" style={{ marginBottom: 12 }}>
+        <div className="fb-alert fba-danger" style={{ marginBottom: 12 }}>
           <div className="fb-alert-body">
             <div className="fb-alert-desc">{error}</div>
           </div>
@@ -371,13 +379,13 @@ export default function EntryControlPage({
               {status.created_at && (
                 <div className="ec-meta-row">
                   <span className="ec-meta-row-label">Created</span>
-                  <span className="ec-meta-row-value">{fmtDate(status.created_at)}</span>
+                  <span className="ec-meta-row-value vera-datetime-text">{fmtDate(status.created_at)}</span>
                 </div>
               )}
               {status.expires_at && (
                 <div className="ec-meta-row">
                   <span className="ec-meta-row-label">Expires</span>
-                  <span className="ec-meta-row-value" style={expirySoon ? { color: "var(--danger)" } : {}}>
+                  <span className="ec-meta-row-value vera-datetime-text" style={expirySoon ? { color: "var(--danger)" } : {}}>
                     {fmtDate(status.expires_at)}
                   </span>
                 </div>
@@ -411,7 +419,7 @@ export default function EntryControlPage({
               </button>
             )}
             <button className="btn btn-outline btn-sm" onClick={handleGenerate} disabled={isBusy || isDemoMode}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={regenerating ? "ec-spin" : ""}>
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                 <path d="M3 3v5h5" />
                 <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
@@ -444,7 +452,7 @@ export default function EntryControlPage({
                 </svg>
               </button>
               {showTokenDetail && (
-                <div className="ec-token-row">
+                <div className="ec-token-row show">
                   <span className="ec-token-code">{rawToken.slice(0, 12)}…</span>
                   <button className="ec-token-copy" onClick={handleCopy}>
                     {copied ? "Copied!" : "Copy"}
@@ -472,7 +480,9 @@ export default function EntryControlPage({
                   type="submit"
                   disabled={emailSending || !emailAddr.trim()}
                 >
-                  {emailSending ? "Sending…" : "Send"}
+                  <span className="btn-loading-content">
+                    <AsyncButtonContent loading={emailSending} loadingText="Sending…">Send</AsyncButtonContent>
+                  </span>
                 </button>
               </form>
               {emailSent && (

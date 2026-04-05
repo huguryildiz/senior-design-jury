@@ -11,6 +11,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 function getStrength(password) {
   const checks = {
@@ -226,7 +227,9 @@ export default function ChangePasswordDrawer({ open, onClose, onSave, error }) {
           onClick={handleSave}
           disabled={saving || !canSave}
         >
-          {saving ? "Updating…" : "Update Password"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Updating…">Update Password</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

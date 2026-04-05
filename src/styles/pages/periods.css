@@ -46,7 +46,7 @@
 /* ─── Stat columns ────────────────────────────────────────── */
 .sem-stat { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em }
 .sem-stat-label { font-size: 10.5px; color: var(--text-tertiary); font-weight: 400; font-family: var(--font) }
-.sem-updated { font-size: 11px; color: var(--text-tertiary); font-weight: 400; white-space: nowrap; font-family: var(--mono); letter-spacing: -0.02em }
+.sem-updated { color: inherit }
 
 /* ─── Row action button + dropdown ───────────────────────── */
 .sem-action-wrap { position: relative }

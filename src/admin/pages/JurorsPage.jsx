@@ -17,6 +17,7 @@ import EditJurorDrawer from "../drawers/EditJurorDrawer";
 import { sendJurorPinEmail, getActiveEntryTokenPlain } from "@/shared/api";
 import { parseJurorsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
+import { SquarePen } from "lucide-react";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import CustomSelect from "@/shared/ui/CustomSelect";
@@ -52,10 +53,25 @@ function formatEditWindowLeft(ts, nowMs = Date.now()) {
   if (!Number.isFinite(expiresMs)) return "";
   const diff = expiresMs - nowMs;
   if (diff <= 0) return "window expired";
+  if (diff < 60_000) return `${Math.ceil(diff / 1000)}s left`;
   const hours = Math.floor(diff / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   if (hours > 0) return `${hours}h ${mins}m left`;
   return `${Math.max(1, mins)}m left`;
+}
+
+function isEditWindowActive(ts, nowMs = Date.now()) {
+  if (!ts) return false;
+  const expiresMs = Date.parse(ts);
+  return Number.isFinite(expiresMs) && expiresMs > nowMs;
+}
+
+function getLiveOverviewStatus(juror, nowMs = Date.now()) {
+  const status = juror?.overviewStatus || "not_started";
+  if (status !== "editing") return status;
+  return isEditWindowActive(juror?.editExpiresAt || juror?.edit_expires_at, nowMs)
+    ? "editing"
+    : "completed";
 }
 
 function formatEditWindowText(juror, nowMs) {
@@ -252,7 +268,7 @@ export default function JurorsPage({
   const filteredList = useMemo(() => {
     let list = jurorList;
     if (statusFilter !== "all") {
-      list = list.filter((j) => j.overviewStatus === statusFilter);
+      list = list.filter((j) => getLiveOverviewStatus(j, editWindowNowMs) === statusFilter);
     }
     if (affilFilter !== "all") {
       list = list.filter((j) => (j.affiliation || "").includes(affilFilter));
@@ -265,7 +281,7 @@ export default function JurorsPage({
       );
     }
     return list;
-  }, [jurorList, statusFilter, affilFilter, search]);
+  }, [jurorList, statusFilter, affilFilter, search, editWindowNowMs]);
 
   // Per-juror average score map (only completed scores, i.e. total != null)
   const jurorAvgMap = useMemo(() => {
@@ -284,20 +300,28 @@ export default function JurorsPage({
 
   // KPI stats
   const totalJurors = jurorList.length;
-  const completedJurors = jurorList.filter((j) => j.overviewStatus === "completed").length;
+  const completedJurors = jurorList.filter((j) => getLiveOverviewStatus(j, editWindowNowMs) === "completed").length;
   const inProgressJurors = jurorList.filter((j) => j.overviewStatus === "in_progress").length;
-  const editingJurors = jurorList.filter((j) => j.overviewStatus === "editing").length;
+  const editingJurors = jurorList.filter((j) => getLiveOverviewStatus(j, editWindowNowMs) === "editing").length;
   const readyJurors = jurorList.filter((j) => j.overviewStatus === "ready_to_submit").length;
   const notStartedJurors = jurorList.filter((j) => j.overviewStatus === "not_started").length;
 
-  const editingBannerJurors = jurorList.filter((j) => j.overviewStatus === "editing");
+  const editingBannerJurors = useMemo(
+    () =>
+      jurorList.filter(
+        (j) =>
+          j.overviewStatus === "editing" &&
+          isEditWindowActive(j.editExpiresAt || j.edit_expires_at, editWindowNowMs)
+      ),
+    [jurorList, editWindowNowMs]
+  );
 
   useEffect(() => {
     if (!editingBannerJurors.length) return;
     setEditWindowNowMs(Date.now());
     const timerId = setInterval(() => {
       setEditWindowNowMs(Date.now());
-    }, 30_000);
+    }, 1_000);
     return () => clearInterval(timerId);
   }, [editingBannerJurors.length]);
 
@@ -387,10 +411,7 @@ export default function JurorsPage({
       {/* Editing mode banners */}
       {editingBannerJurors.map((j) => (
         <div key={j.jurorId || j.juror_id} className="fb-banner fbb-editing">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
+          <SquarePen size={16} />
           <span className="fb-banner-text">
             Editing enabled for <strong>{j.juryName || j.juror_name}</strong> — changes will overwrite existing scores
             {formatEditWindowText(j, editWindowNowMs)}
@@ -608,7 +629,7 @@ export default function JurorsPage({
               const scored = juror.overviewScoredProjects || 0;
               const total = juror.overviewTotalProjects || 0;
               const pct = total > 0 ? Math.round((scored / total) * 100) : 0;
-              const status = juror.overviewStatus || "not_started";
+              const status = getLiveOverviewStatus(juror, editWindowNowMs);
               const lastActive = juror.lastSeenAt || juror.last_activity_at || juror.finalSubmittedAt || juror.final_submitted_at;
 
               return (

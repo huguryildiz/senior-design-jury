@@ -11,6 +11,8 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 const EMPTY = {
   name: "",
@@ -106,28 +108,44 @@ export default function AddSemesterDrawer({ open, onClose, onSave, existingPerio
 
         <div className="fs-field">
           <label className="fs-field-label">Copy Criteria From <span className="fs-field-opt">(optional)</span></label>
-          <select className="fs-input" value={form.copyCriteriaFrom} onChange={(e) => set("copyCriteriaFrom", e.target.value)} disabled={saving}>
-            <option value="">— Start fresh —</option>
-            {existingPeriods.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <CustomSelect
+            value={form.copyCriteriaFrom}
+            onChange={(v) => set("copyCriteriaFrom", v)}
+            disabled={saving}
+            options={[
+              { value: "", label: "— Start fresh —" },
+              ...existingPeriods.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+            ariaLabel="Copy criteria from"
+          />
         </div>
 
         <div className="fs-field">
           <label className="fs-field-label">Evaluation Lock</label>
-          <select className="fs-input" value={form.evalLock} onChange={(e) => set("evalLock", e.target.value)} disabled={saving}>
-            <option value="unlocked">Unlocked — jurors can edit scores</option>
-            <option value="locked">Locked — scores are frozen</option>
-          </select>
+          <CustomSelect
+            value={form.evalLock}
+            onChange={(v) => set("evalLock", v)}
+            disabled={saving}
+            options={[
+              { value: "unlocked", label: "Unlocked — jurors can edit scores" },
+              { value: "locked", label: "Locked — scores are frozen" },
+            ]}
+            ariaLabel="Evaluation lock"
+          />
         </div>
 
         <div className="fs-field">
           <label className="fs-field-label">Visibility</label>
-          <select className="fs-input" value={form.visibility} onChange={(e) => set("visibility", e.target.value)} disabled={saving}>
-            <option value="visible">Visible — shown in juror period select</option>
-            <option value="hidden">Hidden — not shown to jurors</option>
-          </select>
+          <CustomSelect
+            value={form.visibility}
+            onChange={(v) => set("visibility", v)}
+            disabled={saving}
+            options={[
+              { value: "visible", label: "Visible — shown in juror period select" },
+              { value: "hidden", label: "Hidden — not shown to jurors" },
+            ]}
+            ariaLabel="Visibility"
+          />
         </div>
       </div>
 
@@ -139,7 +157,9 @@ export default function AddSemesterDrawer({ open, onClose, onSave, existingPerio
           onClick={handleSave}
           disabled={saving || !form.name.trim()}
         >
-          {saving ? "Creating…" : "Create Period"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Creating…">Create Period</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

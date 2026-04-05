@@ -13,6 +13,7 @@ import { useState } from "react";
 import { CheckCircle, AlertCircle, Info } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function PinResultModal({ open, onClose, juror, newPin, onSendEmail }) {
   const [copied, setCopied] = useState(false);
@@ -22,12 +23,23 @@ export default function PinResultModal({ open, onClose, juror, newPin, onSendEma
   const [sendResult, setSendResult] = useState(null); // null | "sent" | "error"
   const [sendError, setSendError] = useState("");
 
-  const handleCopy = () => {
-    if (newPin) {
-      navigator.clipboard.writeText(newPin).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    if (!newPin) return;
+    try {
+      await navigator.clipboard.writeText(newPin);
+    } catch {
+      // Fallback for HTTP or permission denied
+      const el = document.createElement("textarea");
+      el.value = newPin;
+      el.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand("copy"); } catch { /* ignore */ }
+      document.body.removeChild(el);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSend = async () => {
@@ -178,10 +190,16 @@ export default function PinResultModal({ open, onClose, juror, newPin, onSendEma
               onClick={handleSend}
               disabled={sending || !((emailRecipient || juror?.email || "").trim())}
             >
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" />
-              </svg>
-              {sending ? "Sending…" : "Send"}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={sending} loadingText="Sending…">
+                  <>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" />
+                    </svg>
+                    Send
+                  </>
+                </AsyncButtonContent>
+              </span>
             </button>
           </div>
           {sendResult === "sent" && (

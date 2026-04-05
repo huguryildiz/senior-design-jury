@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function ViewSessionsDrawer({ open, onClose, sessions = [], onRevoke }) {
   const [revoking, setRevoking] = useState(null);
@@ -84,7 +85,9 @@ export default function ViewSessionsDrawer({ open, onClose, sessions = [], onRev
                   onClick={() => handleRevoke(session.id)}
                   disabled={revoking === session.id}
                 >
-                  {revoking === session.id ? "Revoking…" : "Revoke"}
+                  <span className="btn-loading-content">
+                    <AsyncButtonContent loading={revoking === session.id} loadingText="Revoking…">Revoke</AsyncButtonContent>
+                  </span>
                 </button>
               )}
             </div>

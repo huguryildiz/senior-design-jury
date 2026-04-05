@@ -10,6 +10,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const EMPTY = { groupNo: "", title: "", advisor: "", description: "", members: [""] };
 
@@ -180,7 +181,9 @@ export default function AddProjectDrawer({ open, onClose, onSave, error }) {
           onClick={handleSave}
           disabled={saving || !form.groupNo.trim() || !form.title.trim()}
         >
-          {saving ? "Saving…" : "Add Project"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Add Project</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

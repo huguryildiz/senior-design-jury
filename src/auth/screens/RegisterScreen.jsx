@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { listOrganizationsPublic } from "@/shared/api";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 function generateTemporaryPassword() {
   const rand =
@@ -234,34 +235,34 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
 
             <div className="apply-field">
               <label className="apply-label" htmlFor="reg-university">University</label>
-              <select
+              <CustomSelect
                 id="reg-university"
                 className="apply-select"
                 value={university}
-                onChange={(e) => setUniversity(e.target.value)}
+                onChange={(v) => setUniversity(v)}
                 disabled={loading || tenantsLoading}
-              >
-                <option value="">{tenantsLoading ? "Loading…" : "Select university…"}</option>
-                {universityOptions.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
+                options={[
+                  { value: "", label: tenantsLoading ? "Loading…" : "Select university…" },
+                  ...universityOptions.map((opt) => ({ value: opt, label: opt })),
+                ]}
+                ariaLabel="University"
+              />
             </div>
 
             <div className="apply-field">
               <label className="apply-label" htmlFor="reg-dept">Apply to Department</label>
-              <select
+              <CustomSelect
                 id="reg-dept"
                 className="apply-select"
                 value={tenantId}
-                onChange={(e) => setTenantId(e.target.value)}
+                onChange={(v) => setTenantId(v)}
                 disabled={loading || !university}
-              >
-                <option value="">{university ? "Select department…" : "Choose university first"}</option>
-                {departmentOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.department || opt.name}</option>
-                ))}
-              </select>
+                options={[
+                  { value: "", label: university ? "Select department…" : "Choose university first" },
+                  ...departmentOptions.map((opt) => ({ value: opt.id, label: opt.department || opt.name })),
+                ]}
+                ariaLabel="Department"
+              />
             </div>
 
             <div className="apply-field">

@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function RevokeTokenModal({ open, onClose, activeCount = 0, onRevoke }) {
   const [revoking, setRevoking] = useState(false);
@@ -74,7 +75,9 @@ export default function RevokeTokenModal({ open, onClose, activeCount = 0, onRev
           disabled={revoking}
           style={{ flex: 1 }}
         >
-          {revoking ? "Revoking…" : "Revoke & Regenerate"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={revoking} loadingText="Revoking…">Revoke & Regenerate</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Modal>

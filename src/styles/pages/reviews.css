@@ -62,6 +62,14 @@
   text-align: right;
   white-space: nowrap;
 }
+.reviews-table .col-total .total-score-value {
+  color: var(--accent);
+}
+.reviews-table .col-total .total-score-max {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
 
 .reviews-table .col-score {
   font-family: var(--mono);
@@ -466,12 +474,25 @@
   .reviews-table .col-total {
     flex: 0 0 auto;
     text-align: right;
-    font-size: 22px;
-    font-weight: 800;
     line-height: 1;
     padding-left: 12px;
     order: 2;
     align-self: flex-start;
+  }
+  .reviews-table .col-total .total-score-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: var(--mono);
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+  .reviews-table .col-total .total-score-max {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    font-family: var(--mono);
+    letter-spacing: 0;
   }
 
   /* ── Row 2: Project no + title (full width) ── */
@@ -486,16 +507,17 @@
   }
   .reviews-table .col-no::after {
     content: attr(data-project);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--text-primary);
     font-family: var(--font);
-    line-height: 1.35;
+    line-height: 1.45;
     flex: 1 1 0;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    text-align: justify;
   }
   .reviews-table .col-project { display: none; }
 

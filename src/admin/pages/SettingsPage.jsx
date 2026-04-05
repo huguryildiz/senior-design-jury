@@ -11,6 +11,7 @@ import { useManageOrganizations } from "../hooks/useManageOrganizations";
 import SecurityPolicyDrawer from "../drawers/SecurityPolicyDrawer";
 import EditProfileDrawer from "../drawers/EditProfileDrawer";
 import Avatar from "@/shared/ui/Avatar";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import { upsertProfile, getSecurityPolicy, setSecurityPolicy } from "@/shared/api";
 import { supabase } from "@/shared/lib/supabaseClient";
 import {
@@ -139,7 +140,9 @@ function PasswordModal({ profile }) {
             onClick={profile.handlePasswordSave}
             disabled={profile.passwordSaving || isDemoMode}
           >
-            {profile.passwordSaving ? "Saving…" : "Update Password"}
+            <span className="btn-loading-content">
+              <AsyncButtonContent loading={profile.passwordSaving} loadingText="Saving…">Update Password</AsyncButtonContent>
+            </span>
           </button>
         </div>
       </div>

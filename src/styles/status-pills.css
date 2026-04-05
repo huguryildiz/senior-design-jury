@@ -7,8 +7,8 @@
 :root {
   /* Juror workflow states — PRIMARY (strong, prominent) */
   --pill-completed-bg: #dcfce7;
-  --pill-completed-text: #15803d;
-  --pill-completed-border: #86efac;
+  --pill-completed-text: #166534;
+  --pill-completed-border: #4ade80;
 
   --pill-progress-bg: #fef3c7;
   --pill-progress-text: #b45309;
@@ -27,9 +27,9 @@
   --pill-not-started-border: #e2e8f0;
 
   /* Cell/score states — SECONDARY (softer, muted) */
-  --pill-scored-bg: #f0fdf4;
-  --pill-scored-text: #4ade80;
-  --pill-scored-border: #bbf7d0;
+  --pill-scored-bg: #dcfce7;
+  --pill-scored-text: #166534;
+  --pill-scored-border: #4ade80;
 
   --pill-partial-bg: #fffbeb;
   --pill-partial-text: #d97706;

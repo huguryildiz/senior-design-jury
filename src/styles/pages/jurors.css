@@ -352,32 +352,46 @@
     box-sizing: border-box;
   }
 
-  /* Row 1: juror badge — full width */
+  /* Row 1: juror badge — flex:1, shares row with score */
   #jurors-main-table .col-juror {
-    flex: 0 0 100%;
-    order: 1;
+    flex: 1 1 0;
     min-width: 0;
+    order: 1;
+    padding-bottom: 10px;
   }
 
-  /* Divider before row 2 */
-  #jurors-main-table .col-status,
+  /* Row 1: avg score — right side of juror row */
   #jurors-main-table .col-avg {
-    margin-top: 10px;
+    flex: 0 0 auto;
+    order: 2;
+    text-align: right;
+    align-self: flex-start;
+    padding-left: 12px;
+    padding-bottom: 10px;
+  }
+
+  /* Divider: spans full width between row1 and row2 */
+  #jurors-main-table .col-status {
+    flex: 0 0 100%;
+    order: 3;
+    margin-top: 0;
     padding-top: 10px;
     border-top: 1px solid var(--border);
   }
-
-  /* Row 2: status pill — fixed 144px so it aligns across all cards */
-  #jurors-main-table .col-status {
-    flex: 0 0 144px;
-    order: 2;
+  #jurors-main-table .col-avg .avg-score-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    color: var(--accent);
+    font-family: var(--mono);
   }
-
-  /* Row 2: avg score — fills remaining space, right-aligned */
-  #jurors-main-table .col-avg {
-    flex: 1 1 0;
-    order: 3;
-    text-align: right;
+  #jurors-main-table .col-avg .avg-score-max {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    font-family: var(--mono);
+    letter-spacing: 0;
   }
 
   /* Hide columns not shown in portrait */

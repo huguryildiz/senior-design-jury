@@ -14,6 +14,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 function formatRelative(ts) {
   if (!ts) return "—";
@@ -64,7 +65,7 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
       setSaving(false);
       setPinCopied(false);
     }
-  }, [open, juror]);
+  }, [open, juror?.id]);
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -294,8 +295,11 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
           type="button"
           onClick={handleSave}
           disabled={saving || !form.name.trim() || !form.affiliation.trim()}
+          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
         >
-          {saving ? "Saving…" : "Save Changes"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Changes</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

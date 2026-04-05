@@ -28,6 +28,8 @@ import { formatTs } from "../utils/adminUtils";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import JurorBadge from "../components/JurorBadge";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
+import CustomSelect from "@/shared/ui/CustomSelect";
+import { StudentNames } from "@/shared/ui/EntityMeta";
 import "../../styles/pages/reviews.css";
 
 // ── Score status pill ─────────────────────────────────────────
@@ -378,7 +380,7 @@ export default function ReviewsPage({
     <div className="reviews-page">
       {/* Header */}
       <div className="reviews-header">
-        <div>
+        <div className="reviews-header-left">
           <div className="page-title">Reviews</div>
           <div className="page-desc">Inspect individual juror evaluations across projects and criteria.</div>
         </div>
@@ -463,53 +465,69 @@ export default function ReviewsPage({
       {/* Status legend */}
       <div className="reviews-status-legend" role="note" aria-label="Status legend">
         <div className="reviews-status-legend-row-inline">
-          <span className="reviews-status-legend-title">Score</span>
-          <span className="status-pill status-scored" data-tip="All criteria are scored for this row">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-            Scored
-          </span>
-          <span className="status-pill status-partial" data-tip="At least one criterion is missing">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="8" strokeDasharray="2.5 2.5" /><circle cx="12" cy="12" r="1.3" />
-            </svg>
-            Partial
-          </span>
-          <span className="status-pill status-empty" data-tip="No score has been entered yet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
-            Empty
-          </span>
+          <span className="reviews-status-legend-title">Status</span>
+          <PremiumTooltip text="All criteria are scored for this row">
+            <span className="status-pill status-scored">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              Scored
+            </span>
+          </PremiumTooltip>
+          <PremiumTooltip text="At least one criterion is missing">
+            <span className="status-pill status-partial">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="8" strokeDasharray="2.5 2.5" /><circle cx="12" cy="12" r="1.3" />
+              </svg>
+              Partial
+            </span>
+          </PremiumTooltip>
+          <PremiumTooltip text="No score has been entered yet">
+            <span className="status-pill status-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
+              Empty
+            </span>
+          </PremiumTooltip>
         </div>
         <div className="legend-sep" />
         <div className="reviews-status-legend-row-inline">
-          <span className="reviews-status-legend-title">Juror</span>
-          <span className="status-pill status-completed" data-tip="Final submission is completed">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" /><path d="M9.2 12.4 11.3 14.5 15 10.8" />
-            </svg>
-            Completed
-          </span>
-          <span className="status-pill status-ready" data-tip="All groups scored, ready for submission">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
-            </svg>
-            Ready to Submit
-          </span>
-          <span className="status-pill status-progress" data-tip="Scoring has started but is not complete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
-            </svg>
-            In Progress
-          </span>
-          <span className="status-pill status-not-started" data-tip="No scoring activity yet">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
-            Not Started
-          </span>
-          <span className="status-pill status-editing" data-tip="Editing mode is enabled for this juror">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-            Editing
-          </span>
+          <span className="reviews-status-legend-title">Progress</span>
+          <PremiumTooltip text="Final submission is completed">
+            <span className="status-pill status-completed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><path d="M9.2 12.4 11.3 14.5 15 10.8" />
+              </svg>
+              Completed
+            </span>
+          </PremiumTooltip>
+          <PremiumTooltip text="All groups scored, ready for submission">
+            <span className="status-pill status-ready">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
+              </svg>
+              Ready to Submit
+            </span>
+          </PremiumTooltip>
+          <PremiumTooltip text="Scoring has started but is not complete">
+            <span className="status-pill status-progress">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
+              </svg>
+              In Progress
+            </span>
+          </PremiumTooltip>
+          <PremiumTooltip text="No scoring activity yet">
+            <span className="status-pill status-not-started">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
+              Not Started
+            </span>
+          </PremiumTooltip>
+          <PremiumTooltip text="Editing mode is enabled for this juror">
+            <span className="status-pill status-editing">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+              Editing
+            </span>
+          </PremiumTooltip>
         </div>
       </div>
 
@@ -529,68 +547,66 @@ export default function ReviewsPage({
           {/* Juror filter */}
           <div className="filter-group">
             <label>Juror</label>
-            <select
-              className="filter-select"
+            <CustomSelect
               value={filterJuror || ""}
-              onChange={(e) => { setFilterJuror(e.target.value); setCurrentPage(1); }}
-            >
-              <option value="">All jurors</option>
-              {jurorOptions.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
+              onChange={(v) => { setFilterJuror(v); setCurrentPage(1); }}
+              options={[
+                { value: "", label: "All jurors" },
+                ...jurorOptions.map((name) => ({ value: name, label: name })),
+              ]}
+              ariaLabel="Juror"
+            />
           </div>
           {/* Project filter */}
           <div className="filter-group">
             <label>Project</label>
-            <select
-              className="filter-select"
+            <CustomSelect
               value={filterProjectTitle || ""}
-              onChange={(e) => { setFilterProjectTitle(e.target.value); setCurrentPage(1); }}
-            >
-              <option value="">All projects</option>
-              {projectOptions.map((title) => (
-                <option key={title} value={title}>{title}</option>
-              ))}
-            </select>
+              onChange={(v) => { setFilterProjectTitle(v); setCurrentPage(1); }}
+              options={[
+                { value: "", label: "All projects" },
+                ...projectOptions.map((title) => ({ value: title, label: title })),
+              ]}
+              ariaLabel="Project"
+            />
           </div>
           {/* Score status filter */}
           <div className="filter-group">
             <label>Score Status</label>
-            <select
-              className="filter-select"
+            <CustomSelect
               value={Array.isArray(filterStatus) ? filterStatus[0] || "" : ""}
-              onChange={(e) => {
-                const v = e.target.value;
+              onChange={(v) => {
                 setFilterStatus(v ? [v] : null);
                 setCurrentPage(1);
               }}
-            >
-              <option value="">All</option>
-              <option value="scored">Scored</option>
-              <option value="partial">Partial</option>
-              <option value="empty">Empty</option>
-            </select>
+              options={[
+                { value: "", label: "All" },
+                { value: "scored", label: "Scored" },
+                { value: "partial", label: "Partial" },
+                { value: "empty", label: "Empty" },
+              ]}
+              ariaLabel="Score status"
+            />
           </div>
           {/* Juror status filter */}
           <div className="filter-group">
             <label>Juror Status</label>
-            <select
-              className="filter-select"
+            <CustomSelect
               value={Array.isArray(filterJurorStatus) ? filterJurorStatus[0] || "" : ""}
-              onChange={(e) => {
-                const v = e.target.value;
+              onChange={(v) => {
                 setFilterJurorStatus(v ? [v] : null);
                 setCurrentPage(1);
               }}
-            >
-              <option value="">All</option>
-              <option value="completed">Completed</option>
-              <option value="ready_to_submit">Ready to Submit</option>
-              <option value="in_progress">In Progress</option>
-              <option value="not_started">Not Started</option>
-              <option value="editing">Editing</option>
-            </select>
+              options={[
+                { value: "", label: "All" },
+                { value: "completed", label: "Completed" },
+                { value: "ready_to_submit", label: "Ready to Submit" },
+                { value: "in_progress", label: "In Progress" },
+                { value: "not_started", label: "Not Started" },
+                { value: "editing", label: "Editing" },
+              ]}
+              ariaLabel="Juror status"
+            />
           </div>
           <button type="button" className="btn btn-outline btn-sm filter-clear-btn" onClick={handleClearFilters}>
             <X size={12} style={{ opacity: 0.5 }} />
@@ -686,33 +702,36 @@ export default function ReviewsPage({
         <table className="reviews-table">
           <thead>
             <tr>
-              <th style={{ cursor: "pointer" }} onClick={() => handleSort("juryName")}>
+              <th className={`sortable${sortKey === "juryName" ? " sorted" : ""}`} onClick={() => handleSort("juryName")}>
                 Juror <SortIcon colKey="juryName" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th className="text-center" style={{ width: 46, cursor: "pointer" }} onClick={() => handleSort("groupNo")}>
+              <th className={`text-center sortable${sortKey === "groupNo" ? " sorted" : ""}`} style={{ width: 46 }} onClick={() => handleSort("groupNo")}>
                 No <SortIcon colKey="groupNo" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th style={{ cursor: "pointer" }} onClick={() => handleSort("title")}>
+              <th className={`sortable${sortKey === "title" ? " sorted" : ""}`} onClick={() => handleSort("title")}>
                 Project <SortIcon colKey="title" sortKey={sortKey} sortDir={sortDir} />
               </th>
               <th>Team Members</th>
               {scoreCols.filter((c) => c.key !== "total").map((col) => (
                 <th
                   key={col.key}
-                  className="text-right"
-                  style={{ cursor: "pointer" }}
+                  className={`text-right sortable${sortKey === col.key ? " sorted" : ""}`}
                   onClick={() => handleSort(col.key)}
                 >
                   {col.label.split(" / ")[0]} <SortIcon colKey={col.key} sortKey={sortKey} sortDir={sortDir} />
                 </th>
               ))}
-              <th className="text-right" style={{ cursor: "pointer" }} onClick={() => handleSort("total")}>
+              <th className={`text-right sortable${sortKey === "total" ? " sorted" : ""}`} onClick={() => handleSort("total")}>
                 Total ({criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)}) <SortIcon colKey="total" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th className="text-center">Status</th>
-              <th className="text-center">Progress</th>
+              <th className={`text-center sortable${sortKey === "effectiveStatus" ? " sorted" : ""}`} onClick={() => handleSort("effectiveStatus")}>
+                Status <SortIcon colKey="effectiveStatus" sortKey={sortKey} sortDir={sortDir} />
+              </th>
+              <th className={`text-center sortable${sortKey === "jurorStatus" ? " sorted" : ""}`} onClick={() => handleSort("jurorStatus")}>
+                Progress <SortIcon colKey="jurorStatus" sortKey={sortKey} sortDir={sortDir} />
+              </th>
               <th>Comment</th>
-              <th className="text-right" style={{ cursor: "pointer" }} onClick={() => handleSort("finalSubmittedMs")}>
+              <th className={`text-right sortable${sortKey === "finalSubmittedMs" ? " sorted" : ""}`} onClick={() => handleSort("finalSubmittedMs")}>
                 Submitted At <SortIcon colKey="finalSubmittedMs" sortKey={sortKey} sortDir={sortDir} />
               </th>
             </tr>
@@ -730,21 +749,24 @@ export default function ReviewsPage({
                 const submittedTs = formatTs(row.finalSubmittedAt);
                 return (
                   <tr key={`${row.jurorId ?? row.juryName}__${row.projectId ?? row.title}__${i}`} className={isPartialRow ? "partial-row" : ""}>
-                    <td>
+                    <td className="col-juror">
                       <JurorBadge name={row.juryName} affiliation={row.affiliation} size="sm" />
                     </td>
-                    <td className="text-center">
+                    <td className="col-no text-center" data-project={row.title || row.projectName || ""}>
                       {row.groupNo != null
-                        ? <span className="group-no-badge">P{row.groupNo}</span>
+                        ? <span className="project-no-badge">P{row.groupNo}</span>
                         : <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>—</span>}
                     </td>
-                    <td className="text-sm">{row.title || row.projectName || "—"}</td>
-                    <td className="text-xs text-muted">{row.students || "—"}</td>
+                    <td className="col-project text-sm">{row.title || row.projectName || "—"}</td>
+                    <td className="col-members text-xs text-muted">
+                      <StudentNames names={row.students} />
+                      {!row.students ? "—" : null}
+                    </td>
                     {scoreCols.filter((c) => c.key !== "total").map((col) => {
                       const val = row[col.key];
                       const missing = val === null || val === undefined;
                       return (
-                        <td key={col.key} className={`col-score${missing ? " missing" : ""}`}>
+                        <td key={col.key} className={`col-score${missing ? " missing" : ""}`} data-label={col.label.split(" / ")[0]}>
                           {missing ? "—" : val}
                         </td>
                       );
@@ -752,17 +774,18 @@ export default function ReviewsPage({
                     <td className="col-total">
                       {row.total != null ? (
                         <>
-                          {row.total}
+                          <span className="total-score-value">{row.total}</span>
+                          <span className="total-score-max"> /100</span>
                           {isPartialRow && (
                             <span style={{ marginLeft: 2, width: 12, height: 12, borderRadius: "50%", background: "rgba(217,119,6,0.12)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "var(--warning)", fontWeight: 700 }}>!</span>
                           )}
                         </>
                       ) : "—"}
                     </td>
-                    <td className="text-center">
+                    <td className="col-status text-center">
                       <ScorePill status={row.effectiveStatus} />
                     </td>
-                    <td className="text-center">
+                    <td className="col-progress text-center">
                       <JurorPill status={row.jurorStatus} submittedTs={submittedTs} />
                     </td>
                     <td className="col-comment">
@@ -775,7 +798,7 @@ export default function ReviewsPage({
                         </PremiumTooltip>
                       ) : "—"}
                     </td>
-                    <td className="col-submitted text-right">
+                    <td className="col-submitted text-right vera-datetime-text">
                       {submittedTs && submittedTs !== "—" ? submittedTs : "—"}
                     </td>
                   </tr>

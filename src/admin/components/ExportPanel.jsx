@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import SendReportModal from "@/admin/modals/SendReportModal";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const FORMATS = [
   { id: "xlsx", iconLabel: "XLS", label: "Excel (.xlsx)", desc: "Formatted tables with styling", hint: "Best for sharing" },
@@ -104,8 +105,14 @@ export default function ExportPanel({
               disabled={loading}
               onClick={() => onExport(format)}
             >
-              <DownloadIcon />
-              {loading ? "Exporting\u2026" : `Download ${active.id === "xlsx" ? "Excel" : active.id === "pdf" ? "PDF" : "CSV"}`}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={loading} loadingText="Exporting…">
+                  <>
+                    <DownloadIcon />
+                    {`Download ${active.id === "xlsx" ? "Excel" : active.id === "pdf" ? "PDF" : "CSV"}`}
+                  </>
+                </AsyncButtonContent>
+              </span>
             </button>
           </div>
         </div>

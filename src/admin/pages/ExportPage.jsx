@@ -13,6 +13,7 @@ import {
   fullExport,
 } from "@/shared/api";
 import { exportXLSX, buildExportFilename } from "../utils/exportXLSX";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const MIN_BACKUP_DELAY = 1200;
@@ -223,7 +224,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             onClick={handleExportScores}
             disabled={!organizationId || scoresLoading}
           >
-            {scoresLoading ? "Exporting…" : "Download .xlsx"}
+            <span className="btn-loading-content">
+              <AsyncButtonContent loading={scoresLoading} loadingText="Exporting…">Download .xlsx</AsyncButtonContent>
+            </span>
           </button>
         </div>
 
@@ -239,7 +242,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             onClick={handleExportJurors}
             disabled={!organizationId || jurorsLoading}
           >
-            {jurorsLoading ? "Exporting…" : "Download .xlsx"}
+            <span className="btn-loading-content">
+              <AsyncButtonContent loading={jurorsLoading} loadingText="Exporting…">Download .xlsx</AsyncButtonContent>
+            </span>
           </button>
         </div>
 
@@ -255,7 +260,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             onClick={handleExportProjects}
             disabled={!organizationId || projectsLoading}
           >
-            {projectsLoading ? "Exporting…" : "Download .xlsx"}
+            <span className="btn-loading-content">
+              <AsyncButtonContent loading={projectsLoading} loadingText="Exporting…">Download .xlsx</AsyncButtonContent>
+            </span>
           </button>
         </div>
 
@@ -271,7 +278,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
             onClick={handleDbExportConfirm}
             disabled={dbBackupLoading || !organizationId}
           >
-            {dbBackupLoading ? "Exporting…" : "Download .json"}
+            <span className="btn-loading-content">
+              <AsyncButtonContent loading={dbBackupLoading} loadingText="Exporting…">Download .json</AsyncButtonContent>
+            </span>
           </button>
         </div>
       </div>

@@ -1,8 +1,8 @@
 // src/admin/settings/JuryRevokeConfirmDialog.jsx
 import { useRef } from "react";
-import { BanIcon } from "@/shared/ui/Icons";
 import { useFocusTrap } from "@/shared/hooks/useFocusTrap";
 import AlertCard from "@/shared/ui/AlertCard";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function JuryRevokeConfirmDialog({
   open,
@@ -18,38 +18,51 @@ export default function JuryRevokeConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[400] grid place-items-center bg-black/40 backdrop-blur-sm"
+      className="vera-modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="jury-revoke-dialog-title"
     >
-      <div
-        className="relative flex w-[min(520px,92vw)] max-w-[100vw] max-h-[90vh] flex-col gap-3 overflow-hidden rounded-2xl border border-destructive/20 bg-card p-5 shadow-lg"
-        ref={containerRef}
-      >
+      <div className="vera-modal-card vera-modal-card--lg" ref={containerRef}>
         {/* Header */}
-        <div className="flex items-center gap-2.5">
-          <span
-            className="inline-flex items-center justify-center size-9 rounded-lg bg-destructive/10 text-destructive [&_svg]:h-[18px] [&_svg]:w-[18px]"
-            aria-hidden="true"
-          >
-            <BanIcon />
-          </span>
-          <div
-            className="text-lg font-bold tracking-tight"
-            id="jury-revoke-dialog-title"
-          >
-            Revoke Access
+        <div className="vera-modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                background: "var(--danger-soft)",
+                color: "var(--danger)",
+                flexShrink: 0,
+              }}
+              aria-hidden="true"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+              </svg>
+            </span>
+            <div
+              style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}
+              id="jury-revoke-dialog-title"
+            >
+              Revoke Access
+            </div>
           </div>
         </div>
 
         {/* Body */}
-        <div className="mt-0.5 flex flex-col gap-2.5">
-          <div className="text-sm leading-snug text-muted-foreground">
+        <div className="vera-modal-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
             Are you sure you want to revoke jury entry access?
-          </div>
-          <AlertCard variant="error" icon={BanIcon}>
-            <ul style={{ margin: 0, paddingLeft: "1.2rem", textAlign: "left" }}>
+          </p>
+          <AlertCard variant="error">
+            <ul style={{ margin: 0, paddingLeft: "1.2rem" }}>
               <li>New scans of the current QR code will be <strong>blocked immediately</strong>.</li>
               <li>All evaluations will be <strong>locked</strong> — active jurors will no longer be able to submit scores.</li>
             </ul>
@@ -63,9 +76,9 @@ export default function JuryRevokeConfirmDialog({
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2.5 border-t pt-4">
+        <div className="vera-modal-actions">
           <button
-            className="inline-flex items-center gap-1.5 rounded-full border border-input bg-background px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+            className="vera-btn-cancel"
             type="button"
             disabled={loading}
             onClick={onCancel}
@@ -73,12 +86,14 @@ export default function JuryRevokeConfirmDialog({
             Cancel
           </button>
           <button
-            className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:pointer-events-none disabled:opacity-50"
+            className="vera-btn-destructive"
             type="button"
             disabled={loading}
             onClick={onConfirm}
           >
-            {loading ? "Revoking..." : "Revoke Access"}
+            <span className="btn-loading-content">
+              <AsyncButtonContent loading={loading} loadingText="Revoking…">Revoke Access</AsyncButtonContent>
+            </span>
           </button>
         </div>
       </div>

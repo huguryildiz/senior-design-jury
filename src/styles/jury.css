@@ -1874,6 +1874,10 @@ body:not(.dark-mode) .jury-gate-spinner{
 .dj-group-bar-info{flex:1;min-width:0}
 .dj-group-bar-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e2e8f0}
 .dj-group-bar-sub{font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dj-group-bar-sub .team-members-inline{max-width:100%;gap:6px}
+.dj-group-bar-sub .team-member-chip{gap:5px}
+.dj-group-bar-sub .team-member-avatar{width:16px;height:16px;font-size:8px}
+.dj-group-bar-sub .team-member-name{font-size:10px}
 .dj-group-bar-nav{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .dj-group-bar-num{font-family:var(--mono);font-size:11px;font-weight:700;color:#94a3b8;padding:0 3px;flex-shrink:0}
 .dj-group-bar-chevron{color:#475569;flex-shrink:0;margin-left:2px;width:14px;height:14px}
@@ -2609,4 +2613,3 @@ body:not(.dark-mode) .dj-cb-yes{background:rgba(59,130,246,0.08) !important;bord
 body:not(.dark-mode) .dj-cb-yes:hover{background:rgba(59,130,246,0.15) !important}
 body:not(.dark-mode) .dj-cb-no{color:#94a3b8 !important}
 body:not(.dark-mode) .dj-cb-no:hover{color:#64748b !important}
-

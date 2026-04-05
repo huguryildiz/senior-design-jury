@@ -143,7 +143,7 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
           <span className="sep" style={{ color: "rgba(255,255,255,0.15)", fontSize: "8px", lineHeight: 1 }}>·</span>{" "}
           <span>Analytics</span>
         </div>
-        <h1 className="landing-h1">Evaluate anything.<br /><em>Prove everything.</em></h1>
+        <h1 className="landing-h1">Evaluate anything<br /><em>Prove everything</em></h1>
         <p className="landing-desc">
           Structured jury scoring for exhibitions, competitions, and review panels. Configurable criteria, real-time data capture, and outcome reports your accreditation body trusts.
         </p>

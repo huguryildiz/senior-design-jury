@@ -37,6 +37,11 @@ function getFocusableElements(root) {
  */
 export function useFocusTrap({ containerRef, isOpen, onClose }) {
   const triggerRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -54,7 +59,7 @@ export function useFocusTrap({ containerRef, isOpen, onClose }) {
     function handleKeyDown(e) {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
 
@@ -87,5 +92,5 @@ export function useFocusTrap({ containerRef, isOpen, onClose }) {
       // Restore focus to the element that triggered the dialog.
       triggerRef.current?.focus?.();
     };
-  }, [isOpen, containerRef, onClose]);
+  }, [isOpen, containerRef]);
 }

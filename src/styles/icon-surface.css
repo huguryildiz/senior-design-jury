@@ -1,0 +1,151 @@
+/* Global icon surface rule.
+ * Use `.vera-icon-surface` for all newly added icons.
+ * Existing drawer/modal icon wrappers are mapped below.
+ */
+
+:root {
+  --vera-icon-surface-size: 42px;
+  --vera-icon-surface-radius: 14px;
+  --vera-icon-surface-padding: 10px;
+  --vera-icon-surface-start: #eef4ff;
+  --vera-icon-surface-end: #d7e3ff;
+  --vera-icon-surface-border: rgba(66, 105, 196, 0.34);
+  --vera-icon-surface-border-strong: rgba(66, 105, 196, 0.46);
+  --vera-icon-surface-highlight: rgba(255, 255, 255, 0.75);
+  --vera-icon-surface-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 10px 20px rgba(26, 49, 99, 0.18),
+    0 2px 6px rgba(10, 20, 46, 0.16);
+  --vera-icon-glyph-color: #8fb0ff;
+  --vera-icon-glyph-stroke: 1.9;
+  --vera-light-icon-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 0 0 1px rgba(94, 124, 196, 0.22),
+    0 8px 22px rgba(31, 56, 109, 0.18),
+    0 2px 6px rgba(15, 23, 42, 0.1);
+  --vera-light-box-shadow:
+    0 0 0 1px rgba(120, 141, 182, 0.16),
+    0 10px 24px rgba(26, 46, 90, 0.12),
+    0 2px 8px rgba(15, 23, 42, 0.06);
+  --vera-light-box-shadow-hover:
+    0 0 0 1px rgba(102, 125, 172, 0.2),
+    0 12px 28px rgba(26, 46, 90, 0.15),
+    0 3px 10px rgba(15, 23, 42, 0.08);
+}
+
+.dark-mode {
+  --vera-icon-surface-start: #1a2c56;
+  --vera-icon-surface-end: #0f1d3e;
+  --vera-icon-surface-border: rgba(129, 163, 255, 0.4);
+  --vera-icon-surface-border-strong: rgba(150, 180, 255, 0.52);
+  --vera-icon-surface-highlight: rgba(255, 255, 255, 0.16);
+  --vera-icon-surface-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 30px rgba(1, 6, 22, 0.55),
+    0 3px 10px rgba(1, 6, 22, 0.42);
+  --vera-icon-glyph-color: #b8ceff;
+}
+
+.vera-icon-surface,
+.fs-icon,
+.fs-modal-icon,
+.mop-modal-header-icon {
+  width: var(--vera-icon-surface-size);
+  height: var(--vera-icon-surface-size);
+  min-width: var(--vera-icon-surface-size);
+  min-height: var(--vera-icon-surface-size);
+  padding: var(--vera-icon-surface-padding);
+  border-radius: var(--vera-icon-surface-radius);
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--vera-icon-surface-border);
+  background: linear-gradient(180deg, var(--vera-icon-surface-start) 0%, var(--vera-icon-surface-end) 100%);
+  box-shadow: var(--vera-icon-surface-shadow);
+  color: var(--vera-icon-glyph-color);
+}
+
+.vera-icon-surface::before,
+.fs-icon::before,
+.fs-modal-icon::before,
+.mop-modal-header-icon::before {
+  content: "";
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 48%;
+  border-radius: calc(var(--vera-icon-surface-radius) - 2px);
+  background: linear-gradient(180deg, var(--vera-icon-surface-highlight) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+.vera-icon-surface > svg,
+.fs-icon > svg,
+.fs-modal-icon > svg,
+.mop-modal-header-icon > svg {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+  stroke: currentColor;
+  stroke-width: var(--vera-icon-glyph-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fs-icon.accent,
+.fs-icon.muted,
+.fs-icon.danger,
+.fs-icon.warning,
+.fs-icon.success,
+.fs-modal-icon.accent,
+.fs-modal-icon.warning,
+.fs-modal-icon.danger,
+.fs-modal-icon.success {
+  background: linear-gradient(180deg, var(--vera-icon-surface-start) 0%, var(--vera-icon-surface-end) 100%);
+  border-color: var(--vera-icon-surface-border);
+  color: var(--vera-icon-glyph-color);
+}
+
+.vera-icon-surface:hover,
+.fs-icon:hover,
+.fs-modal-icon:hover,
+.mop-modal-header-icon:hover {
+  border-color: var(--vera-icon-surface-border-strong);
+}
+
+body:not(.dark-mode) .vera-icon-surface,
+body:not(.dark-mode) .fs-icon,
+body:not(.dark-mode) .fs-modal-icon,
+body:not(.dark-mode) .mop-modal-header-icon,
+body:not(.dark-mode) .jury-icon-box,
+body:not(.dark-mode) .dj-icon-box,
+body:not(.dark-mode) .jrm-title-icon {
+  box-shadow: var(--vera-light-icon-shadow) !important;
+}
+
+body:not(.dark-mode) .card,
+body:not(.dark-mode) .kpi,
+body:not(.dark-mode) .table-wrap,
+body:not(.dark-mode) .fs-modal,
+body:not(.dark-mode) .fs-drawer,
+body:not(.dark-mode) .juror-drawer,
+body:not(.dark-mode) .modal-card,
+body:not(.dark-mode) .confirm-modal,
+body:not(.dark-mode) .export-panel,
+body:not(.dark-mode) .filter-panel {
+  box-shadow: var(--vera-light-box-shadow) !important;
+}
+
+body:not(.dark-mode) .card:hover,
+body:not(.dark-mode) .kpi:hover {
+  box-shadow: var(--vera-light-box-shadow-hover) !important;
+}
+
+.vera-datetime-text,
+.live-feed-time,
+.audit-ts-rel,
+.ec-session-time,
+.jrm-submitted {
+  color: var(--text-tertiary) !important;
+}

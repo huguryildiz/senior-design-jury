@@ -108,6 +108,19 @@
   color: var(--text-secondary);
 }
 
+/* ── Datetime text (global) ─────────────────────────────── */
+
+.vera-datetime-text {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
 /* ── Icon buttons (DangerIconButton) ─────────────────────── */
 
 .vera-icon-btn {
@@ -152,8 +165,6 @@
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 .vera-last-activity__icon {

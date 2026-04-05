@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function EntryTokenModal({
   open, onClose, tokenUrl, expiresIn, activeSessions, onRevoke, onSendEmail,
@@ -174,10 +175,16 @@ export default function EntryTokenModal({
               onClick={handleSend}
               disabled={sending || !emailRecipient.trim()}
             >
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" />
-              </svg>
-              {sending ? "Sending…" : "Send"}
+              <span className="btn-loading-content">
+                <AsyncButtonContent loading={sending} loadingText="Sending…">
+                  <>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" />
+                    </svg>
+                    Send
+                  </>
+                </AsyncButtonContent>
+              </span>
             </button>
           </div>
         </div>
@@ -198,7 +205,9 @@ export default function EntryTokenModal({
           onClick={handleRevoke}
           disabled={revoking}
         >
-          {revoking ? "Revoking…" : "Revoke & Regenerate"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={revoking} loadingText="Revoking…">Revoke & Regenerate</AsyncButtonContent>
+          </span>
         </button>
         <div style={{ flex: 1 }} />
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose}>

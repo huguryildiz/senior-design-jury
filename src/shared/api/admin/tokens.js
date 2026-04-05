@@ -6,9 +6,12 @@ import { supabase } from "../core/client";
 export async function generateEntryToken(periodId) {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
   const { error } = await supabase.from("entry_tokens").insert({
     period_id: periodId,
-    token,
+    token_hash: tokenHash,
+    token_plain: token,
     expires_at: expiresAt,
   });
   if (error) throw error;
@@ -29,7 +32,7 @@ export async function revokeEntryToken(periodId) {
     .from("juror_period_auth")
     .select("juror_id", { count: "exact", head: true })
     .eq("period_id", periodId)
-    .not("session_token", "is", null);
+    .not("session_token_hash", "is", null);
 
   return { success: true, active_juror_count: count || 0 };
 }
@@ -56,12 +59,26 @@ export async function getEntryTokenStatus(periodId) {
 export async function getActiveEntryToken(periodId) {
   const { data, error } = await supabase
     .from("entry_tokens")
-    .select("token")
+    .select("id")
     .eq("period_id", periodId)
     .eq("is_revoked", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data?.token || null;
+  return !!data;
+}
+
+/** Returns the plain entry token for a period (admin only), or null if none active. */
+export async function getActiveEntryTokenPlain(periodId) {
+  const { data, error } = await supabase
+    .from("entry_tokens")
+    .select("token_plain")
+    .eq("period_id", periodId)
+    .eq("is_revoked", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.token_plain || null;
 }

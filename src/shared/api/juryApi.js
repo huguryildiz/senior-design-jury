@@ -62,6 +62,25 @@ export async function upsertScore(periodId, projectId, jurorId, sessionToken, sc
       p_comment: comment || null,
     });
     if (error) throw error;
+    if (data?.error_code) {
+      const code = String(data.error_code || "");
+      const mappedMessage = code === "session_expired"
+        ? "juror_session_expired"
+        : code === "invalid_session"
+          ? "juror_session_invalid"
+          : code === "session_not_found"
+            ? "juror_session_not_found"
+            : code;
+      const e = new Error(mappedMessage || "rpc_jury_upsert_score_failed");
+      if (
+        code === "session_expired" ||
+        code === "invalid_session" ||
+        code === "session_not_found"
+      ) {
+        e.code = "P0401";
+      }
+      throw e;
+    }
     return data;
   });
 }
@@ -147,16 +166,19 @@ export async function listProjects(periodId, jurorId = null, signal) {
 export async function getJurorEditState(periodId, jurorId, sessionToken, signal) {
   let query = supabase
     .from("juror_period_auth")
-    .select("edit_enabled, is_blocked, last_seen_at, final_submitted_at")
+    .select("edit_enabled, edit_expires_at, is_blocked, last_seen_at, final_submitted_at")
     .match({ juror_id: jurorId, period_id: periodId })
     .single();
 
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
+  const expiresMs = data.edit_expires_at ? Date.parse(data.edit_expires_at) : NaN;
+  const editAllowed = !!data.edit_enabled && Number.isFinite(expiresMs) && expiresMs > Date.now();
   return {
-    edit_allowed: data.edit_enabled,
+    edit_allowed: editAllowed,
     lock_active: data.is_blocked,
+    edit_expires_at: data.edit_expires_at,
     last_seen_at: data.last_seen_at,
     final_submitted_at: data.final_submitted_at,
   };

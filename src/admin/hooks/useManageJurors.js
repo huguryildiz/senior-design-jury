@@ -538,10 +538,16 @@ export function useManageJurors({
         msg.includes("final_submit_required")
       ) {
         setEvalLockError?.("Edit mode can only be closed by juror resubmission.");
+      } else if (msg.includes("edit_window_expired")) {
+        setEvalLockError?.("Editing window has expired. Re-enable editing if needed.");
       } else if (msg.includes("final_submission_required")) {
         setEvalLockError?.(
           "Juror must have a completed submission before edit mode can be enabled."
         );
+      } else if (msg.includes("reason_too_short")) {
+        setEvalLockError?.("Please provide a reason with at least 5 characters.");
+      } else if (msg.includes("invalid_duration")) {
+        setEvalLockError?.("Duration is out of allowed range. Please choose a valid value.");
       } else if (msg.includes("no_pin")) {
         setEvalLockError?.("Juror PIN is missing for this period. Reset the PIN first.");
       } else if (

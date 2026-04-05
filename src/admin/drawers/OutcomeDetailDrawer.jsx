@@ -13,6 +13,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, Info } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria = [], onSave, error }) {
   const [description, setDescription] = useState("");
@@ -132,7 +133,9 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? "Saving…" : "Save Changes"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Changes</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

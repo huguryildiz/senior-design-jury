@@ -9,6 +9,8 @@ import ImportCsvModal from "../modals/ImportCsvModal";
 import { parseProjectsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import { StudentNames } from "@/shared/ui/EntityMeta";
 import "../../styles/pages/projects.css";
 
 // ── Column config — single source of truth for table headers and export ──
@@ -379,16 +381,9 @@ export default function ProjectsPage({
                   <div style={{ fontWeight: 600, lineHeight: 1.35 }}>{project.title}</div>
                 </td>
                 <td>
-                  <div className="proj-member-list">
-                    {membersToArray(project.members).map((name, i) => (
-                      <span key={i} className="proj-member-chip">
-                        <span className="proj-member-avatar">{name[0]?.toUpperCase() || "?"}</span>
-                        <span className="proj-member-name">{name}</span>
-                      </span>
-                    ))}
-                  </div>
+                  <StudentNames names={project.members} />
                 </td>
-                <td className="text-sm" style={{ color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
+                <td className="vera-datetime-text">
                   {formatUpdated(project.updated_at)}
                 </td>
                 <td>
@@ -477,12 +472,13 @@ export default function ProjectsPage({
               <div className="juror-drawer-row">
                 <span className="juror-drawer-row-label">Team Members</span>
                 <span className="juror-drawer-row-value">
-                  {membersToString(drawerProject.members) || "—"}
+                  <StudentNames names={drawerProject.members} />
+                  {!membersToArray(drawerProject.members).length ? "—" : null}
                 </span>
               </div>
               <div className="juror-drawer-row">
                 <span className="juror-drawer-row-label">Last Updated</span>
-                <span className="juror-drawer-row-value">{formatUpdated(drawerProject.updated_at)}</span>
+                <span className="juror-drawer-row-value vera-datetime-text">{formatUpdated(drawerProject.updated_at)}</span>
               </div>
             </div>
             <div className="juror-drawer-actions">
@@ -567,7 +563,11 @@ export default function ProjectsPage({
                 onClick={handleSaveProject}
                 disabled={formSaving || !formTitle.trim()}
               >
-                {formSaving ? "Saving…" : editTarget ? "Save Changes" : "Add Project"}
+                <span className="btn-loading-content">
+                  <AsyncButtonContent loading={formSaving} loadingText="Saving…">
+                    {editTarget ? "Save Changes" : "Add Project"}
+                  </AsyncButtonContent>
+                </span>
               </button>
             </div>
           </div>

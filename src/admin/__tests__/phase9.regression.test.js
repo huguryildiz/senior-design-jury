@@ -6,7 +6,7 @@
 // Tests: juryapi.fieldmap.01, admin.delete.01, period.aliases.01
 // ============================================================
 
-import { describe, expect, vi, beforeEach } from "vitest";
+import { describe, expect, vi, beforeEach, it } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { qaTest } from "../../test/qaTest.js";
 
@@ -51,7 +51,7 @@ vi.mock("../../shared/api", () => ({
 
 import { supabase } from "@/shared/lib/supabaseClient";
 import * as api from "../../shared/api";
-import { getJurorEditState } from "../../shared/api/juryApi";
+import { getJurorEditState, upsertScore } from "../../shared/api/juryApi";
 import { useManageProjects } from "../../admin/hooks/useManageProjects";
 import { useManageJurors } from "../../admin/hooks/useManageJurors";
 import { useManagePeriods } from "../../admin/hooks/useManagePeriods";
@@ -109,6 +109,7 @@ describe("Phase 9 regression", () => {
     // Simulate the chainable PostgREST query returning DB-column names.
     const dbRow = {
       edit_enabled: true,
+      edit_expires_at: "2099-04-01T10:30:00Z",
       is_blocked: false,
       last_seen_at: "2026-04-01T10:00:00Z",
       final_submitted_at: null,
@@ -123,12 +124,44 @@ describe("Phase 9 regression", () => {
     // DB columns must be remapped to UI field names.
     expect(result.edit_allowed).toBe(true);    // edit_enabled → edit_allowed
     expect(result.lock_active).toBe(false);    // is_blocked   → lock_active
+    expect(result.edit_expires_at).toBe("2099-04-01T10:30:00Z");
     expect(result.last_seen_at).toBe("2026-04-01T10:00:00Z");
     expect(result.final_submitted_at).toBeNull();
 
     // Verify raw DB field names are NOT forwarded to the caller.
     expect(result).not.toHaveProperty("edit_enabled");
     expect(result).not.toHaveProperty("is_blocked");
+  });
+
+  it("returns edit_allowed=false when edit window is expired", async () => {
+    const dbRow = {
+      edit_enabled: true,
+      edit_expires_at: "2000-01-01T00:00:00Z",
+      is_blocked: false,
+      last_seen_at: "2026-04-01T10:00:00Z",
+      final_submitted_at: "2026-04-01T09:00:00Z",
+    };
+    const singleMock = vi.fn().mockResolvedValue({ data: dbRow, error: null });
+    const matchMock = vi.fn().mockReturnValue({ single: singleMock });
+    const selectMock = vi.fn().mockReturnValue({ match: matchMock });
+    supabase.from.mockReturnValue({ select: selectMock });
+
+    const result = await getJurorEditState("period-1", "juror-1", "tok-1");
+    expect(result.edit_allowed).toBe(false);
+  });
+
+  it("maps rpc_jury_upsert_score session errors to jury session classifier shape", async () => {
+    supabase.rpc.mockResolvedValueOnce({
+      data: { ok: false, error_code: "session_expired" },
+      error: null,
+    });
+
+    await expect(
+      upsertScore("period-1", "project-1", "juror-1", "tok-1", { technical: 20 }, "", null)
+    ).rejects.toMatchObject({
+      message: "juror_session_expired",
+      code: "P0401",
+    });
   });
 
   // ── admin.delete.01 — delete handlers call the real API ───────────────

@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import Modal from "@/shared/ui/Modal";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function DeleteGroupModal({ open, onClose, groupName, impact = {}, onDelete }) {
   const [deleting, setDeleting] = useState(false);
@@ -78,7 +79,9 @@ export default function DeleteGroupModal({ open, onClose, groupName, impact = {}
           disabled={deleting}
           style={{ flex: 1 }}
         >
-          {deleting ? "Deleting…" : "Delete Project"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={deleting} loadingText="Deleting…">Delete Project</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Modal>

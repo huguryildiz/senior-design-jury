@@ -91,21 +91,32 @@ export async function listJurorsSummary(periodId) {
     scoreCounts[s.juror_id] = (scoreCounts[s.juror_id] || 0) + 1;
   }
 
-  return (authRows || []).map((row) => ({
-    jurorId: row.juror_id,
-    juryName: row.juror?.juror_name || "",
-    affiliation: row.juror?.affiliation || "",
-    email: row.juror?.email || "",
-    editEnabled: row.edit_enabled || false,
-    finalSubmittedAt: row.final_submitted_at || "",
-    finalSubmitted: Boolean(row.final_submitted_at),
-    lastSeenAt: row.last_seen_at || "",
-    lastSeenMs: row.last_seen_at ? new Date(row.last_seen_at).getTime() : 0,
-    totalProjects,
-    completedProjects: scoreCounts[row.juror_id] || 0,
-    lockedUntil: row.locked_until,
-    isLocked: row.is_blocked || false,
-  }));
+  return (authRows || []).map((row) => {
+    // Legacy rows with NULL edit_expires_at are treated as inactive.
+    // Active edit mode requires both edit_enabled=true and a future expiry.
+    // This keeps status derivation aligned with DB gating.
+    const editExpiresAt = row.edit_expires_at || "";
+    const expiresMs = editExpiresAt ? Date.parse(editExpiresAt) : NaN;
+    const editEnabled =
+      !!row.edit_enabled && Number.isFinite(expiresMs) && expiresMs > Date.now();
+
+    return {
+      jurorId: row.juror_id,
+      juryName: row.juror?.juror_name || "",
+      affiliation: row.juror?.affiliation || "",
+      email: row.juror?.email || "",
+      editEnabled,
+      editExpiresAt,
+      finalSubmittedAt: row.final_submitted_at || "",
+      finalSubmitted: Boolean(row.final_submitted_at),
+      lastSeenAt: row.last_seen_at || "",
+      lastSeenMs: row.last_seen_at ? new Date(row.last_seen_at).getTime() : 0,
+      totalProjects,
+      completedProjects: scoreCounts[row.juror_id] || 0,
+      lockedUntil: row.locked_until,
+      isLocked: row.is_blocked || false,
+    };
+  });
 }
 
 /**
@@ -343,6 +354,21 @@ export async function getDeleteCounts(targetType, targetId) {
     return { scores: count || 0 };
   }
   return {};
+}
+
+/**
+ * Returns the sum of max_score for all criteria in a period.
+ * Returns null if no criteria are configured for the period.
+ */
+export async function getPeriodMaxScore(periodId) {
+  if (!periodId) return null;
+  const { data, error } = await supabase
+    .from("period_criteria")
+    .select("max_score")
+    .eq("period_id", periodId);
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return data.reduce((s, r) => s + (Number(r.max_score) || 0), 0);
 }
 
 /**

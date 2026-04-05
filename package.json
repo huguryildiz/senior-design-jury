@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:demo": "vite --mode e2e",
+    "check:no-native-select": "node scripts/check-no-native-select.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",

@@ -5,6 +5,7 @@ import { lazy, Suspense, useRef, useMemo, useState, useEffect, useCallback, Comp
 import { useAuth } from "@/auth";
 import { useAdminTabs } from "../hooks/useAdminTabs";
 import { useAdminData } from "../hooks/useAdminData";
+import { useGlobalTableSort } from "../hooks/useGlobalTableSort";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
 import OverviewPage from "../pages/OverviewPage";
@@ -22,6 +23,7 @@ import SettingsPage from "../pages/SettingsPage";
 import ExportPage from "../pages/ExportPage";
 import CriteriaPage from "../pages/CriteriaPage";
 import OutcomesPage from "../pages/OutcomesPage";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const LazyLoginForm            = lazy(() => import("@/auth/screens/LoginScreen"));
 const LazyRegisterForm         = lazy(() => import("@/auth/screens/RegisterScreen"));
@@ -71,7 +73,9 @@ function FallbackLoginForm({ onLogin, initialEmail = "", initialPassword = "" })
         />
         <button type="submit" disabled={loading}
           style={{ width: "100%", padding: "11px", background: "#2F56D6", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Signing in…" : "Sign in"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={loading} loadingText="Signing in…">Sign in</AsyncButtonContent>
+          </span>
         </button>
       </form>
     </div>
@@ -90,6 +94,8 @@ class AuthFormErrorBoundary extends Component {
 import { DEMO_MODE as isDemoMode } from "@/shared/lib/demoMode";
 
 export default function AdminLayout({ onReturnHome }) {
+  useGlobalTableSort();
+
   const settingsDirtyRef = useRef(false);
   const { adminTab, setAdminTab, scoresView, switchScoresView } = useAdminTabs({
     settingsDirtyRef,

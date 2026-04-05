@@ -12,6 +12,7 @@
 import { AlertTriangle } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function PinResetConfirmModal({ open, onClose, juror, loading, onConfirm }) {
   const name = juror?.juryName || juror?.juror_name || "";
@@ -91,7 +92,9 @@ export default function PinResetConfirmModal({ open, onClose, juror, loading, on
           onClick={onConfirm}
           disabled={loading}
         >
-          {loading ? "Resetting…" : "Reset PIN"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={loading} loadingText="Resetting…">Reset PIN</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Modal>

@@ -14,6 +14,8 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import CustomSelect from "@/shared/ui/CustomSelect";
 
 export default function EditSemesterDrawer({ open, onClose, period, onSave, onDelete, error }) {
   const [form, setForm] = useState({ name: "", description: "", startDate: "", endDate: "", evalLock: "unlocked", visibility: "visible" });
@@ -120,10 +122,16 @@ export default function EditSemesterDrawer({ open, onClose, period, onSave, onDe
 
         <div className="fs-field">
           <label className="fs-field-label">Evaluation Lock</label>
-          <select className="fs-input" value={form.evalLock} onChange={(e) => set("evalLock", e.target.value)} disabled={saving || locked}>
-            <option value="unlocked">Unlocked — jurors can edit scores</option>
-            <option value="locked">Locked — scores are frozen</option>
-          </select>
+          <CustomSelect
+            value={form.evalLock}
+            onChange={(v) => set("evalLock", v)}
+            disabled={saving || locked}
+            options={[
+              { value: "unlocked", label: "Unlocked — jurors can edit scores" },
+              { value: "locked", label: "Locked — scores are frozen" },
+            ]}
+            ariaLabel="Evaluation lock"
+          />
           {locked && (
             <div className="fs-field-helper hint">Eval lock setting is managed via the lock toggle on the periods list.</div>
           )}
@@ -131,10 +139,16 @@ export default function EditSemesterDrawer({ open, onClose, period, onSave, onDe
 
         <div className="fs-field">
           <label className="fs-field-label">Visibility</label>
-          <select className="fs-input" value={form.visibility} onChange={(e) => set("visibility", e.target.value)} disabled={saving}>
-            <option value="visible">Visible</option>
-            <option value="hidden">Hidden</option>
-          </select>
+          <CustomSelect
+            value={form.visibility}
+            onChange={(v) => set("visibility", v)}
+            disabled={saving}
+            options={[
+              { value: "visible", label: "Visible" },
+              { value: "hidden", label: "Hidden" },
+            ]}
+            ariaLabel="Visibility"
+          />
         </div>
 
         {/* Stats */}
@@ -185,7 +199,9 @@ export default function EditSemesterDrawer({ open, onClose, period, onSave, onDe
           onClick={handleSave}
           disabled={saving || !form.name.trim()}
         >
-          {saving ? "Saving…" : "Save Changes"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Changes</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

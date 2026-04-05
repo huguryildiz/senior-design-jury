@@ -10,8 +10,9 @@
 //   error        — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, UserPlus, X } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 const EMPTY = { name: "", affiliation: "", email: "" };
 
@@ -52,12 +53,7 @@ export default function AddJurorDrawer({ open, onClose, onSave, periodName, erro
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="fs-icon identity" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <line x1="19" y1="8" x2="19" y2="14"/>
-                <line x1="22" y1="11" x2="16" y2="11"/>
-              </svg>
+              <UserPlus size={18} />
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Add Juror</div>
@@ -65,7 +61,7 @@ export default function AddJurorDrawer({ open, onClose, onSave, periodName, erro
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <X size={16} strokeWidth={2.5} />
           </button>
         </div>
       </div>
@@ -112,7 +108,7 @@ export default function AddJurorDrawer({ open, onClose, onSave, periodName, erro
               disabled={saving}
             />
             <div className="fs-field-helper hint">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <Info size={12} />
               University, company or research institution.
             </div>
           </div>
@@ -159,7 +155,9 @@ export default function AddJurorDrawer({ open, onClose, onSave, periodName, erro
           onClick={handleSave}
           disabled={saving || !form.name.trim() || !form.affiliation.trim()}
         >
-          {saving ? "Creating…" : "Add Juror"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Creating…">Add Juror</AsyncButtonContent>
+          </span>
         </button>
       </div>
     </Drawer>

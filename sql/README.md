@@ -94,7 +94,7 @@ it; jury writes go through `rpc_jury_upsert_score`.
 
 ```text
 sql/
-├── migrations/                    ← Apply in order (001–011); 000 is teardown only
+├── migrations/                    ← Apply in order (001+); 000 is teardown only
 │   ├── 000_drop_all.sql           ← Full teardown — run once before a fresh apply
 │   ├── 001_extensions.sql         ← Extensions: uuid-ossp, pgcrypto
 │   ├── 002_identity.sql           ← organizations, profiles, memberships, org_applications
@@ -106,7 +106,8 @@ sql/
 │   ├── 008_audit_and_rls.sql      ← Triggers (updated_at, audit_log) + RLS for all 21 tables
 │   ├── 009_security_hash_tokens.sql ← Security patch: token fields stored as SHA-256 hashes
 │   ├── 010_landing_stats.sql      ← Public RPC: rpc_landing_stats() for landing page (anon)
-│   └── 011_enable_realtime.sql    ← Realtime publication: 7 tables added to supabase_realtime
+│   ├── 011_enable_realtime.sql    ← Realtime publication: 7 tables added to supabase_realtime
+│   └── 020_ensure_pgcrypto.sql    ← Ensure pgcrypto + fix jury RPC search_path for digest()
 └── seeds/
     └── 001_seed.sql               ← Premium demo seed (multi-org, realistic scores)
 ```
@@ -127,6 +128,7 @@ sql/
 | 009 | `009_security_hash_tokens.sql` | `entry_tokens.token → token_hash` (SHA-256); `juror_period_auth.session_token → session_token_hash`; updated RPCs |
 | 010 | `010_landing_stats.sql` | `rpc_landing_stats()` — public RPC returning org/juror/project/evaluation counts for landing page |
 | 011 | `011_enable_realtime.sql` | Adds 7 tables to `supabase_realtime` publication (see Realtime section below) |
+| 020 | `020_ensure_pgcrypto.sql` | Ensures `pgcrypto` extension and sets jury RPC search_path to include `extensions` for `digest()` |
 
 ## Tables (21 total)
 
@@ -155,7 +157,7 @@ sql/
 | `periods` | `organization_id`, `framework_id`, `name`, `season`, `is_current`, `is_locked`, `snapshot_frozen_at` |
 | `projects` | `period_id`, `project_no`, `title`, `members JSONB`, `advisor_name`, `advisor_affiliation` |
 | `jurors` | `organization_id`, `juror_name`, `affiliation`, `email`, `avatar_color` |
-| `juror_period_auth` | PK(`juror_id`, `period_id`), `pin_hash` (bcrypt), `session_token_hash` (SHA-256), `session_expires_at`, `failed_attempts`, `locked_until`, `edit_enabled`, `final_submitted_at` |
+| `juror_period_auth` | PK(`juror_id`, `period_id`), `pin_hash` (bcrypt), `session_token_hash` (SHA-256), `session_expires_at`, `failed_attempts`, `locked_until`, `edit_enabled`, `edit_reason`, `edit_expires_at`, `final_submitted_at` |
 | `entry_tokens` | `period_id`, `token_hash` (SHA-256, UNIQUE), `is_revoked`, `expires_at`, `last_used_at` |
 | `audit_logs` | `organization_id`, `user_id`, `action`, `resource_type`, `resource_id`, `details JSONB` |
 
@@ -187,8 +189,8 @@ Immutable copies of framework criteria/outcomes frozen when a period is activate
 | `rpc_jury_authenticate(period_id, juror_name, affiliation, force_reissue)` | Find/create juror; generate bcrypt PIN; return `pin_plain_once` if new |
 | `rpc_jury_verify_pin(period_id, juror_name, affiliation, pin)` | Verify bcrypt PIN; issue session token (stored as SHA-256 hash); 5 failures → 30 min lockout |
 | `rpc_jury_validate_entry_token(token)` | Validate entry token (SHA-256 lookup, revocation check, 24h TTL) |
-| `rpc_jury_upsert_score(period_id, project_id, juror_id, session_token, scores JSONB, comment)` | Upsert `score_sheets` + `score_sheet_items`; derives sheet status from completion ratio |
-| `rpc_jury_finalize_submission(period_id, juror_id, session_token)` | Set `final_submitted_at` on auth row |
+| `rpc_jury_upsert_score(period_id, project_id, juror_id, session_token, scores JSONB, comment)` | Upsert `score_sheets` + `score_sheet_items`; if juror is already finalized, requires active edit window (`edit_enabled=true` and `edit_expires_at > now()`) |
+| `rpc_jury_finalize_submission(period_id, juror_id, session_token)` | Set `final_submitted_at` and close edit window fields (`edit_enabled=false`, `edit_reason=NULL`, `edit_expires_at=NULL`) |
 
 ### Admin RPCs (authenticated only)
 
@@ -196,7 +198,7 @@ Immutable copies of framework criteria/outcomes frozen when a period is activate
 |----------|---------|
 | `rpc_period_freeze_snapshot(period_id)` | Copy framework criteria/outcomes into period snapshot tables; idempotent |
 | `rpc_juror_reset_pin(period_id, juror_id)` | Generate + hash new PIN; clear lockout |
-| `rpc_juror_toggle_edit_mode(period_id, juror_id, enabled, reason, duration_hours)` | Open/close juror edit window |
+| `rpc_juror_toggle_edit_mode_v2(period_id, juror_id, enabled, reason, duration_minutes)` | Open/close juror edit window (minutes-based), enforces final-submission prerequisite, writes explicit audit log on enable |
 | `rpc_juror_unlock_pin(period_id, juror_id)` | Clear PIN lockout |
 | `rpc_entry_token_generate(period_id)` | Create entry token (plain returned once; hash stored) |
 | `rpc_entry_token_revoke(token_id)` | Revoke entry token by ID |
@@ -275,14 +277,14 @@ APIs & Services → Credentials → OAuth 2.0 Client IDs
 # Teardown (skip if starting fresh)
 psql "$DATABASE_URL" -f sql/migrations/000_drop_all.sql
 
-# Apply migrations in order
-for f in sql/migrations/0{01..11}*.sql; do psql "$DATABASE_URL" -f "$f"; done
+# Apply migrations in order (excluding teardown)
+for f in sql/migrations/[0-9][0-9][0-9]_*.sql; do psql "$DATABASE_URL" -f "$f"; done
 ```
 
 ### Supabase Dashboard
 
 1. Open SQL Editor → New query
-2. Paste each migration file in order (001 → 009) → Run
+2. Paste each migration file in order (001 → latest) → Run
 3. Optionally apply the seed for dev/demo
 
 ### Seed data (dev only)
@@ -291,4 +293,4 @@ for f in sql/migrations/0{01..11}*.sql; do psql "$DATABASE_URL" -f "$f"; done
 psql "$DATABASE_URL" -f sql/seeds/001_seed.sql
 ```
 
-**Idempotency:** `001–008` use `CREATE TABLE IF NOT EXISTS` and `CREATE OR REPLACE FUNCTION` — safe to re-run. `009` uses `ALTER TABLE … ADD COLUMN` / `DROP COLUMN` — run exactly once. `010–011` use `CREATE OR REPLACE` and `ALTER PUBLICATION` — safe to re-run.
+**Idempotency:** Most migrations are safe to re-run (`CREATE OR REPLACE FUNCTION`, `CREATE ... IF NOT EXISTS`). Column-shape migrations (for example token-column reshapes) should run once per environment. `020` is idempotent (`CREATE EXTENSION IF NOT EXISTS` + `ALTER FUNCTION ... SET search_path`).

@@ -19,6 +19,7 @@
 
 import { useId } from "react";
 import AlertCard from "@/shared/ui/AlertCard";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import {
   DndContext,
   closestCenter,
@@ -206,7 +207,9 @@ export default function CriteriaManager({
           onClick={handleSave}
           disabled={!canSave || saveDisabled}
         >
-          {saving ? "Saving…" : "Save Criteria"}
+          <span className="btn-loading-content">
+            <AsyncButtonContent loading={saving} loadingText="Saving…">Save Criteria</AsyncButtonContent>
+          </span>
         </button>
       </div>
 
