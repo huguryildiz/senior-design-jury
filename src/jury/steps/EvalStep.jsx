@@ -1,9 +1,24 @@
 // src/jury/steps/EvalStep.jsx
 // Scoring workspace — 1:1 port of vera-premium-prototype.html #dj-step-eval.
 import { useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  Home,
+  Info,
+  ListChecks,
+  Moon,
+  Pencil,
+  Send,
+  Sun,
+  TriangleAlert,
+  UserRound,
+} from "lucide-react";
 import "../../styles/jury.css";
 import RubricSheet from "../components/RubricSheet";
 import SpotlightTour from "../components/SpotlightTour";
+import SegmentedBar from "../components/SegmentedBar";
+import ProjectDrawer from "../components/ProjectDrawer";
 import { useTheme } from "../../shared/theme/ThemeProvider";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 
@@ -22,8 +37,8 @@ function getCritPalette(index) {
 }
 
 export default function EvalStep({ state, onBack }) {
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [rubricCritIndex, setRubricCritIndex] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
 
@@ -65,9 +80,7 @@ export default function EvalStep({ state, onBack }) {
         <div className="dj-fh-header">
           <div className="dj-fh-header-left">
             <div className="dj-fh-header-name">
-              <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0112 0v1" />
-              </svg>
+              <UserRound size={16} strokeWidth={2} />
               <span>{state.juryName}</span>
             </div>
             <div className="dj-fh-header-dept">{state.affiliation}</div>
@@ -77,18 +90,13 @@ export default function EvalStep({ state, onBack }) {
               <span className="dj-save-pill saving">Saving...</span>
             ) : (
               <span className="dj-save-pill saved">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 12, height: 12 }}>
-                  <path d="m17 15-5.5 5.5L9 18" /><path d="M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327" />
-                </svg>
+                <Check size={12} strokeWidth={2.5} />
                 Saved
               </span>
             )}
             <span className="dj-badge" style={{ fontSize: 8, padding: "2px 8px" }}>Live</span>
             <button className="dj-home-btn" onClick={onBack} title="Return Home">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}>
-                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9,22 9,12 15,12 15,22" />
-              </svg>
+              <Home size={15} strokeWidth={2} />
             </button>
             <button
               className="dj-home-btn"
@@ -96,55 +104,41 @@ export default function EvalStep({ state, onBack }) {
               title={isDark ? "Light Mode" : "Dark Mode"}
             >
               {isDark ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}>
-                  <circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" />
-                  <path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" />
-                  <path d="M2 12h2" /><path d="M20 12h2" />
-                  <path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
-                </svg>
+                <Sun size={15} strokeWidth={2} />
               ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 15, height: 15 }}>
-                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                </svg>
+                <Moon size={15} strokeWidth={2} />
               )}
             </button>
           </div>
         </div>
 
-        {/* ── Group Bar (project card) ── */}
-        <div className="dj-group-bar">
+        {/* ── Group Bar (tappable → opens drawer) ── */}
+        <div className="dj-group-bar" onClick={() => setDrawerOpen(true)}>
           <div className="dj-group-bar-info">
             <div className="dj-group-bar-title">{state.project.title}</div>
             <div className="dj-group-bar-sub"><StudentNames names={state.project.members} /></div>
           </div>
-          <div className="dj-group-bar-nav" onClick={(e) => e.stopPropagation()}>
-            <button className="dj-nav-btn" onClick={() => hasPrev && state.handleNavigate(projIdx - 1)} disabled={!hasPrev} style={{ height: 30, padding: "0 8px", borderRadius: 7 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </button>
+          <div className="dj-group-bar-right">
             <span className="dj-group-bar-num">{projIdx + 1}/{total}</span>
-            <button className="dj-nav-btn" onClick={() => hasNext && state.handleNavigate(projIdx + 1)} disabled={!hasNext} style={{ height: 30, padding: "0 8px", borderRadius: 7 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
+            <span className="dj-group-bar-chevron">
+              <ChevronDown size={14} strokeWidth={2.5} />
+            </span>
           </div>
         </div>
 
-        {/* ── Progress Bar ── */}
-        <div className="dj-fh-progress">
-          <div className="dj-fh-progress-track">
-            <div className="dj-fh-progress-fill" style={{ width: `${state.progressPct}%` }} />
-          </div>
-          <span className="dj-fh-progress-pct">{state.progressPct}%</span>
-        </div>
+        {/* ── Segmented Progress Bar ── */}
+        <SegmentedBar
+          projects={state.projects}
+          scores={state.scores}
+          criteria={state.effectiveCriteria}
+          current={projIdx}
+          onNavigate={state.handleNavigate}
+        />
+        <hr style={{ border: "none", borderBottom: "1px solid rgba(148,163,184,0.08)", margin: "6px 0 8px" }} />
 
         {/* ── Info banner ── */}
         <div className="dj-info amber" style={{ marginBottom: 10, fontSize: "10.5px", padding: "8px 12px" }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
-            <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-          </svg>
+          <Info size={12} strokeWidth={2} />
           <span>Scores are saved automatically and reflected instantly in the admin panel.</span>
         </div>
 
@@ -172,9 +166,7 @@ export default function EvalStep({ state, onBack }) {
                   {crit.label}
                 </div>
                 <button className="dj-rubric-btn" onClick={() => setRubricCritIndex(ci)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
-                    <path d="M16 5H3" /><path d="M16 12H3" /><path d="M11 19H3" /><path d="m15 18 2 2 4-4" />
-                  </svg>
+                  <ListChecks size={13} strokeWidth={2} />
                   Rubric
                 </button>
               </div>
@@ -227,12 +219,23 @@ export default function EvalStep({ state, onBack }) {
         </div>
         <button
           className={`dj-bottom-submit ${state.allComplete ? "active" : "disabled"}`}
-          onClick={() => state.allComplete && setShowSubmitConfirm(true)}
+          onClick={() => state.allComplete && state.handleRequestSubmit()}
           disabled={!state.allComplete}
         >
           Submit ▶
         </button>
       </div>
+
+      {/* ── Project selection drawer ── */}
+      <ProjectDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        projects={state.projects}
+        scores={state.scores}
+        criteria={state.effectiveCriteria}
+        current={projIdx}
+        onNavigate={state.handleNavigate}
+      />
 
       {/* ── Rubric bottom sheet ── */}
       {rubricCritIndex !== null && (
@@ -248,22 +251,37 @@ export default function EvalStep({ state, onBack }) {
       <SpotlightTour />
 
       {/* ── Submit confirmation overlay ── */}
-      {showSubmitConfirm && (
+      {state.confirmingSubmit && (
         <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
-          onClick={() => setShowSubmitConfirm(false)}
+          className="dj-overlay show"
+          onClick={state.handleCancelSubmit}
         >
-          <div className="jury-card dj-glass-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
-            <div className="jury-icon-box primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 24, height: 24 }}>
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+          <div className="dj-glass dj-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <div className="jury-icon-box primary" style={{ margin: "0 auto 14px" }}>
+              <Check size={24} strokeWidth={1.8} />
             </div>
-            <div className="jury-title">Submit Your Scores?</div>
-            <div className="jury-sub">You have completed all evaluations. Your scores will be saved and submitted.</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button className="dj-btn-secondary" onClick={() => setShowSubmitConfirm(false)} style={{ flex: 1 }}>Cancel</button>
-              <button className="dj-btn-primary" onClick={() => { state.handleConfirmSubmit(); setShowSubmitConfirm(false); }} style={{ flex: 1 }}>Submit</button>
+            <div className="dj-h1">Confirm Final Submission</div>
+            <div className="dj-confirm-warn">
+              <TriangleAlert size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>You have completed all evaluations. Submitting will finalize your scores.</span>
+            </div>
+            <div className="dj-confirm-actions">
+              <button
+                className="dj-btn-primary"
+                style={{ width: "100%" }}
+                onClick={state.handleConfirmSubmit}
+              >
+                <Send size={15} strokeWidth={2} />
+                Submit Final Scores
+              </button>
+              <button
+                className="dj-btn-secondary"
+                style={{ width: "100%" }}
+                onClick={state.handleCancelSubmit}
+              >
+                <Pencil size={15} strokeWidth={2} />
+                Keep Editing
+              </button>
             </div>
           </div>
         </div>
