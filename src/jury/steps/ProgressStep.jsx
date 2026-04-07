@@ -1,9 +1,13 @@
 // src/jury/steps/ProgressStep.jsx
+import { useState } from "react";
+import { Loader2, Plus } from "lucide-react";
 import "../../styles/jury.css";
-import { Plus } from "lucide-react";
 
 export default function ProgressStep({ state, onBack }) {
+  const [submitting, setSubmitting] = useState(false);
+
   const handleContinue = () => {
+    setSubmitting(true);
     state.handleProgressContinue();
   };
 
@@ -58,9 +62,11 @@ export default function ProgressStep({ state, onBack }) {
         <button
           className="btn-landing-primary"
           onClick={handleContinue}
-          style={{ width: "100%", marginTop: "16px" }}
+          disabled={submitting}
+          style={{ width: "100%", marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
-          {state.progressCheck?.isInProgress ? "Resume Evaluation" : "Start Evaluation"}
+          {submitting && <Loader2 size={15} className="jg-spin" />}
+          {submitting ? "Loading…" : (state.progressCheck?.isInProgress ? "Resume Evaluation" : "Start Evaluation")}
         </button>
 
         <button

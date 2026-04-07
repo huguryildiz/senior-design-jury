@@ -1,22 +1,14 @@
 // src/jury/steps/PinRevealStep.jsx
 import { useState } from "react";
-import {
-  ArrowRight,
-  CalendarDays,
-  Copy,
-  GraduationCap,
-  Info,
-  KeyRound,
-} from "lucide-react";
+import { ArrowRight, Copy, Info, KeyRound, Loader2 } from "lucide-react";
 import "../../styles/jury.css";
 
 export default function PinRevealStep({ state, onBack }) {
   const [copied, setCopied] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const pin = state.issuedPin || "";
   const digits = pin.split("");
-  const period = state.currentPeriodInfo;
-
   const handleCopy = async () => {
     try {
       if (navigator.clipboard) {
@@ -69,26 +61,6 @@ export default function PinRevealStep({ state, onBack }) {
           </button>
         </div>
 
-        {/* Juror metadata */}
-        <div className="dj-pin-meta">
-          {period?.organizations?.institution_name && (
-            <div className="dj-pin-meta-row">
-              <GraduationCap size={16} strokeWidth={2} />
-              <span className="pin-meta-label">Organization</span>
-              <span className="pin-meta-value">
-                {period.organizations.institution_name}
-              </span>
-            </div>
-          )}
-          {period?.name && (
-            <div className="dj-pin-meta-row">
-              <CalendarDays size={16} strokeWidth={2} />
-              <span className="pin-meta-label">Period</span>
-              <span className="pin-meta-value">{period.name}</span>
-            </div>
-          )}
-        </div>
-
         {/* Info banner */}
         <div className="dj-info blue" style={{ marginTop: 16, marginBottom: 18, textAlign: "left" }}>
           <Info size={16} strokeWidth={2} />
@@ -97,12 +69,13 @@ export default function PinRevealStep({ state, onBack }) {
 
         {/* Begin Evaluation */}
         <button
-          className="dj-btn-primary"
-          onClick={() => state.handlePinRevealContinue()}
-          style={{ width: "100%" }}
+          className="btn-landing-primary"
+          onClick={() => { setSubmitting(true); state.handlePinRevealContinue(); }}
+          disabled={submitting}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
-          Begin Evaluation
-          <ArrowRight size={16} strokeWidth={2} style={{ marginLeft: 6 }} />
+          {submitting ? <Loader2 size={15} className="jg-spin" /> : <ArrowRight size={16} strokeWidth={2} />}
+          {submitting ? "Loading…" : "Begin Evaluation"}
         </button>
       </div>
     </div>

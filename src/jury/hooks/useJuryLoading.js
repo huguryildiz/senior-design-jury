@@ -45,6 +45,7 @@ export function useJuryLoading() {
   const [periods, setPeriods] = useState([]);
   const [periodId, setPeriodId] = useState("");
   const [periodName, setPeriodName] = useState("");
+  const [tenantAdminEmail, setTenantAdminEmail] = useState("");
   const [criteriaConfig, setCriteriaConfig] = useState([]);
   const [outcomeConfig, setOutcomeConfig] = useState([]);
   const [currentPeriodInfo, setCurrentPeriodInfo] = useState(null);
@@ -71,33 +72,51 @@ export function useJuryLoading() {
           try { await supabase.auth.signOut({ scope: "local" }); } catch (_) {}
         }
 
-        // Demo mode: resolve period via entry token so demo tenant is always shown.
-        if (DEMO_MODE && DEMO_ENTRY_TOKEN) {
-          const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
-          if (!alive) return;
-          if (tokenRes?.ok && tokenRes?.period_id) {
-            // Build base period from token, then try to enrich with full data.
-            let res = buildTokenPeriod(tokenRes);
-            // Enrich with organization info and poster_date from periods table.
+        // Demo mode: prefer entry token period, but always fall back to active demo period.
+        if (DEMO_MODE) {
+          let tokenPeriod = null;
+          if (DEMO_ENTRY_TOKEN) {
             try {
-              const allPeriods = await listPeriods(ctrl.signal);
+              const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
               if (!alive) return;
-              const selected = pickDemoPeriod(allPeriods, res);
-              if (selected) res = { ...res, ...selected };
-            } catch (_) { /* non-fatal: token data is sufficient */ }
-            setCurrentPeriodInfo(res);
-            if (res?.id) {
-              try {
-                const projectList = await listProjects(res.id, null, ctrl.signal);
-                if (!alive) return;
-                setActiveProjectCount(projectList.length);
-              } catch (e) {
-                if (e?.name === "AbortError") return;
-                if (alive) setActiveProjectCount(null);
-              }
+              tokenPeriod = buildTokenPeriod(tokenRes);
+            } catch (_) {
+              // Non-fatal: fall back to active demo period list/current period query.
             }
           }
-          // In demo mode always stop here — never fall through to prod path.
+
+          let res = tokenPeriod;
+          try {
+            const allPeriods = await listPeriods(ctrl.signal);
+            if (!alive) return;
+            res = pickDemoPeriod(allPeriods, tokenPeriod);
+          } catch (_) {
+            // Non-fatal: listPeriods might fail due transient network/RLS.
+          }
+
+          if (!res) {
+            try {
+              res = await getCurrentPeriod(ctrl.signal);
+            } catch (_) {
+              res = null;
+            }
+          }
+
+          setCurrentPeriodInfo(res || null);
+          if (res?.id) {
+            try {
+              const projectList = await listProjects(res.id, null, ctrl.signal);
+              if (!alive) return;
+              setActiveProjectCount(projectList.length);
+            } catch (e) {
+              if (e?.name === "AbortError") return;
+              if (alive) setActiveProjectCount(null);
+            }
+          } else {
+            setActiveProjectCount(null);
+          }
+
+          // Demo mode always resolves from demo queries and should not hit prod path.
           return;
         }
 
@@ -143,6 +162,7 @@ export function useJuryLoading() {
     periods, setPeriods,
     periodId, setPeriodId,
     periodName, setPeriodName,
+    tenantAdminEmail, setTenantAdminEmail,
     criteriaConfig, setCriteriaConfig,
     outcomeConfig, setOutcomeConfig,
     currentPeriodInfo,

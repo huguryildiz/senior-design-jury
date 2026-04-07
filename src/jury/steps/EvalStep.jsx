@@ -257,7 +257,7 @@ export default function EvalStep({ state, onBack }) {
             </div>
             <div className="dj-confirm-actions">
               <button
-                className="dj-btn-primary"
+                className="btn-landing-primary"
                 style={{ width: "100%" }}
                 onClick={state.handleConfirmSubmit}
               >

@@ -1,14 +1,16 @@
 // src/jury/steps/PinStep.jsx
-import { useRef, useEffect } from "react";
-import { Lock } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
+import { Loader2, Lock } from "lucide-react";
 import "../../styles/jury.css";
 
 export default function PinStep({ state, onBack }) {
   const pinRefs = useRef([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Clear and refocus on PIN error
+  // Clear and refocus on PIN error; also reset spinner
   useEffect(() => {
     if (!state.pinError) return;
+    setSubmitting(false);
     pinRefs.current.forEach((ref) => { if (ref) ref.value = ""; });
     pinRefs.current[0]?.focus();
   }, [state.pinError]);
@@ -34,6 +36,7 @@ export default function PinStep({ state, onBack }) {
   const handleSubmit = () => {
     const pin = pinRefs.current.map((ref) => ref.value || "").join("");
     if (pin.length === 4) {
+      setSubmitting(true);
       state.handlePinSubmit(pin);
     }
   };
@@ -75,12 +78,13 @@ export default function PinStep({ state, onBack }) {
         </div>
 
         <button
-          className="dj-btn-primary"
+          className="btn-landing-primary"
           onClick={handleSubmit}
-          disabled={!!state.pinLockedUntil}
-          style={{ width: "100%", marginTop: "16px" }}
+          disabled={!!state.pinLockedUntil || submitting}
+          style={{ width: "100%", marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
-          Verify PIN
+          {submitting && <Loader2 size={15} className="jg-spin" />}
+          {submitting ? "Verifying…" : "Verify PIN"}
         </button>
 
         <button

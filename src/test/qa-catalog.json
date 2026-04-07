@@ -2,7 +2,7 @@
   {
     "id": "grid.filter.01",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
+    "area": "Score Grid — Filter",
     "story": "Score Range Filter",
     "scenario": "shows all jurors when no filters are active",
     "whyItMatters": "Default state must display all jurors so admins see the full picture before applying any filter.",
@@ -13,7 +13,7 @@
   {
     "id": "grid.filter.02",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
+    "area": "Score Grid — Filter",
     "story": "Score Range Filter",
     "scenario": "keeps juror that passes a single group score filter",
     "whyItMatters": "Filtering by one group's score range must show only jurors whose score for that group is within range.",
@@ -24,10 +24,10 @@
   {
     "id": "grid.filter.03",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
-    "story": "Score Range Filter \u2014 AND Logic",
+    "area": "Score Grid — Filter",
+    "story": "Score Range Filter — AND Logic",
     "scenario": "hides juror failing one of two active filters (AND logic)",
-    "whyItMatters": "When multiple group filters are active, a juror must pass ALL of them to remain visible \u2014 not just any one.",
+    "whyItMatters": "When multiple group filters are active, a juror must pass ALL of them to remain visible — not just any one.",
     "risk": "OR logic instead of AND would show jurors who do not meet all criteria, defeating combined filtering.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -35,8 +35,8 @@
   {
     "id": "grid.filter.04",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
-    "story": "Score Range Filter \u2014 Invalid Input",
+    "area": "Score Grid — Filter",
+    "story": "Score Range Filter — Invalid Input",
     "scenario": "does not apply a filter when min > max (invalid range)",
     "whyItMatters": "A filter where minimum exceeds maximum is logically impossible and should be silently ignored.",
     "risk": "Applying an impossible range would hide all jurors, completely breaking the view.",
@@ -46,8 +46,8 @@
   {
     "id": "grid.filter.05",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
-    "story": "Score Range Filter \u2014 Boundary Values",
+    "area": "Score Grid — Filter",
+    "story": "Score Range Filter — Boundary Values",
     "scenario": "includes score=0 entry (boundary min value)",
     "whyItMatters": "A score of exactly zero must be treated as a valid intentional score and must pass a filter that includes 0.",
     "risk": "Excluding zero would hide jurors who intentionally gave zero points, silently corrupting visible data.",
@@ -57,8 +57,8 @@
   {
     "id": "grid.filter.06",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
-    "story": "Score Range Filter \u2014 Boundary Values",
+    "area": "Score Grid — Filter",
+    "story": "Score Range Filter — Boundary Values",
     "scenario": "includes score=TOTAL_MAX entry (boundary max value)",
     "whyItMatters": "A score at the maximum possible value must also pass a filter that includes the maximum boundary.",
     "risk": "Off-by-one errors at the upper boundary could exclude perfect scores from filtered results.",
@@ -68,8 +68,8 @@
   {
     "id": "grid.filter.07",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Filter",
-    "story": "Score Range Filter \u2014 Unscored Entries",
+    "area": "Score Grid — Filter",
+    "story": "Score Range Filter — Unscored Entries",
     "scenario": "excludes juror whose target group entry is unscored (null total)",
     "whyItMatters": "When a score filter is active, jurors who have not scored that group have nothing to compare and must be excluded.",
     "risk": "Including unscored entries could make an active filter appear to show incomplete data as if it matched.",
@@ -79,10 +79,10 @@
   {
     "id": "grid.sort.01",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Sort",
+    "area": "Score Grid — Sort",
     "story": "Column Sort Cycle",
-    "scenario": "first click on a column \u2192 sortMode=group, dir=desc",
-    "whyItMatters": "First click on a column header should sort descending (highest first) \u2014 the most common admin need.",
+    "scenario": "first click on a column → sortMode=group, dir=desc",
+    "whyItMatters": "First click on a column header should sort descending (highest first) — the most common admin need.",
     "risk": "Wrong initial sort direction would confuse admins looking for top or bottom scorers.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -90,9 +90,9 @@
   {
     "id": "grid.sort.02",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Sort",
+    "area": "Score Grid — Sort",
     "story": "Column Sort Cycle",
-    "scenario": "second click on the same column \u2192 dir flips to asc",
+    "scenario": "second click on the same column → dir flips to asc",
     "whyItMatters": "Second click should flip to ascending so admins can see the lowest scorers.",
     "risk": "Broken toggle would force page refresh to change sort direction.",
     "coverageStrength": "Strong",
@@ -101,9 +101,9 @@
   {
     "id": "grid.sort.03",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Sort",
+    "area": "Score Grid — Sort",
     "story": "Column Sort Cycle",
-    "scenario": "third click on the same column \u2192 sort resets (sortMode=none)",
+    "scenario": "third click on the same column → sort resets (sortMode=none)",
     "whyItMatters": "Third click should return to the original unsorted order so admins can see the default juror list.",
     "risk": "No reset path would permanently trap admins in a sorted state with no way back.",
     "coverageStrength": "Strong",
@@ -112,7 +112,7 @@
   {
     "id": "grid.sort.04",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Sort",
+    "area": "Score Grid — Sort",
     "story": "Column Sort Cycle",
     "scenario": "clicking a different column resets cycle to desc on new column",
     "whyItMatters": "Switching to a different column must start a fresh sort cycle on the new column.",
@@ -123,7 +123,7 @@
   {
     "id": "grid.sort.05",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Sort",
+    "area": "Score Grid — Sort",
     "story": "Column Sort Order",
     "scenario": "desc sort orders higher scores first",
     "whyItMatters": "Descending sort must put the highest-scoring juror at the top of the list.",
@@ -134,7 +134,7 @@
   {
     "id": "grid.sort.06",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Sort",
+    "area": "Score Grid — Sort",
     "story": "Column Sort Order",
     "scenario": "asc sort orders lower scores first",
     "whyItMatters": "Ascending sort must put the lowest-scoring juror at the top.",
@@ -145,7 +145,7 @@
   {
     "id": "grid.jurorfilter.01",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Juror Filter",
+    "area": "Score Grid — Juror Filter",
     "story": "Juror Text Search",
     "scenario": "matches on juror name (case insensitive)",
     "whyItMatters": "Admins can quickly find a specific juror by typing part of their name, regardless of capitalisation.",
@@ -156,7 +156,7 @@
   {
     "id": "grid.jurorfilter.02",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Juror Filter",
+    "area": "Score Grid — Juror Filter",
     "story": "Juror Text Search",
     "scenario": "matches on juror dept",
     "whyItMatters": "Admins can filter the grid to show only jurors from a specific department.",
@@ -167,9 +167,9 @@
   {
     "id": "grid.jurorfilter.03",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Juror Filter",
-    "story": "Juror Text Search \u2014 OR Logic",
-    "scenario": "OR logic \u2014 matches jurors whose name OR dept contains the query",
+    "area": "Score Grid — Juror Filter",
+    "story": "Juror Text Search — OR Logic",
+    "scenario": "OR logic — matches jurors whose name OR dept contains the query",
     "whyItMatters": "A search query should match jurors regardless of whether it hits the name or the department field.",
     "risk": "AND logic would only match jurors whose name AND department both contain the query, reducing results too aggressively.",
     "coverageStrength": "Strong",
@@ -178,9 +178,9 @@
   {
     "id": "grid.jurorfilter.04",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Juror Filter",
-    "story": "Juror Text Search \u2014 No Match",
-    "scenario": "no match \u2192 empty visible list",
+    "area": "Score Grid — Juror Filter",
+    "story": "Juror Text Search — No Match",
+    "scenario": "no match → empty visible list",
     "whyItMatters": "A search with no matching jurors should show an empty list, not a crash or stale results.",
     "risk": "Showing stale results when no match is found would give admins false information.",
     "coverageStrength": "Medium",
@@ -189,10 +189,10 @@
   {
     "id": "griddata.01",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 Happy Path",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — Happy Path",
     "scenario": "builds lookup map and averages from completed jurors only",
-    "whyItMatters": "The score grid average row must reflect only finalized jurors \u2014 not partially completed or editing ones.",
+    "whyItMatters": "The score grid average row must reflect only finalized jurors — not partially completed or editing ones.",
     "risk": "Including incomplete scores in averages would produce misleading published results.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -200,8 +200,8 @@
   {
     "id": "griddata.02",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 Edit Mode Exclusion",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — Edit Mode Exclusion",
     "scenario": "excludes juror with editEnabled=true from average",
     "whyItMatters": "A juror currently re-editing must not count toward the published average while their data is in flux.",
     "risk": "Including editing jurors could push averages up or down while an evaluation is being revised.",
@@ -211,8 +211,8 @@
   {
     "id": "griddata.03",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 Missing Timestamp Regression",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — Missing Timestamp Regression",
     "scenario": "includes juror with finalSubmitted=true and no finalSubmittedAt [Fix 2 regression]",
     "whyItMatters": "A juror marked final-submitted must be counted in averages even if the submission timestamp is missing.",
     "risk": "This regression previously caused valid submitted jurors to be silently dropped from averages.",
@@ -222,8 +222,8 @@
   {
     "id": "griddata.04",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 All Editing",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — All Editing",
     "scenario": "returns null averages when all jurors are in editing mode",
     "whyItMatters": "When every juror is in edit mode, there is no finalized data and averages should show blank.",
     "risk": "Displaying stale or partial averages when everyone is editing would mislead the admin dashboard.",
@@ -233,8 +233,8 @@
   {
     "id": "griddata.05",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 Partial State",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — Partial State",
     "scenario": "excludes partial-state entries from average (no total)",
     "whyItMatters": "An incomplete evaluation (some criteria filled, no final total) must not pollute published averages.",
     "risk": "Including partial scores would undercount the average and distort group rankings.",
@@ -244,8 +244,8 @@
   {
     "id": "griddata.06",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 Zero Score Regression",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — Zero Score Regression",
     "scenario": "includes zero-score entry in average (total=0 is scored) [zero regression]",
     "whyItMatters": "A group intentionally scored 0 must be included in the average. Zero is a valid score.",
     "risk": "This regression caused zero scores to be treated as missing, inflating averages by silently dropping them.",
@@ -255,8 +255,8 @@
   {
     "id": "griddata.07",
     "module": "Scores / Grid",
-    "area": "Score Grid \u2014 Averages",
-    "story": "Average Calculation \u2014 Multi-Juror Accuracy",
+    "area": "Score Grid — Averages",
+    "story": "Average Calculation — Multi-Juror Accuracy",
     "scenario": "computes correct numeric average across multiple jurors",
     "whyItMatters": "The arithmetic mean across multiple jurors must be calculated and rounded to two decimal places.",
     "risk": "Rounding errors in the average calculation would produce incorrect published group scores.",
@@ -299,7 +299,7 @@
   {
     "id": "details.01",
     "module": "Scores / Details",
-    "area": "Reviews \u2014 Filters",
+    "area": "Reviews — Filters",
     "story": "Score Status Filter",
     "scenario": "filters rows by score status",
     "whyItMatters": "Admins need to isolate completed (scored) evaluations from in-progress ones in the detail table.",
@@ -310,7 +310,7 @@
   {
     "id": "details.02",
     "module": "Scores / Details",
-    "area": "Reviews \u2014 Filters",
+    "area": "Reviews — Filters",
     "story": "Juror Status Filter",
     "scenario": "filters rows by juror status",
     "whyItMatters": "Admins need to see only rows matching a specific juror workflow state (e.g. Editing).",
@@ -321,7 +321,7 @@
   {
     "id": "details.03",
     "module": "Scores / Details",
-    "area": "Reviews \u2014 Filters",
+    "area": "Reviews — Filters",
     "story": "Date Range Filter",
     "scenario": "filters rows by updated date range (from)",
     "whyItMatters": "Admins can narrow the detail table to evaluations updated after a certain date.",
@@ -332,8 +332,8 @@
   {
     "id": "details.04",
     "module": "Scores / Details",
-    "area": "Reviews \u2014 Filters",
-    "story": "Date Range Filter \u2014 Invalid Input",
+    "area": "Reviews — Filters",
+    "story": "Date Range Filter — Invalid Input",
     "scenario": "does not apply updated date filter when range is invalid",
     "whyItMatters": "When 'from' date is later than 'to', the filter must be rejected with an error and all rows kept visible.",
     "risk": "Applying an impossible date range would silently hide all rows with no explanation.",
@@ -412,7 +412,7 @@
     "area": "Semester Management",
     "story": "Delete Guard",
     "scenario": "enables delete button for a non-current semester",
-    "whyItMatters": "Non-current semesters can be deleted for cleanup \u2014 the delete button must be enabled for them.",
+    "whyItMatters": "Non-current semesters can be deleted for cleanup — the delete button must be enabled for them.",
     "risk": "Blocking all deletes would prevent admins from cleaning up old semesters.",
     "coverageStrength": "Medium",
     "severity": "normal"
@@ -467,7 +467,7 @@
     "area": "CSV Import Validation",
     "story": "File Size Limit",
     "scenario": "shows error when file exceeds 2MB [Fix 6 regression]",
-    "describeGroup": "ManageJurorsPanel \u2014 CSV import validation",
+    "describeGroup": "ManageJurorsPanel — CSV import validation",
     "whyItMatters": "Files larger than 2MB are likely wrong files and must be rejected immediately.",
     "risk": "Accepting oversized files could hang the browser or upload corrupted data to the system.",
     "coverageStrength": "Strong",
@@ -479,7 +479,7 @@
     "area": "CSV Import Validation",
     "story": "Required Columns",
     "scenario": "shows error when required header columns are missing",
-    "describeGroup": "ManageJurorsPanel \u2014 CSV import validation",
+    "describeGroup": "ManageJurorsPanel — CSV import validation",
     "whyItMatters": "A CSV file without the required column headers cannot be correctly parsed and must be rejected.",
     "risk": "Importing a CSV with wrong headers would silently create jurors with no names or institutions.",
     "coverageStrength": "Strong",
@@ -524,7 +524,7 @@
     "area": "CSV Import Validation",
     "story": "Existing Juror Warning",
     "scenario": "treats existing system jurors as a warning, not an error",
-    "whyItMatters": "Re-uploading a CSV that includes already-imported jurors should warn, not block \u2014 enabling safe incremental imports.",
+    "whyItMatters": "Re-uploading a CSV that includes already-imported jurors should warn, not block — enabling safe incremental imports.",
     "risk": "Treating existing jurors as errors would prevent admins from using a master juror CSV file.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -568,7 +568,7 @@
     "area": "CSV Import Validation",
     "story": "File Size Limit",
     "scenario": "shows error when file exceeds 2MB [Fix 6 regression]",
-    "describeGroup": "ManageProjectsPanel \u2014 CSV import validation",
+    "describeGroup": "ManageProjectsPanel — CSV import validation",
     "whyItMatters": "Files larger than 2MB are almost certainly wrong files and must be blocked before parsing.",
     "risk": "Processing an oversized file could hang or corrupt the group list.",
     "coverageStrength": "Strong",
@@ -580,7 +580,7 @@
     "area": "CSV Import Validation",
     "story": "Required Columns",
     "scenario": "shows error when required header columns are missing",
-    "describeGroup": "ManageProjectsPanel \u2014 CSV import validation",
+    "describeGroup": "ManageProjectsPanel — CSV import validation",
     "whyItMatters": "A groups CSV without required headers cannot produce valid group records.",
     "risk": "Importing a malformed CSV would create groups with no number, title, or students.",
     "coverageStrength": "Strong",
@@ -614,7 +614,7 @@
     "area": "CSV Import Validation",
     "story": "Group Number Validation",
     "scenario": "shows error when group_no is non-numeric",
-    "whyItMatters": "Group numbers must be numeric \u2014 text values would break any comparison or sorting logic.",
+    "whyItMatters": "Group numbers must be numeric — text values would break any comparison or sorting logic.",
     "risk": "Non-numeric group numbers could crash downstream logic that expects integers.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -678,7 +678,7 @@
     "id": "groups.edit.01",
     "module": "Settings / Groups",
     "area": "Group Management",
-    "story": "Edit Group \u2014 Save Failure",
+    "story": "Edit Group — Save Failure",
     "scenario": "edit modal stays open and shows in-modal error when save fails",
     "whyItMatters": "If the modal closes on failure, the admin loses their edit context and must reopen and retype changes.",
     "risk": "Data loss: admin retypes and possibly submits wrong data on retry.",
@@ -689,7 +689,7 @@
     "id": "groups.edit.02",
     "module": "Settings / Groups",
     "area": "Group Management",
-    "story": "Edit Group \u2014 Semester Lock",
+    "story": "Edit Group — Semester Lock",
     "scenario": "edit save uses semesterId locked at modal open, not current viewed semester",
     "whyItMatters": "Changing the semester dropdown while edit modal is open could redirect the save to the wrong semester.",
     "risk": "Data integrity: a group's title/students saved into a different semester's record.",
@@ -700,7 +700,7 @@
     "id": "groups.delete.02",
     "module": "Settings / Groups",
     "area": "Group Management",
-    "story": "Delete Group \u2014 Missing ID Guard",
+    "story": "Delete Group — Missing ID Guard",
     "scenario": "delete is blocked with a visible error when project id is missing",
     "whyItMatters": "Groups patched without a server-confirmed id should not trigger a delete RPC call with undefined.",
     "risk": "Silent server error or unexpected behavior when id is undefined.",
@@ -812,7 +812,7 @@
     "area": "Evaluation Permissions",
     "story": "Eval Lock Blocks Unlock",
     "scenario": "does not show Unlock Editing when evalLockActive is true",
-    "whyItMatters": "The system-wide evaluation lock must take absolute priority \u2014 no individual unlock is possible while it is active.",
+    "whyItMatters": "The system-wide evaluation lock must take absolute priority — no individual unlock is possible while it is active.",
     "risk": "Allowing unlocks while the global lock is on would break the centralised control mechanism.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -887,7 +887,7 @@
     "id": "perms.search.02",
     "module": "Settings / Permissions",
     "area": "Evaluation Permissions",
-    "story": "Juror Search \u2014 Semantic Queries",
+    "story": "Juror Search — Semantic Queries",
     "scenario": "\"lock editing\" query matches only jurors in edit mode",
     "whyItMatters": "Typing 'lock editing' acts as a smart filter to show all jurors currently in an editing session.",
     "risk": "Broken semantic search would make it impossible to get a quick list of open editing sessions.",
@@ -898,9 +898,9 @@
     "id": "perms.search.03",
     "module": "Settings / Permissions",
     "area": "Evaluation Permissions",
-    "story": "Juror Search \u2014 Semantic Queries",
+    "story": "Juror Search — Semantic Queries",
     "scenario": "\"unlock editing\" query matches only completed jurors not in edit mode",
-    "whyItMatters": "Typing 'unlock editing' shows only jurors eligible for re-opening \u2014 a quick action list.",
+    "whyItMatters": "Typing 'unlock editing' shows only jurors eligible for re-opening — a quick action list.",
     "risk": "Wrong match logic could show ineligible jurors, leading to accidental permission changes.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -1032,7 +1032,7 @@
     "area": "Overview Display",
     "story": "CompletionStrip Content",
     "scenario": "renders 100% completion without pending",
-    "whyItMatters": "At full completion, the 'pending' label must not appear \u2014 all evaluations are done.",
+    "whyItMatters": "At full completion, the 'pending' label must not appear — all evaluations are done.",
     "risk": "Showing a phantom pending message at 100% would alarm faculty unnecessarily.",
     "coverageStrength": "Medium",
     "severity": "minor"
@@ -1087,7 +1087,7 @@
     "area": "Analytics",
     "story": "AnalyticsTab Smoke",
     "scenario": "renders without throwing with empty/null data",
-    "whyItMatters": "The analytics tab must not crash when loaded with no data \u2014 it is shown immediately on navigation.",
+    "whyItMatters": "The analytics tab must not crash when loaded with no data — it is shown immediately on navigation.",
     "risk": "A crash on empty data would make the Analytics tab permanently unavailable at semester start.",
     "coverageStrength": "Medium",
     "severity": "normal"
@@ -1107,7 +1107,7 @@
     "id": "helpers.cellstate.01",
     "module": "Core Logic",
     "area": "Score Calculation",
-    "story": "Cell State Detection \u2014 Empty",
+    "story": "Cell State Detection — Empty",
     "scenario": "returns 'empty' for null or undefined entry",
     "describeGroup": "getCellState",
     "whyItMatters": "A null or missing score entry must be identified as empty so the UI shows the correct placeholder.",
@@ -1119,7 +1119,7 @@
     "id": "helpers.cellstate.02",
     "module": "Core Logic",
     "area": "Score Calculation",
-    "story": "Cell State Detection \u2014 Empty",
+    "story": "Cell State Detection — Empty",
     "scenario": "returns 'empty' when no total and no criteria are set",
     "whyItMatters": "An entry where all fields are null must be classified as empty, not partial.",
     "risk": "Treating all-null as partial would miscount scored/unscored evaluations in progress reporting.",
@@ -1130,7 +1130,7 @@
     "id": "helpers.cellstate.03",
     "module": "Core Logic",
     "area": "Score Calculation",
-    "story": "Cell State Detection \u2014 Scored",
+    "story": "Cell State Detection — Scored",
     "scenario": "returns 'scored' when total is a positive number",
     "whyItMatters": "A positive total indicates a completed evaluation and must be shown as scored.",
     "risk": "Missing the scored state would prevent workflow completion detection from working.",
@@ -1141,7 +1141,7 @@
     "id": "helpers.cellstate.04",
     "module": "Core Logic",
     "area": "Score Calculation",
-    "story": "Cell State Detection \u2014 Zero Score Regression",
+    "story": "Cell State Detection — Zero Score Regression",
     "scenario": "returns 'scored' when total is zero (zero is a valid intentional score)",
     "whyItMatters": "A score of zero is an intentional evaluation result and must be recognised as scored, not empty.",
     "risk": "This was a real regression that caused zero-score evaluations to appear incomplete, blocking workflow completion.",
@@ -1152,7 +1152,7 @@
     "id": "helpers.cellstate.05",
     "module": "Core Logic",
     "area": "Score Calculation",
-    "story": "Cell State Detection \u2014 Partial",
+    "story": "Cell State Detection — Partial",
     "scenario": "returns 'partial' when at least one criterion is filled but no total",
     "whyItMatters": "Partially filled evaluations must be shown as in-progress so jurors know they still need to complete.",
     "risk": "Showing partial entries as empty would hide work in progress from both jurors and admins.",
@@ -1163,7 +1163,7 @@
     "id": "helpers.cellstate.06",
     "module": "Core Logic",
     "area": "Score Calculation",
-    "story": "Cell State Detection \u2014 Partial",
+    "story": "Cell State Detection — Partial",
     "scenario": "returns 'partial' when multiple criteria are filled but no total",
     "whyItMatters": "Multiple criteria filled without a total still means the evaluation is not complete.",
     "risk": "Misidentifying multi-criterion partial entries could cause premature workflow advancement.",
@@ -1188,7 +1188,7 @@
     "area": "Score Calculation",
     "story": "Partial Score Sum",
     "scenario": "sums only numeric criteria values",
-    "whyItMatters": "Only filled numeric criteria must count toward the running total \u2014 null fields must be skipped.",
+    "whyItMatters": "Only filled numeric criteria must count toward the running total — null fields must be skipped.",
     "risk": "Summing nulls or treating them as 0 would undercount the running total while scoring.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -1232,7 +1232,7 @@
     "area": "Jury Workflow",
     "story": "Workflow State Detection",
     "scenario": "returns 'editing' when editEnabled is true, regardless of other state",
-    "whyItMatters": "Edit mode overrides all other states \u2014 a juror re-editing must always show as 'editing'.",
+    "whyItMatters": "Edit mode overrides all other states — a juror re-editing must always show as 'editing'.",
     "risk": "Showing 'completed' while a juror is actively editing would mislead the admin dashboard.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -1287,7 +1287,7 @@
     "area": "Jury Workflow",
     "story": "Workflow State Detection",
     "scenario": "returns 'not_started' when group list is empty",
-    "whyItMatters": "If no groups are defined yet, the juror cannot have started \u2014 must default to not_started.",
+    "whyItMatters": "If no groups are defined yet, the juror cannot have started — must default to not_started.",
     "risk": "A crash or wrong state on empty group list would break the panel at semester setup time.",
     "coverageStrength": "Medium",
     "severity": "normal"
@@ -1340,7 +1340,7 @@
     "id": "jury.score.01",
     "module": "Jury Flow",
     "area": "Score Input",
-    "story": "Score Clamping \u2014 Lower Bound",
+    "story": "Score Clamping — Lower Bound",
     "scenario": "score below 0 is clamped to 0 on blur",
     "whyItMatters": "Negative scores are invalid and must be corrected silently before writing to the database.",
     "risk": "Allowing negative values would corrupt the total score and ranking calculations.",
@@ -1351,7 +1351,7 @@
     "id": "jury.score.02",
     "module": "Jury Flow",
     "area": "Score Input",
-    "story": "Score Clamping \u2014 Upper Bound",
+    "story": "Score Clamping — Upper Bound",
     "scenario": "score above max is clamped to max on blur",
     "whyItMatters": "Scores exceeding the criterion maximum inflate totals and must be rejected.",
     "risk": "Unclamped high scores would break rankings and violate rubric constraints.",
@@ -1384,7 +1384,7 @@
     "id": "jury.progress.01",
     "module": "Jury Flow",
     "area": "Progress Dialog",
-    "story": "Status Chip \u2014 Completed",
+    "story": "Status Chip — Completed",
     "scenario": "juror chip shows Completed when allSubmitted is true",
     "whyItMatters": "Jurors who have already submitted must see a clear Completed status so they know their work is done.",
     "risk": "Wrong chip label could cause a juror to re-submit or be confused about their submission state.",
@@ -1395,7 +1395,7 @@
     "id": "jury.progress.02",
     "module": "Jury Flow",
     "area": "Progress Dialog",
-    "story": "Status Chip \u2014 In Progress",
+    "story": "Status Chip — In Progress",
     "scenario": "juror chip shows In Progress when partial score data exists",
     "whyItMatters": "Returning jurors must immediately see their previous progress to decide whether to resume or start fresh.",
     "risk": "Displaying the wrong chip would mislead jurors about their current evaluation state.",
@@ -1417,7 +1417,7 @@
     "id": "jury.eval.02",
     "module": "Jury Flow",
     "area": "Eval Step",
-    "story": "Navigation \u2014 First Group",
+    "story": "Navigation — First Group",
     "scenario": "Prev button is disabled when current group is the first",
     "whyItMatters": "Navigating before the first group would result in an out-of-bounds project index.",
     "risk": "An enabled Prev button on group 0 could cause the UI to render undefined project data.",
@@ -1428,7 +1428,7 @@
     "id": "jury.eval.03",
     "module": "Jury Flow",
     "area": "Eval Step",
-    "story": "Navigation \u2014 Last Group",
+    "story": "Navigation — Last Group",
     "scenario": "Next button is disabled when current group is the last",
     "whyItMatters": "Navigating past the last group would result in an out-of-bounds project index.",
     "risk": "An enabled Next button on the final group could crash the scoring form.",
@@ -1441,7 +1441,7 @@
     "area": "Eval Step",
     "story": "Submit Button Visibility",
     "scenario": "Submit All button is shown when allComplete is true and editMode is false",
-    "whyItMatters": "Jurors must be able to submit only after scoring all groups \u2014 early submission risks incomplete data.",
+    "whyItMatters": "Jurors must be able to submit only after scoring all groups — early submission risks incomplete data.",
     "risk": "Button appearing prematurely could allow partial submissions; missing button blocks completion.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -1483,10 +1483,10 @@
     "id": "jury.done.02",
     "module": "Jury Flow",
     "area": "Done Step",
-    "story": "Edit Mode Title",
-    "scenario": "Edit mode title is shown when onEditScores prop is provided",
-    "whyItMatters": "Jurors re-entering the scoring screen must immediately know they are in edit mode.",
-    "risk": "Showing the Thank You title in edit mode could confuse the juror into thinking they already submitted.",
+    "story": "Group Count in Message",
+    "scenario": "Subtitle shows the correct number of evaluated groups",
+    "whyItMatters": "Confirms the juror's work scope — they need to know all groups were captured.",
+    "risk": "Wrong count could make juror think some evaluations were lost.",
     "coverageStrength": "Strong",
     "severity": "normal"
   },
@@ -1494,29 +1494,62 @@
     "id": "jury.done.03",
     "module": "Jury Flow",
     "area": "Done Step",
-    "story": "Edit Button Visibility",
-    "scenario": "Edit My Scores button is shown when onEditScores prop is provided and hidden otherwise",
-    "whyItMatters": "Edit access is controlled by the admin \u2014 the button must only appear when the admin has enabled it.",
-    "risk": "A visible edit button when editing is disabled could confuse or mislead jurors.",
-    "coverageStrength": "Strong",
-    "severity": "critical"
+    "story": "Feedback Progressive Disclosure",
+    "scenario": "Textarea is hidden until a star is clicked, then slides in",
+    "whyItMatters": "Progressive disclosure keeps the success screen clean while still capturing feedback.",
+    "risk": "Always-visible textarea clutters the celebration moment.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
   },
   {
     "id": "jury.done.04",
     "module": "Jury Flow",
     "area": "Done Step",
-    "story": "Total Score Display",
-    "scenario": "Total score is shown correctly for a fully scored project",
-    "whyItMatters": "Jurors review their submitted totals on the done screen to verify accuracy.",
-    "risk": "An incorrect total could erode trust in the system or cause disputes.",
+    "story": "Feedback Submission",
+    "scenario": "Submitting a star rating calls submitJuryFeedback and shows confirmation",
+    "whyItMatters": "Feedback data is valuable for platform improvement.",
+    "risk": "Silent failure is acceptable but success confirmation must appear.",
     "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.done.05",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Request Edit Mailto",
+    "scenario": "Request Edit link opens a mailto with pre-filled subject and body",
+    "whyItMatters": "Provides a controlled edit request flow instead of direct score editing.",
+    "risk": "Broken mailto could leave juror with no way to request corrections.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
+  },
+  {
+    "id": "jury.done.06",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Return Home Clears Session",
+    "scenario": "Clicking Return to Home calls clearLocalSession and navigates back",
+    "whyItMatters": "Session data must be cleaned up to prevent stale state on next visit.",
+    "risk": "Stale session could auto-login the wrong juror.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
+  },
+  {
+    "id": "jury.done.07",
+    "module": "Jury Flow",
+    "area": "Done Step",
+    "story": "Live Rankings Snippet",
+    "scenario": "Rankings section shows all projects ordered by score with rank number and score",
+    "whyItMatters": "Jurors want to see where things stand after submitting — inline rankings replace the separate AdminImpactStep.",
+    "risk": "Missing or empty rankings could confuse jurors or look like an error.",
+    "coverageStrength": "Medium",
     "severity": "normal"
   },
   {
     "id": "jury.info.01",
     "module": "Jury Flow",
     "area": "Identity Form",
-    "story": "Submit Guard \u2014 Empty Fields",
+    "story": "Submit Guard — Empty Fields",
     "scenario": "Start button is disabled when name or dept is empty",
     "whyItMatters": "Submitting without identity data would create anonymous juror records that can't be traced.",
     "risk": "An enabled button on empty input could create ghost juror rows in the database.",
@@ -1527,7 +1560,7 @@
     "id": "jury.info.02",
     "module": "Jury Flow",
     "area": "Identity Form",
-    "story": "Submit Guard \u2014 Both Fields Filled",
+    "story": "Submit Guard — Both Fields Filled",
     "scenario": "Start button is enabled when both name and dept have content",
     "whyItMatters": "Jurors must be able to proceed once they have entered valid identity information.",
     "risk": "A permanently disabled button would block all evaluations.",
@@ -1549,7 +1582,7 @@
     "id": "jury.info.04",
     "module": "Jury Flow",
     "area": "Identity Form",
-    "story": "Project Count Label \u2014 Singular",
+    "story": "Project Count Label — Singular",
     "scenario": "Project count label shows singular form when activeProjectCount is 1",
     "whyItMatters": "Grammatically correct labels build trust and polish; plural/singular matters in professional contexts.",
     "risk": "Showing '1 Project Groups' looks broken and reduces confidence in the system.",
@@ -1570,7 +1603,7 @@
   {
     "id": "a11y.saveindicator.01",
     "module": "Jury / Eval",
-    "area": "Save Indicator \u2014 Accessibility",
+    "area": "Save Indicator — Accessibility",
     "story": "aria-live announcement on save state change",
     "scenario": "SaveIndicator container has aria-live=polite and aria-atomic=true",
     "whyItMatters": "Screen readers must announce save state changes so jurors using assistive technology know whether their score was persisted.",
@@ -1581,9 +1614,9 @@
   {
     "id": "a11y.saveindicator.02",
     "module": "Jury / Eval",
-    "area": "Save Indicator \u2014 Accessibility",
+    "area": "Save Indicator — Accessibility",
     "story": "Correct text per save state",
-    "scenario": "SaveIndicator shows 'Saving\u2026' when saving and 'Saved' when saved",
+    "scenario": "SaveIndicator shows 'Saving…' when saving and 'Saved' when saved",
     "whyItMatters": "The text content drives the screen reader announcement. If incorrect, the SR announcement will be wrong.",
     "risk": "Incorrect label causes misinformation for assistive technology users.",
     "coverageStrength": "Strong",
@@ -1592,7 +1625,7 @@
   {
     "id": "retry.panel.01",
     "module": "Jury / Eval",
-    "area": "Group Status Panel \u2014 Retry",
+    "area": "Group Status Panel — Retry",
     "story": "Retry button calls onRetry with correct pid",
     "scenario": "clicking the Retry button in the error banner calls onRetry with the group pid",
     "whyItMatters": "The retry action must target the specific group that failed to save, not a generic handler.",
@@ -1603,7 +1636,7 @@
   {
     "id": "retry.panel.02",
     "module": "Jury / Eval",
-    "area": "Group Status Panel \u2014 Retry",
+    "area": "Group Status Panel — Retry",
     "story": "Error banner only shown on save error",
     "scenario": "error banner with Retry button renders only when saveStatus is 'error'",
     "whyItMatters": "The retry banner must not appear in normal (idle/saving/saved) states.",
@@ -1614,7 +1647,7 @@
   {
     "id": "api.env.01",
     "module": "Shared / API",
-    "area": "API Configuration \u2014 Dev Safety",
+    "area": "API Configuration — Dev Safety",
     "story": "DEV warning when VITE_RPC_SECRET is missing",
     "scenario": "console.warn is emitted in DEV mode when VITE_RPC_SECRET is not set",
     "whyItMatters": "Without the warning, a developer who forgets to configure .env.local will see opaque authorization errors with no clear cause.",
@@ -1625,10 +1658,10 @@
   {
     "id": "api.env.02",
     "module": "Shared / API",
-    "area": "API Configuration \u2014 Dev Safety",
+    "area": "API Configuration — Dev Safety",
     "story": "No DEV warning when VITE_RPC_SECRET is present",
     "scenario": "console.warn is NOT emitted when VITE_RPC_SECRET is set",
-    "whyItMatters": "The warning must be conditional \u2014 it should not fire in a correctly configured environment.",
+    "whyItMatters": "The warning must be conditional — it should not fire in a correctly configured environment.",
     "risk": "An unconditional warning would create noise and train developers to ignore console output.",
     "coverageStrength": "Strong",
     "severity": "minor"
@@ -1636,7 +1669,7 @@
   {
     "id": "scoregrid.momentum.01",
     "module": "Admin / Heatmap",
-    "area": "Touch Scroll \u2014 Cleanup",
+    "area": "Touch Scroll — Cleanup",
     "story": "isConnected guard prevents stale-closure DOM access after unmount",
     "scenario": "transitionend listener returns early without error when element is detached from DOM",
     "whyItMatters": "If the HeatmapPage unmounts during a momentum animation, the listener fires on a detached element. Without the guard, stale closures keep el and inner in memory and may access removed nodes.",
@@ -1647,7 +1680,7 @@
   {
     "id": "jury.pin.04",
     "module": "Jury / PIN",
-    "area": "PIN Entry \u2014 Device Compatibility",
+    "area": "PIN Entry — Device Compatibility",
     "story": "navigator.vibrate capability guard",
     "scenario": "PinStep renders without errors when navigator.vibrate is undefined",
     "whyItMatters": "navigator.vibrate is undefined on Safari and some environments. The component must not throw when the API is absent.",
@@ -1680,7 +1713,7 @@
   {
     "id": "overview.03",
     "module": "Admin / Overview",
-    "area": "Overview Tab \u2014 Metrics",
+    "area": "Overview Tab — Metrics",
     "story": "completedMetaLines zero-count filtering",
     "scenario": "breakdown lines with count=0 are omitted from completedMetaLines",
     "whyItMatters": "Showing '0 in progress' or '0 not started' adds noise; only non-zero counts should appear.",
@@ -1691,7 +1724,7 @@
   {
     "id": "overview.04",
     "module": "Admin / Overview",
-    "area": "Overview Tab \u2014 Metrics",
+    "area": "Overview Tab — Metrics",
     "story": "scoredSub conditional display",
     "scenario": "scoredSub total label appears only when scoredEvaluations < totalEvaluations",
     "whyItMatters": "The sub-label '12 total' only makes sense when some evaluations are still unscored; it is redundant when all are scored.",
@@ -1702,7 +1735,7 @@
   {
     "id": "overview.05",
     "module": "Admin / Overview",
-    "area": "Overview Tab \u2014 Empty State",
+    "area": "Overview Tab — Empty State",
     "story": "isEmpty renders settings link prompt",
     "scenario": "when totalJurors=0 and totalGroups=0, renders the 'Go to Settings' empty-state prompt",
     "whyItMatters": "New admins with no data configured need a clear call-to-action to get started.",
@@ -1757,7 +1790,7 @@
   {
     "id": "retry.network.01",
     "module": "Shared / API",
-    "area": "Network Resilience \u2014 Retry",
+    "area": "Network Resilience — Retry",
     "story": "withRetry retries TypeError (network failure) with exponential backoff",
     "scenario": "a function throwing TypeError is retried up to maxAttempts times, then the error is re-thrown",
     "whyItMatters": "Transient network drops during scoring should not immediately surface as errors; a brief retry gives the connection time to recover.",
@@ -1768,7 +1801,7 @@
   {
     "id": "retry.network.02",
     "module": "Shared / API",
-    "area": "Network Resilience \u2014 Retry",
+    "area": "Network Resilience — Retry",
     "story": "withRetry does not retry AbortError",
     "scenario": "a function throwing an AbortError propagates immediately without any retry",
     "whyItMatters": "AbortErrors are intentional cancellations (AbortController); retrying them would ignore the caller's intent and waste resources.",
@@ -1779,10 +1812,10 @@
   {
     "id": "retry.network.03",
     "module": "Shared / API",
-    "area": "Network Resilience \u2014 Retry",
+    "area": "Network Resilience — Retry",
     "story": "withRetry does not retry non-TypeError errors",
     "scenario": "a function throwing a non-TypeError (e.g. a Supabase business error) propagates immediately",
-    "whyItMatters": "Business errors (RLS violation, wrong password, locked semester) must surface immediately \u2014 retrying them would be wrong and could burn PIN rate-limit attempts.",
+    "whyItMatters": "Business errors (RLS violation, wrong password, locked semester) must surface immediately — retrying them would be wrong and could burn PIN rate-limit attempts.",
     "risk": "Retrying auth errors would expose users to rate-limit lockouts.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -1790,18 +1823,18 @@
   {
     "id": "metrics.01",
     "module": "Admin / Overview",
-    "area": "Overview Metrics \u2014 Computation",
+    "area": "Overview Metrics — Computation",
     "story": "computeOverviewMetrics returns all zeros for empty input",
     "scenario": "when rawScores=[], assignedJurors=[], totalProjects=0, all returned counts are 0",
     "whyItMatters": "The initial state before any data loads must not produce undefined or NaN values that could crash downstream rendering.",
-    "risk": "NaN in totalEvaluations would cause StatCard to display NaN instead of '\u2014'.",
+    "risk": "NaN in totalEvaluations would cause StatCard to display NaN instead of '—'.",
     "coverageStrength": "Strong",
     "severity": "normal"
   },
   {
     "id": "metrics.02",
     "module": "Admin / Overview",
-    "area": "Overview Metrics \u2014 Computation",
+    "area": "Overview Metrics — Computation",
     "story": "computeOverviewMetrics categorizes juror states correctly",
     "scenario": "given a mix of completed, in-progress, editing, and not-started jurors, counts each category correctly",
     "whyItMatters": "The overview dashboard is the admin's primary tool for monitoring poster-day progress; incorrect counts would hide problems.",
@@ -1812,7 +1845,7 @@
   {
     "id": "metrics.03",
     "module": "Admin / Overview",
-    "area": "Overview Metrics \u2014 Computation",
+    "area": "Overview Metrics — Computation",
     "story": "computeOverviewMetrics emptyEvaluations has a floor of 0",
     "scenario": "when scoredEvaluations + partialEvaluations > totalEvaluations (data inconsistency), emptyEvaluations is clamped to 0",
     "whyItMatters": "A negative emptyEvaluations count would display as a negative number in the UI, which is confusing and invalid.",
@@ -1823,10 +1856,10 @@
   {
     "id": "pin.reset.01",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Confirmation Step",
+    "area": "PIN Reset Dialog — Confirmation Step",
     "story": "PIN Reset Confirmation Shows Juror Name",
     "scenario": "confirmation step renders juror name when pinResetTarget is provided",
-    "whyItMatters": "Admins must be able to see which juror they are resetting before confirming \u2014 wrong-juror resets are irreversible.",
+    "whyItMatters": "Admins must be able to see which juror they are resetting before confirming — wrong-juror resets are irreversible.",
     "risk": "Missing juror name would make it impossible to verify the right juror is selected before confirming.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -1834,7 +1867,7 @@
   {
     "id": "pin.reset.02",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Confirmation Step",
+    "area": "PIN Reset Dialog — Confirmation Step",
     "story": "PIN Reset Confirmation Shows Semester Context",
     "scenario": "confirmation step renders the viewSemesterLabel so admin knows which semester the reset applies to",
     "whyItMatters": "Resetting a PIN in the wrong semester would confuse the juror during evaluation day.",
@@ -1845,7 +1878,7 @@
   {
     "id": "pin.reset.03",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Confirmation Step",
+    "area": "PIN Reset Dialog — Confirmation Step",
     "story": "PIN Reset Confirmation Buttons Present",
     "scenario": "Cancel and Reset PIN buttons are both rendered in the confirmation step",
     "whyItMatters": "If Cancel is missing, admins cannot back out of an accidental reset trigger.",
@@ -1856,7 +1889,7 @@
   {
     "id": "pin.reset.04",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Result Step",
+    "area": "PIN Reset Dialog — Result Step",
     "story": "PIN Reset Result Shows New PIN",
     "scenario": "result step displays the 4-digit PIN from resetPinInfo.pin_plain_once",
     "whyItMatters": "The admin must see the generated PIN to share it securely with the juror.",
@@ -1867,7 +1900,7 @@
   {
     "id": "pin.reset.05",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Result Step",
+    "area": "PIN Reset Dialog — Result Step",
     "story": "PIN Reset Result Shows Juror Name for Context",
     "scenario": "result step renders the juror name so admin knows whose PIN was just generated",
     "whyItMatters": "When multiple resets happen in sequence, the admin needs to confirm they are looking at the right juror's new PIN before sharing it.",
@@ -1878,7 +1911,7 @@
   {
     "id": "groups.csv.summary.01",
     "module": "Admin / Settings",
-    "area": "Projects CSV Import \u2014 Summary Message",
+    "area": "Projects CSV Import — Summary Message",
     "story": "CSV Import Summary Shows Added and Skipped Counts",
     "scenario": "after a successful import, a summary message shows how many groups were added and how many were skipped",
     "whyItMatters": "Admins need to know whether any groups from the CSV were silently skipped due to duplicate group numbers.",
@@ -1889,7 +1922,7 @@
   {
     "id": "analytics.motion.01",
     "module": "Admin / Analytics",
-    "area": "AnalyticsTab \u2014 Reduced Motion Accessibility",
+    "area": "AnalyticsTab — Reduced Motion Accessibility",
     "story": "Reduced Motion Preference Opens Data Table by Default",
     "scenario": "when prefers-reduced-motion is active, the ChartDataTable section is open by default instead of requiring user expansion",
     "whyItMatters": "Users with reduced-motion enabled cannot benefit from animated chart transitions; the data table provides an accessible alternative.",
@@ -1900,7 +1933,7 @@
   {
     "id": "scoregrid.aria.01",
     "module": "Scores / Grid",
-    "area": "Heatmap \u2014 ARIA Roles",
+    "area": "Heatmap — ARIA Roles",
     "story": "Heatmap Table Has role=grid",
     "scenario": "the score matrix table element carries role='grid' so screen readers announce it as an interactive grid",
     "whyItMatters": "Without role=grid, screen readers treat the table as a static data table and navigation shortcuts expected by keyboard users do not work.",
@@ -1911,10 +1944,10 @@
   {
     "id": "scoregrid.aria.02",
     "module": "Scores / Grid",
-    "area": "Heatmap \u2014 ARIA Roles",
+    "area": "Heatmap — ARIA Roles",
     "story": "Heatmap Juror Cells Have role=rowheader",
     "scenario": "each juror name cell in the score matrix carries role='rowheader' so screen readers associate scores in that row with the juror",
-    "whyItMatters": "role=rowheader is required for screen readers to announce 'Alice: Group 1 \u2014 85' instead of just '85', providing essential context.",
+    "whyItMatters": "role=rowheader is required for screen readers to announce 'Alice: Group 1 — 85' instead of just '85', providing essential context.",
     "risk": "Dropping rowheader roles makes the grid unnavigable for screen-reader users who rely on row/column header associations.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -1922,7 +1955,7 @@
   {
     "id": "jury.eval.07",
     "module": "Jury / Evaluation",
-    "area": "EvalStep \u2014 Submit Button Visibility",
+    "area": "EvalStep — Submit Button Visibility",
     "story": "Submit Button Hidden When Evaluation Incomplete",
     "scenario": "Submit All Evaluations button is not rendered when allComplete is false",
     "whyItMatters": "Premature submission before all groups are scored would leave some groups with no evaluation data.",
@@ -1933,7 +1966,7 @@
   {
     "id": "jury.eval.08",
     "module": "Jury / Evaluation",
-    "area": "EvalStep \u2014 Group Synced Banner",
+    "area": "EvalStep — Group Synced Banner",
     "story": "Group Synced Banner Hidden in Edit Mode",
     "scenario": "the 'all scores saved' banner is not shown when editMode is true",
     "whyItMatters": "In edit mode, scores are being changed; showing the synced banner would falsely imply the in-progress edits are already saved.",
@@ -1944,7 +1977,7 @@
   {
     "id": "jury.flow.01",
     "module": "Jury / Evaluation",
-    "area": "Jury Flow \u2014 Submit Guard",
+    "area": "Jury Flow — Submit Guard",
     "story": "Submit Blocked Until All Criteria Filled",
     "scenario": "auto-done does not fire when any group has unfilled criteria",
     "whyItMatters": "Preventing premature submission stops jurors from accidentally submitting incomplete evaluations.",
@@ -1955,7 +1988,7 @@
   {
     "id": "jury.flow.02",
     "module": "Jury / Evaluation",
-    "area": "Jury Flow \u2014 Submit",
+    "area": "Jury Flow — Submit",
     "story": "Submit Flow After Last Group",
     "scenario": "moves to confirmingSubmit=true when all groups are synced",
     "whyItMatters": "The confirmation gate must appear before finalizeJurorSubmission is called.",
@@ -1966,7 +1999,7 @@
   {
     "id": "jury.flow.03",
     "module": "Jury / Evaluation",
-    "area": "Jury Flow \u2014 Edit Mode",
+    "area": "Jury Flow — Edit Mode",
     "story": "Edit Mode Preloads Existing Scores",
     "scenario": "handleEditScores populates scores, comments, and groupSynced from saved state",
     "whyItMatters": "Jurors editing existing scores must see their previous entries, not empty fields.",
@@ -1977,7 +2010,7 @@
   {
     "id": "jury.flow.04",
     "module": "Jury / Evaluation",
-    "area": "Jury Flow \u2014 Group Navigation",
+    "area": "Jury Flow — Group Navigation",
     "story": "Group Navigation Does Not Bleed Local State",
     "scenario": "scores for the previous group are unchanged after navigating to a new group",
     "whyItMatters": "Navigating between groups must not mutate scores of groups not being edited.",
@@ -1988,7 +2021,7 @@
   {
     "id": "jury.sync.01",
     "module": "Jury / Evaluation",
-    "area": "Jury Sync \u2014 Save Payload",
+    "area": "Jury Sync — Save Payload",
     "story": "Save Called With Correct Payload on Blur",
     "scenario": "handleScoreBlur triggers upsertScore with correct semesterId, projectId, jurorId, and scores",
     "whyItMatters": "Wrong payload on blur would silently save incorrect data to the database.",
@@ -1999,7 +2032,7 @@
   {
     "id": "jury.sync.02",
     "module": "Jury / Evaluation",
-    "area": "Jury Sync \u2014 Error State",
+    "area": "Jury Sync — Error State",
     "story": "Save Failure Visible to User",
     "scenario": "saveStatus becomes 'error' when upsertScore rejects",
     "whyItMatters": "Users must know when a save fails so they can retry or not navigate away.",
@@ -2010,7 +2043,7 @@
   {
     "id": "jury.sync.03",
     "module": "Jury / Evaluation",
-    "area": "Jury Sync \u2014 Retry Recovery",
+    "area": "Jury Sync — Retry Recovery",
     "story": "Retry After Failure Clears Error State",
     "scenario": "saveStatus returns to 'saved' after a successful write following a failed one",
     "whyItMatters": "After a transient error is resolved, the UI must reflect the recovered state.",
@@ -2021,7 +2054,7 @@
   {
     "id": "jury.sync.04",
     "module": "Jury / Evaluation",
-    "area": "Jury Sync \u2014 Rapid Input",
+    "area": "Jury Sync — Rapid Input",
     "story": "Last Value Preserved Under Rapid Changes",
     "scenario": "only the last value is written when score changes occur before blur",
     "whyItMatters": "Rapid input changes must not cause race conditions that write stale values.",
@@ -2032,7 +2065,7 @@
   {
     "id": "permissions.lock.01",
     "module": "Jury / Evaluation",
-    "area": "Permissions \u2014 Edit Lock",
+    "area": "Permissions — Edit Lock",
     "story": "Edit Lock Blocks writeGroup",
     "scenario": "writeGroup returns false immediately when editLockActive is true",
     "whyItMatters": "Lock must prevent any writes even if the juror tries to blur or navigate.",
@@ -2043,7 +2076,7 @@
   {
     "id": "permissions.lock.02",
     "module": "Jury / Evaluation",
-    "area": "Permissions \u2014 Edit Lock",
+    "area": "Permissions — Edit Lock",
     "story": "Server-Side Lock Error Activates Client Lock",
     "scenario": "editLockActive is set to true when upsertScore error contains 'semester_locked'",
     "whyItMatters": "Server-enforced lock must be reflected in client state to prevent retry loops.",
@@ -2054,7 +2087,7 @@
   {
     "id": "permissions.lock.03",
     "module": "Jury / Evaluation",
-    "area": "Permissions \u2014 Edit Lock",
+    "area": "Permissions — Edit Lock",
     "story": "Re-entering Eval After Lock Clears",
     "scenario": "step transitions back to eval with editLockActive=false when edit_allowed becomes true",
     "whyItMatters": "Admin unlocking a juror must allow that juror to resume scoring.",
@@ -2065,7 +2098,7 @@
   {
     "id": "permissions.lock.04",
     "module": "Jury / Evaluation",
-    "area": "Permissions \u2014 Edit Lock",
+    "area": "Permissions — Edit Lock",
     "story": "Lock State Cleared on Semester Change",
     "scenario": "editLockActive resets to false when a new semester is loaded",
     "whyItMatters": "Lock state from one semester must not bleed into another semester evaluation.",
@@ -2076,10 +2109,10 @@
   {
     "id": "results.rank.01",
     "module": "Scores / Rankings",
-    "area": "Rankings \u2014 Finalized Only",
+    "area": "Rankings — Finalized Only",
     "story": "Only Finalized Evaluations Counted in Rankings",
     "scenario": "project without any finalized juror score is excluded from ranked list",
-    "whyItMatters": "Rankings must reflect completed evaluations only \u2014 in-progress scores would distort the ranking.",
+    "whyItMatters": "Rankings must reflect completed evaluations only — in-progress scores would distort the ranking.",
     "risk": "Including partial scores would change ranking positions unfairly.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -2087,10 +2120,10 @@
   {
     "id": "results.rank.02",
     "module": "Scores / Rankings",
-    "area": "Rankings \u2014 Tie Handling",
+    "area": "Rankings — Tie Handling",
     "story": "Tied Projects Get Same Rank With Dense Numbering",
     "scenario": "two projects with equal totalAvg both display rank 1, and the next project displays rank 3 (competition ranking)",
-    "whyItMatters": "Competition ranking (1,1,3) is the correct contract \u2014 ranks after a tie must skip, not be dense (1,1,2).",
+    "whyItMatters": "Competition ranking (1,1,3) is the correct contract — ranks after a tie must skip, not be dense (1,1,2).",
     "risk": "Dense-ranking display would show wrong rank numbers to the academic committee.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -2098,7 +2131,7 @@
   {
     "id": "results.rank.03",
     "module": "Scores / Rankings",
-    "area": "Rankings \u2014 Stability",
+    "area": "Rankings — Stability",
     "story": "Rank Numbers Stable Under Sort and Search",
     "scenario": "filtering by group name does not renumber the visible project rank",
     "whyItMatters": "Rank is absolute; it must not recalculate based on what is currently visible.",
@@ -2109,7 +2142,7 @@
   {
     "id": "results.rank.04",
     "module": "Scores / Rankings",
-    "area": "Rankings \u2014 Finalized Only",
+    "area": "Rankings — Finalized Only",
     "story": "Unfinalized Scores Excluded From Average",
     "scenario": "project with mixed finalized and non-finalized jurors uses only finalized scores in average",
     "whyItMatters": "Including in-progress scores in the average would distort final ranking.",
@@ -2120,7 +2153,7 @@
   {
     "id": "results.consistency.01",
     "module": "Scores / Details",
-    "area": "Score Consistency \u2014 Status Filter",
+    "area": "Score Consistency — Status Filter",
     "story": "Juror Status Filter Consistent With Workflow State",
     "scenario": "filtering by 'Completed' shows only jurors whose workflow state is 'completed'",
     "whyItMatters": "Status label in the filter must match what the workflow state engine computes.",
@@ -2131,7 +2164,7 @@
   {
     "id": "results.consistency.02",
     "module": "Scores / Details",
-    "area": "Score Consistency \u2014 Filter State",
+    "area": "Score Consistency — Filter State",
     "story": "Score Status Filter Shows Correct Entries",
     "scenario": "filtering by 'Scored' in ReviewsPage shows only rows where all criteria are filled",
     "whyItMatters": "Score status filter must agree with the cell state engine to show accurate data.",
@@ -2142,7 +2175,7 @@
   {
     "id": "results.consistency.03",
     "module": "Scores / Details",
-    "area": "Score Consistency \u2014 Filter Agreement",
+    "area": "Score Consistency — Filter Agreement",
     "story": "Group Filter Shows Only Matching Rows",
     "scenario": "selecting a group filter in ReviewsPage shows only rows matching that group number",
     "whyItMatters": "Group-level filtering must be deterministic and consistent.",
@@ -2153,7 +2186,7 @@
   {
     "id": "results.consistency.04",
     "module": "Scores / Details",
-    "area": "Score Consistency \u2014 Date Filter",
+    "area": "Score Consistency — Date Filter",
     "story": "Updated At Range Filter Shows Only In-Range Rows",
     "scenario": "rows outside the from-to date range are hidden when both bounds are set",
     "whyItMatters": "Date range filter is used to audit recent changes; missing rows would hide edits.",
@@ -2164,7 +2197,7 @@
   {
     "id": "pin.reset.06",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Error Handling",
+    "area": "PIN Reset Dialog — Error Handling",
     "story": "Reset PIN Loading State Shows Feedback",
     "scenario": "Reset PIN button shows loading state while pinResetLoading is true",
     "whyItMatters": "Admin must see a loading indicator so they do not double-click and trigger multiple resets.",
@@ -2175,7 +2208,7 @@
   {
     "id": "pin.reset.07",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Stale State",
+    "area": "PIN Reset Dialog — Stale State",
     "story": "Second Reset Shows Latest PIN",
     "scenario": "performing a second PIN reset displays the new PIN, not the PIN from the first reset",
     "whyItMatters": "Showing stale PIN from a previous reset would cause the admin to communicate the wrong PIN.",
@@ -2186,7 +2219,7 @@
   {
     "id": "pin.reset.08",
     "module": "Admin / Settings",
-    "area": "PIN Reset Dialog \u2014 Stale State",
+    "area": "PIN Reset Dialog — Stale State",
     "story": "Dialog Reopen Does Not Carry Stale Juror Info",
     "scenario": "closing and reopening the dialog for a different juror shows the new juror name, not the previous one",
     "whyItMatters": "Targeting the wrong juror in the confirmation step is an administrative error.",
@@ -2197,7 +2230,7 @@
   {
     "id": "export.grid.01",
     "module": "Scores / Grid",
-    "area": "Export \u2014 Grid",
+    "area": "Export — Grid",
     "story": "Grid Export Column Headers Correct",
     "scenario": "exportGridXLSX is called with the correct group column headers matching active groups",
     "whyItMatters": "Misnamed column headers would make the exported spreadsheet unreadable without cross-referencing.",
@@ -2208,7 +2241,7 @@
   {
     "id": "export.grid.02",
     "module": "Scores / Grid",
-    "area": "Export \u2014 Grid",
+    "area": "Export — Grid",
     "story": "Export Row Count Matches Filtered UI",
     "scenario": "exportGridXLSX receives only the jurors currently visible after filtering",
     "whyItMatters": "Exporting hidden jurors would produce a file inconsistent with what the admin is looking at.",
@@ -2219,7 +2252,7 @@
   {
     "id": "export.rank.01",
     "module": "Scores / Rankings",
-    "area": "Export \u2014 Rankings",
+    "area": "Export — Rankings",
     "story": "Rankings Export Preserves Tie Ranks",
     "scenario": "exportRankingsXLSX output has identical rank values for tied projects",
     "whyItMatters": "The exported ranking file is the official document submitted to the committee.",
@@ -2230,7 +2263,7 @@
   {
     "id": "export.filename.01",
     "module": "Admin / Settings",
-    "area": "Export \u2014 Filename",
+    "area": "Export — Filename",
     "story": "Export Filename Includes Semester and Date",
     "scenario": "buildExportFilename returns a string matching vera_{type}_{semester}_{date}.xlsx pattern",
     "whyItMatters": "Filename must uniquely identify the export context to avoid confusion across semesters.",
@@ -2241,7 +2274,7 @@
   {
     "id": "a11y.dialog.01",
     "module": "Accessibility",
-    "area": "A11y \u2014 Dialog Focus",
+    "area": "A11y — Dialog Focus",
     "story": "PinResetDialog Initial Focus Lands in Dialog",
     "scenario": "PinResetDialog has role=dialog and aria-modal=true for screen reader context",
     "whyItMatters": "role=dialog and aria-modal signal screen readers to confine their virtual cursor to the dialog.",
@@ -2252,7 +2285,7 @@
   {
     "id": "a11y.dialog.02",
     "module": "Accessibility",
-    "area": "A11y \u2014 Dialog Keyboard",
+    "area": "A11y — Dialog Keyboard",
     "story": "PinResetDialog Closes on Escape",
     "scenario": "Cancel button in PinResetDialog calls onClose and has an accessible name",
     "whyItMatters": "Screen reader users must be able to dismiss the dialog via keyboard-accessible controls.",
@@ -2263,7 +2296,7 @@
   {
     "id": "a11y.table.01",
     "module": "Accessibility",
-    "area": "A11y \u2014 Table",
+    "area": "A11y — Table",
     "story": "Sortable Column Headers Have aria-sort",
     "scenario": "Heatmap sort header has aria-sort='ascending' or 'descending' matching current sort state",
     "whyItMatters": "Screen readers announce sort direction via aria-sort; without it, sort state is invisible to blind users.",
@@ -2274,7 +2307,7 @@
   {
     "id": "a11y.form.01",
     "module": "Accessibility",
-    "area": "A11y \u2014 Form",
+    "area": "A11y — Form",
     "story": "Score Inputs Have Accessible Names",
     "scenario": "each rubric score input has an accessible name including the criterion label and group title",
     "whyItMatters": "Unlabelled inputs force screen reader users to guess what value they are entering.",
@@ -2285,7 +2318,7 @@
   {
     "id": "a11y.banner.01",
     "module": "Accessibility",
-    "area": "A11y \u2014 Live Regions",
+    "area": "A11y — Live Regions",
     "story": "Sync and Error Banners Announced to Screen Readers",
     "scenario": "saveStatus error or lock banner has role='alert' or aria-live='polite'",
     "whyItMatters": "Dynamic status changes must be announced by screen readers so users know when saves fail.",
@@ -2296,9 +2329,9 @@
   {
     "id": "jury.e2e.01",
     "module": "Jury / Evaluation",
-    "area": "E2E \u2014 Full Flow",
+    "area": "E2E — Full Flow",
     "story": "Juror Reaches Evaluation Screen",
-    "scenario": "juror fills identity form \u2192 enters PIN \u2192 selects semester \u2192 evaluation screen with score inputs is visible",
+    "scenario": "juror fills identity form → enters PIN → selects semester → evaluation screen with score inputs is visible",
     "whyItMatters": "Happy-path regression test for the most critical user journey.",
     "risk": "Silent regression in any step would break the entire evaluation day.",
     "coverageStrength": "Strong",
@@ -2307,7 +2340,7 @@
   {
     "id": "jury.e2e.02",
     "module": "Jury / Evaluation",
-    "area": "E2E \u2014 Lock",
+    "area": "E2E — Lock",
     "story": "Juror Sees Lock Banner When Semester Is Locked",
     "scenario": "juror login with locked semester shows disabled inputs and lock banner",
     "whyItMatters": "Lock enforcement must be visible at the UI level, not just enforced at API level.",
@@ -2318,9 +2351,9 @@
   {
     "id": "admin.e2e.01",
     "module": "Admin / Settings",
-    "area": "E2E \u2014 CSV Import",
+    "area": "E2E — CSV Import",
     "story": "Admin Imports Groups CSV",
-    "scenario": "admin opens Settings \u2192 Projects panel \u2192 Import CSV dialog opens \u2192 file selected \u2192 import completes",
+    "scenario": "admin opens Settings → Projects panel → Import CSV dialog opens → file selected → import completes",
     "whyItMatters": "CSV import is the primary data entry path before each poster day.",
     "risk": "Broken import on event day would require manual data entry for all groups.",
     "coverageStrength": "Strong",
@@ -2329,9 +2362,9 @@
   {
     "id": "admin.e2e.02",
     "module": "Admin / Scores",
-    "area": "E2E \u2014 Rankings",
+    "area": "E2E — Rankings",
     "story": "Admin Sees Rankings Tab",
-    "scenario": "admin login \u2192 Scores dropdown \u2192 Rankings option \u2192 rankings content visible",
+    "scenario": "admin login → Scores dropdown → Rankings option → rankings content visible",
     "whyItMatters": "Rankings view is the primary output of the evaluation.",
     "risk": "Admin unable to see rankings would require a workaround for result announcement.",
     "coverageStrength": "Strong",
@@ -2340,9 +2373,9 @@
   {
     "id": "admin.e2e.03",
     "module": "Admin / Scores",
-    "area": "E2E \u2014 Export",
+    "area": "E2E — Export",
     "story": "Admin Exports Rankings to Excel",
-    "scenario": "admin on Rankings tab \u2192 clicks Excel button \u2192 file download starts with .xlsx extension",
+    "scenario": "admin on Rankings tab → clicks Excel button → file download starts with .xlsx extension",
     "whyItMatters": "Excel export is the official output submitted to the academic committee.",
     "risk": "Broken export on results day means no official document.",
     "coverageStrength": "Strong",
@@ -2351,7 +2384,7 @@
   {
     "id": "auditUtils.parse.01",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Date Parsing",
+    "area": "Audit Utils — Date Parsing",
     "story": "Parse month-name search query",
     "scenario": "parseSearchDateParts('15 jan 2025') returns { day: 15, month: 1, year: 2025 }",
     "whyItMatters": "Audit log search by month name is the most common free-text query pattern.",
@@ -2362,7 +2395,7 @@
   {
     "id": "auditUtils.parse.02",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Date Parsing",
+    "area": "Audit Utils — Date Parsing",
     "story": "Parse dd.mm.yyyy search query",
     "scenario": "parseSearchDateParts('15.01.2025') returns { day: 15, month: 1, year: 2025 }",
     "whyItMatters": "European date format is the default notation for TEDU coordinators.",
@@ -2373,7 +2406,7 @@
   {
     "id": "auditUtils.parse.03",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Date String",
+    "area": "Audit Utils — Date String",
     "story": "Parse ISO datetime string",
     "scenario": "parseAuditDateString('2025-01-15T14:30') returns { ms: <timestamp>, isDateOnly: false }",
     "whyItMatters": "Audit filter date fields accept ISO datetime format; parsing must be exact.",
@@ -2384,7 +2417,7 @@
   {
     "id": "auditUtils.parse.04",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Date String",
+    "area": "Audit Utils — Date String",
     "story": "Reject out-of-bounds year",
     "scenario": "parseAuditDateString('1800-01-01') returns null",
     "whyItMatters": "Out-of-bounds years must be rejected to prevent RPC parameter errors.",
@@ -2395,7 +2428,7 @@
   {
     "id": "auditUtils.range.01",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Range Validation",
+    "area": "Audit Utils — Range Validation",
     "story": "Date range error when start is after end",
     "scenario": "getAuditDateRangeError({ startDate: '2025-06-01', endDate: '2025-01-01' }) returns non-empty error string",
     "whyItMatters": "Invalid ranges must show an error before the RPC is called.",
@@ -2406,7 +2439,7 @@
   {
     "id": "auditUtils.params.01",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 RPC Params",
+    "area": "Audit Utils — RPC Params",
     "story": "Build audit RPC params with date search",
     "scenario": "buildAuditParams(defaultFilters, 120, null, '15 jan') sets searchDay=15 searchMonth=1",
     "whyItMatters": "Server-side date search only works if searchDay/searchMonth fields are set correctly.",
@@ -2417,7 +2450,7 @@
   {
     "id": "auditUtils.normalize.01",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Name Normalization",
+    "area": "Audit Utils — Name Normalization",
     "story": "Normalize semicolon-separated student names",
     "scenario": "normalizeStudentNames('Alice ; Bob\\nCarol') returns 'Alice; Bob; Carol'",
     "whyItMatters": "Student names pasted from spreadsheets use inconsistent separators.",
@@ -2428,7 +2461,7 @@
   {
     "id": "auditUtils.dedup.01",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Name Normalization",
+    "area": "Audit Utils — Name Normalization",
     "story": "Deduplicate student names",
     "scenario": "normalizeStudentNames deduplicates identical names (case-sensitive, preserves first occurrence)",
     "whyItMatters": "Duplicate names like 'Alice; Alice; Bob' are stored verbatim without deduplication.",
@@ -2439,7 +2472,7 @@
   {
     "id": "auditUtils.dedup.02",
     "module": "Admin / Settings / Audit",
-    "area": "Audit Utils \u2014 Name Normalization",
+    "area": "Audit Utils — Name Normalization",
     "story": "Deduplicate student names",
     "scenario": "normalizeStudentNames deduplicates while preserving order of first occurrence",
     "whyItMatters": "Order of students should be preserved when removing duplicates.",
@@ -2450,40 +2483,40 @@
   {
     "id": "criteria.validation.01",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Coverage",
+    "area": "Rubric Validation — Coverage",
     "story": "Rubric coverage check",
     "scenario": "validateRubric returns coverageError when first band min > 0 (gap at bottom)",
     "whyItMatters": "Score 0 would fall outside rubric bands if the bottom gap is not caught.",
-    "risk": "Jury scores at 0 could be unclassified or cause incorrect M\u00dcDEK calculations.",
+    "risk": "Jury scores at 0 could be unclassified or cause incorrect MÜDEK calculations.",
     "coverageStrength": "Strong",
     "severity": "critical"
   },
   {
     "id": "criteria.validation.02",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Coverage",
+    "area": "Rubric Validation — Coverage",
     "story": "Rubric coverage check",
     "scenario": "validateRubric returns coverageError when last band max < criterionMax (gap at top)",
     "whyItMatters": "Scores equal to criterionMax would fall outside rubric bands.",
-    "risk": "Perfect scores would be unclassified in M\u00dcDEK achievement reports.",
+    "risk": "Perfect scores would be unclassified in MÜDEK achievement reports.",
     "coverageStrength": "Strong",
     "severity": "critical"
   },
   {
     "id": "criteria.validation.03",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Coverage",
+    "area": "Rubric Validation — Coverage",
     "story": "Rubric coverage check",
     "scenario": "validateRubric returns coverageError when adjacent bands have a gap between them",
     "whyItMatters": "A score in an uncovered gap would be unclassified.",
-    "risk": "Internal score gaps break M\u00dcDEK classification for those score values.",
+    "risk": "Internal score gaps break MÜDEK classification for those score values.",
     "coverageStrength": "Strong",
     "severity": "critical"
   },
   {
     "id": "criteria.validation.04",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Coverage",
+    "area": "Rubric Validation — Coverage",
     "story": "Rubric coverage check",
     "scenario": "validateRubric returns no coverageError when rubric fully covers 0..max with no gaps",
     "whyItMatters": "Valid rubrics must pass so admins can save correct configurations.",
@@ -2494,7 +2527,7 @@
   {
     "id": "criteria.validation.04b",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Overlap Copy",
+    "area": "Rubric Validation — Band Overlap Copy",
     "story": "Rubric overlap wording",
     "scenario": "validateRubric quotes both band labels in overlap messages",
     "whyItMatters": "Quoted labels make overlap errors easier to scan when band names contain generic words or spaces.",
@@ -2505,7 +2538,7 @@
   {
     "id": "criteria.validation.04c",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Range Copy",
+    "area": "Rubric Validation — Band Range Copy",
     "story": "Rubric reversed-range wording",
     "scenario": "validateRubric quotes the band label in reversed-range messages",
     "whyItMatters": "Quoted labels keep the error copy consistent with overlap messaging and easier to scan.",
@@ -2516,18 +2549,18 @@
   {
     "id": "criteria.validation.05",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Count",
+    "area": "Rubric Validation — Band Count",
     "story": "Rubric band count limits",
     "scenario": "validateRubric returns coverageError when band count < 2",
     "whyItMatters": "A single-band rubric cannot meaningfully differentiate performance levels.",
-    "risk": "Degenerate rubrics make M\u00dcDEK achievement analysis meaningless.",
+    "risk": "Degenerate rubrics make MÜDEK achievement analysis meaningless.",
     "coverageStrength": "Strong",
     "severity": "normal"
   },
   {
     "id": "criteria.validation.06",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Count",
+    "area": "Rubric Validation — Band Count",
     "story": "Rubric band count limits",
     "scenario": "validateRubric returns coverageError when band count > 6",
     "whyItMatters": "More than 6 bands exceed the intended rubric complexity and UI capacity.",
@@ -2538,7 +2571,7 @@
   {
     "id": "criteria.validation.07",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Fields",
+    "area": "Rubric Validation — Band Fields",
     "story": "Band name required",
     "scenario": "validateRubric returns bandLevelErrors when a band level name is empty",
     "whyItMatters": "Unnamed bands show as blank in rubric summaries and jury score breakdowns.",
@@ -2549,7 +2582,7 @@
   {
     "id": "criteria.validation.08",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Fields",
+    "area": "Rubric Validation — Band Fields",
     "story": "Band description required",
     "scenario": "validateRubric returns bandDescErrors when a band description is empty",
     "whyItMatters": "Empty descriptions give jurors no guidance on performance expectations.",
@@ -2560,7 +2593,7 @@
   {
     "id": "criteria.validation.09",
     "module": "Admin / Criteria",
-    "area": "Rubric Validation \u2014 Band Fields",
+    "area": "Rubric Validation — Band Fields",
     "story": "Duplicate band name check",
     "scenario": "validateRubric returns bandLevelErrors for duplicate band names (case-insensitive)",
     "whyItMatters": "Two bands with the same name (e.g. 'Good' and 'good') are indistinguishable in reports.",
@@ -2571,7 +2604,7 @@
   {
     "id": "criteria.validation.10",
     "module": "Admin / Criteria",
-    "area": "Criterion Validation \u2014 Max",
+    "area": "Criterion Validation — Max",
     "story": "Max score must be positive",
     "scenario": "validateCriterion returns max error when max = 0",
     "whyItMatters": "A criterion with max=0 makes all jury scores meaningless for that criterion.",
@@ -2582,7 +2615,7 @@
   {
     "id": "criteria.validation.11",
     "module": "Admin / Criteria",
-    "area": "Criterion Validation \u2014 ShortLabel",
+    "area": "Criterion Validation — ShortLabel",
     "story": "ShortLabel uniqueness",
     "scenario": "validateCriterion returns shortLabel error when two criteria share the same normalized shortLabel",
     "whyItMatters": "ShortLabel is used as a display key in rubric summaries and score exports.",
@@ -2593,7 +2626,7 @@
   {
     "id": "criteria.validation.12",
     "module": "Admin / Criteria",
-    "area": "Criterion Validation \u2014 Blurb",
+    "area": "Criterion Validation — Blurb",
     "story": "Description required",
     "scenario": "validateCriterion returns blurb required error when description is empty",
     "whyItMatters": "Criterion descriptions guide jurors during scoring.",
@@ -2604,18 +2637,18 @@
   {
     "id": "criteria.validation.13",
     "module": "Admin / Criteria",
-    "area": "Criterion Validation \u2014 M\u00dcDEK",
-    "story": "M\u00dcDEK outcome required",
+    "area": "Criterion Validation — MÜDEK",
+    "story": "MÜDEK outcome required",
     "scenario": "validateCriterion returns mudek error when mudekTemplate is non-empty but no outcome is selected",
-    "whyItMatters": "Criteria without M\u00dcDEK mappings are excluded from outcome achievement reports.",
-    "risk": "Unmapped criteria silently produce incomplete M\u00dcDEK dashboard data.",
+    "whyItMatters": "Criteria without MÜDEK mappings are excluded from outcome achievement reports.",
+    "risk": "Unmapped criteria silently produce incomplete MÜDEK dashboard data.",
     "coverageStrength": "Strong",
     "severity": "critical"
   },
   {
     "id": "criteria.validation.14",
     "module": "Admin / Criteria",
-    "area": "Semester Validation \u2014 Total",
+    "area": "Semester Validation — Total",
     "story": "Total max === 100",
     "scenario": "validateSemesterCriteria returns null totalError when totalMax === 100",
     "whyItMatters": "Valid semester configurations must pass so admins can save correct setups.",
@@ -2626,10 +2659,10 @@
   {
     "id": "criteria.validation.15",
     "module": "Admin / Criteria",
-    "area": "Semester Validation \u2014 Error Keys",
+    "area": "Semester Validation — Error Keys",
     "story": "Namespaced error keys",
     "scenario": "validateSemesterCriteria namespaces errors by criterion index (label_0, shortLabel_1, etc.)",
-    "whyItMatters": "JSX error display looks up errors by namespaced key \u2014 mismatched keys silently hide errors.",
+    "whyItMatters": "JSX error display looks up errors by namespaced key — mismatched keys silently hide errors.",
     "risk": "Wrong error key format causes validation errors to not appear in the UI.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -2637,7 +2670,7 @@
   {
     "id": "criteria.ux.01",
     "module": "Admin / Criteria",
-    "area": "Empty Draft \u2014 Detection",
+    "area": "Empty Draft — Detection",
     "story": "Disposable empty draft criterion",
     "scenario": "isDisposableEmptyDraftCriterion returns true for a fully empty draft row",
     "whyItMatters": "Empty draft criteria must be stripped before save to keep the template clean.",
@@ -2648,10 +2681,10 @@
   {
     "id": "criteria.ux.02",
     "module": "Admin / Criteria",
-    "area": "Empty Draft \u2014 Detection",
-    "story": "Disposable empty draft criterion \u2014 max typed",
+    "area": "Empty Draft — Detection",
+    "story": "Disposable empty draft criterion — max typed",
     "scenario": "isDisposableEmptyDraftCriterion returns false when max is '0' (typed zero, not empty string)",
-    "whyItMatters": "A row with max='0' represents partial authoring \u2014 admin must fix or delete it manually.",
+    "whyItMatters": "A row with max='0' represents partial authoring — admin must fix or delete it manually.",
     "risk": "Auto-stripping partially authored rows would silently discard admin work.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -2659,8 +2692,8 @@
   {
     "id": "criteria.ux.03",
     "module": "Admin / Criteria",
-    "area": "Empty Draft \u2014 Detection",
-    "story": "Disposable empty draft criterion \u2014 rubric touched",
+    "area": "Empty Draft — Detection",
+    "story": "Disposable empty draft criterion — rubric touched",
     "scenario": "isDisposableEmptyDraftCriterion returns false when _rubricTouched is true",
     "whyItMatters": "A row where the admin edited the rubric must not be auto-discarded.",
     "risk": "Auto-stripping rubric-touched rows would silently discard admin rubric work.",
@@ -2693,7 +2726,7 @@
     "id": "levelpill.gradient.03",
     "module": "Shared / LevelPill",
     "area": "Band Gradient Color",
-    "story": "Position-based gradient \u2014 edge cases",
+    "story": "Position-based gradient — edge cases",
     "scenario": "getBandPositionStyle returns green when total is 1 (single-band guard)",
     "whyItMatters": "A single-band rubric must not trigger division by zero and must still render colored.",
     "risk": "Unguarded division by zero would crash or render NaN-indexed color, breaking the pill display.",
@@ -2714,7 +2747,7 @@
   {
     "id": "semester.template.01",
     "module": "Settings / Semesters",
-    "area": "Semester CRUD \u2014 Template",
+    "area": "Semester CRUD — Template",
     "story": "Empty Criteria Template Warning",
     "scenario": "shows default-template badge on semester list item when criteria_template is empty",
     "whyItMatters": "Admins need to know when a semester has no custom template saved so they can set one before scoring begins.",
@@ -2725,7 +2758,7 @@
   {
     "id": "semester.lock.01",
     "module": "Settings / Semesters",
-    "area": "Semester CRUD \u2014 Edit",
+    "area": "Semester CRUD — Edit",
     "story": "Lock Error on Save",
     "scenario": "calls onUpdateSemester and the edit modal closes when API returns semester_template_locked_by_scores (no fieldErrors path)",
     "whyItMatters": "When the API returns a locked error without fieldErrors, the component must call onUpdateSemester exactly once with the correct payload and not crash.",
@@ -2736,7 +2769,7 @@
   {
     "id": "semester.crud.05",
     "module": "Settings / Semesters",
-    "area": "Semester CRUD \u2014 Delete",
+    "area": "Semester CRUD — Delete",
     "story": "Delete Current Semester Guard",
     "scenario": "onDeleteSemester is NOT called when the current semester's delete button is clicked (button is disabled)",
     "whyItMatters": "The current semester must never be deletable. Even if a click event fires on the disabled button, the callback must not execute.",
@@ -2747,7 +2780,7 @@
   {
     "id": "semester.realtime.01",
     "module": "Settings / Semesters",
-    "area": "Semester CRUD \u2014 Realtime",
+    "area": "Semester CRUD — Realtime",
     "story": "Realtime DELETE closes open edit modal and shows deletion banner",
     "scenario": "when a Realtime DELETE event arrives for the semester currently open in the edit modal, the modal auto-closes and a warning banner is shown",
     "whyItMatters": "If an admin has the edit modal open while another session deletes the semester, the modal must close to prevent saving data for a non-existent record.",
@@ -2758,7 +2791,7 @@
   {
     "id": "phaseA.api.01",
     "module": "Phase A / Safety",
-    "area": "Admin API \u2014 Data Shaping",
+    "area": "Admin API — Data Shaping",
     "story": "adminGetScores field mapping",
     "scenario": "adminGetScores maps raw DB row to UI ScoreRow with correct field names, status derivation, and timestamp normalization",
     "whyItMatters": "The score row mapper is the boundary between DB shape and UI shape. Incorrect mapping breaks all admin score displays.",
@@ -2769,7 +2802,7 @@
   {
     "id": "phaseA.api.02",
     "module": "Phase A / Safety",
-    "area": "Admin API \u2014 Data Shaping",
+    "area": "Admin API — Data Shaping",
     "story": "adminListJurors field mapping",
     "scenario": "adminListJurors maps raw DB juror row to UI JurorRow with correct field names and timestamp ms conversion",
     "whyItMatters": "Juror row mapping drives the juror management panel and grid displays.",
@@ -2780,7 +2813,7 @@
   {
     "id": "phaseA.api.03",
     "module": "Phase A / Safety",
-    "area": "Admin API \u2014 Data Shaping",
+    "area": "Admin API — Data Shaping",
     "story": "adminProjectSummary field mapping",
     "scenario": "adminProjectSummary maps raw DB summary row to UI shape with correct numeric coercion and avg mapping",
     "whyItMatters": "Project summary drives rankings and analytics tabs. Numeric coercion errors would corrupt averages.",
@@ -2791,7 +2824,7 @@
   {
     "id": "phaseA.api.04",
     "module": "Phase A / Safety",
-    "area": "Admin API \u2014 Data Shaping",
+    "area": "Admin API — Data Shaping",
     "story": "adminGetScores status derivation",
     "scenario": "adminGetScores derives correct status (not_started, in_progress, submitted, completed, editing) from score row fields",
     "whyItMatters": "Status derivation is a complex conditional that drives filtering, display, and workflow logic across admin tabs.",
@@ -2802,7 +2835,7 @@
   {
     "id": "phaseA.api.05",
     "module": "Phase A / Safety",
-    "area": "Admin API \u2014 Data Shaping",
+    "area": "Admin API — Data Shaping",
     "story": "adminGetOutcomeTrends field mapping",
     "scenario": "adminGetOutcomeTrends maps raw DB trend row to UI shape with correct criteriaAvgs and nEvals",
     "whyItMatters": "Trend data feeds the analytics chart. Incorrect mapping breaks semester comparison views.",
@@ -2813,7 +2846,7 @@
   {
     "id": "phaseA.helpers.01",
     "module": "Phase A / Safety",
-    "area": "Score Helpers \u2014 Dynamic Criteria",
+    "area": "Score Helpers — Dynamic Criteria",
     "story": "getCellState with custom criteria",
     "scenario": "getCellState correctly evaluates cell state using a non-default criteria array",
     "whyItMatters": "Dynamic criteria support is critical for semester-scoped rubrics. getCellState must respect the criteria parameter.",
@@ -2824,7 +2857,7 @@
   {
     "id": "phaseA.helpers.02",
     "module": "Phase A / Safety",
-    "area": "Score Helpers \u2014 Edge Cases",
+    "area": "Score Helpers — Edge Cases",
     "story": "getPartialTotal with all-null entry",
     "scenario": "getPartialTotal returns 0 when all criterion fields are null",
     "whyItMatters": "An all-null entry must produce 0, not NaN, to avoid corrupting average calculations.",
@@ -2835,7 +2868,7 @@
   {
     "id": "phaseA.helpers.03",
     "module": "Phase A / Safety",
-    "area": "Score Helpers \u2014 Status Meta",
+    "area": "Score Helpers — Status Meta",
     "story": "jurorStatusMeta completeness",
     "scenario": "jurorStatusMeta has entries for all workflow states and cell states",
     "whyItMatters": "Missing status meta entries would cause undefined labels and icons in the UI.",
@@ -2846,7 +2879,7 @@
   {
     "id": "phaseA.grid.01",
     "module": "Phase A / Safety",
-    "area": "Heatmap \u2014 Dynamic Criteria",
+    "area": "Heatmap — Dynamic Criteria",
     "story": "lookup with custom criteriaTemplate",
     "scenario": "useHeatmapData builds lookup with criterion fields driven by criteriaTemplate parameter, not hardcoded CRITERIA",
     "whyItMatters": "Custom rubric semesters need the grid to index scores by their actual criteria, not the default set.",
@@ -2857,7 +2890,7 @@
   {
     "id": "phaseA.grid.02",
     "module": "Phase A / Safety",
-    "area": "Score Grid \u2014 Workflow Map",
+    "area": "Score Grid — Workflow Map",
     "story": "jurorWorkflowMap state transitions",
     "scenario": "jurorWorkflowMap correctly maps each juror to their workflow state based on scoring progress and edit flags",
     "whyItMatters": "The workflow map drives status badges, export rows, and grid row styling.",
@@ -2868,7 +2901,7 @@
   {
     "id": "phaseA.grid.03",
     "module": "Phase A / Safety",
-    "area": "Score Grid \u2014 Export",
+    "area": "Score Grid — Export",
     "story": "buildExportRows with mixed states",
     "scenario": "buildExportRows produces correct export data for jurors in scored, partial, and empty states",
     "whyItMatters": "XLSX export must accurately reflect each juror's scoring state, including partial totals.",
@@ -2879,10 +2912,10 @@
   {
     "id": "phaseA.filter.01",
     "module": "Phase A / Safety",
-    "area": "Reviews \u2014 Filter Pipeline",
+    "area": "Reviews — Filter Pipeline",
     "story": "multi-select group and status filter",
     "scenario": "ReviewsPage correctly filters rows by combined group number and status multi-select filters",
-    "whyItMatters": "Combined filters must use AND logic \u2014 a row must match all active filters to be shown.",
+    "whyItMatters": "Combined filters must use AND logic — a row must match all active filters to be shown.",
     "risk": "OR logic or missing filter predicates would show irrelevant rows.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -2890,7 +2923,7 @@
   {
     "id": "phaseA.filter.02",
     "module": "Phase A / Safety",
-    "area": "Reviews \u2014 Filter Pipeline",
+    "area": "Reviews — Filter Pipeline",
     "story": "date range filter",
     "scenario": "ReviewsPage correctly filters rows within updatedAt and finalSubmittedAt date ranges",
     "whyItMatters": "Date range filtering is critical for identifying evaluation activity within specific time windows.",
@@ -2901,7 +2934,7 @@
   {
     "id": "phaseA.filter.03",
     "module": "Phase A / Safety",
-    "area": "Reviews \u2014 Filter Pipeline",
+    "area": "Reviews — Filter Pipeline",
     "story": "activeFilterCount computation",
     "scenario": "ReviewsPage correctly counts the number of active filters across all columns",
     "whyItMatters": "The active filter count badge tells admins how many filters are applied, enabling quick filter awareness.",
@@ -2912,7 +2945,7 @@
   {
     "id": "phaseA.app.01",
     "module": "Phase A / Safety",
-    "area": "App \u2014 Page Resume",
+    "area": "App — Page Resume",
     "story": "URL token routes to jury_gate",
     "scenario": "App routes to jury_gate when a ?t= URL parameter is present",
     "whyItMatters": "QR code links contain a ?t= token. The app must immediately route to the gate page for verification.",
@@ -2923,7 +2956,7 @@
   {
     "id": "phaseA.app.02",
     "module": "Phase A / Safety",
-    "area": "App \u2014 Page Resume",
+    "area": "App — Page Resume",
     "story": "localStorage page restoration",
     "scenario": "App restores the last saved page from localStorage on mount, with correct jury access grant checks",
     "whyItMatters": "Page persistence ensures admins and jurors return to their last view on refresh.",
@@ -2934,7 +2967,7 @@
   {
     "id": "phaseA.app.03",
     "module": "Phase A / Safety",
-    "area": "App \u2014 Page Resume",
+    "area": "App — Page Resume",
     "story": "jury_gate never persisted",
     "scenario": "App never saves jury_gate to localStorage, even when currently on that page",
     "whyItMatters": "jury_gate is a transient verification screen. Persisting it would trap users in an infinite verification loop.",
@@ -2945,7 +2978,7 @@
   {
     "id": "phaseA.sql.01",
     "module": "Phase A / Safety",
-    "area": "SQL \u2014 Idempotency",
+    "area": "SQL — Idempotency",
     "story": "migration SQL files use idempotent patterns",
     "scenario": "All migration files use CREATE OR REPLACE for functions and IF EXISTS for drops",
     "whyItMatters": "Migration files must be safe to re-run without errors or data loss.",
@@ -2956,7 +2989,7 @@
   {
     "id": "phaseA.sql.migration.001_core_schema",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "core schema migration uses idempotent patterns",
     "scenario": "001_core_schema.sql uses IF NOT EXISTS and CREATE OR REPLACE",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -2967,7 +3000,7 @@
   {
     "id": "phaseA.sql.migration.001_schema",
     "module": "Phase A / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "PostgREST schema migration uses idempotent patterns",
     "scenario": "001_schema.sql uses IF NOT EXISTS and CREATE OR REPLACE",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -2978,7 +3011,7 @@
   {
     "id": "phaseA.sql.migration.002_rls_policies",
     "module": "Phase A / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "RLS policies migration uses idempotent patterns",
     "scenario": "002_rls_policies.sql uses IF EXISTS for drops and CREATE OR REPLACE",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -2989,7 +3022,7 @@
   {
     "id": "phaseA.sql.migration.002_triggers",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "triggers migration uses idempotent patterns",
     "scenario": "002_triggers.sql uses IF EXISTS for drops and CREATE OR REPLACE",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3000,7 +3033,7 @@
   {
     "id": "phaseA.sql.migration.003_auth_helpers",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "auth helpers migration uses idempotent patterns",
     "scenario": "003_auth_helpers.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3011,7 +3044,7 @@
   {
     "id": "phaseA.sql.migration.003_jury_rpcs",
     "module": "Phase A / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "PostgREST jury RPCs migration uses idempotent patterns",
     "scenario": "003_jury_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3022,7 +3055,7 @@
   {
     "id": "phaseA.sql.migration.004_jury_session_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "jury session RPCs migration uses idempotent patterns",
     "scenario": "004_jury_session_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3033,7 +3066,7 @@
   {
     "id": "phaseA.sql.migration.004_triggers",
     "module": "Phase A / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "PostgREST triggers migration uses idempotent patterns",
     "scenario": "004_triggers.sql uses IF EXISTS for drops and CREATE OR REPLACE",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3044,7 +3077,7 @@
   {
     "id": "phaseA.sql.migration.005_jury_data_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "jury data RPCs migration uses idempotent patterns",
     "scenario": "005_jury_data_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3055,7 +3088,7 @@
   {
     "id": "phaseA.sql.migration.006_admin_tenant_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin tenant RPCs migration uses idempotent patterns",
     "scenario": "006_admin_tenant_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3066,7 +3099,7 @@
   {
     "id": "phaseA.sql.migration.007_admin_semester_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin semester RPCs migration uses idempotent patterns",
     "scenario": "007_admin_semester_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3077,7 +3110,7 @@
   {
     "id": "phaseA.sql.migration.008_admin_project_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin project RPCs migration uses idempotent patterns",
     "scenario": "008_admin_project_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3088,7 +3121,7 @@
   {
     "id": "phaseA.sql.migration.009_admin_juror_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin juror RPCs migration uses idempotent patterns",
     "scenario": "009_admin_juror_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3099,7 +3132,7 @@
   {
     "id": "phaseA.sql.migration.010_admin_score_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin score RPCs migration uses idempotent patterns",
     "scenario": "010_admin_score_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3110,7 +3143,7 @@
   {
     "id": "phaseA.sql.migration.011_admin_support_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin support RPCs migration uses idempotent patterns",
     "scenario": "011_admin_support_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3121,7 +3154,7 @@
   {
     "id": "phaseA.sql.migration.012_v1_auth_password_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "v1 auth password RPCs migration uses idempotent patterns",
     "scenario": "012_v1_auth_password_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3132,7 +3165,7 @@
   {
     "id": "phaseA.sql.migration.013_grants_rls",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "grants and RLS migration uses idempotent patterns",
     "scenario": "013_grants_rls.sql uses IF EXISTS for drops",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3143,7 +3176,7 @@
   {
     "id": "phaseA.sql.migration.014_admin_tenant_mgmt_rpcs",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "admin tenant management RPCs migration uses idempotent patterns",
     "scenario": "014_admin_tenant_mgmt_rpcs.sql uses CREATE OR REPLACE for all functions",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3154,7 +3187,7 @@
   {
     "id": "phaseA.sql.migration.014_remove_password_gates",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "password gates removal migration uses idempotent patterns",
     "scenario": "014_remove_password_gates.sql uses DROP IF EXISTS and CREATE OR REPLACE",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3165,7 +3198,7 @@
   {
     "id": "phaseA.sql.migration.015_prevent_duplicate_pending_admin_applications",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "duplicate pending applications prevention migration uses idempotent patterns",
     "scenario": "015_prevent_duplicate_pending_admin_applications.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3176,7 +3209,7 @@
   {
     "id": "phaseA.sql.migration.016_notification_payload_and_tenant_label_updates",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "notification payload migration uses idempotent patterns",
     "scenario": "016_notification_payload_and_tenant_label_updates.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3187,7 +3220,7 @@
   {
     "id": "phaseA.sql.migration.017_fix_notification_auth_secret_lookup",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "notification auth secret fix migration uses idempotent patterns",
     "scenario": "017_fix_notification_auth_secret_lookup.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3198,7 +3231,7 @@
   {
     "id": "phaseA.sql.migration.018_fix_tenant_admin_user_id_in_list",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "tenant admin user ID fix migration uses idempotent patterns",
     "scenario": "018_fix_tenant_admin_user_id_in_list.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3209,7 +3242,7 @@
   {
     "id": "phaseA.sql.migration.019_notify_applicant_on_approval",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "applicant notification migration uses idempotent patterns",
     "scenario": "019_notify_applicant_on_approval.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3220,7 +3253,7 @@
   {
     "id": "phaseA.sql.migration.020_approve_via_auth_admin_api",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "auth admin API approval migration uses idempotent patterns",
     "scenario": "020_approve_via_auth_admin_api.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3231,7 +3264,7 @@
   {
     "id": "phaseA.sql.migration.021_list_semesters_with_tenant_fields",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "list semesters tenant fields migration uses idempotent patterns",
     "scenario": "021_list_semesters_with_tenant_fields.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3242,7 +3275,7 @@
   {
     "id": "phaseA.sql.migration.022_demo_force_reissue_pin",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "demo force reissue PIN migration uses idempotent patterns",
     "scenario": "022_demo_force_reissue_pin.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3253,7 +3286,7 @@
   {
     "id": "phaseA.sql.migration.023_entry_token_security",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "entry token security migration uses idempotent patterns",
     "scenario": "023_entry_token_security.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3264,7 +3297,7 @@
   {
     "id": "phaseA.sql.migration.000_drop_all",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "drop all migration uses idempotent patterns",
     "scenario": "000_drop_all.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3275,7 +3308,7 @@
   {
     "id": "phaseA.sql.migration.001_extensions",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "extensions migration uses idempotent patterns",
     "scenario": "001_extensions.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3286,7 +3319,7 @@
   {
     "id": "phaseA.sql.migration.002_identity",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "identity migration uses idempotent patterns",
     "scenario": "002_identity.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3297,7 +3330,7 @@
   {
     "id": "phaseA.sql.migration.003_frameworks",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "frameworks migration uses idempotent patterns",
     "scenario": "003_frameworks.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3308,7 +3341,7 @@
   {
     "id": "phaseA.sql.migration.004_periods_and_execution",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "periods and execution migration uses idempotent patterns",
     "scenario": "004_periods_and_execution.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3319,7 +3352,7 @@
   {
     "id": "phaseA.sql.migration.005_snapshots",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "snapshots migration uses idempotent patterns",
     "scenario": "005_snapshots.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3330,7 +3363,7 @@
   {
     "id": "phaseA.sql.migration.006_scoring",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "scoring migration uses idempotent patterns",
     "scenario": "006_scoring.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3341,7 +3374,7 @@
   {
     "id": "phaseA.sql.migration.007_auth_and_tokens",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "auth and tokens migration uses idempotent patterns",
     "scenario": "007_auth_and_tokens.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3352,7 +3385,7 @@
   {
     "id": "phaseA.sql.migration.008_audit_and_rls",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "audit and RLS migration uses idempotent patterns",
     "scenario": "008_audit_and_rls.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3363,7 +3396,7 @@
   {
     "id": "phaseA.sql.migration.009_security_hash_tokens",
     "module": "Phase C / Safety",
-    "area": "SQL \u2014 Migration Idempotency",
+    "area": "SQL — Migration Idempotency",
     "story": "security hash tokens migration uses idempotent patterns",
     "scenario": "009_security_hash_tokens.sql uses idempotent patterns",
     "whyItMatters": "Migration files must be safe to re-run.",
@@ -3429,10 +3462,10 @@
   {
     "id": "tenant.isolation.04",
     "module": "Jury / Tenant",
-    "area": "Tenant Isolation \u2014 Jury",
+    "area": "Tenant Isolation — Jury",
     "story": "Jury flow has no tenant references",
     "scenario": "no jury-facing code imports or references tenant context",
-    "whyItMatters": "Jury flow must remain tenant-implicit \u2014 jurors never see or choose a tenant.",
+    "whyItMatters": "Jury flow must remain tenant-implicit — jurors never see or choose a tenant.",
     "risk": "Tenant exposure in jury flow would confuse jurors and break the UX model.",
     "coverageStrength": "Medium",
     "severity": "normal"
@@ -3443,7 +3476,7 @@
     "area": "Auth Flow",
     "story": "Login form renders for unauthenticated admin page access",
     "scenario": "navigating to admin page without auth shows login form with Sign In button",
-    "whyItMatters": "Admin panel must be gated by authentication \u2014 no data exposure to unauthenticated users.",
+    "whyItMatters": "Admin panel must be gated by authentication — no data exposure to unauthenticated users.",
     "risk": "Admin data visible without authentication would be a critical security issue.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -3451,7 +3484,7 @@
   {
     "id": "settings.compat.01",
     "module": "Admin / Settings",
-    "area": "Settings \u2014 Tenant Compatibility",
+    "area": "Settings — Tenant Compatibility",
     "story": "v2 settings API passes tenantId for scoping",
     "scenario": "adminGetSettings and adminSetSetting include tenant_id in RPC params",
     "whyItMatters": "Tenant-scoped settings must be correctly isolated per tenant.",
@@ -3462,7 +3495,7 @@
   {
     "id": "settings.compat.02",
     "module": "Admin / Settings",
-    "area": "Settings \u2014 Global Fallback",
+    "area": "Settings — Global Fallback",
     "story": "Global settings remain readable",
     "scenario": "settings with tenant_id=NULL are accessible as global defaults",
     "whyItMatters": "Password hashes and system settings are global and must remain accessible.",
@@ -3475,9 +3508,9 @@
     "module": "Shared / Semester Format",
     "area": "Semester Display",
     "story": "[Deprecated] stripSlugPrefix removes tenant code prefix from semester name",
-    "scenario": "strips code prefix when present, returns name unchanged otherwise \u2014 no-op after Phase C.4 naming cleanup",
+    "scenario": "strips code prefix when present, returns name unchanged otherwise — no-op after Phase C.4 naming cleanup",
     "whyItMatters": "Kept as backward-safety test for the deprecated stripSlugPrefix helper. Semester names are now stored clean.",
-    "risk": "Low \u2014 function is deprecated and no-ops on clean names.",
+    "risk": "Low — function is deprecated and no-ops on clean names.",
     "coverageStrength": "Strong",
     "severity": "normal"
   },
@@ -3487,7 +3520,7 @@
     "area": "Top Projects Card",
     "story": "computeTopProjects returns empty array when fewer than 5 projects",
     "scenario": "project list with <5 projects returns [] (minimum threshold not met)",
-    "whyItMatters": "Rankings are meaningless with too few data points \u2014 minimum 5 projects prevents trivial rankings.",
+    "whyItMatters": "Rankings are meaningless with too few data points — minimum 5 projects prevents trivial rankings.",
     "risk": "Showing rankings for 1-2 projects would be misleading.",
     "coverageStrength": "Strong",
     "severity": "normal"
@@ -3497,7 +3530,7 @@
     "module": "Overview / Dashboard",
     "area": "Top Projects Card",
     "story": "computeTopProjects returns top 3 by average score when >= 5 projects exist",
-    "scenario": "6 projects \u2192 returns top 3 sorted by totalAvg descending with rank added",
+    "scenario": "6 projects → returns top 3 sorted by totalAvg descending with rank added",
     "whyItMatters": "Top projects card must highlight the highest-performing projects for at-a-glance awareness.",
     "risk": "Wrong sort or limit would show incorrect rankings to admins.",
     "coverageStrength": "Strong",

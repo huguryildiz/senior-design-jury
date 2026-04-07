@@ -2,20 +2,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import "../../styles/jury.css";
 import {
-  ArrowRight,
-  Home,
-  Info,
-  MessageSquare,
-  Pencil,
-  PartyPopper,
+  ArrowLeft,
+  BarChart2,
+  Check,
+  Mail,
   Send,
-  ShieldCheck,
   Star,
   TrendingUp,
 } from "lucide-react";
 import { submitJuryFeedback } from "../../shared/api";
-import { StudentNames } from "../../shared/ui/EntityMeta";
 
+/* ── Confetti animation (unchanged) ── */
 function useConfetti() {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -66,30 +63,6 @@ function useConfetti() {
   return canvasRef;
 }
 
-function getGradeClass(pct) {
-  if (pct >= 90) return "grade-a";
-  if (pct >= 80) return "grade-b";
-  if (pct >= 70) return "grade-c";
-  return "grade-d";
-}
-
-function getBarClass(pct) {
-  if (pct >= 90) return "bar-a";
-  if (pct >= 80) return "bar-b";
-  if (pct >= 70) return "bar-c";
-  return "bar-d";
-}
-
-function getScoreStyle(score, max) {
-  const pct = max > 0 ? (score / max) * 100 : 0;
-  if (pct >= 90) return { bg: "var(--score-excellent-bg)", color: "var(--score-excellent-text)" };
-  if (pct >= 80) return { bg: "var(--score-high-bg)",      color: "var(--score-high-text)" };
-  if (pct >= 75) return { bg: "var(--score-good-bg)",      color: "var(--score-good-text)" };
-  if (pct >= 70) return { bg: "var(--score-adequate-bg)",  color: "var(--score-adequate-text)" };
-  if (pct >= 60) return { bg: "var(--score-low-bg)",       color: "var(--score-low-text)" };
-  return           { bg: "var(--score-poor-bg)",       color: "var(--score-poor-text)" };
-}
-
 const STAR_LABELS = ["", "Needs Work", "Below Average", "Average", "Great", "Excellent!"];
 
 export default function DoneStep({ state, onBack }) {
@@ -98,7 +71,7 @@ export default function DoneStep({ state, onBack }) {
   // ── Feedback state ──
   const [fbRating, setFbRating] = useState(0);
   const [fbComment, setFbComment] = useState("");
-  const [fbStatus, setFbStatus] = useState("idle"); // idle | submitting | done | skipped
+  const [fbStatus, setFbStatus] = useState("idle"); // idle | submitting | done
   const [fbHover, setFbHover] = useState(0);
 
   const handleFbSubmit = useCallback(async () => {
@@ -117,263 +90,168 @@ export default function DoneStep({ state, onBack }) {
     onBack();
   };
 
-  const handleAdminSignIn = () => {
-    state.clearLocalSession();
-    window.location.href = window.location.pathname + "?admin";
-  };
-
-  const handleOpenAdminImpact = () => {
-    state.setStep("admin_impact");
-  };
-
-  const maxPerProject =
-    state.effectiveCriteria.reduce((sum, c) => sum + c.max, 0) || 100;
-
-  // Per-project stats
-  const projectStats = state.projects.map((proj) => {
-    const projScores =
-      state.doneScores?.[proj.project_id] ?? state.scores[proj.project_id] ?? {};
-    const filledCount = Object.values(projScores).filter(
-      (v) => v !== undefined && v !== "" && v !== null
-    ).length;
-    const isComplete = filledCount >= state.effectiveCriteria.length;
-    const total = Object.values(projScores).reduce(
-      (sum, v) => sum + (parseInt(v) || 0),
-      0
-    );
-    const pct = Math.round((total / maxPerProject) * 100);
-    const criteriaBreakdown = state.effectiveCriteria.map((c) => {
-      const key = c.id ?? c.key;
-      const val = projScores[key];
-      return {
-        label: c.short_label || c.label,
-        max: c.max,
-        value: parseInt(val) || 0,
-        filled: val !== undefined && val !== "" && val !== null,
-      };
-    });
-    return { proj, total, pct, isComplete, criteriaBreakdown };
-  });
-
-  const completedProjects = projectStats.filter((p) => p.isComplete);
-  const scoredCount = completedProjects.length;
-  const totalCount = state.projects.length;
-
-  const avgScore =
-    scoredCount > 0
-      ? (
-          completedProjects.reduce((s, p) => s + p.total, 0) / scoredCount
-        ).toFixed(1)
-      : "—";
-
-  const topScore =
-    scoredCount > 0
-      ? Math.max(...completedProjects.map((p) => p.total))
-      : "—";
-
   const jurorName = state.juryName || "Juror";
+  const groupCount = state.projects.length;
+
+  // ── Mailto for edit request ──
+  const adminEmail = state.tenantAdminEmail || "";
+  const superAdminEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL || "";
+  const periodName = state.periodName || "this evaluation period";
+  const mailtoSubject = encodeURIComponent(`Score Edit Request — ${periodName}`);
+  const mailtoBody = encodeURIComponent(
+    `Hello,\n\nI would like to request an edit to my submitted scores for ${periodName}.\n\nJuror: ${jurorName}\n\nThank you.`
+  );
+  const mailtoHref = adminEmail
+    ? `mailto:${adminEmail}?${superAdminEmail ? `cc=${superAdminEmail}&` : ""}subject=${mailtoSubject}&body=${mailtoBody}`
+    : null;
+
+  // ── Rankings computation ──
+  const rankedProjects = [...state.projects]
+    .sort((a, b) => (b.avg_score ?? 0) - (a.avg_score ?? 0));
+
+  function getRankDelta(projectId, currentRank) {
+    if (!state.initialRankings || state.projects.length <= 1) return null;
+    const before = state.initialRankings[projectId];
+    if (!before) return null;
+    return before.rank - currentRank; // positive = improved (moved up), negative = dropped
+  }
 
   return (
     <div className="jury-step" id="dj-step-done" style={{ justifyContent: "flex-start", paddingTop: 16 }}>
       <div className="dj-glass dj-glass-card dj-done-card" style={{ maxWidth: "500px" }}>
 
-        {/* Completion icon */}
+        {/* ═══ LAYER 1: Hero ═══ */}
         <div className="dj-done-icon celebrate">
-          <PartyPopper size={24} strokeWidth={2} />
+          <Check size={28} strokeWidth={2.5} />
         </div>
 
-        {/* Status pill */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
           <div className="dj-done-status-pill">Evaluation Submitted</div>
         </div>
 
-        {/* Title + subtitle */}
         <div className="dj-h1" style={{ textAlign: "center", marginBottom: "6px" }}>
-          Thank You, {jurorName}!
+          Thank you, {jurorName}!
         </div>
         <div className="dj-sub" style={{ textAlign: "center", marginTop: 0, marginBottom: 0 }}>
-          Your evaluations have been recorded. Reach out to the administrator if any changes are needed.
+          You've evaluated all <strong>{groupCount} groups</strong> successfully.
         </div>
 
-        {/* Hero stats strip */}
-        <div className="dj-done-hero">
-          <div className="dj-done-hero-item">
-            <div className="dj-done-hero-num green">
-              {scoredCount}<span className="dj-hero-frac">/{totalCount}</span>
+        {/* Subtle divider */}
+        <div className="dj-done-divider" />
+
+        {/* ═══ LAYER 2: Feedback micro-prompt ═══ */}
+        {fbStatus !== "done" ? (
+          <div className="dj-feedback-card">
+            <div className="dj-feedback-title">How was your experience?</div>
+
+            <div className="dj-stars">
+              {[1, 2, 3, 4, 5].map((v) => (
+                <button
+                  key={v}
+                  className={`dj-star${v <= (fbHover || fbRating) ? " active" : ""}`}
+                  onClick={() => setFbRating(v)}
+                  onMouseEnter={() => setFbHover(v)}
+                  onMouseLeave={() => setFbHover(0)}
+                >
+                  <Star size={20} strokeWidth={1.5} fill={v <= (fbHover || fbRating) ? "currentColor" : "none"} />
+                </button>
+              ))}
             </div>
-            <div className="dj-done-hero-label">Groups Scored</div>
-          </div>
-          <div className="dj-done-hero-divider" />
-          <div className="dj-done-hero-item">
-            <div className="dj-done-hero-num">{avgScore}</div>
-            <div className="dj-done-hero-label">Avg Score</div>
-          </div>
-          <div className="dj-done-hero-divider" />
-          <div className="dj-done-hero-item">
-            <div className="dj-done-hero-num">{topScore}</div>
-            <div className="dj-done-hero-label">Top Score</div>
-          </div>
-        </div>
+            {fbRating > 0 && (
+              <div className="dj-star-label">{STAR_LABELS[fbRating]}</div>
+            )}
 
-        {/* Final submission notice */}
-        <div className="dj-info amber" style={{ marginBottom: "14px", fontSize: "11px" }}>
-          <Info size={16} strokeWidth={2} />
-          <span>Scores are final once submitted and visible to administrators.</span>
-        </div>
-
-        {/* Submitted groups list */}
-        <div className="dj-done-section-label">Submitted Groups</div>
-        <div className="dj-done-list-wrap">
-          <div className="dj-score-list">
-            {projectStats.map(({ proj, total, pct, isComplete, criteriaBreakdown }) => (
-              <div key={proj.project_id} className="dj-done-proj-row">
-                <div className={`dj-done-proj-dot ${isComplete ? "complete" : "partial"}`} />
-                <div className="dj-done-proj-info">
-                  <div className="dj-done-proj-name">{proj.title || "—"}</div>
-                  {proj.members && <StudentNames names={proj.members} />}
-                  <div className="dj-done-crit-chips">
-                    {criteriaBreakdown.map((c) => {
-                      const s = c.filled ? getScoreStyle(c.value, c.max) : null;
-                      return (
-                        <span
-                          key={c.label}
-                          className="dj-done-crit-chip"
-                          style={s ? { background: s.bg, color: s.color } : undefined}
-                        >
-                          <span className="dj-done-crit-label">{c.label}</span>
-                          <span className="dj-done-crit-val">{c.filled ? c.value : "—"}</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="dj-done-proj-bar-track">
-                    <div
-                      className={`dj-done-proj-bar-fill ${isComplete ? getBarClass(pct) : "bar-partial"}`}
-                      style={{ width: `${isComplete ? pct : Math.max(pct, 8)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className={`dj-done-proj-score-wrap ${isComplete ? getGradeClass(pct) : "grade-partial"}`}>
-                  <span className="dj-done-proj-score-num">{total}</span>
-                  <span className="dj-done-proj-score-denom">/{maxPerProject}</span>
+            {/* Progressive disclosure: textarea + send appear after star click */}
+            {fbRating > 0 && (
+              <div className="dj-feedback-expanded">
+                <textarea
+                  className="dj-feedback-textarea"
+                  placeholder="Any additional comments? (optional)"
+                  rows={2}
+                  value={fbComment}
+                  onChange={(e) => setFbComment(e.target.value)}
+                />
+                <div className="dj-feedback-actions">
+                  <button
+                    className="dj-feedback-submit"
+                    disabled={fbStatus === "submitting"}
+                    onClick={handleFbSubmit}
+                  >
+                    <Send size={14} strokeWidth={2} />
+                    {fbStatus === "submitting" ? "Sending..." : "Send"}
+                  </button>
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-
-        {/* Feedback card */}
-        {fbStatus !== "skipped" && (
-          <div className="dj-feedback-section">
-            <div className="dj-done-section-label">Quick Feedback</div>
-            <div className="dj-feedback-card">
-              {fbStatus === "done" ? (
-                <div className="dj-feedback-submitted">
-                  <div className="dj-feedback-check">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                  </div>
-                  <div className="dj-feedback-thanks">Thank you for your feedback!</div>
-                  <div className="dj-feedback-thanks-sub">Your input helps us improve VERA for everyone.</div>
-                </div>
-              ) : (
-                <>
-                  <div className="dj-feedback-icon">
-                    <MessageSquare size={20} strokeWidth={2} />
-                  </div>
-                  <div className="dj-feedback-title">How was your experience?</div>
-                  <div className="dj-feedback-sub">Your rating may appear on our website to help future jurors.</div>
-
-                  <div className="dj-stars">
-                    {[1, 2, 3, 4, 5].map((v) => (
-                      <button
-                        key={v}
-                        className={`dj-star${v <= (fbHover || fbRating) ? " active" : ""}`}
-                        onClick={() => setFbRating(v)}
-                        onMouseEnter={() => setFbHover(v)}
-                        onMouseLeave={() => setFbHover(0)}
-                      >
-                        <Star size={20} strokeWidth={1.5} fill={v <= (fbHover || fbRating) ? "currentColor" : "none"} />
-                      </button>
-                    ))}
-                  </div>
-                  {fbRating > 0 && (
-                    <div className="dj-star-label">{STAR_LABELS[fbRating]}</div>
-                  )}
-
-                  <textarea
-                    className="dj-feedback-textarea"
-                    placeholder="Any suggestions or comments? (optional)"
-                    rows={2}
-                    value={fbComment}
-                    onChange={(e) => setFbComment(e.target.value)}
-                  />
-
-                  <div className="dj-feedback-actions">
-                    <button className="dj-feedback-skip" onClick={() => setFbStatus("skipped")}>
-                      Skip
-                    </button>
-                    <button
-                      className="dj-feedback-submit"
-                      disabled={!fbRating || fbStatus === "submitting"}
-                      onClick={handleFbSubmit}
-                    >
-                      <Send size={14} strokeWidth={2} />
-                      {fbStatus === "submitting" ? "Sending..." : "Send Feedback"}
-                    </button>
-                  </div>
-                </>
-              )}
+        ) : (
+          <div className="dj-feedback-card">
+            <div className="dj-feedback-submitted">
+              <div className="dj-feedback-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+              <div className="dj-feedback-thanks">Thank you for your feedback!</div>
+              <div className="dj-feedback-thanks-sub">Your input helps us improve VERA.</div>
             </div>
           </div>
         )}
 
-        {/* Next step */}
-        <div className="dj-next-step-wrap" style={{ marginTop: "16px" }}>
-          <div className="dj-done-section-label" style={{ marginTop: 0 }}>Next Step</div>
-
-          {state.editAllowed ? (
-            <button
-              className="dj-done-primary-btn"
-              onClick={state.handleEditScores}
-              style={{ marginBottom: "8px" }}
-            >
-              <span className="dj-done-primary-btn-main">
-                <Pencil className="dj-done-primary-btn-icon" size={16} strokeWidth={2} />
-                <span className="dj-done-primary-btn-label">Edit Scores</span>
-              </span>
-              <ArrowRight className="dj-done-primary-btn-arrow" size={16} strokeWidth={2} />
-            </button>
-          ) : (
-            <button className="dj-done-primary-btn" onClick={handleOpenAdminImpact}>
-              <span className="dj-done-primary-btn-main">
-                <TrendingUp className="dj-done-primary-btn-icon" size={16} strokeWidth={2} />
-                <span className="dj-done-primary-btn-label">Open Admin Impact</span>
-              </span>
-              <ArrowRight className="dj-done-primary-btn-arrow" size={16} strokeWidth={2} />
-            </button>
-          )}
-
-          <div className="dj-done-secondary-row">
-            {state.editAllowed && (
-              <button className="dj-done-sec-btn" onClick={handleOpenAdminImpact}>
-                <TrendingUp size={16} strokeWidth={2} />
-                Admin Impact
-              </button>
-            )}
-            <button className="dj-done-sec-btn" onClick={handleAdminSignIn}>
-              <ShieldCheck size={16} strokeWidth={2} />
-              Admin Sign-In
-            </button>
-            <button className="dj-done-sec-btn" onClick={handleReturnHome}>
-              <Home size={16} strokeWidth={2} />
-              Return Home
-            </button>
+        {/* ═══ LAYER 2.5: Live Rankings ═══ */}
+        <div className="dj-done-rankings">
+          <div className="dj-done-rankings-header">
+            <BarChart2 size={11} strokeWidth={2} />
+            Current Rankings
           </div>
+          {rankedProjects.map((project, idx) => {
+            const rank = idx + 1;
+            const delta = getRankDelta(project.project_id, rank);
+            const score = project.avg_score != null ? Number(project.avg_score).toFixed(1) : "—";
+            return (
+              <div key={project.project_id} className="dj-done-rank-row">
+                <span className={`dj-done-rank-num${rank === 1 ? " gold" : ""}`}>#{rank}</span>
+                <span className="dj-done-rank-title">{project.title}</span>
+                {delta === null || delta === 0 ? (
+                  <span className="dj-done-rank-badge badge-same">—</span>
+                ) : delta > 0 ? (
+                  <span className="dj-done-rank-badge badge-up">↑{delta}</span>
+                ) : (
+                  <span className="dj-done-rank-badge badge-down">↓{Math.abs(delta)}</span>
+                )}
+                <span className={`dj-done-rank-score${rank === 1 ? " top" : ""}`}>{score}</span>
+              </div>
+            );
+          })}
         </div>
+
+        {/* ═══ LAYER 3: Utility links ═══ */}
+        <div className="dj-done-utility-links">
+          {mailtoHref ? (
+            <a href={mailtoHref} className="dj-done-utility-link">
+              <Mail size={14} strokeWidth={2} />
+              Request Edit
+            </a>
+          ) : (
+            <span className="dj-done-utility-link disabled">
+              <Mail size={14} strokeWidth={2} />
+              Contact admin for edits
+            </span>
+          )}
+          <div className="dj-done-utility-divider" />
+          <button className="dj-done-utility-link" onClick={() => state.setStep("admin_impact")}>
+            <TrendingUp size={14} strokeWidth={2} />
+            View Full Results
+          </button>
+        </div>
+
+        {/* ═══ LAYER 4: Return Home ═══ */}
+        <button className="dj-done-home-link" onClick={handleReturnHome}>
+          <ArrowLeft size={14} strokeWidth={2} />
+          Return to Home
+        </button>
 
       </div>
 
-      {/* Confetti canvas — fixed, full-screen, pointer-events none */}
+      {/* Confetti canvas */}
       <canvas
         ref={confettiRef}
         style={{

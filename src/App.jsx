@@ -5,7 +5,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import AdminLayout from "./admin/layout/AdminLayout";
 import JuryFlow from "./jury/JuryFlow";
 import ErrorBoundary from "@/shared/ui/ErrorBoundary";
-import { getPage, setPage as savePage, getJuryAccess } from "./shared/storage";
+import { getPage, setPage as savePage, getJuryAccess, clearJuryAccess } from "./shared/storage";
 import DemoAdminLoader from "@/shared/ui/DemoAdminLoader";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 import { setEnvironment, clearEnvironment } from "@/shared/lib/environment";
@@ -23,7 +23,9 @@ const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN;
 function readInitialPage() {
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("demo-jury")) { setEnvironment("demo"); return "jury"; }
+    // ?env=demo → persist demo environment for this session
+    if (params.get("env") === "demo") setEnvironment("demo");
+    // ?eval=TOKEN or ?t=TOKEN → gate page (unified for demo & prod)
     if (params.get("eval") || params.get("t")) return "jury_gate";
     if (params.has("explore")) { setEnvironment("demo"); return "demo_login"; }
     if (params.has("admin")) return "admin";
@@ -33,6 +35,7 @@ function readInitialPage() {
       params.get("type") === "recovery" ||
       params.get("page") === "reset-password";
     if (isRecovery) return "admin";
+    // Resume active jury session (works for both demo & prod via sessionStorage/localStorage)
     if (getJuryAccess()) return "jury";
     const saved = getPage();
     if (saved === "jury" || saved === "admin") return saved;
@@ -42,10 +45,8 @@ function readInitialPage() {
 
 function readToken() {
   try {
-    return (
-      new URLSearchParams(window.location.search).get("t") ||
-      (DEMO_MODE ? DEMO_ENTRY_TOKEN : null)
-    );
+    const params = new URLSearchParams(window.location.search);
+    return params.get("eval") || params.get("t") || (DEMO_MODE ? DEMO_ENTRY_TOKEN : null);
   } catch {
     return null;
   }
@@ -82,9 +83,9 @@ export default function App() {
   useEffect(() => {
     if (page === "jury_gate") return;
     if (page === "home") {
-      // Clear demo env when navigating back to landing (SPA navigation, no reload).
-      // environment.js already clears it on fresh page loads without demo params.
+      // Clear all demo/jury state when navigating back to landing.
       clearEnvironment();
+      clearJuryAccess();
       if (window.location.search) {
         window.history.replaceState(null, "", window.location.pathname);
       }
@@ -134,7 +135,7 @@ export default function App() {
   return (
     <Suspense fallback={null}>
       <LandingPage
-        onStartJury={() => { setEnvironment("demo"); window.location.href = window.location.origin + "?demo-jury"; }}
+        onStartJury={() => { window.location.href = window.location.origin + "/?env=demo&eval=" + encodeURIComponent(DEMO_ENTRY_TOKEN); }}
         onAdmin={() => { setEnvironment("demo"); window.location.href = window.location.origin + "?explore"; }}
         onSignIn={() => { setEnvironment("prod"); setPage("admin"); }}
         isDemoMode={DEMO_MODE}

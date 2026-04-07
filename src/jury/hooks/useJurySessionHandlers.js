@@ -135,6 +135,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
 
       loading.setPeriodId(period.id);
       loading.setPeriodName(period.name);
+      loading.setTenantAdminEmail(period.organizations?.contact_email || "");
 
       let outcomeRows = [];
       try {
@@ -273,6 +274,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       identity.setAuthError("");
       loading.setPeriodId(selectedPeriod.id);
       loading.setPeriodName(selectedPeriod.name);
+      loading.setTenantAdminEmail(selectedPeriod.organizations?.contact_email || "");
       loading.setLoadingState({ stage: "loading", message: "Preparing access…" });
       try {
         const res = await authenticateJuror(selectedPeriod.id, name, affiliation, DEMO_MODE);

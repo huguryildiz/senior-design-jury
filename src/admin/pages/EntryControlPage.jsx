@@ -78,7 +78,7 @@ export default function EntryControlPage({
   const _toast = useToast();
 
   const entryUrl = rawToken
-    ? `${window.location.origin}?eval=${encodeURIComponent(rawToken)}${isDemoMode ? "&demo-jury" : ""}`
+    ? `${window.location.origin}/?eval=${encodeURIComponent(rawToken)}${isDemoMode ? "&env=demo" : ""}`
     : "";
 
   // QR code instance

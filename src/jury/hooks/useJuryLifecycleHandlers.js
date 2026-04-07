@@ -210,6 +210,7 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
     loading.setPeriods([]);
     loading.setPeriodId("");
     loading.setPeriodName("");
+    loading.setTenantAdminEmail("");
     loading.setCriteriaConfig([]);
     loading.setActiveProjectCount(null);
     loading.setProgressCheck(null);

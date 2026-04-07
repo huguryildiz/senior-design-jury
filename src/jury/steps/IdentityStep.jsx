@@ -1,6 +1,13 @@
 // src/jury/steps/IdentityStep.jsx
-import { useState } from "react";
-import { UserRound } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Building2,
+  CalendarDays,
+  GraduationCap,
+  Loader2,
+  UserRound,
+  Users,
+} from "lucide-react";
 import FbAlert from "@/shared/ui/FbAlert";
 import "../../styles/jury.css";
 
@@ -9,6 +16,11 @@ export default function IdentityStep({ state, onBack }) {
   const [affiliation, setAffiliation] = useState(state.affiliation || "");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const period = state.currentPeriodInfo;
+
+  useEffect(() => { setSubmitting(false); }, [state.authError]);
+  const projectCount = Number(state.activeProjectCount || 0);
 
   const handleSubmit = () => {
     setError("");
@@ -22,6 +34,7 @@ export default function IdentityStep({ state, onBack }) {
     }
     // Pass values directly — React state setters are async and would be
     // stale by the time handleIdentitySubmit reads identity.juryName.
+    setSubmitting(true);
     state.handleIdentitySubmit(juryName, affiliation);
   };
 
@@ -30,6 +43,7 @@ export default function IdentityStep({ state, onBack }) {
       handleSubmit();
     }
   };
+
 
   return (
     <div className="jury-step">
@@ -42,6 +56,55 @@ export default function IdentityStep({ state, onBack }) {
         <div className="jury-sub">
           Enter your details to begin the evaluation
         </div>
+
+        {period && (
+          <div className="jury-meta-grid">
+            {period.organizations?.name && (
+              <div className="jury-meta-cell">
+                <div className="jury-meta-icon jury-meta-icon--blue">
+                  <GraduationCap size={14} strokeWidth={2} />
+                </div>
+                <div className="jury-meta-text">
+                  <span className="jury-meta-label">Department</span>
+                  <span className="jury-meta-value">{period.organizations.name}</span>
+                </div>
+              </div>
+            )}
+            {period.organizations?.institution_name && (
+              <div className="jury-meta-cell">
+                <div className="jury-meta-icon jury-meta-icon--violet">
+                  <Building2 size={14} strokeWidth={2} />
+                </div>
+                <div className="jury-meta-text">
+                  <span className="jury-meta-label">Institution</span>
+                  <span className="jury-meta-value">{period.organizations.institution_name}</span>
+                </div>
+              </div>
+            )}
+            {period.name && (
+              <div className="jury-meta-cell">
+                <div className="jury-meta-icon jury-meta-icon--amber">
+                  <CalendarDays size={14} strokeWidth={2} />
+                </div>
+                <div className="jury-meta-text">
+                  <span className="jury-meta-label">Period</span>
+                  <span className="jury-meta-value">{period.name}</span>
+                </div>
+              </div>
+            )}
+            {projectCount > 0 && (
+              <div className="jury-meta-cell">
+                <div className="jury-meta-icon jury-meta-icon--green">
+                  <Users size={14} strokeWidth={2} />
+                </div>
+                <div className="jury-meta-text">
+                  <span className="jury-meta-label">Groups</span>
+                  <span className="jury-meta-value">{projectCount}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Info alert */}
         <FbAlert
@@ -102,10 +165,11 @@ export default function IdentityStep({ state, onBack }) {
         <button
           className="btn-landing-primary"
           onClick={handleSubmit}
-          disabled={!juryName.trim() || !affiliation.trim()}
-          style={{ width: "100%" }}
+          disabled={!juryName.trim() || !affiliation.trim() || submitting}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
-          Start Evaluation
+          {submitting && <Loader2 size={15} className="jg-spin" />}
+          {submitting ? "Verifying…" : "Start Evaluation"}
         </button>
 
         <div style={{ textAlign: "center", marginTop: 12 }}>

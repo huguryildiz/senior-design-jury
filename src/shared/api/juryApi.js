@@ -199,7 +199,7 @@ export async function finalizeJurorSubmission(periodId, jurorId, sessionToken) {
 export async function listPeriods(signal) {
   let query = supabase
     .from("periods")
-    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(name, institution_name)")
+    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(name, institution_name, contact_email)")
     .eq("is_visible", true)
     .order("created_at", { ascending: false });
   if (signal) query = query.abortSignal(signal);
