@@ -11,6 +11,7 @@ import { GitCompare } from "lucide-react";
 import CompareProjectsModal from "@/admin/modals/CompareProjectsModal";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 import CustomSelect from "@/shared/ui/CustomSelect";
+import { FilterButton } from "../../shared/ui/FilterButton.jsx";
 
 // ── Competition ranking ──────────────────────────────────────────
 // Tied scores share the same rank; next rank skips (1,1,3,4,…).
@@ -180,22 +181,6 @@ function MedalCell({ rank }) {
 }
 
 // ── Icons ────────────────────────────────────────────────────────
-const FilterIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={{ verticalAlign: "-1px" }}
-  >
-    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-  </svg>
-);
-
 const DownloadIcon = ({ size = 14, style }) => (
   <svg
     width={size}
@@ -249,6 +234,12 @@ export default function RankingsPage({
   const [consensusPopoverPos, setConsensusPopoverPos] = useState({ top: 0, left: 0 });
   const consensusIconRef = useRef(null);
   const consensusPopoverRef = useRef(null);
+
+  const activeFilterCount =
+    (searchText ? 1 : 0) +
+    (consensusFilter !== "all" ? 1 : 0) +
+    (minAvg !== "" || maxAvg !== "" ? 1 : 0) +
+    (criterionFilter !== "all" ? 1 : 0);
 
   function openConsensusPopover(e) {
     e.stopPropagation();
@@ -485,12 +476,11 @@ export default function RankingsPage({
               <div className="scores-action-sep" />
             </>
           )}
-          <button
-            className={`btn btn-outline btn-sm${filterPanelOpen ? " active" : ""}`}
+          <FilterButton
+            activeCount={activeFilterCount}
+            isOpen={filterPanelOpen}
             onClick={() => setFilterPanelOpen((o) => !o)}
-          >
-            <FilterIcon /> Filter
-          </button>
+          />
           <div className="scores-action-sep" />
           <button
             className={`btn btn-outline btn-sm${exportPanelOpen ? " active" : ""}`}
@@ -535,8 +525,20 @@ export default function RankingsPage({
       <div className={`filter-panel${filterPanelOpen ? " show" : ""}`}>
         <div className="filter-panel-header">
           <div>
-            <h4>
-              <FilterIcon /> Filter Scores
+            <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Filter Scores
             </h4>
             <div className="filter-panel-sub">
               Narrow rankings by consensus level, score range, and evaluation coverage.
