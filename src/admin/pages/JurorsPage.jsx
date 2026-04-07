@@ -17,10 +17,12 @@ import EditJurorDrawer from "../drawers/EditJurorDrawer";
 import { sendJurorPinEmail, getActiveEntryTokenPlain } from "@/shared/api";
 import { parseJurorsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
-import { SquarePen } from "lucide-react";
+import { SquarePen, Filter } from "lucide-react";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
+import { FilterButton } from "@/shared/ui/FilterButton";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import CustomSelect from "@/shared/ui/CustomSelect";
+import FbAlert from "@/shared/ui/FbAlert";
 import "../../styles/pages/jurors.css";
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -186,6 +188,10 @@ export default function JurorsPage({
   const [exportOpen, setExportOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [affilFilter, setAffilFilter] = useState("all");
+
+  const activeFilterCount =
+    (statusFilter !== "all" ? 1 : 0) +
+    (affilFilter !== "all" ? 1 : 0);
 
   const [openMenuId, setOpenMenuId] = useState(null);
   const [openMenuPlacement, setOpenMenuPlacement] = useState("down");
@@ -461,12 +467,11 @@ export default function JurorsPage({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button className="btn btn-outline btn-sm" onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
-            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-          </svg>
-          {" "}Filter
-        </button>
+        <FilterButton
+          activeCount={activeFilterCount}
+          isOpen={filterOpen}
+          onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
+        />
         <div className="jurors-toolbar-spacer" />
         <button className="btn btn-outline btn-sm" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
@@ -486,7 +491,7 @@ export default function JurorsPage({
         </button>
         <button
           className="btn btn-primary btn-sm"
-          style={{ width: "auto", padding: "6px 14px", fontSize: "12px", background: "var(--accent)", boxShadow: "none" }}
+          style={{ width: "auto", padding: "6px 14px", fontSize: "12px" }}
           onClick={openAddModal}
         >
           + Add Juror
@@ -499,9 +504,7 @@ export default function JurorsPage({
           <div className="filter-panel-header">
             <div>
               <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: "4px", opacity: 0.5 }}>
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
+                <Filter size={14} style={{ display: "inline", marginRight: "4px", opacity: 0.5, verticalAlign: "-1px" }} />
                 Filter Jurors
               </h4>
               <div className="filter-panel-sub">Narrow jurors by status, affiliation, and scoring progress.</div>
@@ -592,9 +595,9 @@ export default function JurorsPage({
 
       {/* Error */}
       {panelError && (
-        <div className="fb-alert fba-danger" style={{ marginBottom: "12px" }}>
-          <div className="fb-alert-body">{panelError}</div>
-        </div>
+        <FbAlert variant="danger" style={{ marginBottom: "12px" }}>
+          {panelError}
+        </FbAlert>
       )}
 
       {/* Table */}
