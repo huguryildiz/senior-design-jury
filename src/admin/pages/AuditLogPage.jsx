@@ -4,7 +4,10 @@
 // Hook connections: useAuditLogFilters, usePageRealtime
 
 import { useState } from "react";
+import { Filter } from "lucide-react";
 import { useToast } from "@/shared/hooks/useToast";
+import FbAlert from "@/shared/ui/FbAlert";
+import { FilterButton } from "@/shared/ui/FilterButton";
 import { useAuditLogFilters } from "../hooks/useAuditLogFilters";
 import { usePageRealtime } from "../hooks/usePageRealtime";
 import ExportPanel from "../components/ExportPanel";
@@ -71,6 +74,12 @@ export default function AuditLogPage({ organizationId }) {
     scheduleAuditRefresh,
     formatAuditTimestamp,
   } = useAuditLogFilters({ organizationId, isMobile: false, setMessage });
+
+  // Active filter count
+  const auditActiveFilterCount =
+    (auditSearch?.trim() ? 1 : 0) +
+    (auditFilters?.startDate ? 1 : 0) +
+    (auditFilters?.endDate ? 1 : 0);
 
   // Real-time: refresh on new audit log inserts
   usePageRealtime({
@@ -151,11 +160,9 @@ export default function AuditLogPage({ organizationId }) {
 
       {/* Error */}
       {(auditError || auditRangeError) && (
-        <div className="fb-alert fba-error" style={{ marginBottom: 12 }}>
-          <div className="fb-alert-body">
-            <div className="fb-alert-desc">{auditRangeError || auditError}</div>
-          </div>
-        </div>
+        <FbAlert variant="danger" style={{ marginBottom: 12 }}>
+          {auditRangeError || auditError}
+        </FbAlert>
       )}
 
       {/* Toolbar */}
@@ -174,16 +181,11 @@ export default function AuditLogPage({ organizationId }) {
           />
         </div>
 
-        <button
-          className={`btn btn-outline btn-sm${filterOpen ? " active" : ""}`}
-          type="button"
+        <FilterButton
+          activeCount={auditActiveFilterCount}
+          isOpen={filterOpen}
           onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: -1 }}>
-            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-          </svg>
-          Filter{hasAuditFilters ? " •" : ""}
-        </button>
+        />
 
         <div style={{ flex: 1 }} />
 
@@ -204,13 +206,11 @@ export default function AuditLogPage({ organizationId }) {
 
       {/* Filter Panel */}
       {filterOpen && (
-        <div className="filter-panel" style={{ marginBottom: 12 }}>
+        <div className="filter-panel show" style={{ marginBottom: 12 }}>
           <div className="filter-panel-header">
             <div>
               <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: -1, marginRight: 4, opacity: 0.5 }}>
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
+                <Filter size={14} style={{ verticalAlign: "-1px", marginRight: 4, opacity: 0.5 }} />
                 Filter Audit Log
               </h4>
               <div className="filter-panel-sub">Narrow events by date range.</div>
