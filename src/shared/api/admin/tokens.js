@@ -4,18 +4,11 @@
 import { supabase } from "../core/client";
 
 export async function generateEntryToken(periodId) {
-  const token = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  const tokenHash = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const { error } = await supabase.from("entry_tokens").insert({
-    period_id: periodId,
-    token_hash: tokenHash,
-    token_plain: token,
-    expires_at: expiresAt,
+  const { data, error } = await supabase.rpc("rpc_admin_generate_entry_token", {
+    p_period_id: periodId,
   });
   if (error) throw error;
-  return token;
+  return data;
 }
 
 export async function revokeEntryToken(periodId) {

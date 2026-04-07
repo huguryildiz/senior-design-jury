@@ -22,6 +22,7 @@ export {
   listSemesters,
   getCurrentSemester,
   getPeriodImpact,
+  submitJuryFeedback,
 } from "./juryApi";
 
 export {
@@ -33,6 +34,7 @@ export {
   approveApplication,
   rejectApplication,
   listPendingApplications,
+  notifyApplication,
   listPeriods,
   setCurrentPeriod,
   createPeriod,

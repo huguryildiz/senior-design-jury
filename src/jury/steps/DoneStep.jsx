@@ -1,15 +1,19 @@
 // src/jury/steps/DoneStep.jsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import "../../styles/jury.css";
 import {
   ArrowRight,
   Home,
   Info,
+  MessageSquare,
   Pencil,
   PartyPopper,
+  Send,
   ShieldCheck,
+  Star,
   TrendingUp,
 } from "lucide-react";
+import { submitJuryFeedback } from "../../shared/api";
 import { StudentNames } from "../../shared/ui/EntityMeta";
 
 function useConfetti() {
@@ -86,8 +90,27 @@ function getScoreStyle(score, max) {
   return           { bg: "var(--score-poor-bg)",       color: "var(--score-poor-text)" };
 }
 
+const STAR_LABELS = ["", "Needs Work", "Below Average", "Average", "Great", "Excellent!"];
+
 export default function DoneStep({ state, onBack }) {
   const confettiRef = useConfetti();
+
+  // ── Feedback state ──
+  const [fbRating, setFbRating] = useState(0);
+  const [fbComment, setFbComment] = useState("");
+  const [fbStatus, setFbStatus] = useState("idle"); // idle | submitting | done | skipped
+  const [fbHover, setFbHover] = useState(0);
+
+  const handleFbSubmit = useCallback(async () => {
+    if (!fbRating || fbStatus !== "idle") return;
+    setFbStatus("submitting");
+    try {
+      await submitJuryFeedback(state.periodId, state.jurorSessionToken, fbRating, fbComment);
+      setFbStatus("done");
+    } catch {
+      setFbStatus("done"); // fail silently — feedback is non-critical
+    }
+  }, [fbRating, fbComment, fbStatus, state.periodId, state.jurorSessionToken]);
 
   const handleReturnHome = () => {
     state.clearLocalSession();
@@ -238,6 +261,71 @@ export default function DoneStep({ state, onBack }) {
             ))}
           </div>
         </div>
+
+        {/* Feedback card */}
+        {fbStatus !== "skipped" && (
+          <div className="dj-feedback-section">
+            <div className="dj-done-section-label">Quick Feedback</div>
+            <div className="dj-feedback-card">
+              {fbStatus === "done" ? (
+                <div className="dj-feedback-submitted">
+                  <div className="dj-feedback-check">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  </div>
+                  <div className="dj-feedback-thanks">Thank you for your feedback!</div>
+                  <div className="dj-feedback-thanks-sub">Your input helps us improve VERA for everyone.</div>
+                </div>
+              ) : (
+                <>
+                  <div className="dj-feedback-icon">
+                    <MessageSquare size={20} strokeWidth={2} />
+                  </div>
+                  <div className="dj-feedback-title">How was your experience?</div>
+                  <div className="dj-feedback-sub">Your rating may appear on our website to help future jurors.</div>
+
+                  <div className="dj-stars">
+                    {[1, 2, 3, 4, 5].map((v) => (
+                      <button
+                        key={v}
+                        className={`dj-star${v <= (fbHover || fbRating) ? " active" : ""}`}
+                        onClick={() => setFbRating(v)}
+                        onMouseEnter={() => setFbHover(v)}
+                        onMouseLeave={() => setFbHover(0)}
+                      >
+                        <Star size={20} strokeWidth={1.5} fill={v <= (fbHover || fbRating) ? "currentColor" : "none"} />
+                      </button>
+                    ))}
+                  </div>
+                  {fbRating > 0 && (
+                    <div className="dj-star-label">{STAR_LABELS[fbRating]}</div>
+                  )}
+
+                  <textarea
+                    className="dj-feedback-textarea"
+                    placeholder="Any suggestions or comments? (optional)"
+                    rows={2}
+                    value={fbComment}
+                    onChange={(e) => setFbComment(e.target.value)}
+                  />
+
+                  <div className="dj-feedback-actions">
+                    <button className="dj-feedback-skip" onClick={() => setFbStatus("skipped")}>
+                      Skip
+                    </button>
+                    <button
+                      className="dj-feedback-submit"
+                      disabled={!fbRating || fbStatus === "submitting"}
+                      onClick={handleFbSubmit}
+                    >
+                      <Send size={14} strokeWidth={2} />
+                      {fbStatus === "submitting" ? "Sending..." : "Send Feedback"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Next step */}
         <div className="dj-next-step-wrap" style={{ marginTop: "16px" }}>

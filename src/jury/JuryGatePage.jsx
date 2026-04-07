@@ -1,30 +1,28 @@
 // src/jury/JuryGatePage.jsx
-// ============================================================
-// Phase 3.5 — Jury access gate.
-//
-// Shown when the user lands on /jury-entry.
-// If a ?eval= token is present, it is verified against the DB.
-// On success:
-//   - semester-scoped grant stored in localStorage (persists across sessions)
-//   - URL cleaned to /jury-entry (token removed from address bar)
-//   - onGranted() called → App sets page to "jury"
-// On failure or missing token:
-//   - access-required screen shown; no jury form rendered
-//
-// Resume (same or new browser session) is handled entirely
-// by the App.jsx page initializer — this component is only
-// mounted for fresh token verification.
-// ============================================================
+// Jury access gate — shown when landing with ?eval= or missing token.
+// Verifies token against DB; on success stores grant and calls onGranted().
 
-import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ShieldAlert, ShieldOff, ArrowLeft, KeyRound, Loader2 } from "lucide-react";
 import { verifyEntryToken } from "../shared/api";
 import { setJuryAccess } from "../shared/storage";
 import "../styles/jury.css";
 
+function extractToken(input) {
+  const s = input.trim();
+  try {
+    const url = new URL(s);
+    const t = url.searchParams.get("eval");
+    if (t) return t;
+  } catch {}
+  return s;
+}
+
 export default function JuryGatePage({ token, onGranted, onBack }) {
-  // "loading" → verifying token; "denied" → bad/expired token; "missing" → no token
-  const [status, setStatus] = useState(token ? "loading" : "missing");
+  const [status, setStatus]       = useState(token ? "loading" : "missing");
+  const [manualToken, setManual]  = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (!token) return;
@@ -40,17 +38,37 @@ export default function JuryGatePage({ token, onGranted, onBack }) {
           setStatus("denied");
         }
       })
-      .catch(() => {
-        if (active) setStatus("denied");
-      });
+      .catch(() => { if (active) setStatus("denied"); });
     return () => { active = false; };
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleVerify(e) {
+    e.preventDefault();
+    const t = extractToken(manualToken);
+    if (!t) return;
+    setVerifying(true);
+    setStatus("missing");
+    try {
+      const res = await verifyEntryToken(t);
+      if (res?.ok) {
+        setJuryAccess(res.period_id);
+        window.history.replaceState(null, "", "/jury-entry");
+        onGranted();
+      } else {
+        setStatus("denied");
+      }
+    } catch {
+      setStatus("denied");
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   if (status === "loading") {
     return (
       <div className="jury-screen">
         <div className="jury-step">
-          <div className="jury-card dj-glass-card" style={{ textAlign: "center" }}>
+          <div className="jury-card dj-glass-card jury-gate-card" style={{ textAlign: "center" }}>
             <div className="jury-gate-spinner" />
             <div className="jury-title">Verifying access…</div>
             <div className="jury-sub">Please wait while we validate your credentials.</div>
@@ -63,36 +81,73 @@ export default function JuryGatePage({ token, onGranted, onBack }) {
   return (
     <div className="jury-screen">
       <div className="jury-step">
-        <div className="jury-card dj-glass-card" style={{ textAlign: "center" }}>
-          <div className="jury-icon-box warn">
-            <AlertTriangle size={24} strokeWidth={1.5} />
-          </div>
-          <div className="jury-title">Jury access required</div>
-          <div className="jury-sub" style={{ marginBottom: "16px" }}>
-            This page can only be opened with a valid jury QR code or access link
-            provided by the coordinators.
+        <div className="jury-card dj-glass-card jury-gate-card">
+
+          {/* Icon */}
+          <div className="jury-icon-box" style={{ marginBottom: 20 }}>
+            <ShieldAlert size={24} strokeWidth={1.8} />
           </div>
 
+          {/* Header */}
+          <div className="jury-title" style={{ marginBottom: 8 }}>Jury access required</div>
+          <div className="jury-sub" style={{ marginBottom: 16 }}>
+            This page can only be opened with a valid QR code or access link
+            provided by the event coordinators.
+          </div>
+
+          {/* Denied banner */}
           {status === "denied" && (
-            <div className="dj-error" style={{ marginBottom: "16px" }}>
-              <div style={{ fontWeight: "600", marginBottom: "4px" }}>
-                Access Denied
+            <div className="fb-alert fba-danger" style={{ marginBottom: 16, textAlign: "left" }}>
+              <div className="fb-alert-icon">
+                <ShieldOff size={15} />
               </div>
-              The link you used is invalid, expired, or has been revoked.
+              <div className="fb-alert-body">
+                <div className="fb-alert-title">Access denied</div>
+                <div className="fb-alert-desc">The link is invalid, expired, or has been revoked.</div>
+              </div>
             </div>
           )}
 
-          <button
-            className="jury-card btn-primary"
-            onClick={onBack}
-            style={{ width: "100%", marginBottom: "12px" }}
-          >
-            ← Back to Home
+          {/* Divider */}
+          <div className="jg-divider">
+            <span>or enter your access code</span>
+          </div>
+
+          {/* Manual token entry */}
+          <form onSubmit={handleVerify} className="jg-form">
+            <div className="jg-input-wrap">
+              <KeyRound size={15} className="jg-input-icon" />
+              <input
+                ref={inputRef}
+                className="form-input jg-token-input"
+                placeholder="Paste your access link or code…"
+                value={manualToken}
+                onChange={(e) => setManual(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
+            <button
+              type="submit"
+              className="btn-primary jg-verify-btn"
+              disabled={!manualToken.trim() || verifying}
+            >
+              {verifying
+                ? <><Loader2 size={14} className="jg-spin" /> Verifying…</>
+                : "Verify Access"}
+            </button>
+          </form>
+
+          {/* Back */}
+          <button className="jg-back-btn" onClick={onBack}>
+            <ArrowLeft size={13} />
+            Back to home
           </button>
 
-          <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+          <div className="jury-gate-note">
             If you are a walk-in juror, please contact the registration desk.
           </div>
+
         </div>
       </div>
     </div>

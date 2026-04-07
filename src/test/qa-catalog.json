@@ -3929,5 +3929,49 @@
     "risk": "Wrong count would show incorrect progress in drawer items.",
     "coverageStrength": "High",
     "severity": "critical"
+  },
+  {
+    "id": "ui.filter-btn.01",
+    "module": "Shared UI",
+    "area": "FilterButton",
+    "story": "Badge visibility",
+    "scenario": "renders without badge when activeCount is 0",
+    "whyItMatters": "Badge must not appear when no filters are active.",
+    "risk": "False positive indicator would confuse users.",
+    "coverageStrength": "High",
+    "severity": "normal"
+  },
+  {
+    "id": "ui.filter-btn.02",
+    "module": "Shared UI",
+    "area": "FilterButton",
+    "story": "Badge visibility",
+    "scenario": "renders badge with correct count when activeCount > 0",
+    "whyItMatters": "Users must see how many filters are active at a glance.",
+    "risk": "Missing badge means users don't know filters are set.",
+    "coverageStrength": "High",
+    "severity": "normal"
+  },
+  {
+    "id": "ui.filter-btn.03",
+    "module": "Shared UI",
+    "area": "FilterButton",
+    "story": "Panel open state",
+    "scenario": "has active class when isOpen is true",
+    "whyItMatters": "Button must visually indicate the filter panel is open.",
+    "risk": "Missing active state breaks the open/closed affordance.",
+    "coverageStrength": "High",
+    "severity": "normal"
+  },
+  {
+    "id": "ui.filter-btn.04",
+    "module": "Shared UI",
+    "area": "FilterButton",
+    "story": "Interaction",
+    "scenario": "calls onClick when clicked",
+    "whyItMatters": "Button must fire its handler to toggle the panel.",
+    "risk": "Silent click break would make the filter inaccessible.",
+    "coverageStrength": "High",
+    "severity": "normal"
   }
 ]

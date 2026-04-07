@@ -61,7 +61,7 @@ No style changes — exact same rule, global scope.
 | **Rankings** | None | `(consensusFilter !== "all" ? 1 : 0) + (groupSearch !== "" ? 1 : 0)` |
 | **Jurors** | None | `(statusFilter !== "all" ? 1 : 0) + (affilFilter !== "all" ? 1 : 0)` |
 | **Projects** | None | `(projectFilter !== "" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0)` |
-| **AuditLog** | `hasAuditFilters` (boolean) | Extended to count: `auditSearch + each non-default auditFilters field` |
+| **AuditLog** | `hasAuditFilters` (boolean) | Count: `(auditSearch ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0) + (eventType.length ? 1 : 0) + (actor.length ? 1 : 0) + (resource.length ? 1 : 0)` |
 | **Periods** | None | `(statusFilter !== "all" ? 1 : 0) + (lockFilter !== "all" ? 1 : 0)` |
 
 ---

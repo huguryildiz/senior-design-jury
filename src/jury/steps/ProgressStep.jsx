@@ -56,7 +56,7 @@ export default function ProgressStep({ state, onBack }) {
         )}
 
         <button
-          className="dj-btn-primary"
+          className="btn-landing-primary"
           onClick={handleContinue}
           style={{ width: "100%", marginTop: "16px" }}
         >

@@ -6,6 +6,7 @@ import { useToast } from "@/shared/hooks/useToast";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import OutcomeEditor from "../components/OutcomeEditor";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import FbAlert from "@/shared/ui/FbAlert";
 import "../../styles/pages/outcomes.css";
 
 // ── Coverage helpers ─────────────────────────────────────────
@@ -38,20 +39,9 @@ function OutcomeDeleteModal({ open, outcomeCode, onCancel, onConfirm }) {
           <button className="juror-drawer-close" onClick={onCancel}>×</button>
         </div>
         <div className="modal-body">
-          <div className="fb-alert fba-danger" style={{ marginBottom: 12 }}>
-            <div className="fb-alert-icon">
-              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" />
-                <path d="M12 9v4m0 4h.01" stroke="currentColor" />
-              </svg>
-            </div>
-            <div className="fb-alert-body">
-              <div className="fb-alert-title">This action is irreversible</div>
-              <div className="fb-alert-desc">
-                All criterion mappings for this outcome will be permanently removed. This cannot be undone.
-              </div>
-            </div>
-          </div>
+          <FbAlert variant="danger" style={{ marginBottom: 12 }} title="This action is irreversible">
+            All criterion mappings for this outcome will be permanently removed. This cannot be undone.
+          </FbAlert>
           <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
             You are about to remove outcome <strong>{outcomeCode}</strong> from the framework.
           </div>
@@ -361,11 +351,9 @@ export default function OutcomesPage({
     <div id="page-accreditation">
       {/* Panel error */}
       {panelError && (
-        <div className="fb-alert fba-danger" style={{ marginBottom: 16 }}>
-          <div className="fb-alert-body">
-            <div className="fb-alert-desc">{panelError}</div>
-          </div>
-        </div>
+        <FbAlert variant="danger" style={{ marginBottom: 16 }}>
+          {panelError}
+        </FbAlert>
       )}
 
       {/* Page title */}
@@ -525,23 +513,12 @@ export default function OutcomesPage({
 
           {/* Advisory banner */}
           {incompleteCount > 0 && totalOutcomes > 0 && (
-            <div className="fb-alert fba-warning" style={{ marginBottom: 16 }}>
-              <div className="fb-alert-icon">
-                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" />
-                  <path d="M12 9v4m0 4h.01" stroke="currentColor" />
-                </svg>
-              </div>
-              <div className="fb-alert-body">
-                <div className="fb-alert-title">Incomplete outcome coverage</div>
-                <div className="fb-alert-desc">
-                  {incompleteCount} of {totalOutcomes} programme outcome{totalOutcomes !== 1 ? "s" : ""} lack
-                  direct criterion mapping
-                  {unmappedCount > 0 ? ` (${unmappedCount} unmapped)` : ""}.
-                  Consider adding explicit criterion mappings to strengthen accreditation compliance.
-                </div>
-              </div>
-            </div>
+            <FbAlert variant="warning" style={{ marginBottom: 16 }} title="Incomplete outcome coverage">
+              {incompleteCount} of {totalOutcomes} programme outcome{totalOutcomes !== 1 ? "s" : ""} lack
+              direct criterion mapping
+              {unmappedCount > 0 ? ` (${unmappedCount} unmapped)` : ""}.
+              Consider adding explicit criterion mappings to strengthen accreditation compliance.
+            </FbAlert>
           )}
 
           {/* Outcomes table card */}

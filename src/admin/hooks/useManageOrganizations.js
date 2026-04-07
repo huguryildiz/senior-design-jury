@@ -18,6 +18,7 @@ import {
   submitApplication,
   approveApplication,
   rejectApplication,
+  notifyApplication,
 } from "../../shared/api";
 
 const EMPTY_CREATE = { code: "", shortLabel: "", university: "", department: "" };
@@ -278,7 +279,25 @@ export function useManageOrganizations({
     setApplicationActionLoading({ id: applicationId, action: "approve" });
     incLoading();
     try {
+      // Capture application data before the action (list refreshes after)
+      const appData = orgList
+        .flatMap((o) => (o.pendingApplications || []).map((a) => ({ ...a, orgId: o.id, orgName: o.name })))
+        .find((a) => a.applicationId === applicationId);
+
       await approveApplication(applicationId);
+
+      // Fire-and-forget notification (never blocks approve flow)
+      if (appData?.email) {
+        notifyApplication({
+          type: "application_approved",
+          applicationId,
+          recipientEmail: appData.email,
+          applicantName: appData.name,
+          organizationId: appData.orgId,
+          organizationName: appData.orgName,
+        });
+      }
+
       await loadOrgs();
       setMessage?.("Application approved.");
     } catch (e) {
@@ -288,7 +307,7 @@ export function useManageOrganizations({
       setApplicationActionLoading({ id: "", action: "" });
       decLoading();
     }
-  }, [enabled, loadOrgs, setMessage, incLoading, decLoading]);
+  }, [enabled, orgList, loadOrgs, setMessage, incLoading, decLoading]);
 
   const handleRejectApplication = useCallback(async (applicationId) => {
     if (!enabled || !applicationId) return;
@@ -296,7 +315,25 @@ export function useManageOrganizations({
     setApplicationActionLoading({ id: applicationId, action: "reject" });
     incLoading();
     try {
+      // Capture application data before the action (list refreshes after)
+      const appData = orgList
+        .flatMap((o) => (o.pendingApplications || []).map((a) => ({ ...a, orgId: o.id, orgName: o.name })))
+        .find((a) => a.applicationId === applicationId);
+
       await rejectApplication(applicationId);
+
+      // Fire-and-forget notification (never blocks reject flow)
+      if (appData?.email) {
+        notifyApplication({
+          type: "application_rejected",
+          applicationId,
+          recipientEmail: appData.email,
+          applicantName: appData.name,
+          organizationId: appData.orgId,
+          organizationName: appData.orgName,
+        });
+      }
+
       await loadOrgs();
       setMessage?.("Application rejected.");
     } catch (e) {
@@ -306,7 +343,7 @@ export function useManageOrganizations({
       setApplicationActionLoading({ id: "", action: "" });
       decLoading();
     }
-  }, [enabled, loadOrgs, setMessage, incLoading, decLoading]);
+  }, [enabled, orgList, loadOrgs, setMessage, incLoading, decLoading]);
 
   const handleUpdateTenantAdmin = useCallback(async ({ organizationId, userId, name, email }) => {
     if (!enabled || !organizationId || !userId) return false;

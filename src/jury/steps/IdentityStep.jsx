@@ -1,13 +1,7 @@
 // src/jury/steps/IdentityStep.jsx
 import { useState } from "react";
-import {
-  Building2,
-  CalendarDays,
-  GraduationCap,
-  Info,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { UserRound } from "lucide-react";
+import FbAlert from "@/shared/ui/FbAlert";
 import "../../styles/jury.css";
 
 export default function IdentityStep({ state, onBack }) {
@@ -16,23 +10,19 @@ export default function IdentityStep({ state, onBack }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
 
-  const period = state.currentPeriodInfo;
-  const projectCount = state.activeProjectCount;
-
   const handleSubmit = () => {
     setError("");
     if (!juryName.trim()) {
-      setError("Please enter your name");
+      setError("Please enter your name.");
       return;
     }
     if (!affiliation.trim()) {
-      setError("Please enter your affiliation");
+      setError("Please enter your affiliation.");
       return;
     }
-
-    state.setJuryName(juryName);
-    state.setAffiliation(affiliation);
-    state.handleIdentitySubmit();
+    // Pass values directly — React state setters are async and would be
+    // stale by the time handleIdentitySubmit reads identity.juryName.
+    state.handleIdentitySubmit(juryName, affiliation);
   };
 
   const handleKeyDown = (e) => {
@@ -53,86 +43,19 @@ export default function IdentityStep({ state, onBack }) {
           Enter your details to begin the evaluation
         </div>
 
-        {/* Period meta — single row, flex-wrap for narrow widths */}
-        {period && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 6,
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: 12,
-              fontSize: "11px",
-              color: "var(--text-tertiary, #64748b)",
-            }}
-          >
-            {period.organizations?.institution_name && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <GraduationCap size={12} strokeWidth={2} />
-                {period.organizations.institution_name}
-              </span>
-            )}
-            {period.organizations?.name && (
-              <>
-                <span style={{ opacity: 0.4 }}>&middot;</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Building2 size={12} strokeWidth={2} />
-                  {period.organizations.name}
-                </span>
-              </>
-            )}
-            {period.name && (
-              <>
-                <span style={{ opacity: 0.4 }}>&middot;</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <CalendarDays size={12} strokeWidth={2} />
-                  {period.name}
-                </span>
-              </>
-            )}
-            {period.poster_date && (
-              <>
-                <span style={{ opacity: 0.4 }}>&middot;</span>
-                <span>
-                  {new Date(period.poster_date + "T00:00:00").toLocaleDateString("en-GB", {
-                    day: "2-digit", month: "short", year: "numeric",
-                  })}
-                </span>
-              </>
-            )}
-            {projectCount > 0 && (
-              <>
-                <span style={{ opacity: 0.4 }}>&middot;</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Users size={12} strokeWidth={2} />
-                  {projectCount} Groups
-                </span>
-              </>
-            )}
-          </div>
-        )}
-
         {/* Info alert */}
-        <div
-          className="fb-alert fba-info"
+        <FbAlert
+          variant="info"
           style={{ textAlign: "left", marginBottom: 12, padding: "7px 10px" }}
         >
-          <div className="fb-alert-icon" style={{ width: 20, height: 20 }}>
-            <Info size={11} strokeWidth={2} />
-          </div>
-          <div className="fb-alert-body">
-            <div className="fb-alert-desc" style={{ fontSize: "10.5px" }}>
-              Name and Affiliation cannot be changed once evaluation starts.
-            </div>
-          </div>
-        </div>
+          Name and Affiliation cannot be changed once evaluation starts.
+        </FbAlert>
 
-        {state.authError && (
-          <div className="dj-error">{state.authError}</div>
+        {(state.authError || error) && (
+          <FbAlert variant="danger" style={{ marginBottom: 12, padding: "7px 10px" }}>
+            {state.authError || error}
+          </FbAlert>
         )}
-
-        {error && <div className="dj-error">{error}</div>}
 
         <div className="form-group">
           <label className="form-label">Full Name</label>
@@ -177,7 +100,7 @@ export default function IdentityStep({ state, onBack }) {
         </div>
 
         <button
-          className="btn btn-primary"
+          className="btn-landing-primary"
           onClick={handleSubmit}
           disabled={!juryName.trim() || !affiliation.trim()}
           style={{ width: "100%" }}

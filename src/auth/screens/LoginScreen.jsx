@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CircleX, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import FbAlert from "@/shared/ui/FbAlert";
 import { KEYS } from "@/shared/storage/keys";
 
 const GOOGLE_ICON = (
@@ -145,14 +146,9 @@ export default function LoginScreen({
           </div>
 
           {displayError && (
-            <div className="fb-alert fba-danger" style={{ marginBottom: "16px", padding: "12px 14px" }}>
-              <div className="fb-alert-icon" style={{ width: "26px", height: "26px" }}>
-                <CircleX strokeWidth={2} style={{ width: "13px", height: "13px" }} />
-              </div>
-              <div className="fb-alert-body">
-                <div className="fb-alert-desc" style={{ fontSize: "12px" }}>{displayError}</div>
-              </div>
-            </div>
+            <FbAlert variant="danger" style={{ marginBottom: "16px", padding: "12px 14px" }}>
+              {displayError}
+            </FbAlert>
           )}
 
           <form onSubmit={handleSubmit} noValidate>

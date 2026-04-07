@@ -18,8 +18,6 @@
 //
 // What stays in the orchestrator:
 //   stateRef            — composite always-fresh ref (read by async callbacks)
-//   Auto-done effect    — avoids circular dep: workflow → handleRequestSubmit
-//                         → writeGroup (autosave) → editLockActive (editState)
 //   Auto-groupSynced effect — needs both editState.editMode and scoring state;
 //                         cannot live in either sub-hook without circularity.
 //
@@ -78,7 +76,6 @@ export default function useJuryState() {
   // (avoids a circular dep: editState needs step; workflow no longer needs editMode).
   const workflow = useJuryWorkflow({
     scores:           scoring.scores,
-    groupSynced:      scoring.groupSynced,
     projects:         loading.projects,
     effectiveCriteria,
   });
@@ -125,23 +122,6 @@ export default function useJuryState() {
     identity, session, scoring, loading, workflow, editState, autosave,
     stateRef, setSubmitError,
   });
-
-  // ── Auto-done: show confirmation when all groups synced ───
-  // Kept in orchestrator to avoid circular dependency:
-  //   workflow needs handleRequestSubmit
-  //   handleRequestSubmit needs writeGroup (autosave)
-  //   writeGroup needs editLockActive (editState)
-  useEffect(() => {
-    if (workflow.step !== "eval" || workflow.doneFiredRef.current || editState.editMode) return;
-    if (workflow.submitPendingRef.current) return;
-    if (loading.projects.length === 0) return;
-    // Skip the first render after _loadPeriod seeds state so a fully-scored
-    // juror who resumes isn't immediately thrown into the submit confirmation.
-    if (workflow.justLoadedRef.current) { workflow.justLoadedRef.current = false; return; }
-    if (!loading.projects.every((p) => scoring.groupSynced[p.project_id])) return;
-
-    handlers.handleRequestSubmit();
-  }, [scoring.groupSynced, workflow.step, editState.editMode, loading.projects, handlers.handleRequestSubmit]);
 
   // ── Auto-upgrade groupSynced ───────────────────────────────
   // If all criteria for a project are filled but the write hasn't confirmed

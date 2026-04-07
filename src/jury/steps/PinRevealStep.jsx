@@ -7,7 +7,6 @@ import {
   GraduationCap,
   Info,
   KeyRound,
-  UserRound,
 } from "lucide-react";
 import "../../styles/jury.css";
 
@@ -18,10 +17,23 @@ export default function PinRevealStep({ state, onBack }) {
   const digits = pin.split("");
   const period = state.currentPeriodInfo;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(pin);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(pin);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = pin;
+        ta.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* silently fail */ }
   };
 
   return (
@@ -59,18 +71,12 @@ export default function PinRevealStep({ state, onBack }) {
 
         {/* Juror metadata */}
         <div className="dj-pin-meta">
-          <div className="dj-pin-meta-row">
-            <UserRound size={16} strokeWidth={2} />
-            <span className="pin-meta-label">Juror</span>
-            <span className="pin-meta-value">{state.juryName}</span>
-          </div>
           {period?.organizations?.institution_name && (
             <div className="dj-pin-meta-row">
               <GraduationCap size={16} strokeWidth={2} />
               <span className="pin-meta-label">Organization</span>
               <span className="pin-meta-value">
                 {period.organizations.institution_name}
-                {period.organizations.name ? ` — ${period.organizations.name}` : ""}
               </span>
             </div>
           )}

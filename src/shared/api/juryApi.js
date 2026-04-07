@@ -283,3 +283,16 @@ export async function getPeriodImpact(periodId, sessionToken) {
   if (error) throw error;
   return data;
 }
+
+// ── Jury Feedback (SECURITY DEFINER — session token auth) ───
+
+export async function submitJuryFeedback(periodId, sessionToken, rating, comment) {
+  const { data, error } = await supabase.rpc("rpc_submit_jury_feedback", {
+    p_period_id: periodId,
+    p_session_token: sessionToken,
+    p_rating: rating,
+    p_comment: comment || null,
+  });
+  if (error) throw error;
+  return data;
+}

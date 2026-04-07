@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Moon, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, Moon, Quote, Star, Sun } from "lucide-react";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import ProductShowcase from "./components/ProductShowcase";
 import veraLogoDark from "@/assets/vera_logo_dark.png";
@@ -30,6 +30,27 @@ function useLandingStats() {
   }, []);
 
   return stats;
+}
+
+const FALLBACK_FEEDBACK = { avg_rating: 0, total_count: 0, testimonials: [] };
+
+function useLandingFeedback() {
+  const [feedback, setFeedback] = useState(FALLBACK_FEEDBACK);
+  const fetched = useRef(false);
+
+  useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
+    const url = import.meta.env.VITE_DEMO_SUPABASE_URL;
+    const key = import.meta.env.VITE_DEMO_SUPABASE_ANON_KEY;
+    if (!url || !key) return;
+    const demo = createClient(url, key);
+    demo.rpc("rpc_get_public_feedback").then(({ data }) => {
+      if (data && typeof data === "object") setFeedback(data);
+    }).catch(() => {});
+  }, []);
+
+  return feedback;
 }
 
 function useCountUp(target, duration = 1400) {
@@ -68,10 +89,24 @@ function useCountUp(target, duration = 1400) {
 export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
   const { theme, setTheme } = useTheme();
   const stats = useLandingStats();
+  const feedback = useLandingFeedback();
   const orgCount = useCountUp(stats.organizations);
   const evalCount = useCountUp(stats.evaluations);
   const jurorCount = useCountUp(stats.jurors);
   const projectCount = useCountUp(stats.projects);
+
+  const [testimonialIdx, setTestimonialIdx] = useState(0);
+  const testimonials = feedback.testimonials || [];
+  const visibleTestimonial = testimonials[testimonialIdx] || null;
+  const nextTestimonial = () => setTestimonialIdx((i) => (i + 1) % testimonials.length);
+  const prevTestimonial = () => setTestimonialIdx((i) => (i - 1 + testimonials.length) % testimonials.length);
+
+  // Auto-rotate testimonials every 6s
+  useEffect(() => {
+    if (testimonials.length <= 1) return;
+    const id = setInterval(nextTestimonial, 6000);
+    return () => clearInterval(id);
+  }, [testimonials.length]);
 
   const [openFaq, setOpenFaq] = useState([false, false, false, false, false, false]);
 
@@ -213,9 +248,9 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "9px", fontSize: "6.5px", color: "#64748b" }}>
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                    <span>Spring 2026</span>
+                    <span>Fall 2025</span>
                     <span style={{ color: "#334155" }}>·</span>
-                    <span>08 Jun 2026</span>
+                    <span>20 Dec 2025</span>
                     <span style={{ color: "#334155" }}>·</span>
                     <span>12 Groups</span>
                   </div>
@@ -265,7 +300,7 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
                   <div style={{ width: "100%", textAlign: "left", display: "flex", flexDirection: "column", gap: "6px", fontSize: "8.5px", color: "#94a3b8", marginBottom: "14px" }}>
                     <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Juror</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Prof. Dr. Ayşe Demir</span></div>
                     <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Org</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>TED University — EE</span></div>
-                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Period</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Spring 2026</span></div>
+                    <div style={{ display: "flex", gap: "6px" }}><span style={{ color: "#475569", width: "60px" }}>Period</span><span style={{ color: "#e2e8f0", fontWeight: 600 }}>Fall 2025</span></div>
                   </div>
                   <div style={{ width: "100%", padding: "9px", borderRadius: "8px", background: "linear-gradient(180deg,#4b8ef2,#2563eb)", textAlign: "center", fontSize: "10px", color: "#fff", fontWeight: 600, marginTop: "auto" }}>Begin Evaluation →</div>
                 </div>
@@ -682,18 +717,113 @@ export function LandingPage({ onStartJury, onAdmin, onSignIn }) {
         </table>
       </section>
 
-      {/* Testimonial */}
+      {/* Social Proof */}
       <section className="landing-testimonial reveal-section">
-        <div className="testimonial-card">
-          <div style={{ color: "#334155", fontSize: "32px", lineHeight: 1, marginBottom: "16px" }}>"</div>
-          <p className="testimonial-quote">We evaluated 41 capstone projects with 19 jurors in under two hours. Scores were live, rankings were instant, and the accreditation report was ready before we left the building.</p>
-          <div className="testimonial-author">
-            <div className="testimonial-avatar">AY</div>
-            <div className="testimonial-meta">
-              <div className="testimonial-name">Prof. Ahmet Yılmaz</div>
-              <div className="testimonial-role">EE Department · Poster Day Coordinator</div>
-            </div>
+        <div className="testimonial-module">
+
+          {/* Section header */}
+          <div className="landing-section-label" style={{ justifyContent: "center" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Trusted by evaluators
           </div>
+
+          {/* Aggregate rating pill */}
+          {feedback.total_count > 0 && (
+            <div className="testimonial-aggregate">
+              <div className="testimonial-agg-inner">
+                <div className="testimonial-stars">
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <Star
+                      key={v}
+                      size={21}
+                      strokeWidth={0}
+                      fill={v <= Math.round(feedback.avg_rating) ? "currentColor" : "currentColor"}
+                      className={v <= Math.round(feedback.avg_rating) ? "star-filled" : "star-empty"}
+                    />
+                  ))}
+                </div>
+                <span className="testimonial-rating-text">{feedback.avg_rating}</span>
+                <span className="testimonial-rating-sep" />
+                <span className="testimonial-rating-count">
+                  {feedback.total_count} reviews
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Testimonial card */}
+          {visibleTestimonial ? (
+            <div className="testimonial-card" key={testimonialIdx}>
+              <div className="testimonial-quote-icon">
+                <Quote size={20} strokeWidth={1.5} />
+              </div>
+              <blockquote className="testimonial-quote">{visibleTestimonial.comment}</blockquote>
+              <div className="testimonial-author">
+                <div className="testimonial-avatar">
+                  {(visibleTestimonial.juror_name || "")
+                    .split(" ")
+                    .filter((w) => !/^(Prof\.|Dr\.|Assoc\.|Asst\.)$/.test(w))
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </div>
+                <div className="testimonial-meta">
+                  <div className="testimonial-name">{visibleTestimonial.juror_name}</div>
+                  <div className="testimonial-role">{visibleTestimonial.affiliation}</div>
+                </div>
+                <div className="testimonial-author-stars">
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <Star
+                      key={v}
+                      size={15}
+                      strokeWidth={0}
+                      fill="currentColor"
+                      className={v <= visibleTestimonial.rating ? "star-filled" : "star-empty"}
+                    />
+                  ))}
+                </div>
+              </div>
+              {testimonials.length > 1 && (
+                <div className="testimonial-nav">
+                  <button className="testimonial-nav-btn" onClick={prevTestimonial} aria-label="Previous">
+                    <ChevronLeft size={14} strokeWidth={2.5} />
+                  </button>
+                  <div className="testimonial-dots">
+                    {testimonials.map((_, i) => (
+                      <button
+                        key={i}
+                        className={`testimonial-dot${i === testimonialIdx ? " active" : ""}`}
+                        onClick={() => setTestimonialIdx(i)}
+                        aria-label={`Testimonial ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <button className="testimonial-nav-btn" onClick={nextTestimonial} aria-label="Next">
+                    <ChevronRight size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="testimonial-card">
+              <div className="testimonial-quote-icon">
+                <Quote size={20} strokeWidth={1.5} />
+              </div>
+              <blockquote className="testimonial-quote">We evaluated 41 capstone projects with 19 jurors in under two hours. Scores were live, rankings were instant, and the accreditation report was ready before we left the building.</blockquote>
+              <div className="testimonial-author">
+                <div className="testimonial-avatar">AY</div>
+                <div className="testimonial-meta">
+                  <div className="testimonial-name">Prof. Ahmet Yilmaz</div>
+                  <div className="testimonial-role">EE Department &middot; Poster Day Coordinator</div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </section>
 

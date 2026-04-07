@@ -1,6 +1,6 @@
 // src/jury/__tests__/useJuryState.writeGroup.test.js
 // ============================================================
-// useJuryState — writeGroup, auto-done, edit mode, lock, normalization.
+// useJuryState — writeGroup, submit flow, edit mode, lock, normalization.
 // Covers the untested core state-machine paths identified in the audit.
 // ============================================================
 
@@ -14,22 +14,26 @@ vi.mock("@/shared/hooks/useToast", () => ({
   useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),
 }));
 
-vi.mock("../../shared/api", () => ({
-  listPeriods:               vi.fn(),
-  authenticateJuror: vi.fn(),
-  verifyJurorPin:              vi.fn(),
-  listProjects:                vi.fn(),
-  upsertScore:                 vi.fn(),
-  getJurorEditState:           vi.fn().mockResolvedValue({ edit_allowed: false, lock_active: false }),
-  finalizeJurorSubmission:     vi.fn(),
-  getCurrentPeriod:           vi.fn().mockResolvedValue(null),
-  listPeriodCriteria:          vi.fn().mockResolvedValue([
-    { key: "technical", label: "Technical", max_score: 25 },
-    { key: "design",    label: "Design",    max_score: 25 },
-    { key: "delivery",  label: "Delivery",  max_score: 25 },
-    { key: "teamwork",  label: "Teamwork",  max_score: 25 },
-  ]),
-}));
+vi.mock("../../shared/api", () => {
+  const listPeriodsMock = vi.fn();
+  return {
+    listPeriodsPublic:         listPeriodsMock,
+    listPeriods:               listPeriodsMock,
+    authenticateJuror:         vi.fn(),
+    verifyJurorPin:            vi.fn(),
+    listProjects:              vi.fn(),
+    upsertScore:               vi.fn(),
+    getJurorEditState:         vi.fn().mockResolvedValue({ edit_allowed: false, lock_active: false }),
+    finalizeJurorSubmission:   vi.fn(),
+    getCurrentPeriod:          vi.fn().mockResolvedValue(null),
+    listPeriodCriteria:        vi.fn().mockResolvedValue([
+      { key: "technical", label: "Technical", max_score: 25 },
+      { key: "design",    label: "Design",    max_score: 25 },
+      { key: "delivery",  label: "Delivery",  max_score: 25 },
+      { key: "teamwork",  label: "Teamwork",  max_score: 25 },
+    ]),
+  };
+});
 
 // ── Imports (after vi.mock declarations) ──────────────────────────────────
 
@@ -286,7 +290,7 @@ describe("score normalization on blur", () => {
   });
 });
 
-describe("auto-done transition", () => {
+describe("submit confirmation transition", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.getCurrentPeriod.mockResolvedValue(null);
@@ -295,7 +299,7 @@ describe("auto-done transition", () => {
     api.listPeriodCriteria.mockResolvedValue(MOCK_CRITERIA_ROWS);
   });
 
-  it("triggers confirmingSubmit when all groups become synced", async () => {
+  it("opens confirmingSubmit only after explicit request submit", async () => {
     const { result } = renderHook(() => useJuryState());
     await advanceToEval(result);
 
@@ -312,9 +316,12 @@ describe("auto-done transition", () => {
       await act(async () => { result.current.handleScoreBlur("p-2", cid); });
     }
 
-    // Auto-done should trigger: allComplete should be true and
-    // confirmingSubmit should eventually become true
     await waitFor(() => expect(result.current.allComplete).toBe(true));
+    expect(result.current.confirmingSubmit).toBe(false);
+
+    await act(async () => {
+      await result.current.handleRequestSubmit();
+    });
     await waitFor(() => expect(result.current.confirmingSubmit).toBe(true), { timeout: 3000 });
   });
 });
@@ -351,7 +358,11 @@ describe("edit mode flow", () => {
         updated_at: submitted,
       },
     ]);
-    api.getJurorEditState.mockResolvedValue({ edit_allowed: true, lock_active: false });
+    api.getJurorEditState.mockResolvedValue({
+      edit_allowed: true,
+      lock_active: false,
+      final_submitted_at: submitted,
+    });
     api.verifyJurorPin.mockResolvedValue({
       ok: true, juror_id: "j-1", juror_name: "Test Juror", affiliation: "EE", session_token: "sess-1",
     });
@@ -401,7 +412,7 @@ describe("handleCancelSubmit", () => {
     const { result } = renderHook(() => useJuryState());
     await advanceToEval(result);
 
-    // Fill all criteria for both projects to trigger auto-done
+    // Fill all criteria for both projects then explicitly request submit
     const criteria = ["technical", "design", "delivery", "teamwork"];
     for (const pid of ["p-1", "p-2"]) {
       for (const cid of criteria) {
@@ -410,6 +421,9 @@ describe("handleCancelSubmit", () => {
       }
     }
 
+    await act(async () => {
+      await result.current.handleRequestSubmit();
+    });
     await waitFor(() => expect(result.current.confirmingSubmit).toBe(true), { timeout: 3000 });
 
     // Cancel
@@ -538,7 +552,7 @@ describe("permissions.lock — edit lock behavior", () => {
       act(() => { result.current.handleProgressContinue(); });
       await waitFor(() => expect(result.current.step).toBe("eval"));
     }
-    // editLockActive is set both from _loadSemester and the polling effect
+    // editLockActive is set both from _loadPeriod and the polling effect
     await waitFor(() => expect(result.current.editLockActive).toBe(true));
 
     act(() => { result.current.handleScore("p-1", "technical", "20"); });
@@ -575,7 +589,11 @@ describe("permissions.lock — edit lock behavior", () => {
         final_submitted_at: submitted, updated_at: submitted,
       },
     ]);
-    api.getJurorEditState.mockResolvedValue({ edit_allowed: true, lock_active: false });
+    api.getJurorEditState.mockResolvedValue({
+      edit_allowed: true,
+      lock_active: false,
+      final_submitted_at: submitted,
+    });
     api.verifyJurorPin.mockResolvedValue({
       ok: true, juror_id: "j-1", juror_name: "Test Juror", affiliation: "EE", session_token: "sess-1",
     });

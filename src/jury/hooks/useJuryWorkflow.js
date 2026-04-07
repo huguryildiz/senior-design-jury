@@ -10,13 +10,8 @@
 //   confirmingSubmit — true when the submit confirmation dialog is open
 //
 // Refs:
-//   doneFiredRef     — true after auto-done has fired for this session;
-//                      prevents double-triggering the submit confirmation.
 //   submitPendingRef — true while a submit sequence is in flight;
 //                      prevents concurrent submits.
-//   justLoadedRef    — set to true by _loadPeriod after seeding state;
-//                      cleared on the first auto-done check so a fully-scored
-//                      returning juror is not immediately thrown into submit.
 //
 // Derived (computed on every render):
 //   project     — projects[current] || null
@@ -28,16 +23,11 @@
 //   filled but the write hasn't landed yet (covers the case where a user
 //   fills all fields without blurring, then navigates away).
 //
-// The auto-done effect and handleRequestSubmit live in the orchestrator to
-// avoid a circular dependency (workflow needs requestSubmit, requestSubmit
-// needs writeGroup from autosave, autosave needs editLockActive from editState).
+// handleRequestSubmit lives in lifecycle handlers.
 //
 // Parameters (from orchestrator):
 //   scores      — current scoring state
-//   groupSynced — current sync state
 //   projects    — current project list
-//   editMode    — true when re-editing after finalization
-//   setGroupSynced — setter from useJuryScoring
 // ============================================================
 
 import { useState, useRef } from "react";
@@ -45,7 +35,6 @@ import { isAllFilled, countFilled } from "../utils/scoreState";
 
 // Parameters (from orchestrator):
 //   scores      — current scoring state (for derived allComplete / progressPct)
-//   groupSynced — current sync state (for derived allComplete check)
 //   projects    — current project list
 //
 // NOTE: The auto-groupSynced effect lives in the orchestrator (not here) because
@@ -55,18 +44,12 @@ import { isAllFilled, countFilled } from "../utils/scoreState";
 
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 
-export function useJuryWorkflow({ scores, groupSynced, projects, effectiveCriteria }) {
+export function useJuryWorkflow({ scores, projects, effectiveCriteria }) {
   const [step, setStep] = useState(DEMO_MODE ? "qr_showcase" : "identity");
   const [current, setCurrent] = useState(0);
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
 
-  const doneFiredRef = useRef(false);
   const submitPendingRef = useRef(false);
-  // justLoadedRef: set by _loadPeriod after seeding scores from DB.
-  // Consumed (cleared) on the first auto-done check to prevent a fully-scored
-  // returning juror from being immediately thrown into the submit confirmation.
-  const justLoadedRef = useRef(false);
-
   // Derived values
   const criteria = effectiveCriteria || [];
   const project = projects[current] || null;
@@ -83,9 +66,7 @@ export function useJuryWorkflow({ scores, groupSynced, projects, effectiveCriter
     step, setStep,
     current, setCurrent,
     confirmingSubmit, setConfirmingSubmit,
-    doneFiredRef,
     submitPendingRef,
-    justLoadedRef,
     project,
     progressPct,
     allComplete,

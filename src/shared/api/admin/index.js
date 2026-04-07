@@ -10,6 +10,7 @@ export {
   approveApplication,
   rejectApplication,
   listPendingApplications,
+  notifyApplication,
 } from "./auth";
 
 export {

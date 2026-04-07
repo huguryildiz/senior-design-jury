@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCodeStyling from "qr-code-styling";
 import veraLogo from "@/assets/vera_logo.png";
+import FbAlert from "@/shared/ui/FbAlert";
 import { generateEntryToken, revokeEntryToken, getEntryTokenStatus, getActiveEntryTokenPlain, sendEntryTokenEmail } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import {
@@ -29,6 +30,9 @@ function fmtExpiry(ts) {
   try {
     const diff = Date.parse(ts) - Date.now();
     if (diff <= 0) return null;
+    if (diff >= 24 * 3600000) {
+      return new Date(ts).toLocaleDateString(undefined, { dateStyle: "medium" });
+    }
     const hours = Math.floor(diff / 3600000);
     const mins = Math.floor((diff % 3600000) / 60000);
     if (hours > 0) return `${hours}h ${mins}m left`;
@@ -74,7 +78,7 @@ export default function EntryControlPage({
   const _toast = useToast();
 
   const entryUrl = rawToken
-    ? `${window.location.origin}?eval=${encodeURIComponent(rawToken)}`
+    ? `${window.location.origin}?eval=${encodeURIComponent(rawToken)}${isDemoMode ? "&demo-jury" : ""}`
     : "";
 
   // QR code instance
@@ -152,7 +156,8 @@ export default function EntryControlPage({
         setError("Token generation failed — please try again.");
       }
     } catch (e) {
-      setError(e?.unauthorized ? "Unauthorized — check your session." : "Could not generate token.");
+      console.error("[generateEntryToken]", e);
+      setError(e?.unauthorized ? "Unauthorized — check your session." : (e?.message || "Could not generate token."));
     } finally {
       setRegenerating(false);
     }
@@ -243,7 +248,7 @@ export default function EntryControlPage({
 
   if (!periodId) {
     return (
-      <div className="page">
+      <div className="page" id="page-entry-control">
         <div className="page-title">Entry Control</div>
         <div className="page-desc">Select an evaluation period to manage QR access tokens.</div>
       </div>
@@ -251,7 +256,7 @@ export default function EntryControlPage({
   }
 
   return (
-    <div className="page">
+    <div className="page" id="page-entry-control">
       <div className="page-title">Entry Control</div>
       <div className="page-desc" style={{ marginBottom: 18 }}>
         Manage QR access tokens, monitor active jury sessions, and control entry to the evaluation.
@@ -313,11 +318,9 @@ export default function EntryControlPage({
       </div>
 
       {error && (
-        <div className="fb-alert fba-danger" style={{ marginBottom: 12 }}>
-          <div className="fb-alert-body">
-            <div className="fb-alert-desc">{error}</div>
-          </div>
-        </div>
+        <FbAlert variant="danger" style={{ marginBottom: 12 }}>
+          {error}
+        </FbAlert>
       )}
 
       {/* Main layout */}
@@ -418,7 +421,7 @@ export default function EntryControlPage({
                 {copied ? "Copied!" : "Copy Link"}
               </button>
             )}
-            <button className="btn btn-outline btn-sm" onClick={handleGenerate} disabled={isBusy || isDemoMode}>
+            <button className="btn btn-outline btn-sm" onClick={handleGenerate} disabled={isBusy}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={regenerating ? "ec-spin" : ""}>
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                 <path d="M3 3v5h5" />
@@ -428,7 +431,7 @@ export default function EntryControlPage({
               {regenerating ? "Generating…" : (hasToken ? "Regenerate" : "Generate QR")}
             </button>
             {hasToken && isActive && (
-              <button className="btn btn-outline btn-sm btn-revoke" onClick={() => setRevokeModalOpen(true)} disabled={isBusy || isDemoMode}>
+              <button className="btn btn-outline btn-sm btn-revoke" onClick={() => setRevokeModalOpen(true)} disabled={isBusy}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="12" cy="12" r="10" />
                   <path d="m15 9-6 6" />

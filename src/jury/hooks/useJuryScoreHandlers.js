@@ -16,7 +16,14 @@ export function useJuryScoreHandlers({ scoring, editState, autosave, effectiveCr
   const handleScore = useCallback(
     (pid, cid, val) => {
       if (editState.editLockActive) return;
-      const stored = val === "" ? null : val;
+      // Keep only digits and a single optional leading minus.
+      // This preserves testable "-5 -> clamp to 0 on blur" semantics while
+      // still guarding against arbitrary free-form characters.
+      const compact = String(val ?? "").replace(/\s+/g, "");
+      const normalized = compact
+        .replace(/[^0-9-]/g, "")
+        .replace(/(?!^)-/g, "");
+      const stored = normalized === "" || normalized === "-" ? null : normalized;
       const newScores = {
         ...scoring.pendingScoresRef.current,
         [pid]: { ...scoring.pendingScoresRef.current[pid], [cid]: stored },

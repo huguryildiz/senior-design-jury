@@ -5,6 +5,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
+import FbAlert from "@/shared/ui/FbAlert";
 import {
   listPeriods,
   listJurorsSummary,
@@ -204,11 +205,9 @@ export default function ExportPage({ organizationId, isDemoMode = false }) {
       </div>
 
       {dbBackupError && (
-        <div className="fb-alert fba-error" style={{ marginBottom: 12 }}>
-          <div className="fb-alert-body">
-            <div className="fb-alert-desc">{dbBackupError}</div>
-          </div>
-        </div>
+        <FbAlert variant="danger" style={{ marginBottom: 12 }}>
+          {dbBackupError}
+        </FbAlert>
       )}
 
       <div className="grid-3">

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import CriteriaManager from "../criteria/CriteriaManager";
+import FbAlert from "@/shared/ui/FbAlert";
 import "../../styles/pages/criteria.css";
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -39,21 +40,10 @@ function CriteriaDeleteModal({ open, criterionLabel, onCancel, onConfirm }) {
           <button className="juror-drawer-close" onClick={onCancel}>×</button>
         </div>
         <div className="modal-body">
-          <div className="fb-alert fba-danger" style={{ marginBottom: 12 }}>
-            <div className="fb-alert-icon">
-              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" />
-                <path d="M12 9v4m0 4h.01" stroke="currentColor" />
-              </svg>
-            </div>
-            <div className="fb-alert-body">
-              <div className="fb-alert-title">This action is irreversible</div>
-              <div className="fb-alert-desc">
-                All rubric bands and outcome mappings for this criterion will be permanently removed.
-                Scores already submitted will not be affected.
-              </div>
-            </div>
-          </div>
+          <FbAlert variant="danger" style={{ marginBottom: 12 }} title="This action is irreversible">
+            All rubric bands and outcome mappings for this criterion will be permanently removed.
+            Scores already submitted will not be affected.
+          </FbAlert>
           <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
             You are about to remove <strong>{criterionLabel}</strong> from the evaluation template.
           </div>
@@ -210,11 +200,9 @@ export default function CriteriaPage({
 
       {/* Panel error */}
       {panelError && (
-        <div className="fb-alert fba-danger" style={{ marginBottom: 16 }}>
-          <div className="fb-alert-body">
-            <div className="fb-alert-desc">{panelError}</div>
-          </div>
-        </div>
+        <FbAlert variant="danger" style={{ marginBottom: 16 }}>
+          {panelError}
+        </FbAlert>
       )}
 
       {/* Page header */}

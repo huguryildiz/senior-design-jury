@@ -11,11 +11,9 @@
 
 import { useState } from "react";
 
-import { DEMO_MODE } from "@/shared/lib/demoMode";
-
 export function useJurorIdentity() {
-  const [juryName, setJuryName] = useState(DEMO_MODE ? "Demo Juror" : "");
-  const [affiliation, setAffiliation] = useState(DEMO_MODE ? "TEDU, EE" : "");
+  const [juryName, setJuryName] = useState("");
+  const [affiliation, setAffiliation] = useState("");
   const [authError, setAuthError] = useState("");
 
   return {

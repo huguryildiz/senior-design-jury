@@ -3,6 +3,7 @@
 // Replaces src/components/auth/ForgotPasswordForm.jsx.
 
 import { useState } from "react";
+import FbAlert from "@/shared/ui/FbAlert";
 
 export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin }) {
   const [email, setEmail] = useState("");
@@ -43,11 +44,9 @@ export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin })
           {!sent ? (
             <form onSubmit={handleSubmit} noValidate>
               {error && (
-                <div className="fb-alert fba-danger" style={{ marginBottom: "16px" }}>
-                  <div className="fb-alert-body">
-                    <div className="fb-alert-desc">{error}</div>
-                  </div>
-                </div>
+                <FbAlert variant="danger" style={{ marginBottom: "16px" }}>
+                  {error}
+                </FbAlert>
               )}
               <div className="form-group">
                 <label className="form-label" htmlFor="forgot-email">Email</label>

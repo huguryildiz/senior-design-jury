@@ -6,6 +6,13 @@
 
 /* ── Field inputs ─────────────────────────────────────────── */
 
+/* Global placeholder tone */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-quaternary) !important;
+  opacity: 1;
+}
+
 .vera-field-input {
   display: block;
   width: 100%;

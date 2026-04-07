@@ -7,6 +7,7 @@
 
 import { useEffect } from "react";
 import { usePinBlocking } from "../hooks/usePinBlocking";
+import FbAlert from "@/shared/ui/FbAlert";
 
 function formatEta(lockedUntil) {
   if (!lockedUntil) return "—";
@@ -39,21 +40,9 @@ export default function PinBlockingPage({ organizationId: _organizationId, selec
       </div>
 
       {/* Lock policy alert */}
-      <div className="fb-alert fba-warning" style={{ marginBottom: 12 }}>
-        <div className="fb-alert-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M10.29 3.86 1.82 18A2 2 0 0 0 3.53 21h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <path d="M12 9v4" />
-            <path d="M12 17h.01" />
-          </svg>
-        </div>
-        <div className="fb-alert-body">
-          <div className="fb-alert-title">Lock policy is active</div>
-          <div className="fb-alert-desc">
-            Jurors are locked for 15 minutes after 3 failed attempts. Manual unlock is logged in Audit Log.
-          </div>
-        </div>
-      </div>
+      <FbAlert variant="warning" style={{ marginBottom: 12 }} title="Lock policy is active">
+        Jurors are locked for 15 minutes after 3 failed attempts. Manual unlock is logged in Audit Log.
+      </FbAlert>
 
       {noPeriod ? (
         <div className="card" style={{ marginBottom: 12, padding: "24px 16px", textAlign: "center" }}>
@@ -83,14 +72,9 @@ export default function PinBlockingPage({ organizationId: _organizationId, selec
           </div>
 
           {error && (
-            <div
-              className="fb-alert fba-error"
-              style={{ marginBottom: 12 }}
-            >
-              <div className="fb-alert-body">
-                <div className="fb-alert-desc">{error}</div>
-              </div>
-            </div>
+            <FbAlert variant="danger" style={{ marginBottom: 12 }}>
+              {error}
+            </FbAlert>
           )}
 
           {/* Active Lockouts */}

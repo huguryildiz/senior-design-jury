@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/auth";
 import { useToast } from "@/shared/hooks/useToast";
+import FbAlert from "@/shared/ui/FbAlert";
 import { useProfileEdit } from "../hooks/useProfileEdit";
 import { useManageOrganizations } from "../hooks/useManageOrganizations";
 import SecurityPolicyDrawer from "../drawers/SecurityPolicyDrawer";
@@ -90,9 +91,9 @@ function PasswordModal({ profile }) {
 
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
           {profile.passwordErrors._general && (
-            <div className="fb-alert fba-error">
-              <div className="fb-alert-body"><div className="fb-alert-desc">{profile.passwordErrors._general}</div></div>
-            </div>
+            <FbAlert variant="danger">
+              {profile.passwordErrors._general}
+            </FbAlert>
           )}
           <label className="form-label" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             New Password
@@ -352,13 +353,11 @@ export default function SettingsPage({ organizationId }) {
               <button className="crud-modal-close" onClick={() => setDangerModal(null)}>&#215;</button>
             </div>
             <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-              <div className="fb-alert fba-error">
-                <div className="fb-alert-body">
-                  <div className="fb-alert-desc" style={{ fontSize: 12 }}>
-                    This action is irreversible and will take effect immediately. Type <strong>{DANGER_CONFIRM_PHRASE[dangerModal]}</strong> below to confirm.
-                  </div>
+              <FbAlert variant="danger">
+                <div style={{ fontSize: 12 }}>
+                  This action is irreversible and will take effect immediately. Type <strong>{DANGER_CONFIRM_PHRASE[dangerModal]}</strong> below to confirm.
                 </div>
-              </div>
+              </FbAlert>
               <input
                 className="form-input"
                 type="text"
@@ -570,7 +569,7 @@ export default function SettingsPage({ organizationId }) {
                             className="btn btn-outline btn-sm"
                             style={{ padding: "5px 10px", fontSize: 11, borderColor: "rgba(22,163,74,0.25)", color: "var(--success)" }}
                             onClick={() => handleApproveApplication(app.applicationId)}
-                            disabled={applicationActionLoading.id === app.applicationId || isDemoMode}
+                            disabled={applicationActionLoading.id === app.applicationId}
                           >
                             {applicationActionLoading.id === app.applicationId && applicationActionLoading.action === "approve" ? "…" : "Approve"}
                           </button>
@@ -578,7 +577,7 @@ export default function SettingsPage({ organizationId }) {
                             className="btn btn-outline btn-sm"
                             style={{ padding: "5px 10px", fontSize: 11, borderColor: "rgba(225,29,72,0.2)", color: "var(--text-tertiary)" }}
                             onClick={() => handleRejectApplication(app.applicationId)}
-                            disabled={applicationActionLoading.id === app.applicationId || isDemoMode}
+                            disabled={applicationActionLoading.id === app.applicationId}
                           >
                             {applicationActionLoading.id === app.applicationId && applicationActionLoading.action === "reject" ? "…" : "Reject"}
                           </button>

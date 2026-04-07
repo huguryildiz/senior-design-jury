@@ -3,6 +3,7 @@
 // Replaces src/components/auth/RegisterForm.jsx.
 
 import { useEffect, useMemo, useState } from "react";
+import FbAlert from "@/shared/ui/FbAlert";
 import { listOrganizationsPublic } from "@/shared/api";
 import CustomSelect from "@/shared/ui/CustomSelect";
 
@@ -198,11 +199,9 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
           </div>
 
           {displayError && (
-            <div className="fb-alert fba-danger" style={{ marginBottom: "16px" }}>
-              <div className="fb-alert-body">
-                <div className="fb-alert-desc">{displayError}</div>
-              </div>
-            </div>
+            <FbAlert variant="danger" style={{ marginBottom: "16px" }}>
+              {displayError}
+            </FbAlert>
           )}
 
           <form onSubmit={handleSubmit} noValidate>

@@ -13,22 +13,26 @@ vi.mock("@/shared/hooks/useToast", () => ({
   useToast: () => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }),
 }));
 
-vi.mock("../../shared/api", () => ({
-  listPeriods:               vi.fn(),
-  authenticateJuror: vi.fn(),
-  verifyJurorPin:              vi.fn(),
-  listProjects:                vi.fn(),
-  upsertScore:                 vi.fn(),
-  getJurorEditState:           vi.fn().mockResolvedValue({ edit_allowed: false, lock_active: false }),
-  finalizeJurorSubmission:     vi.fn(),
-  getCurrentPeriod:           vi.fn().mockResolvedValue(null),
-  listPeriodCriteria:          vi.fn().mockResolvedValue([
-    { key: "technical", label: "Technical", max_score: 25 },
-    { key: "design",    label: "Design",    max_score: 25 },
-    { key: "delivery",  label: "Delivery",  max_score: 25 },
-    { key: "teamwork",  label: "Teamwork",  max_score: 25 },
-  ]),
-}));
+vi.mock("../../shared/api", () => {
+  const listPeriodsMock = vi.fn();
+  return {
+    listPeriodsPublic:         listPeriodsMock,
+    listPeriods:               listPeriodsMock,
+    authenticateJuror:         vi.fn(),
+    verifyJurorPin:            vi.fn(),
+    listProjects:              vi.fn(),
+    upsertScore:               vi.fn(),
+    getJurorEditState:         vi.fn().mockResolvedValue({ edit_allowed: false, lock_active: false }),
+    finalizeJurorSubmission:   vi.fn(),
+    getCurrentPeriod:          vi.fn().mockResolvedValue(null),
+    listPeriodCriteria:        vi.fn().mockResolvedValue([
+      { key: "technical", label: "Technical", max_score: 25 },
+      { key: "design",    label: "Design",    max_score: 25 },
+      { key: "delivery",  label: "Delivery",  max_score: 25 },
+      { key: "teamwork",  label: "Teamwork",  max_score: 25 },
+    ]),
+  };
+});
 
 // ── Imports (after vi.mock declarations) ──────────────────────────────────
 
@@ -266,6 +270,34 @@ describe("PIN lockout flow — useJuryState hook", () => {
   });
 });
 
+describe("period availability guards", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.getCurrentPeriod.mockResolvedValue(null);
+    api.getJurorEditState.mockResolvedValue({ edit_allowed: false, lock_active: false });
+  });
+
+  it("shows a locked-period error when current periods are locked", async () => {
+    api.listPeriods.mockResolvedValue([
+      { id: "sem-1", name: "2024-2025 Spring", is_current: true, is_locked: true },
+    ]);
+
+    const { result } = renderHook(() => useJuryState());
+    act(() => {
+      result.current.setJuryName("Test Juror");
+      result.current.setAffiliation("EE");
+    });
+
+    await act(async () => {
+      await result.current.handleIdentitySubmit();
+    });
+
+    expect(result.current.step).toBe("identity");
+    expect(result.current.authError).toContain("locked");
+    expect(api.authenticateJuror).not.toHaveBeenCalled();
+  });
+});
+
 // ── jury.flow — submission guard, edit mode, navigation ──────────────────
 
 describe("jury.flow — flow mechanics", () => {
@@ -285,7 +317,7 @@ describe("jury.flow — flow mechanics", () => {
   });
 
   qaTest("jury.flow.01", async () => {
-    // One project with all null scores — auto-done must NOT fire
+    // One project with partial scores — submit confirm must remain closed.
     const { result } = renderHook(() => useJuryState());
     await advanceToEval2(result);
 
@@ -293,13 +325,14 @@ describe("jury.flow — flow mechanics", () => {
     act(() => { result.current.handleScore("p-1", "technical", "20"); });
     await act(async () => { result.current.handleScoreBlur("p-1", "technical"); });
 
-    // confirmingSubmit must stay false — not all criteria filled
+    // confirmingSubmit must stay false — not all criteria filled.
     await new Promise((r) => setTimeout(r, 100));
     expect(result.current.confirmingSubmit).toBe(false);
   });
 
   qaTest("jury.flow.02", async () => {
-    // All projects fully filled → auto-done fires → confirmingSubmit = true
+    // All projects fully filled does NOT auto-open confirmation.
+    // Confirmation opens only after explicit submit click/handler.
     const { result } = renderHook(() => useJuryState());
     await advanceToEval2(result);
 
@@ -311,6 +344,12 @@ describe("jury.flow — flow mechanics", () => {
       }
     }
 
+    await waitFor(() => expect(result.current.allComplete).toBe(true), { timeout: 3000 });
+    expect(result.current.confirmingSubmit).toBe(false);
+
+    await act(async () => {
+      await result.current.handleRequestSubmit();
+    });
     await waitFor(() => expect(result.current.confirmingSubmit).toBe(true), { timeout: 3000 });
   });
 
@@ -328,7 +367,11 @@ describe("jury.flow — flow mechanics", () => {
         total: 80, final_submitted_at: submitted, updated_at: submitted,
       },
     ]);
-    api.getJurorEditState.mockResolvedValue({ edit_allowed: true, lock_active: false });
+    api.getJurorEditState.mockResolvedValue({
+      edit_allowed: true,
+      lock_active: false,
+      final_submitted_at: submitted,
+    });
     api.verifyJurorPin.mockResolvedValue({
       ok: true, juror_id: "j-1", juror_name: "Test Juror", affiliation: "EE", session_token: "sess-1",
     });
@@ -372,17 +415,17 @@ describe("jury.flow — flow mechanics", () => {
   });
 });
 
-// ── justLoadedRef guard (resume flow) ────────────────────────────────────
+// ── resume flow guard (no implicit submit modal) ─────────────────────────
 
-describe("justLoadedRef guard — resume flow", () => {
+describe("resume flow guard — no implicit submit modal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.getCurrentPeriod.mockResolvedValue(null);
   });
 
   qaTest("jury.resume.01", async () => {
-    // A fully-scored juror resuming via PIN should land on "eval" without
-    // confirmingSubmit being triggered on the very first render after load.
+    // A fully-scored juror resuming via PIN should NOT see submit confirmation
+    // until they explicitly press submit.
     api.listPeriods.mockResolvedValue([SEMESTER]);
     api.authenticateJuror.mockResolvedValue({
       juror_id: "j-1",
@@ -417,14 +460,13 @@ describe("justLoadedRef guard — resume flow", () => {
 
     await waitFor(() => expect(result.current.step).toBe("pin"));
 
-    // Submit correct PIN — triggers _loadSemester which sets justLoadedRef=true
+    // Submit correct PIN and load existing scores
     await act(async () => {
       await result.current.handlePinSubmit("1234");
     });
 
     // Should land on progress_check (has data, showProgressCheck=true) or eval,
-    // but crucially confirmingSubmit must remain false — justLoadedRef guards against
-    // auto-submitting a fully-scored resuming juror.
+    // and confirmingSubmit must remain false until explicit submit request.
     await waitFor(() =>
       expect(["progress_check", "eval"]).toContain(result.current.step)
     );

@@ -36,10 +36,9 @@ export async function listOrganizationsPublic() {
  */
 export async function submitApplication(payload) {
   const { data, error } = await supabase
-    .from("tenant_applications")
+    .from("org_applications")
     .insert({
       organization_id: payload.organization_id || payload.organizationId || null,
-      organization_name: payload.organization_name || payload.organizationName,
       contact_email: payload.contact_email || payload.email,
       applicant_name: payload.applicant_name || payload.name,
       message: payload.message || null,
@@ -54,6 +53,18 @@ export async function submitApplication(payload) {
     }
     throw error;
   }
+
+  // Fire-and-forget: notify tenant admins + CC super admins
+  notifyApplication({
+    type: "application_submitted",
+    applicationId: data.id,
+    recipientEmail: "",          // Edge Function resolves recipients from DB
+    applicantName: data.applicant_name,
+    applicantEmail: data.contact_email,
+    organizationId: data.organization_id,
+    organizationName: payload.tenant_name || payload.organizationName || "",
+  });
+
   return data;
 }
 
@@ -65,7 +76,7 @@ export async function getMyApplications() {
   if (!user?.email) return [];
 
   const { data, error } = await supabase
-    .from("tenant_applications")
+    .from("org_applications")
     .select("*")
     .eq("contact_email", user.email)
     .order("created_at", { ascending: false });
@@ -78,29 +89,26 @@ export async function getMyApplications() {
  */
 export async function cancelApplication(applicationId) {
   const { error } = await supabase
-    .from("tenant_applications")
+    .from("org_applications")
     .update({ status: "cancelled" })
     .eq("id", applicationId);
   if (error) throw error;
 }
 
 /**
- * Approve application via Edge Function (creates Supabase Auth user).
+ * Approve application via RPC (marks status approved; auth user already exists via signUp).
  */
 export async function approveApplication(applicationId) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || "";
-  const { data, error } = await supabase.functions.invoke("approve-admin-application", {
-    body: { application_id: applicationId },
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  const { data, error } = await supabase.rpc("rpc_admin_approve_application", {
+    p_application_id: applicationId,
   });
   if (error) throw error;
-  if (data?.error) {
-    const e = new Error(data.error);
-    e.code = data.code;
+  if (data?.ok === false) {
+    const e = new Error(data.error_code || "Could not approve application.");
+    e.code = data.error_code;
     throw e;
   }
-  return data?.data ?? true;
+  return data;
 }
 
 /**
@@ -108,7 +116,7 @@ export async function approveApplication(applicationId) {
  */
 export async function rejectApplication(applicationId) {
   const { error } = await supabase
-    .from("tenant_applications")
+    .from("org_applications")
     .update({ status: "rejected", reviewed_at: new Date().toISOString() })
     .eq("id", applicationId);
   if (error) throw error;
@@ -119,10 +127,36 @@ export async function rejectApplication(applicationId) {
  */
 export async function listPendingApplications(organizationId) {
   const { data, error } = await supabase
-    .from("tenant_applications")
+    .from("org_applications")
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+/**
+ * Fire-and-forget email notification for application status changes.
+ * Calls the notify-application Edge Function. Never throws.
+ *
+ * @param {{ type: "application_submitted"|"application_approved"|"application_rejected",
+ *            applicationId: string, recipientEmail: string,
+ *            applicantName?: string, organizationId?: string, organizationName?: string }} payload
+ */
+export async function notifyApplication({ type, applicationId, recipientEmail, applicantName, organizationId, organizationName }) {
+  try {
+    await supabase.functions.invoke("notify-application", {
+      body: {
+        type,
+        application_id: applicationId,
+        recipient_email: recipientEmail,
+        tenant_id: organizationId || "",
+        applicant_name: applicantName || "",
+        applicant_email: recipientEmail,
+        tenant_name: organizationName || "",
+      },
+    });
+  } catch (e) {
+    console.warn("notify-application failed (non-blocking):", e?.message);
+  }
 }

@@ -10,7 +10,7 @@
 //   handleProgressContinue  — advance from progress_check step
 //
 // Internal:
-//   _loadPeriod(period, overrideJurorId, _identityOverride, options)
+//   _loadPeriod(period, overrideJurorId, options)
 //     Shared async function used by handlePinSubmit and
 //     handlePeriodSelect. Intentionally NOT useCallback — including
 //     it in any deps array causes infinite render loops. All reads use
@@ -20,9 +20,16 @@
 import { useCallback } from "react";
 import { getActiveCriteria } from "../../shared/criteriaHelpers";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
+import { supabase, clearPersistedSession } from "@/shared/lib/supabaseClient";
+import * as publicApi from "../../shared/api";
+import {
+  buildTokenPeriod,
+  isEvaluablePeriod,
+  listEvaluablePeriods,
+  pickDemoPeriod,
+} from "../utils/periodSelection";
 
 import {
-  listPeriodsPublic as listPeriods,
   listProjects,
   authenticateJuror,
   verifyJurorPin,
@@ -39,12 +46,53 @@ import {
 import { buildScoreSnapshot } from "../utils/scoreSnapshot";
 import { buildProgressCheck } from "../utils/progress";
 
+const listPeriods = publicApi.listPeriodsPublic || publicApi.listPeriods;
+
+async function ensureDemoAnonSession() {
+  // Demo flow must run on anon context. A stale admin session can inject an
+  // expired Bearer token and cause intermittent 401 on period queries.
+  clearPersistedSession();
+  try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+}
+
+async function resolveDemoPeriod(signal) {
+  let tokenPeriod = null;
+
+  const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN || "";
+  if (DEMO_ENTRY_TOKEN) {
+    try {
+      const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
+      if (tokenRes?.ok) tokenPeriod = buildTokenPeriod(tokenRes);
+    } catch {
+      // Non-fatal: continue with periods-table fallback.
+    }
+  }
+
+  let allPeriods = [];
+  try {
+    allPeriods = await listPeriods(signal);
+  } catch (e) {
+    if (e?.name === "AbortError") throw e;
+    // Non-fatal: tokenPeriod may still be enough to proceed.
+  }
+
+  return pickDemoPeriod(allPeriods, tokenPeriod);
+}
+
 export function useJurySessionHandlers({ identity, session, scoring, loading, workflow, editState, autosave, stateRef }) {
   // ── Internal: load period + projects ─────────────────────
   // Shared by handlePinSubmit and handlePeriodSelect.
   // Kept as a plain async function (intentionally NOT useCallback):
   // including it in any deps array causes infinite render loops.
-  const _loadPeriod = async (period, overrideJurorId, _identityOverride, options = {}) => {
+  const _loadPeriod = async (period, overrideJurorId, options = {}) => {
+    if (period?.is_locked) {
+      loading.setLoadingState(null);
+      editState.setEditLockActive(true);
+      identity.setAuthError("This evaluation period is locked. Please contact the coordinators.");
+      workflow.setStep("identity");
+      return;
+    }
+
     const jid = overrideJurorId || stateRef.current.jurorId;
     const { showProgressCheck = false, showEmptyProgress = false } = options;
 
@@ -147,12 +195,12 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       scoring.setTouched(seedTouched);
       scoring.setGroupSynced(seedSynced);
       workflow.setCurrent(0);
-      workflow.doneFiredRef.current     = false;
       workflow.submitPendingRef.current = false;
       loading.setLoadingState(null);
       const canEdit = !!editStateResult?.edit_allowed;
+      const periodLocked = !!period?.is_locked;
       editState.setEditAllowed(canEdit);
-      editState.setEditLockActive(!!editStateResult?.lock_active);
+      editState.setEditLockActive(Boolean(editStateResult?.lock_active || periodLocked));
 
       const progressCheckData = buildProgressCheck(
         projectList,
@@ -163,7 +211,6 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       // final_submitted_at lives on juror_period_auth (via getJurorEditState),
       // not on projects — listProjects always returns null for that field.
       const isFinalSubmitted = Boolean(editStateResult?.final_submitted_at);
-      workflow.justLoadedRef.current = true;
       if (isFinalSubmitted) {
         scoring.setDoneScores({ ...seedScores });
         scoring.setDoneComments({ ...seedComments });
@@ -190,18 +237,33 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
 
   // ── Period selection ──────────────────────────────────────
   const handlePeriodSelect = useCallback(
-    async (period) => {
+    async (period, identityOverride = null) => {
+      const selectedPeriod =
+        typeof period === "string"
+          ? (loading.periods || []).find((p) => p.id === period) || null
+          : period;
+
       // periodSelectLockRef: intentionally NOT reset on success — once the juror
       // advances past period selection they cannot navigate back, so the lock is
       // permanent for the session. Reset only on error (to allow retry) or resetAll.
       if (loading.periodSelectLockRef.current) return;
-      if (!period?.is_current) {
+      if (!selectedPeriod) {
+        identity.setAuthError("Selected period could not be found. Please try again.");
+        workflow.setStep("period");
+        return;
+      }
+      if (selectedPeriod?.is_locked) {
+        identity.setAuthError("This evaluation period is locked. Please contact the coordinators.");
+        workflow.setStep(loading.periods.length > 1 ? "period" : "identity");
+        return;
+      }
+      if (!selectedPeriod?.is_current && !DEMO_MODE) {
         identity.setAuthError("Only the current period can be evaluated.");
         workflow.setStep("identity");
         return;
       }
-      const name = identity.juryName.trim();
-      const affiliation = identity.affiliation.trim();
+      const name = String(identityOverride?.name ?? identity.juryName).trim();
+      const affiliation = String(identityOverride?.affiliation ?? identity.affiliation).trim();
       if (!name || !affiliation) {
         identity.setAuthError("Please enter your full name and affiliation.");
         workflow.setStep("identity");
@@ -209,11 +271,11 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       }
       loading.periodSelectLockRef.current = true;
       identity.setAuthError("");
-      loading.setPeriodId(period.id);
-      loading.setPeriodName(period.name);
+      loading.setPeriodId(selectedPeriod.id);
+      loading.setPeriodName(selectedPeriod.name);
       loading.setLoadingState({ stage: "loading", message: "Preparing access…" });
       try {
-        const res = await authenticateJuror(period.id, name, affiliation, DEMO_MODE);
+        const res = await authenticateJuror(selectedPeriod.id, name, affiliation, DEMO_MODE);
         if (res?.juror_name) identity.setJuryName(res.juror_name);
         if (res?.affiliation) identity.setAffiliation(res.affiliation);
 
@@ -268,48 +330,75 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
         workflow.setStep("identity");
       }
     },
-    [identity.juryName, identity.affiliation]
+    [identity.juryName, identity.affiliation, loading.periods]
   );
 
   // ── Identity submit ────────────────────────────────────────
-  const handleIdentitySubmit = useCallback(async () => {
-    const name = identity.juryName.trim();
-    const affiliation = identity.affiliation.trim();
+  const handleIdentitySubmit = useCallback(async (nameParam, affiliationParam) => {
+    // Accept params directly from IdentityStep to avoid stale React state:
+    // setJuryName/setAffiliation are async and wouldn't be flushed before this runs.
+    const name = (nameParam != null ? nameParam : identity.juryName).trim();
+    const affiliation = (affiliationParam != null ? affiliationParam : identity.affiliation).trim();
     if (!name || !affiliation) {
       identity.setAuthError("Please enter your full name and affiliation.");
       return;
     }
+    if (nameParam != null) identity.setJuryName(name);
+    if (affiliationParam != null) identity.setAffiliation(affiliation);
     identity.setAuthError("");
     loading.loadAbortRef.current?.abort();
     const ctrl = new AbortController();
     loading.loadAbortRef.current = ctrl;
     loading.setLoadingState({ stage: "loading", message: "Loading periods…" });
     try {
-      // Demo mode: resolve period via entry token first, bypassing listPeriods entirely.
-      // listPeriods is a PostgREST table query that 401s when a stale admin session
-      // (from ?explore) is present. verifyEntryToken is a SECURITY DEFINER RPC that
-      // returns enough period data to proceed without a separate table query.
-      const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN || "";
-      if (DEMO_MODE && DEMO_ENTRY_TOKEN) {
-        const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
+      if (DEMO_MODE) {
+        await ensureDemoAnonSession();
         if (ctrl.signal.aborted) return;
-        if (tokenRes?.ok && tokenRes?.period_id) {
-          const period = {
-            id:         tokenRes.period_id,
-            name:       tokenRes.period_name || "",
-            is_current: tokenRes.is_current ?? true,
-            is_locked:  tokenRes.is_locked  ?? false,
-          };
-          loading.setPeriods([period]);
-          await handlePeriodSelect(period);
+
+        const demoPeriod = await resolveDemoPeriod(ctrl.signal);
+        if (ctrl.signal.aborted) return;
+
+        if (!demoPeriod) {
+          loading.setPeriods([]);
+          loading.setLoadingState(null);
+          identity.setAuthError("Demo period is temporarily unavailable. Please refresh and try again.");
+          workflow.setStep("identity");
           return;
         }
+        if (!isEvaluablePeriod(demoPeriod)) {
+          loading.setPeriods([]);
+          loading.setLoadingState(null);
+          identity.setAuthError(
+            demoPeriod?.is_locked
+              ? "Demo period is currently locked. Please contact the coordinators."
+              : "Demo period is not active right now. Please refresh and try again."
+          );
+          workflow.setStep("identity");
+          return;
+        }
+
+        loading.setPeriods([demoPeriod]);
+        await handlePeriodSelect(demoPeriod, { name, affiliation });
+        return;
       }
+
       const periodList = await listPeriods(ctrl.signal);
-      const active = (periodList || []).filter((p) => p.is_current);
+      const active = listEvaluablePeriods(periodList || []);
+      if (active.length === 0) {
+        loading.setPeriods([]);
+        loading.setLoadingState(null);
+        const hasLockedCurrent = (periodList || []).some((p) => p?.is_current && p?.is_locked);
+        identity.setAuthError(
+          hasLockedCurrent
+            ? "Current evaluation periods are locked right now. Please contact the coordinators."
+            : "No active evaluation period is available right now."
+        );
+        workflow.setStep("identity");
+        return;
+      }
       loading.setPeriods(active);
       if (active.length === 1) {
-        await handlePeriodSelect(active[0]);
+        await handlePeriodSelect(active[0], { name, affiliation });
         return;
       }
       loading.setLoadingState(null);
@@ -378,8 +467,6 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
         session.setPinError("Session could not be established. Please try again.");
         return;
       }
-      const nextName = res.juror_name || identity.juryName;
-      const nextAffiliation = res.affiliation || identity.affiliation;
       if (res.juror_name) identity.setJuryName(res.juror_name);
       if (res.affiliation) identity.setAffiliation(res.affiliation);
       session.setJurorId(jid);
@@ -407,7 +494,6 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       await _loadPeriod(
         fullPeriod,
         jid,
-        { name: nextName, affiliation: nextAffiliation },
         { showProgressCheck: true, showEmptyProgress: false }
       );
     } catch (_) {

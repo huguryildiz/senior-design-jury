@@ -126,7 +126,6 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
       const ok = await finalizeJurorSubmission(sid, jid, sessionToken);
       if (!ok) throw new Error("finalize_failed");
 
-      workflow.doneFiredRef.current = true;
       scoring.setDoneScores({ ...s });
       scoring.setDoneComments({ ...c });
       editState.setEditMode(false);
@@ -189,7 +188,6 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
     scoring.setScores(s);
     scoring.setComments(c);
     editState.setEditMode(true);
-    workflow.doneFiredRef.current = false;
     scoring.setGroupSynced(
       Object.fromEntries(loading.projects.map((p) => [p.project_id, true]))
     );
@@ -208,7 +206,7 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
     session.setJurorId("");
     session.setJurorSessionToken("");
     identity.setJuryName("");
-    identity.setJuryDept("");
+    identity.setAffiliation("");
     loading.setPeriods([]);
     loading.setPeriodId("");
     loading.setPeriodName("");
@@ -241,9 +239,7 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
     scoring.pendingCommentsRef.current    = {};
     autosave.lastWrittenRef.current       = {};
     loading.periodSelectLockRef.current   = false;
-    workflow.doneFiredRef.current         = false;
     workflow.submitPendingRef.current     = false;
-    workflow.justLoadedRef.current        = false;
   }, []);
 
   // ── Clear localStorage ─────────────────────────────────────

@@ -36,6 +36,7 @@ import { getCurrentPeriod, listProjects, listPeriodsPublic as listPeriods, verif
 import { getJuryAccess } from "../../shared/storage";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 import { supabase, clearPersistedSession } from "@/shared/lib/supabaseClient";
+import { buildTokenPeriod, pickDemoPeriod } from "../utils/periodSelection";
 
 const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN || "";
 
@@ -76,18 +77,13 @@ export function useJuryLoading() {
           if (!alive) return;
           if (tokenRes?.ok && tokenRes?.period_id) {
             // Build base period from token, then try to enrich with full data.
-            let res = {
-              id:         tokenRes.period_id,
-              name:       tokenRes.period_name || "",
-              is_current: tokenRes.is_current ?? true,
-              is_locked:  tokenRes.is_locked  ?? false,
-            };
+            let res = buildTokenPeriod(tokenRes);
             // Enrich with organization info and poster_date from periods table.
             try {
               const allPeriods = await listPeriods(ctrl.signal);
               if (!alive) return;
-              const full = (allPeriods || []).find((p) => p.id === tokenRes.period_id);
-              if (full) res = { ...res, ...full };
+              const selected = pickDemoPeriod(allPeriods, res);
+              if (selected) res = { ...res, ...selected };
             } catch (_) { /* non-fatal: token data is sufficient */ }
             setCurrentPeriodInfo(res);
             if (res?.id) {
@@ -106,10 +102,15 @@ export function useJuryLoading() {
         }
 
         const grantedPeriodId = getJuryAccess();
-        let res = await getCurrentPeriod(ctrl.signal, grantedPeriodId);
-        if (!res && grantedPeriodId) {
-          const periods = await listPeriods(ctrl.signal);
-          res = (periods || []).find((p) => p.id === grantedPeriodId) || null;
+        let res = null;
+        if (grantedPeriodId) {
+          // Entry token grants access to a specific period — fetch with organizations join.
+          const allPeriods = await listPeriods(ctrl.signal);
+          res = (allPeriods || []).find((p) => p.id === grantedPeriodId) || null;
+        }
+        if (!res) {
+          // No entry token (or period not in list) — fall back to is_current period.
+          res = await getCurrentPeriod(ctrl.signal);
         }
         if (!alive) return;
         setCurrentPeriodInfo(res || null);

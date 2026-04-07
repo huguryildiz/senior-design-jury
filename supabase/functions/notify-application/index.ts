@@ -1,23 +1,27 @@
 // supabase/functions/notify-application/index.ts
 // ============================================================
-// Phase C: Email notification Edge Function for admin
-// application workflow events.
+// Email notification Edge Function for admin application events.
 //
-// Called by pg_net from approval/rejection/submission RPCs.
+// Events:
+//   application_submitted  → tenant admins (to) + super admins (cc)
+//   application_approved   → applicant (to)
+//   application_rejected   → applicant (to)
 //
 // Email provider: Resend (via RESEND_API_KEY env var).
 // Falls back to logging-only if RESEND_API_KEY is not set.
 //
 // Failure handling:
-// - Application state is already committed before this is called
-// - Failures are logged but never affect the workflow
+// - Application state is already committed before this is called.
+// - Failures are logged but never affect the workflow.
 // ============================================================
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 interface NotificationPayload {
   type: "application_submitted" | "application_approved" | "application_rejected";
   application_id: string;
-  recipient_email: string;
-  tenant_id: string;
+  recipient_email?: string;   // for approved/rejected: the applicant's email
+  tenant_id?: string;         // for submitted: look up admins for this org
   applicant_name?: string;
   applicant_email?: string;
   tenant_name?: string;
@@ -31,26 +35,34 @@ const corsHeaders = {
 
 async function sendViaResend(
   apiKey: string,
-  to: string,
+  to: string | string[],
   subject: string,
   body: string,
   html: string,
   from: string,
+  cc?: string[],
 ): Promise<{ ok: boolean; error?: string }> {
+  const toArr = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
+  const ccArr = (cc || []).filter(Boolean);
+  if (toArr.length === 0) return { ok: false, error: "No recipients" };
+
   try {
+    const payload: Record<string, unknown> = {
+      from,
+      to: toArr,
+      subject,
+      text: body,
+      html,
+    };
+    if (ccArr.length > 0) payload.cc = ccArr;
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        subject,
-        text: body,
-        html,
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const err = await res.text();
@@ -184,6 +196,71 @@ function buildHtmlTemplate(params: {
 </html>`;
 }
 
+// ── DB helpers (service role) ─────────────────────────────────────────────────
+
+async function resolveAdminEmails(
+  organizationId: string,
+): Promise<{ toEmails: string[]; ccEmails: string[] }> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!supabaseUrl || !serviceKey) return { toEmails: [], ccEmails: [] };
+
+  const service = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+
+  // Tenant admins for this org
+  const { data: orgMembers } = await service
+    .from("memberships")
+    .select("user_id")
+    .eq("organization_id", organizationId)
+    .eq("role", "org_admin");
+
+  // Super admins (organization_id IS NULL)
+  const { data: superMembers } = await service
+    .from("memberships")
+    .select("user_id")
+    .is("organization_id", null)
+    .eq("role", "super_admin");
+
+  async function getEmail(userId: string): Promise<string> {
+    try {
+      const { data } = await service.auth.admin.getUserById(userId);
+      return data?.user?.email || "";
+    } catch {
+      return "";
+    }
+  }
+
+  const [toEmails, ccEmails] = await Promise.all([
+    Promise.all((orgMembers || []).map((m) => getEmail(m.user_id))),
+    Promise.all((superMembers || []).map((m) => getEmail(m.user_id))),
+  ]);
+
+  return {
+    toEmails: toEmails.filter(Boolean),
+    ccEmails: ccEmails.filter(Boolean),
+  };
+}
+
+async function resolveOrgName(organizationId: string, fallback: string): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!supabaseUrl || !serviceKey || !organizationId) return fallback;
+
+  const service = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+  const { data } = await service
+    .from("organizations")
+    .select("name")
+    .eq("id", organizationId)
+    .single();
+  return data?.name || fallback;
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -199,11 +276,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Build email content
     let subject = "";
     let body = "";
-    let to = payload.recipient_email || "";
     let html = "";
+    let to: string | string[] = payload.recipient_email || "";
+    let cc: string[] = [];
+
     const tenantLabel = payload.tenant_name || "the requested department";
     const portalUrl = resolvePortalUrl(req);
     const reviewUrl = resolveReviewUrl(req, portalUrl);
@@ -211,28 +289,33 @@ Deno.serve(async (req: Request) => {
     const logoUrl = Deno.env.get("NOTIFICATION_LOGO_URL") || "";
 
     switch (payload.type) {
-      case "application_submitted":
-        subject = `New admin application: ${payload.applicant_name || "Unknown"} → ${tenantLabel}`;
-        body = [
-          `${payload.applicant_name || "A user"}${payload.applicant_email ? ` (${payload.applicant_email})` : ""} has applied for admin access to ${tenantLabel}.`,
-        ].join("\n");
+      case "application_submitted": {
+        // Look up org name and admin recipients from DB
+        const orgId = payload.tenant_id || "";
+        const orgName = await resolveOrgName(orgId, tenantLabel);
+        const { toEmails, ccEmails } = await resolveAdminEmails(orgId);
+
+        to = toEmails;
+        cc = ccEmails;
+
+        subject = `New admin application: ${payload.applicant_name || "Unknown"} → ${orgName}`;
+        body = `${payload.applicant_name || "A user"}${payload.applicant_email ? ` (${payload.applicant_email})` : ""} has applied for admin access to ${orgName}.`;
         html = buildHtmlTemplate({
           title: "New Admin Application",
           intro: "A new admin application was submitted.",
-          lines: [
-            `${payload.applicant_name || "A user"}${payload.applicant_email ? ` (${payload.applicant_email})` : ""} requested admin access to ${tenantLabel}.`,
+          rawHtmlLines: [
+            `<p style="margin:0 0 8px; font-size:14px; line-height:1.7; color:#a0aec0;">${escapeHtml(payload.applicant_name || "A user")}${payload.applicant_email ? ` <span style="color:#6c47ff;">(${escapeHtml(payload.applicant_email)})</span>` : ""} requested admin access to <strong style="color:#f1f5f9;">${escapeHtml(orgName)}</strong>.</p>`,
           ],
           ctaLabel: reviewUrl ? "Review Application" : undefined,
           ctaUrl: reviewUrl || undefined,
           logoUrl: logoUrl || undefined,
         });
         break;
+      }
 
       case "application_approved":
         subject = "Your VERA admin application has been approved";
-        body = [
-          `Your application for admin access to ${tenantLabel} has been approved. You can now sign in with your registered email and password.`,
-        ].join("\n");
+        body = `Your application for admin access to ${tenantLabel} has been approved. You can now sign in with your registered email and password.`;
         html = buildHtmlTemplate({
           title: "Application Approved",
           intro: "Your VERA admin application has been approved.",
@@ -247,9 +330,7 @@ Deno.serve(async (req: Request) => {
 
       case "application_rejected":
         subject = "Your VERA admin application has been rejected";
-        body = [
-          `Your application for admin access to ${tenantLabel} was not approved at this time. Please contact the department administrator for details.`,
-        ].join("\n");
+        body = `Your application for admin access to ${tenantLabel} was not approved at this time. Please contact the department administrator for details.`;
         html = buildHtmlTemplate({
           title: "Application Rejected",
           intro: "Your VERA admin application has been rejected.",
@@ -261,32 +342,32 @@ Deno.serve(async (req: Request) => {
         break;
     }
 
-    // Try to send via Resend
+    // Send via Resend
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const fromAddr = Deno.env.get("NOTIFICATION_FROM") || "VERA <noreply@vera-eval.app>";
     let sent = false;
     let sendError = "";
 
-    if (resendKey && to) {
-      const result = await sendViaResend(resendKey, to, subject, body, html || body, fromAddr);
+    const toArr = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
+    if (resendKey && toArr.length > 0) {
+      const result = await sendViaResend(resendKey, toArr, subject, body, html || body, fromAddr, cc);
       sent = result.ok;
       sendError = result.error || "";
     } else {
       sendError = !resendKey
         ? "RESEND_API_KEY not configured"
-        : "No recipient email";
+        : "No recipient email resolved";
     }
 
-    // Log result
     const logEntry = {
       type: payload.type,
       application_id: payload.application_id,
-      to,
+      to: toArr,
+      cc: cc.length ? cc : undefined,
       subject,
       sent,
       error: sendError || undefined,
     };
-
     console.log("Notification result:", JSON.stringify(logEntry));
 
     return new Response(

@@ -7,10 +7,8 @@ import {
   Home,
   Info,
   ListChecks,
-  Moon,
   Pencil,
   Send,
-  Sun,
   TriangleAlert,
   UserRound,
 } from "lucide-react";
@@ -19,7 +17,6 @@ import RubricSheet from "../components/RubricSheet";
 import SpotlightTour from "../components/SpotlightTour";
 import SegmentedBar from "../components/SegmentedBar";
 import ProjectDrawer from "../components/ProjectDrawer";
-import { useTheme } from "../../shared/theme/ThemeProvider";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 
 // Per-criterion color scheme (matches prototype djCriteria color map)
@@ -39,8 +36,6 @@ function getCritPalette(index) {
 export default function EvalStep({ state, onBack }) {
   const [rubricCritIndex, setRubricCritIndex] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
 
   if (!state.project) {
     return (
@@ -55,6 +50,7 @@ export default function EvalStep({ state, onBack }) {
   const projId = state.project.project_id;
   const projIdx = state.current;
   const total = state.projects.length;
+  const inputsLocked = !!state.editLockActive;
 
   // Total score computation
   const totalMax = state.effectiveCriteria.reduce((s, c) => s + (c.max || 0), 0);
@@ -96,17 +92,6 @@ export default function EvalStep({ state, onBack }) {
             <button className="dj-home-btn" onClick={onBack} title="Return Home">
               <Home size={15} strokeWidth={2} />
             </button>
-            <button
-              className="dj-home-btn"
-              onClick={() => setTheme(isDark ? "light" : "dark")}
-              title={isDark ? "Light Mode" : "Dark Mode"}
-            >
-              {isDark ? (
-                <Sun size={15} strokeWidth={2} />
-              ) : (
-                <Moon size={15} strokeWidth={2} />
-              )}
-            </button>
           </div>
         </div>
 
@@ -139,6 +124,12 @@ export default function EvalStep({ state, onBack }) {
           <Info size={12} strokeWidth={2} />
           <span>Scores are saved automatically and reflected instantly in the admin panel.</span>
         </div>
+        {inputsLocked && (
+          <div className="dj-info red" style={{ marginBottom: 10, fontSize: "10.5px", padding: "8px 12px" }}>
+            <TriangleAlert size={12} strokeWidth={2} />
+            <span>This evaluation period is locked. Score inputs are disabled.</span>
+          </div>
+        )}
 
         {/* ── Criteria Cards ── */}
         {state.effectiveCriteria.map((crit, ci) => {
@@ -170,13 +161,13 @@ export default function EvalStep({ state, onBack }) {
               </div>
               <div className="dj-score-row">
                 <input
-                  type="number"
+                  type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
                   className="dj-score-input"
-                  min="0"
-                  max={crit.max}
                   placeholder="—"
                   value={score}
+                  disabled={inputsLocked}
                   onChange={(e) => state.handleScore(projId, crit.id, e.target.value)}
                   onBlur={() => state.handleScoreBlur(projId, crit.id)}
                 />
@@ -198,6 +189,7 @@ export default function EvalStep({ state, onBack }) {
             className="dj-textarea"
             placeholder="Optional feedback on the project, presentation, or teamwork."
             value={state.comments[projId] || ""}
+            disabled={inputsLocked}
             onChange={(e) => state.handleCommentChange(projId, e.target.value)}
             onBlur={() => state.handleCommentBlur(projId)}
           />
@@ -216,9 +208,9 @@ export default function EvalStep({ state, onBack }) {
           </span>
         </div>
         <button
-          className={`dj-bottom-submit ${state.allComplete ? "active" : "disabled"}`}
-          onClick={() => state.allComplete && state.handleRequestSubmit()}
-          disabled={!state.allComplete}
+          className={`dj-bottom-submit ${state.allComplete && !inputsLocked ? "active" : "disabled"}`}
+          onClick={() => state.allComplete && !inputsLocked && state.handleRequestSubmit()}
+          disabled={!state.allComplete || inputsLocked}
         >
           Submit ▶
         </button>
