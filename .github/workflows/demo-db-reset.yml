@@ -22,10 +22,32 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install psql
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Drop all objects (teardown)
+        env:
+          DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+        run: psql "$DEMO_DATABASE_URL" --no-psqlrc -v ON_ERROR_STOP=1 < sql/migrations/000_drop_all.sql
+
+      - name: Apply migrations (001–006)
+        env:
+          DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+        run: |
+          for f in sql/migrations/001_extensions.sql \
+                   sql/migrations/002_tables.sql \
+                   sql/migrations/003_helpers_and_triggers.sql \
+                   sql/migrations/004_rls.sql \
+                   sql/migrations/005_rpcs.sql \
+                   sql/migrations/006_realtime.sql; do
+            echo "Applying $f..."
+            psql "$DEMO_DATABASE_URL" --no-psqlrc -v ON_ERROR_STOP=1 < "$f"
+          done
+
       - name: Generate demo seed
         run: node scripts/generate_demo_seed.js
 
-      - name: Run seed SQL against demo database
+      - name: Apply demo seed
         env:
           DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
         run: psql "$DEMO_DATABASE_URL" --no-psqlrc -v ON_ERROR_STOP=1 < sql/seeds/demo_seed.sql
