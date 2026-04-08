@@ -1,14 +1,13 @@
 // src/shared/ui/InlineError.jsx
-// Mini-alert style inline field error with icon + left border accent.
+// Mini-alert style inline field error with icon.
+
+import { AlertCircle } from "lucide-react";
 
 export default function InlineError({ children, className = "" }) {
   if (!children) return null;
   return (
     <div className={`vera-inline-error ${className}`.trim()} role="alert">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-        <circle cx="8" cy="8" r="7" />
-        <path d="M8 5v4M8 11.5v.5" />
-      </svg>
+      <AlertCircle size={12} strokeWidth={2} aria-hidden="true" />
       <span>{children}</span>
     </div>
   );

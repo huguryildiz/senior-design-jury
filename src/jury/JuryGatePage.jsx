@@ -5,20 +5,71 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, KeyRound, Loader2 } from "lucide-react";
-import { verifyEntryToken } from "../shared/api";
+import { listPeriodsPublic, verifyEntryReference, verifyEntryToken } from "../shared/api";
 import { setJuryAccess } from "../shared/storage";
-import { setEnvironment } from "../shared/lib/environment";
+import { resolveEnvironment, setEnvironment } from "../shared/lib/environment";
 import FbAlert from "../shared/ui/FbAlert";
 import "../styles/jury.css";
 
-function extractToken(input) {
-  const s = input.trim();
+function extractTokenAndEnv(input) {
+  const s = String(input || "").trim();
   try {
-    const url = new URL(s);
-    const t = url.searchParams.get("eval");
-    if (t) return t;
-  } catch {}
-  return s;
+    const url = new URL(s, window.location.origin);
+    const t = url.searchParams.get("t") || url.searchParams.get("eval");
+    const env = url.searchParams.get("env") === "demo" ? "demo" : null;
+    return {
+      token: t || s,
+      env,
+    };
+  } catch {
+    return { token: s, env: null };
+  }
+}
+
+function readDemoAlias(token) {
+  const s = String(token || "").trim().toLowerCase();
+  if (!s.startsWith("demo-")) return null;
+  const orgCode = s.slice("demo-".length).trim();
+  if (!orgCode) return null;
+  return orgCode.toUpperCase();
+}
+
+async function resolveDemoAliasGrant(token) {
+  const orgCode = readDemoAlias(token);
+  if (!orgCode) return null;
+  const periods = await listPeriodsPublic();
+  const all = periods || [];
+  const byCode = all.filter(
+    (p) => String(p?.organizations?.code || "").trim().toUpperCase() === orgCode
+  );
+  if (!byCode.length) return null;
+
+  const preferred =
+    byCode.find((p) => p?.is_current && !p?.is_locked)
+    || byCode.find((p) => p?.is_current)
+    || byCode[0];
+  if (!preferred?.id) return null;
+
+  return {
+    ok: true,
+    period_id: preferred.id,
+    period_name: preferred.name || "",
+    is_current: preferred.is_current ?? true,
+    is_locked: preferred.is_locked ?? false,
+  };
+}
+
+function isReferenceId(value) {
+  return /^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/.test(String(value || "").trim());
+}
+
+function mapDenyMessage(result) {
+  const code = String(result?.error_code || "");
+  if (code === "token_expired") return "This access code has expired.";
+  if (code === "token_revoked") return "This access code has been revoked.";
+  if (code === "ambiguous_reference") return "This reference ID matches multiple tokens. Please use the full access link.";
+  if (code === "reference_not_found" || code === "invalid_reference") return "Reference ID not found. Please use the full access link or QR token.";
+  return "The link is invalid, expired, or has been revoked.";
 }
 
 export default function JuryGatePage() {
@@ -27,45 +78,112 @@ export default function JuryGatePage() {
   const token = searchParams.get("t");
   const envParam = searchParams.get("env");
   const [status, setStatus]       = useState(token ? "loading" : "missing");
+  const [denyMessage, setDenyMessage] = useState("");
   const [manualToken, setManual]  = useState("");
   const [verifying, setVerifying] = useState(false);
   const inputRef = useRef(null);
 
+  function markDenied(message) {
+    setDenyMessage(message || "The link is invalid, expired, or has been revoked.");
+    setStatus("denied");
+  }
+
+async function resolveAccessGrant(code, effectiveEnv) {
+  const aliasGrant = effectiveEnv === "demo"
+    ? await resolveDemoAliasGrant(code)
+    : null;
+  if (aliasGrant) return aliasGrant;
+
+    if (isReferenceId(code)) {
+      try {
+        return await verifyEntryReference(code);
+      } catch {
+        // Backward compatibility for DBs where reference RPC is not deployed yet.
+      }
+    }
+
+  return await verifyEntryToken(code);
+}
+
+function shouldTryOtherEnv(result) {
+  const code = String(result?.error_code || "");
+  return (
+    code === "token_not_found" ||
+    code === "reference_not_found" ||
+    code === "invalid_reference"
+  );
+}
+
+async function resolveAccessGrantWithEnvFallback(code, explicitEnv = null) {
+  const normalizedExplicit = explicitEnv === "demo" ? "demo" : null;
+  if (normalizedExplicit) {
+    setEnvironment("demo");
+    return { grant: await resolveAccessGrant(code, "demo"), env: "demo" };
+  }
+
+  const initialEnv = resolveEnvironment() === "demo" ? "demo" : "prod";
+  const fallbackEnv = initialEnv === "demo" ? "prod" : "demo";
+
+  setEnvironment(initialEnv);
+  const first = await resolveAccessGrant(code, initialEnv === "demo" ? "demo" : null);
+  if (first?.ok) return { grant: first, env: initialEnv };
+  if (!shouldTryOtherEnv(first)) return { grant: first, env: initialEnv };
+
+  setEnvironment(fallbackEnv);
+  const second = await resolveAccessGrant(code, fallbackEnv === "demo" ? "demo" : null);
+  if (second?.ok) return { grant: second, env: fallbackEnv };
+
+  setEnvironment(initialEnv);
+  return { grant: first, env: initialEnv };
+}
+
   useEffect(() => {
     if (!token) return;
     let active = true;
-    verifyEntryToken(token)
-      .then((res) => {
+    if (envParam === "demo") setEnvironment("demo");
+
+    const run = async () => {
+      try {
+        const explicitEnv = envParam === "demo" ? "demo" : null;
+        if (!active) return;
+        const { grant: res, env: resolvedEnv } = await resolveAccessGrantWithEnvFallback(token, explicitEnv);
         if (!active) return;
         if (res?.ok) {
-          if (envParam === "demo") setEnvironment("demo");
-          setJuryAccess(res.period_id);
+          setEnvironment(resolvedEnv === "demo" ? "demo" : "prod");
+          setJuryAccess(res.period_id, res);
           navigate("/jury/identity", { replace: true });
         } else {
-          setStatus("denied");
+          markDenied(mapDenyMessage(res));
         }
-      })
-      .catch(() => { if (active) setStatus("denied"); });
+      } catch {
+        if (active) markDenied();
+      }
+    };
+
+    run();
     return () => { active = false; };
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleVerify(e) {
     e.preventDefault();
-    const t = extractToken(manualToken);
+    const parsed = extractTokenAndEnv(manualToken);
+    const t = parsed.token;
     if (!t) return;
     setVerifying(true);
     setStatus("missing");
+    setDenyMessage("");
     try {
-      const res = await verifyEntryToken(t);
+      const explicitEnv = parsed.env === "demo" || envParam === "demo" ? "demo" : null;
+      const { grant: res, env: resolvedEnv } = await resolveAccessGrantWithEnvFallback(t, explicitEnv);
       if (res?.ok) {
-        if (envParam === "demo") setEnvironment("demo");
-        setJuryAccess(res.period_id);
+        setEnvironment(resolvedEnv === "demo" ? "demo" : "prod");
+        setJuryAccess(res.period_id, res);
         navigate("/jury/identity", { replace: true });
       } else {
-        setStatus("denied");
+        markDenied(mapDenyMessage(res));
       }
     } catch {
-      setStatus("denied");
+      markDenied();
     } finally {
       setVerifying(false);
     }
@@ -104,7 +222,7 @@ export default function JuryGatePage() {
           {/* Denied banner */}
           {status === "denied" && (
             <FbAlert variant="danger" title="Access denied" style={{ marginBottom: 16, textAlign: "left" }}>
-              The link is invalid, expired, or has been revoked.
+              {denyMessage || "The link is invalid, expired, or has been revoked."}
             </FbAlert>
           )}
 
@@ -153,4 +271,3 @@ export default function JuryGatePage() {
     </div>
   );
 }
-

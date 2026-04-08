@@ -7,13 +7,13 @@
 //   policy  — {
 //     googleOAuth, emailPassword, rememberMe,
 //     minPasswordLength, maxLoginAttempts, requireSpecialChars,
-//     tokenTtl, ccOnPinReset, ccOnScoreEdit
+//     tokenTtl, pinLockCooldown, ccOnPinReset, ccOnScoreEdit
 //   }
 //   onSave  — (policy) => Promise<void>
 //   error   — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ShieldAlert } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
@@ -27,9 +27,18 @@ const DEFAULT_POLICY = {
   maxLoginAttempts: 5,
   requireSpecialChars: true,
   tokenTtl: "24h",
+  pinLockCooldown: "30m",
   ccOnPinReset: true,
   ccOnScoreEdit: false,
 };
+
+const PIN_LOCK_COOLDOWN_OPTIONS = [
+  { value: "5m", label: "5 minutes" },
+  { value: "10m", label: "10 minutes" },
+  { value: "15m", label: "15 minutes" },
+  { value: "30m", label: "30 minutes" },
+  { value: "60m", label: "60 minutes" },
+];
 
 function Toggle({ checked, onChange, disabled }) {
   return (
@@ -90,6 +99,9 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
   const [form, setForm] = useState(DEFAULT_POLICY);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const selectedPinLockCooldown =
+    PIN_LOCK_COOLDOWN_OPTIONS.find((opt) => opt.value === form.pinLockCooldown)?.label ||
+    "30 minutes";
 
   useEffect(() => {
     if (open) {
@@ -229,6 +241,67 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
           />
           <div className="fs-field-helper hint">
             How long jury entry tokens remain valid after generation.
+          </div>
+        </div>
+        <div
+          style={{
+            border: "1px solid rgba(96,165,250,0.2)",
+            background: "linear-gradient(180deg, rgba(59,130,246,0.08) 0%, rgba(15,23,42,0.02) 100%)",
+            borderRadius: "var(--radius-sm)",
+            padding: "12px 12px 10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  display: "grid",
+                  placeItems: "center",
+                  background: "rgba(59,130,246,0.12)",
+                  border: "1px solid rgba(96,165,250,0.24)",
+                  color: "var(--accent)",
+                }}
+              >
+                <ShieldAlert size={13} />
+              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 650, color: "var(--text-primary)" }}>
+                PIN Lockout Cooldown
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: 10.5,
+                fontWeight: 650,
+                letterSpacing: "0.3px",
+                textTransform: "uppercase",
+                color: "var(--accent)",
+                background: "rgba(59,130,246,0.12)",
+                border: "1px solid rgba(96,165,250,0.24)",
+                borderRadius: 999,
+                padding: "2px 7px",
+              }}
+            >
+              Risk Control
+            </span>
+          </div>
+          <div className="fs-field-row">
+            <label className="fs-label">Cooldown Duration</label>
+            <CustomSelect
+              value={form.pinLockCooldown}
+              onChange={(v) => set("pinLockCooldown", v)}
+              disabled={saving}
+              options={PIN_LOCK_COOLDOWN_OPTIONS}
+              ariaLabel="PIN lock cooldown duration"
+            />
+          </div>
+          <div className="fs-field-helper hint">
+            After max failed PIN attempts, juror access is locked for {selectedPinLockCooldown.toLowerCase()}.
           </div>
         </div>
 

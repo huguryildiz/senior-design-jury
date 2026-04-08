@@ -1,27 +1,39 @@
 // src/admin/hooks/usePinBlocking.js
 // ============================================================
 // Manages PIN lockout state: load locked jurors, unlock handler.
-// Threshold: 3 failed attempts → 15m auto-lock (DB value).
+// Threshold and lock duration are policy-driven.
 // ============================================================
 
 import { useCallback, useState } from "react";
-import { listLockedJurors, unlockJurorPin } from "../../shared/api";
+import { listLockedJurors, countTodayLockEvents, unlockJurorPin } from "../../shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 
 export function usePinBlocking({ periodId }) {
   const _toast = useToast();
   const [lockedJurors, setLockedJurors] = useState([]);
+  const [todayLockEvents, setTodayLockEvents] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const loadLockedJurors = useCallback(async () => {
-    if (!periodId) return;
+    if (!periodId) {
+      setLockedJurors([]);
+      setTodayLockEvents(0);
+      setError("");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const rows = await listLockedJurors({ periodId });
+      const [rows, todayCount] = await Promise.all([
+        listLockedJurors({ periodId }),
+        countTodayLockEvents({ periodId }),
+      ]);
       setLockedJurors(rows || []);
+      setTodayLockEvents(todayCount || 0);
     } catch (e) {
+      setLockedJurors([]);
+      setTodayLockEvents(0);
       setError(e?.message || "Could not load locked jurors.");
     } finally {
       setLoading(false);
@@ -60,6 +72,7 @@ export function usePinBlocking({ periodId }) {
 
   return {
     lockedJurors,
+    todayLockEvents,
     loading,
     error,
     loadLockedJurors,

@@ -118,7 +118,7 @@ export default function JuryEntryControlPanel({
     if (!periodId) return;
     setError("");
     try {
-      const s = await adminGetEntryTokenStatus(periodId);
+      const s = await getEntryTokenStatus(periodId);
       setStatus(s);
     } catch (e) {
       if (e?.unauthorized) {

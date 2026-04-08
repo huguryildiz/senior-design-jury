@@ -12,11 +12,38 @@ export function getJuryAccess() {
   } catch { return null; }
 }
 
+/** Read full jury access grant payload (period_id, period_name, ...). */
+export function getJuryAccessGrant() {
+  try {
+    const raw = sessionStorage.getItem(KEYS.JURY_ACCESS_GRANT)
+      || localStorage.getItem(KEYS.JURY_ACCESS_GRANT)
+      || "";
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist full jury access grant payload to both storages. */
+export function setJuryAccessGrant(grant) {
+  try {
+    if (!grant || typeof grant !== "object" || !grant.period_id) return;
+    const raw = JSON.stringify(grant);
+    sessionStorage.setItem(KEYS.JURY_ACCESS_GRANT, raw);
+    localStorage.setItem(KEYS.JURY_ACCESS_GRANT, raw);
+  } catch {}
+}
+
 /** Write jury access grant to both sessionStorage and localStorage. */
-export function setJuryAccess(periodId) {
+export function setJuryAccess(periodId, grant = null) {
   try {
     sessionStorage.setItem(KEYS.JURY_ACCESS, periodId);
     localStorage.setItem(KEYS.JURY_ACCESS, periodId);
+    if (grant && typeof grant === "object") {
+      setJuryAccessGrant(grant);
+    }
   } catch {}
 }
 
@@ -25,6 +52,8 @@ export function clearJuryAccess() {
   try {
     sessionStorage.removeItem(KEYS.JURY_ACCESS);
     localStorage.removeItem(KEYS.JURY_ACCESS);
+    sessionStorage.removeItem(KEYS.JURY_ACCESS_GRANT);
+    localStorage.removeItem(KEYS.JURY_ACCESS_GRANT);
   } catch {}
 }
 

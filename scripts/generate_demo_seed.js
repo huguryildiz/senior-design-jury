@@ -41,24 +41,28 @@ function randSqlTs(dateStr, minH, maxH) {
 // ═══════════════════════════════════════════════════════════════
 
 const PROJECT_COUNTS = { current: 12, prev: 10, older: 8, oldest: 6 };
+// Per-org overrides: only specify keys that differ from defaults
+const PROJECT_COUNT_OVERRIDES = { 'TEDU-EE': { current: 5 } };
 const JUROR_ACTIVE   = { current: 10, prev: 8, older: 6, oldest: 5 };
 const TOKENS_PER_PERIOD = 3;
 const ARCH_DIST_12 = ['star','star','solid','solid','wellrounded','highvar','tech_strong_comm_weak','weak_tech_strong_team','strong_late','borderline','average','partial'];
 const ARCH_DIST_10 = ['star','solid','solid','wellrounded','highvar','tech_strong_comm_weak','borderline','average','strong_late','partial'];
 const ARCH_DIST_8  = ['star','solid','solid','highvar','borderline','average','wellrounded','partial'];
 const ARCH_DIST_6  = ['star','solid','highvar','borderline','average','partial'];
+const ARCH_DIST_5  = ['star','solid','wellrounded','borderline','partial'];
 
 function archForCount(count) {
   if (count >= 12) return ARCH_DIST_12;
   if (count >= 10) return ARCH_DIST_10;
   if (count >= 8)  return ARCH_DIST_8;
-  return ARCH_DIST_6;
+  if (count >= 6)  return ARCH_DIST_6;
+  return ARCH_DIST_5;
 }
-function projCountForIdx(idx) {
-  if (idx === 0) return PROJECT_COUNTS.current;
-  if (idx === 1) return PROJECT_COUNTS.prev;
-  if (idx === 2) return PROJECT_COUNTS.older;
-  return PROJECT_COUNTS.oldest;
+function projCountForOrgIdx(orgCode, idx) {
+  const ov = PROJECT_COUNT_OVERRIDES[orgCode] || {};
+  const key = idx === 0 ? 'current' : idx === 1 ? 'prev' : idx === 2 ? 'older' : 'oldest';
+  if (ov[key] !== undefined) return ov[key];
+  return PROJECT_COUNTS[key];
 }
 function activeJurorsForIdx(idx) {
   if (idx === 0) return JUROR_ACTIVE.current;
@@ -108,12 +112,12 @@ CASCADE;
 // ═══════════════════════════════════════════════════════════════
 
 const orgs = [
-  { p: 1, name: 'Electrical-Electronics Engineering', institution: 'TED University', code: 'TEDU-EE', type: 'academic', lang: 'tr' },
-  { p: 2, name: 'Computer Science', institution: 'Carnegie Mellon University', code: 'CMU-CS', type: 'academic', lang: 'en' },
-  { p: 3, name: 'TEKNOFEST', institution: 'Türkiye Technology Team Foundation', code: 'TEKNOFEST', type: 'competition', lang: 'tr' },
-  { p: 4, name: 'TÜBİTAK 2204-A', institution: 'Scientific and Technological Research Council of Türkiye', code: 'TUBITAK-2204A', type: 'competition', lang: 'tr' },
-  { p: 5, name: 'AP-S Student Design Contest', institution: 'IEEE Antennas and Propagation Society', code: 'IEEE-APSSDC', type: 'competition', lang: 'en' },
-  { p: 6, name: 'CanSat Competition', institution: 'American Astronautical Society', code: 'CANSAT-2025', type: 'competition', lang: 'en' }
+  { p: 1, name: 'Electrical-Electronics Engineering', institution: 'TED University', code: 'TEDU-EE', type: 'academic', lang: 'tr', descLang: 'en' },
+  { p: 2, name: 'Computer Science', institution: 'Carnegie Mellon University', code: 'CMU-CS', type: 'academic', lang: 'en', descLang: 'en' },
+  { p: 3, name: 'TEKNOFEST', institution: 'Türkiye Technology Team Foundation', code: 'TEKNOFEST', type: 'competition', lang: 'tr', descLang: 'tr' },
+  { p: 4, name: 'TÜBİTAK 2204-A', institution: 'Scientific and Technological Research Council of Türkiye', code: 'TUBITAK-2204A', type: 'competition', lang: 'tr', descLang: 'tr' },
+  { p: 5, name: 'AP-S Student Design Contest', institution: 'IEEE Antennas and Propagation Society', code: 'IEEE-APSSDC', type: 'competition', lang: 'en', descLang: 'en' },
+  { p: 6, name: 'CanSat Competition', institution: 'American Astronautical Society', code: 'CANSAT-2025', type: 'competition', lang: 'en', descLang: 'en' }
 ];
 
 const orgCreatedDates = {
@@ -225,7 +229,8 @@ function processOrgfw(orgCode, fwName, fwVersion, criteria, outcomes, mappings) 
     const cId = uuid(`fw-crit-${orgCode}-${c.key}`);
     const rubricJson = c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max);
     cMap[c.key] = cId; o.criteriaData.push({ id: cId, ...c, sortOrder: critOrder });
-    fwCriteria.push(`INSERT INTO framework_criteria (id, framework_id, key, label, short_label, max_score, weight, color, rubric_bands, sort_order) VALUES ('${cId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', '${escapeSql(c.short)}', ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${critOrder++}) ON CONFLICT DO NOTHING;`);
+    const cDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
+    fwCriteria.push(`INSERT INTO framework_criteria (id, framework_id, key, label, short_label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${cId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', '${escapeSql(c.short)}', ${cDescSql}, ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${critOrder++}) ON CONFLICT DO NOTHING;`);
   }
   o.mapsData = [];
   for (const m of mappings) {
@@ -242,6 +247,7 @@ function processOrgfw(orgCode, fwName, fwVersion, criteria, outcomes, mappings) 
 processOrgfw('TEDU-EE', 'MUDEK 2024', '1.0',
   [
     { key:'technical', label:'Technical Content', short:'Technical', max:30, weight:30, color:'#F59E0B',
+      desc:'Evaluates the depth and originality of the engineering solution, including problem formulation, design decisions, and mastery of relevant tools and methods.',
       customRubric: [
         { min: 27, max: 30, label: 'Excellent', description: 'Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident.' },
         { min: 21, max: 26, label: 'Good', description: 'Design is mostly clear and technically justified. Engineering decisions are largely supported.' },
@@ -249,6 +255,7 @@ processOrgfw('TEDU-EE', 'MUDEK 2024', '1.0',
         { min: 0, max: 12, label: 'Insufficient', description: 'Vague problem definition and unjustified decisions. Superficial technical content.' },
       ] },
     { key:'design', label:'Written Communication', short:'Written', max:30, weight:30, color:'#22C55E',
+      desc:'Assesses poster layout, visual quality, labelling, and the accessibility of technical content for both technical and non-technical readers.',
       customRubric: [
         { min: 27, max: 30, label: 'Excellent', description: 'Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is presented in a way that is accessible to both technical and non-technical readers.' },
         { min: 21, max: 26, label: 'Good', description: 'Layout is mostly logical. Visuals are readable with minor gaps. Technical content is largely clear with small areas for improvement.' },
@@ -256,6 +263,7 @@ processOrgfw('TEDU-EE', 'MUDEK 2024', '1.0',
         { min: 0, max: 12, label: 'Insufficient', description: 'Confusing layout. Low-quality or unlabelled visuals. Technical content is unclear or missing.' },
       ] },
     { key:'delivery', label:'Oral Communication', short:'Oral', max:30, weight:30, color:'#3B82F6',
+      desc:'Assesses oral clarity, pacing, audience adaptation, and the quality of Q&A responses during the presentation.',
       customRubric: [
         { min: 27, max: 30, label: 'Excellent', description: 'Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate.' },
         { min: 21, max: 26, label: 'Good', description: 'Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident.' },
@@ -263,6 +271,7 @@ processOrgfw('TEDU-EE', 'MUDEK 2024', '1.0',
         { min: 0, max: 12, label: 'Insufficient', description: 'Unclear or disorganised presentation. Most questions answered incorrectly or not at all.' },
       ] },
     { key:'teamwork', label:'Teamwork', short:'Teamwork', max:10, weight:10, color:'#EF4444',
+      desc:'Evaluates equitable participation, individual knowledge depth, and professional conduct across all team members.',
       customRubric: [
         { min: 9, max: 10, label: 'Excellent', description: 'All members participate actively and equally. Professional and ethical conduct observed throughout.' },
         { min: 7, max: 8, label: 'Good', description: 'Most members contribute. Minor knowledge gaps. Professionalism mostly observed.' },
@@ -290,11 +299,11 @@ processOrgfw('TEDU-EE', 'MUDEK 2024', '1.0',
 
 processOrgfw('CMU-CS', 'ABET 2024', '1.0',
   [
-    {key:'problem_solving',label:'Problem Solving & Analysis',short:'Problem',max:25,weight:25,color:'#EF4444',customRubric:[{min:22,max:25,label:'Excellent',description:'Problem is precisely formulated with clear scope, constraints, and success metrics.'},{min:17,max:21,label:'Good',description:'Problem is well-defined. Minor gaps in constraint handling.'},{min:12,max:16,label:'Developing',description:'Problem statement exists but lacks precision.'},{min:0,max:11,label:'Insufficient',description:'Problem is vaguely defined with significant logical gaps.'}]},
-    {key:'system_design',label:'System Design & Architecture',short:'Design',max:25,weight:25,color:'#3B82F6',customRubric:[{min:22,max:25,label:'Excellent',description:'Architecture is modular, scalable, and well-justified.'},{min:17,max:21,label:'Good',description:'Architecture is sound with clear component boundaries.'},{min:12,max:16,label:'Developing',description:'Basic architecture present but modularity concerns not addressed.'},{min:0,max:11,label:'Insufficient',description:'No clear architecture.'}]},
-    {key:'implementation_quality',label:'Implementation Quality',short:'Impl',max:20,weight:20,color:'#F59E0B',customRubric:[{min:18,max:20,label:'Excellent',description:'Code is clean, well-tested, and follows best practices.'},{min:14,max:17,label:'Good',description:'Code is readable with adequate test coverage.'},{min:10,max:13,label:'Developing',description:'Code works but lacks tests or consistent style.'},{min:0,max:9,label:'Insufficient',description:'Code is disorganized, untested, or non-functional.'}]},
-    {key:'communication',label:'Communication & Documentation',short:'Comm',max:20,weight:20,color:'#EC4899',customRubric:[{min:18,max:20,label:'Excellent',description:'Documentation is thorough and developer-friendly.'},{min:14,max:17,label:'Good',description:'Documentation covers key areas.'},{min:10,max:13,label:'Developing',description:'Documentation exists but is incomplete.'},{min:0,max:9,label:'Insufficient',description:'Little to no documentation.'}]},
-    {key:'teamwork',label:'Teamwork & Collaboration',short:'Team',max:10,weight:10,color:'#10B981',customRubric:[{min:9,max:10,label:'Excellent',description:'All members contribute meaningfully.'},{min:7,max:8,label:'Good',description:'Most members contribute.'},{min:4,max:6,label:'Developing',description:'Uneven contributions.'},{min:0,max:3,label:'Insufficient',description:'One or two members did most of the work.'}]}
+    {key:'problem_solving',label:'Problem Solving & Analysis',short:'Problem',max:25,weight:25,color:'#EF4444',desc:'Evaluates precision of problem formulation, scope definition, constraint identification, and correctness of the analytical approach.',customRubric:[{min:22,max:25,label:'Excellent',description:'Problem is precisely formulated with clear scope, constraints, and success metrics.'},{min:17,max:21,label:'Good',description:'Problem is well-defined. Minor gaps in constraint handling.'},{min:12,max:16,label:'Developing',description:'Problem statement exists but lacks precision.'},{min:0,max:11,label:'Insufficient',description:'Problem is vaguely defined with significant logical gaps.'}]},
+    {key:'system_design',label:'System Design & Architecture',short:'Design',max:25,weight:25,color:'#3B82F6',desc:'Assesses architectural soundness, modularity, scalability, and justification of design decisions and component boundaries.',customRubric:[{min:22,max:25,label:'Excellent',description:'Architecture is modular, scalable, and well-justified.'},{min:17,max:21,label:'Good',description:'Architecture is sound with clear component boundaries.'},{min:12,max:16,label:'Developing',description:'Basic architecture present but modularity concerns not addressed.'},{min:0,max:11,label:'Insufficient',description:'No clear architecture.'}]},
+    {key:'implementation_quality',label:'Implementation Quality',short:'Impl',max:20,weight:20,color:'#F59E0B',desc:'Evaluates code quality, test coverage, documentation, and adherence to professional software engineering practices.',customRubric:[{min:18,max:20,label:'Excellent',description:'Code is clean, well-tested, and follows best practices.'},{min:14,max:17,label:'Good',description:'Code is readable with adequate test coverage.'},{min:10,max:13,label:'Developing',description:'Code works but lacks tests or consistent style.'},{min:0,max:9,label:'Insufficient',description:'Code is disorganized, untested, or non-functional.'}]},
+    {key:'communication',label:'Communication & Documentation',short:'Comm',max:20,weight:20,color:'#EC4899',desc:'Assesses completeness and clarity of written technical documentation including API references, design docs, and reports.',customRubric:[{min:18,max:20,label:'Excellent',description:'Documentation is thorough and developer-friendly.'},{min:14,max:17,label:'Good',description:'Documentation covers key areas.'},{min:10,max:13,label:'Developing',description:'Documentation exists but is incomplete.'},{min:0,max:9,label:'Insufficient',description:'Little to no documentation.'}]},
+    {key:'teamwork',label:'Teamwork & Collaboration',short:'Team',max:10,weight:10,color:'#10B981',desc:'Evaluates balanced contribution, collaborative workflow, and effective use of team coordination tools and practices.',customRubric:[{min:9,max:10,label:'Excellent',description:'All members contribute meaningfully.'},{min:7,max:8,label:'Good',description:'Most members contribute.'},{min:4,max:6,label:'Developing',description:'Uneven contributions.'},{min:0,max:3,label:'Insufficient',description:'One or two members did most of the work.'}]}
   ],
   [['SO-1','Complex Problem Solving','Analyze complex computing problems and apply principles of computing and mathematics.'],['SO-2','Engineering Design','Design, implement, and evaluate computer-based solutions meeting specified requirements.'],['SO-3','Effective Communication','Communicate effectively in professional contexts.'],['SO-4','Ethics and Professional Responsibility','Recognize professional responsibilities and make informed judgments.'],['SO-5','Teamwork','Function effectively as a member or leader on teams.'],['SO-6','Experimentation and Analysis','Apply software development fundamentals through experimentation and analysis.'],['SO-7','Lifelong Learning','Recognize the need for continuing professional development.']],
   [{crit:'problem_solving',outs:[{code:'SO-1',weight:0.6},{code:'SO-6',weight:0.4}]},{crit:'system_design',outs:[{code:'SO-2',weight:0.7},{code:'SO-1',weight:0.3}]},{crit:'implementation_quality',outs:[{code:'SO-6',weight:0.5},{code:'SO-2',weight:0.3},{code:'SO-7',weight:0.2}]},{crit:'communication',outs:[{code:'SO-3',weight:0.7},{code:'SO-4',weight:0.3}]},{crit:'teamwork',outs:[{code:'SO-5',weight:1.0}]}]
@@ -302,10 +311,10 @@ processOrgfw('CMU-CS', 'ABET 2024', '1.0',
 
 processOrgfw('TEKNOFEST', 'Competition Framework 2026', '2026',
   [
-    {key:'preliminary_report',label:'Preliminary Design Report (ODR)',short:'Report',max:25,weight:25,color:'#6366F1',customRubric:[{min:22,max:25,label:'Excellent',description:'Report is comprehensive with clear mission definition and feasible preliminary design.'},{min:17,max:21,label:'Good',description:'Report covers key design elements with adequate justification.'},{min:12,max:16,label:'Developing',description:'Report structure is present but design rationale is weak.'},{min:0,max:11,label:'Insufficient',description:'Report is incomplete or missing critical sections.'}]},
-    {key:'critical_design',label:'Critical Design Review (KTR)',short:'CDR',max:30,weight:30,color:'#F59E0B',customRubric:[{min:27,max:30,label:'Excellent',description:'Design is mature, manufacturable, and all subsystems well-integrated.'},{min:21,max:26,label:'Good',description:'Design is mostly complete with minor integration gaps.'},{min:13,max:20,label:'Developing',description:'Design shows progress but subsystem integration unclear.'},{min:0,max:12,label:'Insufficient',description:'Design is immature or not viable for manufacturing.'}]},
-    {key:'technical_performance',label:'Technical Performance & Demo',short:'Performance',max:30,weight:30,color:'#EF4444',customRubric:[{min:27,max:30,label:'Excellent',description:'System performs flawlessly in field conditions.'},{min:21,max:26,label:'Good',description:'System completes primary mission with minor deviations.'},{min:13,max:20,label:'Developing',description:'System partially completes mission.'},{min:0,max:12,label:'Insufficient',description:'System fails to complete primary mission.'}]},
-    {key:'team_execution',label:'Team Execution & Presentation',short:'Team',max:15,weight:15,color:'#10B981',customRubric:[{min:14,max:15,label:'Excellent',description:'Team operates cohesively with clear role distribution.'},{min:11,max:13,label:'Good',description:'Team coordination is evident.'},{min:7,max:10,label:'Developing',description:'Team roles are unclear.'},{min:0,max:6,label:'Insufficient',description:'Poor team coordination.'}]}
+    {key:'preliminary_report',label:'Preliminary Design Report (ODR)',short:'Report',max:25,weight:25,color:'#6366F1',desc:'Evaluates completeness of the preliminary design report, mission definition clarity, and feasibility of the proposed design.',customRubric:[{min:22,max:25,label:'Excellent',description:'Report is comprehensive with clear mission definition and feasible preliminary design.'},{min:17,max:21,label:'Good',description:'Report covers key design elements with adequate justification.'},{min:12,max:16,label:'Developing',description:'Report structure is present but design rationale is weak.'},{min:0,max:11,label:'Insufficient',description:'Report is incomplete or missing critical sections.'}]},
+    {key:'critical_design',label:'Critical Design Review (KTR)',short:'CDR',max:30,weight:30,color:'#F59E0B',desc:'Assesses design maturity, subsystem integration completeness, and manufacturing readiness at the CDR milestone.',customRubric:[{min:27,max:30,label:'Excellent',description:'Design is mature, manufacturable, and all subsystems well-integrated.'},{min:21,max:26,label:'Good',description:'Design is mostly complete with minor integration gaps.'},{min:13,max:20,label:'Developing',description:'Design shows progress but subsystem integration unclear.'},{min:0,max:12,label:'Insufficient',description:'Design is immature or not viable for manufacturing.'}]},
+    {key:'technical_performance',label:'Technical Performance & Demo',short:'Performance',max:30,weight:30,color:'#EF4444',desc:'Evaluates actual field performance of the system during the competition mission demonstration under real conditions.',customRubric:[{min:27,max:30,label:'Excellent',description:'System performs flawlessly in field conditions.'},{min:21,max:26,label:'Good',description:'System completes primary mission with minor deviations.'},{min:13,max:20,label:'Developing',description:'System partially completes mission.'},{min:0,max:12,label:'Insufficient',description:'System fails to complete primary mission.'}]},
+    {key:'team_execution',label:'Team Execution & Presentation',short:'Team',max:15,weight:15,color:'#10B981',desc:'Assesses team coordination, role clarity, and the effectiveness of the presentation delivered during the jury evaluation.',customRubric:[{min:14,max:15,label:'Excellent',description:'Team operates cohesively with clear role distribution.'},{min:11,max:13,label:'Good',description:'Team coordination is evident.'},{min:7,max:10,label:'Developing',description:'Team roles are unclear.'},{min:0,max:6,label:'Insufficient',description:'Poor team coordination.'}]}
   ],
   [['TC-1','Preliminary Evaluation Report Quality','Produce comprehensive preliminary design documentation.'],['TC-2','Critical Design Maturity','Achieve design maturity through thorough critical design review.'],['TC-3','Field Performance and Jury Presentation','Demonstrate successful field performance under competition conditions.'],['TC-4','General Team Competency','Exhibit strong team coordination and effective collaboration.']],
   [{crit:'preliminary_report',outs:[{code:'TC-1',weight:1.0}]},{crit:'critical_design',outs:[{code:'TC-2',weight:0.7},{code:'TC-1',weight:0.3}]},{crit:'technical_performance',outs:[{code:'TC-3',weight:0.8},{code:'TC-2',weight:0.2}]},{crit:'team_execution',outs:[{code:'TC-4',weight:0.6},{code:'TC-3',weight:0.4}]}]
@@ -313,9 +322,9 @@ processOrgfw('TEKNOFEST', 'Competition Framework 2026', '2026',
 
 processOrgfw('TUBITAK-2204A', 'Research Competition Framework', '2204A',
   [
-    {key:'originality',label:'Originality & Creativity',short:'Originality',max:35,weight:35,color:'#8B5CF6',customRubric:[{min:31,max:35,label:'Excellent',description:'Research question is novel and addresses a genuine gap.'},{min:24,max:30,label:'Good',description:'Research topic has originality with a clear contribution.'},{min:17,max:23,label:'Developing',description:'Topic is relevant but well-trodden.'},{min:0,max:16,label:'Insufficient',description:'No original contribution.'}]},
-    {key:'scientific_method',label:'Scientific Method & Rigor',short:'Method',max:40,weight:40,color:'#3B82F6',customRubric:[{min:35,max:40,label:'Excellent',description:'Hypothesis is clearly stated and testable. Proper controls and adequate sample size.'},{min:27,max:34,label:'Good',description:'Methodology is sound with minor gaps.'},{min:19,max:26,label:'Developing',description:'Basic methodology present but controls weak.'},{min:0,max:18,label:'Insufficient',description:'No clear hypothesis or experimental design.'}]},
-    {key:'impact_and_presentation',label:'Impact & Presentation',short:'Impact',max:25,weight:25,color:'#F59E0B',customRubric:[{min:22,max:25,label:'Excellent',description:'Results have clear real-world applicability.'},{min:17,max:21,label:'Good',description:'Potential impact is described.'},{min:12,max:16,label:'Developing',description:'Impact is mentioned but not convincingly argued.'},{min:0,max:11,label:'Insufficient',description:'No discussion of impact.'}]}
+    {key:'originality',label:'Originality & Creativity',short:'Originality',max:35,weight:35,color:'#8B5CF6',desc:'Evaluates novelty of the research question, uniqueness of the approach, and significance of the contribution to scientific knowledge.',customRubric:[{min:31,max:35,label:'Excellent',description:'Research question is novel and addresses a genuine gap.'},{min:24,max:30,label:'Good',description:'Research topic has originality with a clear contribution.'},{min:17,max:23,label:'Developing',description:'Topic is relevant but well-trodden.'},{min:0,max:16,label:'Insufficient',description:'No original contribution.'}]},
+    {key:'scientific_method',label:'Scientific Method & Rigor',short:'Method',max:40,weight:40,color:'#3B82F6',desc:'Assesses rigor of experimental design, hypothesis clarity, control conditions, reproducibility, and statistical validity of results.',customRubric:[{min:35,max:40,label:'Excellent',description:'Hypothesis is clearly stated and testable. Proper controls and adequate sample size.'},{min:27,max:34,label:'Good',description:'Methodology is sound with minor gaps.'},{min:19,max:26,label:'Developing',description:'Basic methodology present but controls weak.'},{min:0,max:18,label:'Insufficient',description:'No clear hypothesis or experimental design.'}]},
+    {key:'impact_and_presentation',label:'Impact & Presentation',short:'Impact',max:25,weight:25,color:'#F59E0B',desc:'Evaluates real-world applicability of research findings and the overall quality of the oral and poster presentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Results have clear real-world applicability.'},{min:17,max:21,label:'Good',description:'Potential impact is described.'},{min:12,max:16,label:'Developing',description:'Impact is mentioned but not convincingly argued.'},{min:0,max:11,label:'Insufficient',description:'No discussion of impact.'}]}
   ],
   [['RC-1','Originality and Creativity','Demonstrate original thinking addressing genuine gaps in scientific literature.'],['RC-2','Scientific Method','Apply rigorous scientific methodology including proper experimental design.'],['RC-3','Results and Recommendations','Present clear, reproducible results with actionable recommendations.'],['RC-4','Applicability and Feasibility','Demonstrate practical applicability for real-world implementation.'],['RC-5','Broader Impact','Articulate the broader societal, environmental, or economic impact.']],
   [{crit:'originality',outs:[{code:'RC-1',weight:0.7},{code:'RC-4',weight:0.3}]},{crit:'scientific_method',outs:[{code:'RC-2',weight:0.5},{code:'RC-3',weight:0.5}]},{crit:'impact_and_presentation',outs:[{code:'RC-5',weight:0.5},{code:'RC-3',weight:0.3},{code:'RC-4',weight:0.2}]}]
@@ -323,9 +332,9 @@ processOrgfw('TUBITAK-2204A', 'Research Competition Framework', '2204A',
 
 processOrgfw('IEEE-APSSDC', 'Design Contest Framework', '1.0',
   [
-    {key:'creativity',label:'Creativity & Innovation',short:'Creativity',max:30,weight:30,color:'#EC4899',customRubric:[{min:27,max:30,label:'Excellent',description:'Novel topology or technique not commonly seen in literature.'},{min:21,max:26,label:'Good',description:'Design shows originality in at least one dimension.'},{min:13,max:20,label:'Developing',description:'Conventional approaches with minor modifications.'},{min:0,max:12,label:'Insufficient',description:'Direct copy with no meaningful contribution.'}]},
-    {key:'technical_merit',label:'Technical Merit',short:'Technical',max:40,weight:40,color:'#3B82F6',customRubric:[{min:35,max:40,label:'Excellent',description:'Simulation and measurement results agree closely.'},{min:27,max:34,label:'Good',description:'Solid results with acceptable agreement.'},{min:19,max:26,label:'Developing',description:'Simulation results presented but measurement validation limited.'},{min:0,max:18,label:'Insufficient',description:'No measurement results or significant discrepancy.'}]},
-    {key:'application_and_presentation',label:'Application & Presentation',short:'Presentation',max:30,weight:30,color:'#F59E0B',customRubric:[{min:27,max:30,label:'Excellent',description:'Clear real-world application with compelling use case.'},{min:21,max:26,label:'Good',description:'Application context established.'},{min:13,max:20,label:'Developing',description:'Application mentioned but not developed.'},{min:0,max:12,label:'Insufficient',description:'No clear application.'}]}
+    {key:'creativity',label:'Creativity & Innovation',short:'Creativity',max:30,weight:30,color:'#EC4899',desc:'Evaluates novelty of the antenna design concept relative to existing literature and current state-of-the-art solutions.',customRubric:[{min:27,max:30,label:'Excellent',description:'Novel topology or technique not commonly seen in literature.'},{min:21,max:26,label:'Good',description:'Design shows originality in at least one dimension.'},{min:13,max:20,label:'Developing',description:'Conventional approaches with minor modifications.'},{min:0,max:12,label:'Insufficient',description:'Direct copy with no meaningful contribution.'}]},
+    {key:'technical_merit',label:'Technical Merit',short:'Technical',max:40,weight:40,color:'#3B82F6',desc:'Assesses closeness of agreement between simulation and measurement results, and overall RF performance quality.',customRubric:[{min:35,max:40,label:'Excellent',description:'Simulation and measurement results agree closely.'},{min:27,max:34,label:'Good',description:'Solid results with acceptable agreement.'},{min:19,max:26,label:'Developing',description:'Simulation results presented but measurement validation limited.'},{min:0,max:18,label:'Insufficient',description:'No measurement results or significant discrepancy.'}]},
+    {key:'application_and_presentation',label:'Application & Presentation',short:'Presentation',max:30,weight:30,color:'#F59E0B',desc:'Evaluates clarity of the proposed real-world application use case and the quality of the overall design presentation.',customRubric:[{min:27,max:30,label:'Excellent',description:'Clear real-world application with compelling use case.'},{min:21,max:26,label:'Good',description:'Application context established.'},{min:13,max:20,label:'Developing',description:'Application mentioned but not developed.'},{min:0,max:12,label:'Insufficient',description:'No clear application.'}]}
   ],
   [['DC-1','Creativity','Demonstrate novel antenna design concepts.'],['DC-2','Technical Merit','Exhibit strong technical foundations with validated results.'],['DC-3','Practical Application','Address a clear real-world application.'],['DC-4','Educational Value','Show educational merit through clear documentation.']],
   [{crit:'creativity',outs:[{code:'DC-1',weight:0.7},{code:'DC-4',weight:0.3}]},{crit:'technical_merit',outs:[{code:'DC-2',weight:0.8},{code:'DC-3',weight:0.2}]},{crit:'application_and_presentation',outs:[{code:'DC-3',weight:0.5},{code:'DC-4',weight:0.3},{code:'DC-1',weight:0.2}]}]
@@ -333,10 +342,10 @@ processOrgfw('IEEE-APSSDC', 'Design Contest Framework', '1.0',
 
 processOrgfw('CANSAT-2025', 'Mission Framework', '2025',
   [
-    {key:'design_compliance',label:'Design Constraints Compliance',short:'Compliance',max:20,weight:20,color:'#6366F1',customRubric:[{min:18,max:20,label:'Excellent',description:'All constraints fully met with documented margin analysis.'},{min:14,max:17,label:'Good',description:'Constraints met with minor deviations.'},{min:10,max:13,label:'Developing',description:'One or more constraints marginally exceeded.'},{min:0,max:9,label:'Insufficient',description:'Multiple constraints violated.'}]},
-    {key:'mission_execution',label:'Mission Execution & Telemetry',short:'Mission',max:35,weight:35,color:'#EF4444',customRubric:[{min:31,max:35,label:'Excellent',description:'Primary and secondary missions fully executed. Continuous telemetry.'},{min:24,max:30,label:'Good',description:'Primary mission completed. Minor telemetry gaps.'},{min:17,max:23,label:'Developing',description:'Primary mission partially completed.'},{min:0,max:16,label:'Insufficient',description:'Mission fails to execute.'}]},
-    {key:'data_and_documentation',label:'Data Analysis & Documentation',short:'Data',max:25,weight:25,color:'#3B82F6',customRubric:[{min:22,max:25,label:'Excellent',description:'Flight data thoroughly analyzed with appropriate methods.'},{min:17,max:21,label:'Good',description:'Data analysis competent. Post-flight report addresses key findings.'},{min:12,max:16,label:'Developing',description:'Data presented but analysis shallow.'},{min:0,max:11,label:'Insufficient',description:'Raw data dump with no meaningful analysis.'}]},
-    {key:'safety_and_recovery',label:'Safety & Recovery',short:'Safety',max:20,weight:20,color:'#10B981',customRubric:[{min:18,max:20,label:'Excellent',description:'Recovered intact. Descent rate within spec. All safety procedures followed.'},{min:14,max:17,label:'Good',description:'Recovery successful with minor issues.'},{min:10,max:13,label:'Developing',description:'Recovery partial or descent rate deviates.'},{min:0,max:9,label:'Insufficient',description:'CanSat lost or damaged.'}]}
+    {key:'design_compliance',label:'Design Constraints Compliance',short:'Compliance',max:20,weight:20,color:'#6366F1',desc:'Evaluates adherence to all specified volume, mass, and structural design constraints, with documented margin analysis.',customRubric:[{min:18,max:20,label:'Excellent',description:'All constraints fully met with documented margin analysis.'},{min:14,max:17,label:'Good',description:'Constraints met with minor deviations.'},{min:10,max:13,label:'Developing',description:'One or more constraints marginally exceeded.'},{min:0,max:9,label:'Insufficient',description:'Multiple constraints violated.'}]},
+    {key:'mission_execution',label:'Mission Execution & Telemetry',short:'Mission',max:35,weight:35,color:'#EF4444',desc:'Assesses successful execution of primary and secondary mission objectives with continuous and reliable telemetry throughout the flight.',customRubric:[{min:31,max:35,label:'Excellent',description:'Primary and secondary missions fully executed. Continuous telemetry.'},{min:24,max:30,label:'Good',description:'Primary mission completed. Minor telemetry gaps.'},{min:17,max:23,label:'Developing',description:'Primary mission partially completed.'},{min:0,max:16,label:'Insufficient',description:'Mission fails to execute.'}]},
+    {key:'data_and_documentation',label:'Data Analysis & Documentation',short:'Data',max:25,weight:25,color:'#3B82F6',desc:'Evaluates depth and appropriateness of post-flight data analysis and the overall quality and completeness of written documentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Flight data thoroughly analyzed with appropriate methods.'},{min:17,max:21,label:'Good',description:'Data analysis competent. Post-flight report addresses key findings.'},{min:12,max:16,label:'Developing',description:'Data presented but analysis shallow.'},{min:0,max:11,label:'Insufficient',description:'Raw data dump with no meaningful analysis.'}]},
+    {key:'safety_and_recovery',label:'Safety & Recovery',short:'Safety',max:20,weight:20,color:'#10B981',desc:'Assesses adherence to all range safety procedures, descent rate control within specification, and successful CanSat recovery.',customRubric:[{min:18,max:20,label:'Excellent',description:'Recovered intact. Descent rate within spec. All safety procedures followed.'},{min:14,max:17,label:'Good',description:'Recovery successful with minor issues.'},{min:10,max:13,label:'Developing',description:'Recovery partial or descent rate deviates.'},{min:0,max:9,label:'Insufficient',description:'CanSat lost or damaged.'}]}
   ],
   [['CS-1','Design Constraints Compliance','Meet all specified volume, mass, and structural constraints.'],['CS-2','Primary Mission Execution','Successfully execute primary mission objectives with reliable telemetry.'],['CS-3','Descent Control and Recovery','Achieve controlled descent and successful recovery.'],['CS-4','Safety and Restrictions Compliance','Adhere to all range safety procedures.'],['CS-5','Secondary Mission Originality','Design and execute a creative secondary mission.'],['CS-6','Data Analysis and Documentation Quality','Produce thorough post-flight analysis with clear documentation.']],
   [{crit:'design_compliance',outs:[{code:'CS-1',weight:0.7},{code:'CS-4',weight:0.3}]},{crit:'mission_execution',outs:[{code:'CS-2',weight:0.5},{code:'CS-5',weight:0.3},{code:'CS-3',weight:0.2}]},{crit:'data_and_documentation',outs:[{code:'CS-6',weight:0.7},{code:'CS-2',weight:0.3}]},{crit:'safety_and_recovery',outs:[{code:'CS-4',weight:0.5},{code:'CS-3',weight:0.5}]}]
@@ -366,9 +375,9 @@ const orgPeriodsDef = {
     {name:'Spring 2025',s:'Spring',start:'2025-02-01',end:'2025-06-15',event:'2025-05-14',eventDays:1,desc:'CS Spring Demo Day'},
     {name:'Fall 2024',s:'Fall',start:'2024-09-01',end:'2025-01-15',event:'2024-12-12',eventDays:1,desc:'CS Fall Demo Day'}],
   'TEKNOFEST': [
-    {name:'2026 Season',s:'Evaluation',start:'2026-06-01',end:'2026-08-15',event:'2026-07-10',eventDays:4,desc:'TEKNOFEST 2026 Aviation Competition Finals'},
-    {name:'2025 Season',s:'Evaluation',start:'2025-06-01',end:'2025-08-15',event:'2025-07-09',eventDays:4,desc:'TEKNOFEST 2025 Finals'},
-    {name:'2024 Season',s:'Evaluation',start:'2024-06-01',end:'2024-08-15',event:'2024-07-10',eventDays:4,desc:'TEKNOFEST 2024 Finals'}],
+    {name:'2026 Season',s:'Evaluation',start:'2026-06-01',end:'2026-08-15',event:'2026-07-10',eventDays:3,desc:'TEKNOFEST 2026 Aviation Competition Finals'},
+    {name:'2025 Season',s:'Evaluation',start:'2025-06-01',end:'2025-08-15',event:'2025-07-09',eventDays:3,desc:'TEKNOFEST 2025 Finals'},
+    {name:'2024 Season',s:'Evaluation',start:'2024-06-01',end:'2024-08-15',event:'2024-07-10',eventDays:3,desc:'TEKNOFEST 2024 Finals'}],
   'TUBITAK-2204A': [
     {name:'2026 Competition',s:'Evaluation',start:'2026-03-01',end:'2026-06-30',event:'2026-06-15',eventDays:3,desc:'TÜBİTAK 2204-A 2026 National Science Competition'},
     {name:'2025 Competition',s:'Evaluation',start:'2025-03-01',end:'2025-06-30',event:'2025-06-16',eventDays:3,desc:'TÜBİTAK 2204-A 2025 Finals'},
@@ -378,38 +387,230 @@ const orgPeriodsDef = {
     {name:'2025 Contest',s:'Evaluation',start:'2025-06-01',end:'2025-08-15',event:'2025-07-13',eventDays:3,desc:'IEEE AP-S SDC 2025'},
     {name:'2024 Contest',s:'Evaluation',start:'2024-06-01',end:'2024-08-15',event:'2024-07-14',eventDays:3,desc:'IEEE AP-S SDC 2024'}],
   'CANSAT-2025': [
-    {name:'2026 Season',s:'Spring',start:'2026-03-01',end:'2026-07-15',event:'2026-06-08',eventDays:4,desc:'CanSat 2026 Launch Competition'},
-    {name:'2025 Season',s:'Spring',start:'2025-03-01',end:'2025-07-15',event:'2025-06-09',eventDays:4,desc:'CanSat 2025 Competition'},
-    {name:'2024 Season',s:'Spring',start:'2024-03-01',end:'2024-07-15',event:'2024-06-10',eventDays:4,desc:'CanSat 2024 Competition'}],
+    {name:'2026 Season',s:'Spring',start:'2026-03-01',end:'2026-07-15',event:'2026-06-08',eventDays:3,desc:'CanSat 2026 Launch Competition'},
+    {name:'2025 Season',s:'Spring',start:'2025-03-01',end:'2025-07-15',event:'2025-06-09',eventDays:3,desc:'CanSat 2025 Competition'},
+    {name:'2024 Season',s:'Spring',start:'2024-03-01',end:'2024-07-15',event:'2024-06-10',eventDays:3,desc:'CanSat 2024 Competition'}],
 };
 
 // Criteria evolution: idx=0 is NEVER touched (current period preserved exactly)
 const criteriaEvolution = {
   'TEDU-EE': {
-    1:{weights:{technical:30,design:28,delivery:30,teamwork:12}},
-    2:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report Quality',delivery:'Oral Presentation'},shortLabels:{design:'Report',delivery:'Oral'}},
-    3:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report',delivery:'Presentation',teamwork:'Team Participation'},shortLabels:{design:'Report',delivery:'Pres.',teamwork:'Team'},useSimplifiedRubric:true},
+    1:{weights:{technical:30,design:28,delivery:30,teamwork:12},
+      rubricOverrides:{
+        design:[
+          {min:27,max:30,label:'Excellent',description:'Poster is visually compelling with logical flow. All figures are high quality and properly labelled.'},
+          {min:21,max:26,label:'Good',description:'Layout is clear with only minor visual issues. Most figures are well-labelled.'},
+          {min:13,max:20,label:'Developing',description:'Layout has some disorganized sections. Several figures lack labels or captions.'},
+          {min:0,max:12,label:'Insufficient',description:'Disorganized poster with missing or low-quality visuals throughout.'},
+        ],
+        teamwork:[
+          {min:9,max:10,label:'Excellent',description:'Every member demonstrates equal engagement and individual mastery of the project.'},
+          {min:7,max:8,label:'Good',description:'Most members contribute actively. Minor gaps in individual depth.'},
+          {min:4,max:6,label:'Developing',description:'Contribution is unbalanced. One or two members appear passive.'},
+          {min:0,max:3,label:'Insufficient',description:'Single-person dominance. Remaining members show little involvement.'},
+        ],
+      }},
+    2:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report Quality',delivery:'Oral Presentation'},shortLabels:{design:'Report',delivery:'Oral'},
+      rubricOverrides:{
+        design:[
+          {min:27,max:30,label:'Excellent',description:'Report is well-structured with clear sections, proper references, and professional formatting.'},
+          {min:21,max:26,label:'Good',description:'Report covers required sections adequately. Formatting is mostly consistent.'},
+          {min:13,max:20,label:'Developing',description:'Report structure is present but sections lack depth or proper citations.'},
+          {min:0,max:12,label:'Insufficient',description:'Report is incomplete, poorly formatted, or missing critical sections.'},
+        ],
+        delivery:[
+          {min:27,max:30,label:'Excellent',description:'Clear, confident delivery with good pacing. Questions answered accurately and concisely.'},
+          {min:21,max:26,label:'Good',description:'Presentation is understandable with adequate pacing. Most questions handled well.'},
+          {min:13,max:20,label:'Developing',description:'Delivery is hesitant or rushed. Audience engagement is limited.'},
+          {min:0,max:12,label:'Insufficient',description:'Disorganized presentation. Questions frequently answered incorrectly.'},
+        ],
+        technical:[
+          {min:27,max:30,label:'Excellent',description:'Strong problem definition with well-justified design choices. Demonstrates deep domain knowledge.'},
+          {min:21,max:26,label:'Good',description:'Problem is clearly stated. Design decisions are reasonable with minor justification gaps.'},
+          {min:13,max:20,label:'Developing',description:'Problem statement exists but technical depth is shallow.'},
+          {min:0,max:12,label:'Insufficient',description:'Vague problem definition. Design decisions are not supported.'},
+        ],
+      }},
+    3:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report',delivery:'Presentation',teamwork:'Team Participation'},shortLabels:{design:'Report',delivery:'Pres.',teamwork:'Team'},
+      rubricOverrides:{
+        technical:[
+          {min:22,max:30,label:'Proficient',description:'Sound engineering approach with adequate technical justification.'},
+          {min:14,max:21,label:'Developing',description:'Technical content is present but reasoning is not well-supported.'},
+          {min:0,max:13,label:'Below Standard',description:'Lacks meaningful technical contribution.'},
+        ],
+        design:[
+          {min:22,max:30,label:'Proficient',description:'Written report is organized and covers key design decisions.'},
+          {min:14,max:21,label:'Developing',description:'Report exists but structure or content is incomplete.'},
+          {min:0,max:13,label:'Below Standard',description:'Report is largely missing or disorganized.'},
+        ],
+        delivery:[
+          {min:22,max:30,label:'Proficient',description:'Presentation is clear and questions are answered appropriately.'},
+          {min:14,max:21,label:'Developing',description:'Presentation is understandable but lacks confidence or structure.'},
+          {min:0,max:13,label:'Below Standard',description:'Unable to communicate project goals or results.'},
+        ],
+        teamwork:[
+          {min:8,max:10,label:'Proficient',description:'All members participate and can speak to the project details.'},
+          {min:5,max:7,label:'Developing',description:'Participation is uneven among team members.'},
+          {min:0,max:4,label:'Below Standard',description:'Only one member carries the project.'},
+        ],
+      }},
   },
   'CMU-CS': {
-    1:{weights:{problem_solving:25,system_design:25,implementation_quality:18,communication:22,teamwork:10},labels:{communication:'Communication Skills'}},
-    2:{weights:{problem_solving:30,system_design:25,implementation_quality:20,communication:15,teamwork:10},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture'}},
-    3:{weights:{problem_solving:30,system_design:30,implementation_quality:20,communication:20,teamwork:0},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture',communication:'Communication & Collaboration'},removeCriteria:['teamwork']},
+    1:{weights:{problem_solving:25,system_design:25,implementation_quality:18,communication:22,teamwork:10},labels:{communication:'Communication Skills'},
+      rubricOverrides:{
+        communication:[
+          {min:18,max:20,label:'Excellent',description:'Written and oral communication is clear, well-organized, and audience-appropriate.'},
+          {min:14,max:17,label:'Good',description:'Communication is effective with minor clarity issues.'},
+          {min:10,max:13,label:'Developing',description:'Key ideas are communicated but structure or clarity needs work.'},
+          {min:0,max:9,label:'Insufficient',description:'Communication is unclear or poorly organized.'},
+        ],
+      }},
+    2:{weights:{problem_solving:30,system_design:25,implementation_quality:20,communication:15,teamwork:10},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture'},
+      rubricOverrides:{
+        problem_solving:[
+          {min:22,max:25,label:'Excellent',description:'Demonstrates rigorous analytical thinking with precise problem decomposition.'},
+          {min:17,max:21,label:'Good',description:'Analysis is mostly thorough with clear problem breakdown.'},
+          {min:12,max:16,label:'Developing',description:'Some analytical effort but decomposition is incomplete.'},
+          {min:0,max:11,label:'Insufficient',description:'Lacks systematic analytical approach.'},
+        ],
+        system_design:[
+          {min:22,max:25,label:'Excellent',description:'Architecture is clean, modular, and well-documented with clear rationale.'},
+          {min:17,max:21,label:'Good',description:'Architecture is reasonable with identifiable component boundaries.'},
+          {min:12,max:16,label:'Developing',description:'Some structure exists but architectural choices are ad-hoc.'},
+          {min:0,max:11,label:'Insufficient',description:'No discernible architecture or design rationale.'},
+        ],
+      }},
+    3:{weights:{problem_solving:30,system_design:30,implementation_quality:20,communication:20,teamwork:0},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture',communication:'Communication & Collaboration'},removeCriteria:['teamwork'],
+      rubricOverrides:{
+        problem_solving:[
+          {min:22,max:25,label:'Excellent',description:'Exceptional analytical rigor. Problem is fully decomposed with constraints identified.'},
+          {min:17,max:21,label:'Good',description:'Solid analytical approach covering most problem dimensions.'},
+          {min:12,max:16,label:'Developing',description:'Analysis is surface-level. Key constraints overlooked.'},
+          {min:0,max:11,label:'Insufficient',description:'Problem is treated superficially with no structured thinking.'},
+        ],
+        system_design:[
+          {min:22,max:25,label:'Excellent',description:'Textbook-quality architecture. Components are cohesive with well-defined interfaces.'},
+          {min:17,max:21,label:'Good',description:'Architecture is functional with reasonable separation of concerns.'},
+          {min:12,max:16,label:'Developing',description:'Monolithic or poorly factored. Dependencies are tangled.'},
+          {min:0,max:11,label:'Insufficient',description:'No coherent architecture. Code organization is arbitrary.'},
+        ],
+        communication:[
+          {min:18,max:20,label:'Excellent',description:'Documentation is comprehensive. Team collaboration workflow is clearly demonstrated.'},
+          {min:14,max:17,label:'Good',description:'Documentation covers key areas. Evidence of collaborative process.'},
+          {min:10,max:13,label:'Developing',description:'Documentation is sparse. Collaboration is mentioned but not demonstrated.'},
+          {min:0,max:9,label:'Insufficient',description:'Little documentation. No evidence of structured collaboration.'},
+        ],
+      }},
   },
   'TEKNOFEST': {
-    1:{labels:{team_execution:'Team Coordination'}},
-    2:{weights:{preliminary_report:30,critical_design:35,technical_performance:35,team_execution:0},labels:{critical_design:'Design Review',technical_performance:'Field Performance'},removeCriteria:['team_execution']},
+    1:{labels:{team_execution:'Team Coordination'},
+      rubricOverrides:{
+        team_execution:[
+          {min:14,max:15,label:'Excellent',description:'Team works as a cohesive unit with clear coordination and mutual support.'},
+          {min:11,max:13,label:'Good',description:'Coordination is evident. Roles are generally clear.'},
+          {min:7,max:10,label:'Developing',description:'Some coordination gaps. Role overlap or confusion observed.'},
+          {min:0,max:6,label:'Insufficient',description:'Team appears disorganized with no clear coordination structure.'},
+        ],
+      }},
+    2:{weights:{preliminary_report:30,critical_design:35,technical_performance:35,team_execution:0},labels:{critical_design:'Design Review',technical_performance:'Field Performance'},removeCriteria:['team_execution'],
+      rubricOverrides:{
+        critical_design:[
+          {min:27,max:30,label:'Excellent',description:'Design review demonstrates full system maturity with verified subsystem interfaces.'},
+          {min:21,max:26,label:'Good',description:'Design is largely complete with documented integration plan.'},
+          {min:13,max:20,label:'Developing',description:'Design has significant open items at review stage.'},
+          {min:0,max:12,label:'Insufficient',description:'Design is not ready for review. Major subsystems undefined.'},
+        ],
+        technical_performance:[
+          {min:27,max:30,label:'Excellent',description:'System completes all field objectives under real competition conditions.'},
+          {min:21,max:26,label:'Good',description:'Primary field objectives met with minor deviations from plan.'},
+          {min:13,max:20,label:'Developing',description:'Partial field success. Key objectives only partially achieved.'},
+          {min:0,max:12,label:'Insufficient',description:'System fails to perform in field conditions.'},
+        ],
+      }},
   },
   'TUBITAK-2204A': {
-    1:{labels:{impact_and_presentation:'Presentation & Impact'}},
-    2:{weights:{originality:30,scientific_method:45,impact_and_presentation:25},labels:{originality:'Innovation',impact_and_presentation:'Impact Assessment'}},
+    1:{labels:{impact_and_presentation:'Presentation & Impact'},
+      rubricOverrides:{
+        impact_and_presentation:[
+          {min:22,max:25,label:'Excellent',description:'Presentation is polished and the real-world impact of results is convincingly argued.'},
+          {min:17,max:21,label:'Good',description:'Presentation is clear and impact is discussed with supporting evidence.'},
+          {min:12,max:16,label:'Developing',description:'Presentation is adequate but impact claims lack supporting data.'},
+          {min:0,max:11,label:'Insufficient',description:'Presentation is weak and no meaningful impact discussion provided.'},
+        ],
+      }},
+    2:{weights:{originality:30,scientific_method:45,impact_and_presentation:25},labels:{originality:'Innovation',impact_and_presentation:'Impact Assessment'},
+      rubricOverrides:{
+        originality:[
+          {min:31,max:35,label:'Excellent',description:'Proposes a genuinely novel idea that advances the field beyond existing work.'},
+          {min:24,max:30,label:'Good',description:'Shows clear innovative thinking with a distinguishable contribution.'},
+          {min:17,max:23,label:'Developing',description:'Builds on known ideas with limited novel contribution.'},
+          {min:0,max:16,label:'Insufficient',description:'Replicates existing work without meaningful innovation.'},
+        ],
+        impact_and_presentation:[
+          {min:22,max:25,label:'Excellent',description:'Impact assessment is data-driven with clear societal or scientific benefit.'},
+          {min:17,max:21,label:'Good',description:'Impact is identified and reasonably supported with evidence.'},
+          {min:12,max:16,label:'Developing',description:'Impact is mentioned but assessment is vague or unsupported.'},
+          {min:0,max:11,label:'Insufficient',description:'No structured impact assessment provided.'},
+        ],
+      }},
   },
   'IEEE-APSSDC': {
-    1:{labels:{application_and_presentation:'Application & Demo'}},
-    2:{weights:{creativity:25,technical_merit:45,application_and_presentation:30},labels:{creativity:'Innovation'}},
+    1:{labels:{application_and_presentation:'Application & Demo'},
+      rubricOverrides:{
+        application_and_presentation:[
+          {min:27,max:30,label:'Excellent',description:'Live demo is compelling and clearly demonstrates a real-world application scenario.'},
+          {min:21,max:26,label:'Good',description:'Demo works and application context is well-established.'},
+          {min:13,max:20,label:'Developing',description:'Demo is partial or application scenario is not convincing.'},
+          {min:0,max:12,label:'Insufficient',description:'No working demo or application context.'},
+        ],
+      }},
+    2:{weights:{creativity:25,technical_merit:45,application_and_presentation:30},labels:{creativity:'Innovation'},
+      rubricOverrides:{
+        creativity:[
+          {min:27,max:30,label:'Excellent',description:'Design introduces a novel concept or technique with clear differentiation from prior art.'},
+          {min:21,max:26,label:'Good',description:'Design shows originality in approach or implementation.'},
+          {min:13,max:20,label:'Developing',description:'Incremental modifications to a conventional design.'},
+          {min:0,max:12,label:'Insufficient',description:'No discernible innovation over standard approaches.'},
+        ],
+        technical_merit:[
+          {min:35,max:40,label:'Excellent',description:'Simulation and measurement show strong agreement. Performance meets or exceeds specifications.'},
+          {min:27,max:34,label:'Good',description:'Results are solid with reasonable sim-measurement correlation.'},
+          {min:19,max:26,label:'Developing',description:'Simulation presented but measurement validation is insufficient.'},
+          {min:0,max:18,label:'Insufficient',description:'No measurement results or major discrepancies with simulation.'},
+        ],
+      }},
   },
   'CANSAT-2025': {
-    1:{labels:{data_and_documentation:'Data Analysis & Reporting'}},
-    2:{weights:{design_compliance:20,mission_execution:40,data_and_documentation:20,safety_and_recovery:20},labels:{design_compliance:'Constraints Verification',mission_execution:'Flight Performance',data_and_documentation:'Data & Reports'}},
+    1:{labels:{data_and_documentation:'Data Analysis & Reporting'},
+      rubricOverrides:{
+        data_and_documentation:[
+          {min:22,max:25,label:'Excellent',description:'Post-flight data is rigorously analyzed and reporting is thorough with clear methodology.'},
+          {min:17,max:21,label:'Good',description:'Data analysis addresses key findings. Reporting is organized.'},
+          {min:12,max:16,label:'Developing',description:'Data is presented but analysis depth is lacking.'},
+          {min:0,max:11,label:'Insufficient',description:'Minimal analysis. Data is raw with no structured reporting.'},
+        ],
+      }},
+    2:{weights:{design_compliance:20,mission_execution:40,data_and_documentation:20,safety_and_recovery:20},labels:{design_compliance:'Constraints Verification',mission_execution:'Flight Performance',data_and_documentation:'Data & Reports'},
+      rubricOverrides:{
+        design_compliance:[
+          {min:18,max:20,label:'Excellent',description:'All mass, volume, and structural constraints verified with documented margin analysis.'},
+          {min:14,max:17,label:'Good',description:'Constraints are met with minor deviations within tolerance.'},
+          {min:10,max:13,label:'Developing',description:'One or more constraints marginally exceeded without documented justification.'},
+          {min:0,max:9,label:'Insufficient',description:'Multiple constraints violated or not verified.'},
+        ],
+        mission_execution:[
+          {min:31,max:35,label:'Excellent',description:'All flight objectives completed successfully with continuous telemetry throughout.'},
+          {min:24,max:30,label:'Good',description:'Primary objectives met. Minor telemetry interruptions.'},
+          {min:17,max:23,label:'Developing',description:'Flight was partial. Some objectives not achieved.'},
+          {min:0,max:16,label:'Insufficient',description:'Flight failed or no meaningful data collected.'},
+        ],
+        data_and_documentation:[
+          {min:22,max:25,label:'Excellent',description:'Post-flight reports are comprehensive with clear data visualizations and conclusions.'},
+          {min:17,max:21,label:'Good',description:'Reports cover key data. Analysis is adequate.'},
+          {min:12,max:16,label:'Developing',description:'Reports exist but analysis is shallow or incomplete.'},
+          {min:0,max:11,label:'Insufficient',description:'No meaningful post-flight documentation provided.'},
+        ],
+      }},
   },
 };
 
@@ -439,8 +640,16 @@ orgs.forEach(o => {
       let cLabel = evo?.labels?.[c.key] || c.label;
       let cShort = evo?.shortLabels?.[c.key] || c.short;
       let cWeight = evo?.weights?.[c.key] ?? c.weight;
-      let rubricJson = evo?.useSimplifiedRubric ? simplifiedRubric(c.max) : (c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max));
-      out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, short_label, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${c.id}', '${c.key}', '${escapeSql(cLabel)}', '${escapeSql(cShort)}', ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
+      let rubricJson;
+      if (evo?.rubricOverrides?.[c.key]) {
+        rubricJson = JSON.stringify(evo.rubricOverrides[c.key]).replace(/'/g, "''");
+      } else if (evo?.useSimplifiedRubric) {
+        rubricJson = simplifiedRubric(c.max);
+      } else {
+        rubricJson = c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max);
+      }
+      const pcDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
+      out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, short_label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${c.id}', '${c.key}', '${escapeSql(cLabel)}', '${escapeSql(cShort)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
       periodCrits.push({ key: c.key, max: c.max, weight: cWeight, pcId });
     });
     periodCriteriaMap[pId] = periodCrits;
@@ -474,55 +683,225 @@ out.push('');
 
 out.push(`-- Projects`);
 
-function genProjectDesc(title, lang) {
-  if (lang === 'tr') {
-    return pick([
-      `Bu proje, ${title.substring(0, 60).toLowerCase()} alanında özgün bir çözüm geliştirmeyi amaçlamaktadır.`,
-      `${title.substring(0, 50)} konusunda tasarım, geliştirme ve test süreçlerini kapsayan kapsamlı bir çalışmadır.`,
-      `Proje kapsamında ${title.substring(0, 50).toLowerCase()} üzerine deneysel çalışmalar yürütülmüştür.`,
-      `${title.substring(0, 50)} problemine yenilikçi bir yaklaşım sunan bir mühendislik projesidir.`,
-    ]);
-  }
-  return pick([
-    `This project develops a novel approach to ${title.substring(0, 60).toLowerCase()}, combining theoretical analysis with experimental validation.`,
-    `A capstone project focused on ${title.substring(0, 50).toLowerCase()}, featuring design, implementation, and comprehensive testing.`,
-    `Research and development effort targeting ${title.substring(0, 50).toLowerCase()} with emphasis on practical deployment.`,
-    `An engineering project addressing ${title.substring(0, 50).toLowerCase()} through innovative design and rigorous evaluation.`,
-  ]);
-}
-
 const projectPools = {
   'TEDU-EE': {
-    0: [{t:'FPGA-Based Real-Time Signal Processing for 5G NR',arch:'star'},{t:'Low-Power IoT Sensor Network for Smart Agriculture',arch:'solid'},{t:'Autonomous Drone Navigation with LiDAR SLAM',arch:'highvar'},{t:'GaN Power Amplifier Design for Sub-6 GHz 5G',arch:'tech_strong_comm_weak'},{t:'Edge AI Accelerator on RISC-V for Anomaly Detection',arch:'borderline'},{t:'Biomedical Signal Processing for Sleep Apnea Detection',arch:'wellrounded'},{t:'V2X Communication Module for Connected Vehicles',arch:'solid'},{t:'Digital Twin of a Photovoltaic Microgrid',arch:'average'},{t:'Wearable EEG-Based Brain-Computer Interface',arch:'strong_late'},{t:'RF Energy Harvesting for Batteryless IoT Sensors',arch:'weak_tech_strong_team'},{t:'MEMS Accelerometer Calibration via ML',arch:'partial'},{t:'Smart Building HVAC Optimization Using Deep RL',arch:'star'}],
-    1: ['Wearable ECG Monitor with BLE Connectivity','MIMO Antenna Design for Indoor 5G Coverage','Solar-Powered Environmental Monitoring Station','Robotic Arm Control via EMG Signals','Smart Grid Fault Detection Using Phasor Data','Power Line Communication Modem for Smart Metering','Automatic License Plate Recognition with Edge AI','UWB Indoor Positioning for Warehouse Robotics','Piezoelectric Energy Harvester for Bridge Monitoring','Gesture-Controlled Wheelchair with Depth Camera'],
-    2: ['Visible Light Communication Transceiver Prototype','FPGA-Based Audio Effects Processor','Quadcopter Stabilization with Kalman Filtering','Thermal Imaging for Predictive Maintenance','Bluetooth Mesh Network for Smart Home','Microstrip Antenna for X-Band Radar','PID-Controlled Self-Balancing Robot','Low-Cost EMG Board for Rehabilitation'],
-    3: ['DC Motor Speed Control with Fuzzy Logic','PCB Design for Portable Oscilloscope','Home Energy Management Dashboard','AM Radio Receiver Design and Assembly','Temperature Controller with PIC Microcontroller','Digital Voltmeter Using Arduino and LCD'],
+    0: [
+      {t:'FPGA-Based Real-Time Signal Processing for 5G NR',arch:'star',desc:'Implements a pipelined OFDM receiver on a Xilinx Zynq FPGA targeting 3GPP Release 17 numerology. Achieves sub-millisecond latency for channel estimation, equalization, and LDPC decoding with measured throughput exceeding 1.2 Gbps.'},
+      {t:'Low-Power IoT Sensor Network for Smart Agriculture',arch:'solid',desc:'Deploys a LoRaWAN mesh of custom-designed soil-moisture and microclimate sensors across a 2-hectare test field. The STM32-based nodes achieve 18-month battery life through duty-cycled sampling and adaptive transmission intervals.'},
+      {t:'Autonomous Drone Navigation with LiDAR SLAM',arch:'highvar',desc:'Integrates a Velodyne Puck LiDAR with an NVIDIA Jetson Orin for real-time 3D SLAM on a custom hexacopter. Tested in GPS-denied indoor warehouse environments with obstacle avoidance and path replanning.'},
+      {t:'GaN Power Amplifier Design for Sub-6 GHz 5G',arch:'tech_strong_comm_weak',desc:'Designs and fabricates a two-stage GaN HEMT power amplifier operating at 3.5 GHz with 42 dBm output power and 68% PAE. Doherty topology enables high linearity under modulated 5G NR signals.'},
+      {t:'Biomedical Signal Processing for Sleep Apnea Detection',arch:'wellrounded',desc:'Develops a wearable single-channel EEG acquisition board paired with a TinyML classifier running on an nRF5340 SoC. Detects obstructive sleep apnea events with 94% sensitivity validated against clinical polysomnography.'},
+    ],
+    1: [
+      {t:'Wearable ECG Monitor with BLE Connectivity',desc:'A compact three-lead ECG acquisition system built around the ADS1293 AFE, streaming data over BLE 5.0 to a companion mobile app for real-time arrhythmia flagging.'},
+      {t:'MIMO Antenna Design for Indoor 5G Coverage',desc:'Designs a four-element MIMO patch antenna array at 3.5 GHz with envelope correlation below 0.15, targeting small-cell indoor base stations for enhanced spatial multiplexing.'},
+      {t:'Solar-Powered Environmental Monitoring Station',desc:'A self-sustaining weather station combining a 20W solar panel with MPPT charging, measuring temperature, humidity, PM2.5, and UV index with hourly LoRa uploads to a cloud dashboard.'},
+      {t:'Robotic Arm Control via EMG Signals',desc:'Uses surface EMG electrodes and an SVM classifier to map forearm muscle activation patterns to six-DOF robotic arm movements for prosthetic control research.'},
+      {t:'Smart Grid Fault Detection Using Phasor Data',desc:'Implements a synchrophasor-based fault detection algorithm on a Raspberry Pi, processing PMU data streams to classify and localize transmission line faults within 40 ms.'},
+      {t:'Power Line Communication Modem for Smart Metering',desc:'Designs an OFDM-based narrowband PLC modem compliant with ITU-T G.9903, achieving 128 kbps throughput over 500 m of low-voltage distribution cabling.'},
+      {t:'Automatic License Plate Recognition with Edge AI',desc:'Deploys a YOLOv8-based plate detection and OCR pipeline on a Google Coral Edge TPU, processing 15 fps video with 97% character accuracy under varying lighting conditions.'},
+      {t:'UWB Indoor Positioning for Warehouse Robotics',desc:'Implements a TWR-based UWB positioning system using DW3000 modules, achieving sub-10 cm ranging accuracy to guide autonomous mobile robots in a warehouse testbed.'},
+      {t:'Piezoelectric Energy Harvester for Bridge Monitoring',desc:'Harvests vibration energy from traffic-induced bridge oscillations using a PZT bimorph cantilever array, generating sufficient power to drive a wireless strain-gauge sensor node.'},
+      {t:'Gesture-Controlled Wheelchair with Depth Camera',desc:'Combines an Intel RealSense D435 depth camera with a CNN gesture classifier to enable hands-free wheelchair navigation for patients with limited upper-body mobility.'},
+    ],
+    2: [
+      {t:'Visible Light Communication Transceiver Prototype',desc:'Builds a VLC link using high-brightness LEDs and a silicon photodiode receiver, demonstrating 10 Mbps data transfer with OOK modulation over 2 m line-of-sight.'},
+      {t:'FPGA-Based Audio Effects Processor',desc:'Implements real-time reverb, chorus, and parametric EQ on an Altera Cyclone IV FPGA with 24-bit audio I/O and MIDI-controlled parameter switching.'},
+      {t:'Quadcopter Stabilization with Kalman Filtering',desc:'Fuses accelerometer, gyroscope, and barometer data through an extended Kalman filter for attitude estimation, enabling stable hovering on a custom-built quadcopter frame.'},
+      {t:'Thermal Imaging for Predictive Maintenance',desc:'Uses a FLIR Lepton thermal camera module interfaced with an ESP32 to detect overheating components in electrical panels, with threshold-based alerts sent to a web dashboard.'},
+      {t:'Bluetooth Mesh Network for Smart Home',desc:'Creates a BLE Mesh network of smart light switches and sensors using nRF52840 modules, with a central gateway providing app-based control and scheduling.'},
+      {t:'Microstrip Antenna for X-Band Radar',desc:'Designs and fabricates a 4x4 microstrip patch array on Rogers RT/duroid at 10 GHz, achieving 18 dBi gain with sidelobe levels below -20 dB for short-range radar applications.'},
+      {t:'PID-Controlled Self-Balancing Robot',desc:'A two-wheeled inverted pendulum robot using an MPU6050 IMU and a tuned PID controller on an Arduino Mega, capable of maintaining balance on flat and inclined surfaces.'},
+      {t:'Low-Cost EMG Board for Rehabilitation',desc:'Designs a four-channel surface EMG acquisition board with instrumentation amplifiers and a 12-bit ADC, providing real-time muscle activation feedback for physiotherapy exercises.'},
+    ],
+    3: [
+      {t:'DC Motor Speed Control with Fuzzy Logic',desc:'Implements a Mamdani-type fuzzy logic speed controller for a 24V brushed DC motor, comparing transient response and steady-state error against a conventional PID controller.'},
+      {t:'PCB Design for Portable Oscilloscope',desc:'Designs a two-channel 20 MHz portable oscilloscope around an STM32H7 MCU with a 12-bit ADC and a 3.5-inch TFT display, powered by a rechargeable LiPo battery.'},
+      {t:'Home Energy Management Dashboard',desc:'Monitors household power consumption via non-invasive current clamps connected to an ESP32, displaying real-time and historical usage data on a locally hosted web dashboard.'},
+      {t:'AM Radio Receiver Design and Assembly',desc:'Constructs a superheterodyne AM receiver covering the 530-1700 kHz band, using discrete transistor stages for RF amplification, mixing, IF filtering, and audio output.'},
+      {t:'Temperature Controller with PIC Microcontroller',desc:'Builds a closed-loop temperature control system using a PIC18F4550, a K-type thermocouple, and a solid-state relay to regulate a heating element within ±0.5 °C.'},
+      {t:'Digital Voltmeter Using Arduino and LCD',desc:'Designs a 0-30V digital voltmeter using an Arduino Nano with a resistive voltage divider and a 16x2 LCD, calibrated against a bench multimeter to ±1% accuracy.'},
+    ],
   },
   'CMU-CS': {
-    0: ['GPU-Accelerated LLM Inference Engine','Privacy-Preserving Federated Learning Framework','Distributed File System with Raft Consensus','Autonomous Intersection Management via Multi-Agent RL','Real-Time Gesture Recognition Pipeline','Verifiable Computation with Zero-Knowledge Proofs','Neural Architecture Search for Edge Deployment','Decentralized Identity Verification with Blockchain','Context-Aware Code Completion Using RAG','Multi-Modal Sentiment Analysis Pipeline','Differential Privacy for Healthcare Data','Low-Latency Video Analytics for Autonomous Drones'],
-    1: ['Scalable Graph Neural Network for Drug Discovery','End-to-End Encrypted Group Messaging Protocol','Kubernetes Autoscaler with Predictive Load Modeling','Neural Radiance Fields for Indoor Mapping','Serverless Orchestration for ML Pipelines','Explainable AI Dashboard for Clinical Decisions','Type-Safe GraphQL Code Generator','Adversarial Robustness Testing for CV Models','Real-Time Collaborative Editing with CRDTs','Automated Data Pipeline Validation Suite'],
-    2: ['Compiler Optimization Pass for WebAssembly','P2P Video Streaming with Adaptive Bitrate','Automated Vulnerability Detection via Static Analysis','Distributed Key-Value Store with Snapshot Isolation','Program Synthesis for SQL Query Generation','Container Scheduling for Heterogeneous Clusters','Privacy-Preserving Recommendation Engine','Functional Reactive UI Framework'],
-    3: ['Cache-Oblivious B-Tree Implementation','Differentially Private Query Engine','Lock-Free Concurrent Hash Map','Garbage Collector Comparison for JVM Languages','HTTP/2 Load Balancer with Health Checks','Interactive Debugger for WebAssembly'],
+    0: [
+      {t:'GPU-Accelerated LLM Inference Engine',desc:'Builds a custom CUDA kernel library for transformer inference with continuous batching, KV-cache paging, and speculative decoding. Achieves 2.4x throughput over vLLM on a single A100 for Llama-3 70B.'},
+      {t:'Privacy-Preserving Federated Learning Framework',desc:'Implements secure aggregation with additive secret sharing and per-round differential privacy for cross-silo federated learning. Evaluated on medical imaging tasks across four simulated hospital nodes.'},
+      {t:'Distributed File System with Raft Consensus',desc:'A POSIX-compatible distributed file system in Rust using Raft for metadata consensus and erasure coding for data redundancy. Sustains 800 MB/s sequential write throughput on a five-node cluster.'},
+      {t:'Autonomous Intersection Management via Multi-Agent RL',desc:'Trains a multi-agent PPO policy in SUMO traffic simulator where each vehicle negotiates intersection crossing without traffic lights. Reduces average delay by 47% compared to adaptive signal control.'},
+      {t:'Real-Time Gesture Recognition Pipeline',desc:'Streams MediaPipe hand landmarks through a temporal convolutional network to recognize 30 ASL signs at 60 fps on a laptop GPU, with a latency budget under 33 ms end-to-end.'},
+      {t:'Verifiable Computation with Zero-Knowledge Proofs',desc:'Compiles arithmetic circuits from a DSL into Groth16 proofs using the arkworks library, enabling a smart contract to verify off-chain matrix multiplication results on-chain in constant time.'},
+      {t:'Neural Architecture Search for Edge Deployment',desc:'Applies a hardware-aware NAS algorithm using a latency predictor trained on Cortex-M7 profiling data, discovering CNN architectures that achieve 93% ImageNet top-5 accuracy within 50 ms inference.'},
+      {t:'Decentralized Identity Verification with Blockchain',desc:'Implements a W3C Verifiable Credentials stack on Ethereum L2, allowing universities to issue tamper-proof digital diplomas that employers can verify without contacting the issuing institution.'},
+      {t:'Context-Aware Code Completion Using RAG',desc:'Augments a fine-tuned CodeLlama-7B model with retrieval from the active repository using a ColBERT-based code embedder, improving single-line completion accuracy by 18% over vanilla prompting.'},
+      {t:'Multi-Modal Sentiment Analysis Pipeline',desc:'Fuses text, audio, and facial expression features through a cross-modal attention transformer to predict sentiment valence on the CMU-MOSEI benchmark, achieving state-of-the-art weighted F1.'},
+      {t:'Differential Privacy for Healthcare Data',desc:'Integrates the Gaussian mechanism into a SQL query engine so that analysts can run aggregate queries over patient records with a formal (epsilon, delta)-DP guarantee per query batch.'},
+      {t:'Low-Latency Video Analytics for Autonomous Drones',desc:'Runs a YOLOv8-nano object detector on Jetson Orin NX with TensorRT, feeding detections into a multi-object tracker for real-time search-and-rescue person detection from a quadrotor at 30 fps.'},
+    ],
+    1: [
+      {t:'Scalable Graph Neural Network for Drug Discovery',desc:'Trains a message-passing GNN on molecular graphs from ChEMBL to predict binding affinity, scaling to 10M compounds via mini-batch sampling on a multi-GPU setup.'},
+      {t:'End-to-End Encrypted Group Messaging Protocol',desc:'Designs a group messaging protocol based on MLS (RFC 9420) with forward secrecy and post-compromise security, implemented as a Rust library with formal verification of key schedule properties.'},
+      {t:'Kubernetes Autoscaler with Predictive Load Modeling',desc:'Replaces reactive HPA with an LSTM-based load predictor that pre-scales pods 5 minutes ahead of traffic spikes, reducing p99 latency violations by 62% on a production-mirrored workload.'},
+      {t:'Neural Radiance Fields for Indoor Mapping',desc:'Adapts Instant-NGP for real-time indoor scene reconstruction from smartphone video, producing navigable 3D models with centimeter-level geometric accuracy for facility management use cases.'},
+      {t:'Serverless Orchestration for ML Pipelines',desc:'Builds a DAG-based ML pipeline orchestrator on AWS Lambda with automatic checkpointing, retry logic, and cost-aware scheduling that reduces end-to-end training pipeline cost by 35%.'},
+      {t:'Explainable AI Dashboard for Clinical Decisions',desc:'Wraps a gradient-boosted ICU mortality predictor with SHAP explanations and presents them in a clinician-friendly React dashboard, validated through a user study with 12 physicians.'},
+      {t:'Type-Safe GraphQL Code Generator',desc:'Parses GraphQL schemas and operations to emit fully typed TypeScript client code with runtime validation, eliminating an entire class of API integration bugs in a 200-endpoint codebase.'},
+      {t:'Adversarial Robustness Testing for CV Models',desc:'Implements PGD, AutoAttack, and patch-based adversarial attacks as a unified testing framework, benchmarking six ImageNet classifiers and quantifying certified robustness radii.'},
+      {t:'Real-Time Collaborative Editing with CRDTs',desc:'Implements a Yjs-compatible CRDT engine in Rust compiled to WebAssembly, supporting concurrent text editing with 50+ simultaneous users at sub-50 ms merge latency.'},
+      {t:'Automated Data Pipeline Validation Suite',desc:'Generates property-based tests for Spark ETL pipelines by inferring schema invariants from historical runs, catching 89% of data quality regressions before production deployment.'},
+    ],
+    2: [
+      {t:'Compiler Optimization Pass for WebAssembly',desc:'Adds a loop-invariant code motion pass to a WebAssembly compiler backend, yielding 12-18% speedups on compute-intensive benchmarks from the PolyBenchC suite.'},
+      {t:'P2P Video Streaming with Adaptive Bitrate',desc:'Implements WebRTC-based peer-assisted live streaming where viewers relay chunks to nearby peers, reducing origin bandwidth by 40% while maintaining adaptive bitrate quality switching.'},
+      {t:'Automated Vulnerability Detection via Static Analysis',desc:'Builds a taint-analysis engine for Python that tracks user-controlled inputs through Flask routes to detect SQL injection and path traversal, evaluated on the OWASP Benchmark.'},
+      {t:'Distributed Key-Value Store with Snapshot Isolation',desc:'A log-structured key-value store in Go providing snapshot isolation via MVCC, with Raft-replicated write-ahead logs and compaction, benchmarked against etcd on YCSB workloads.'},
+      {t:'Program Synthesis for SQL Query Generation',desc:'Combines enumerative search with a neural ranker to synthesize SQL queries from natural language and input-output examples, achieving 78% exact-match accuracy on the Spider benchmark.'},
+      {t:'Container Scheduling for Heterogeneous Clusters',desc:'Extends the Kubernetes scheduler with a constraint-satisfaction plugin that co-locates GPU and CPU workloads to maximize utilization across mixed-hardware nodes.'},
+      {t:'Privacy-Preserving Recommendation Engine',desc:'Applies local differential privacy to user interaction logs before collaborative filtering, maintaining recommendation quality within 5% of the non-private baseline on MovieLens-20M.'},
+      {t:'Functional Reactive UI Framework',desc:'Designs a pull-based FRP framework in Haskell compiled to JavaScript via GHCJS, with automatic incremental DOM updates and a declarative event-handling model.'},
+    ],
+    3: [
+      {t:'Cache-Oblivious B-Tree Implementation',desc:'Implements a van Emde Boas-layout B-tree in C++ that achieves near-optimal cache behavior without knowing cache-line size, outperforming std::map by 3x on range queries.'},
+      {t:'Differentially Private Query Engine',desc:'Adds a privacy budget tracker to a columnar SQL engine so each query consumes calibrated Laplace noise, enforcing a per-user cumulative epsilon across an analyst session.'},
+      {t:'Lock-Free Concurrent Hash Map',desc:'Implements a split-ordered lock-free hash map in C++ using atomic CAS operations, benchmarked against tbb::concurrent_hash_map under 64-thread contention on a dual-socket server.'},
+      {t:'Garbage Collector Comparison for JVM Languages',desc:'Benchmarks ZGC, Shenandoah, and G1 collectors across latency-sensitive workloads (trading engine, web server), measuring pause times, throughput, and memory footprint on JDK 21.'},
+      {t:'HTTP/2 Load Balancer with Health Checks',desc:'Builds a Layer-7 HTTP/2 reverse proxy in Go with weighted round-robin, connection pooling, active health probes, and graceful draining, handling 50K concurrent streams.'},
+      {t:'Interactive Debugger for WebAssembly',desc:'Extends Chrome DevTools to support source-level breakpoints, variable inspection, and call-stack navigation for Wasm modules compiled from C/Rust via DWARF debug info.'},
+    ],
   },
   'TEKNOFEST': {
-    0: ['Otonom Sürü İHA Takip ve Koordinasyon Sistemi','Yüksek İrtifa Hibrit Roket Motoru Tasarımı','Otonom Sualtı Aracı ile Deniz Tabanı Haritalama','VTOL Sabit Kanatlı Kargo Dronu Prototipi','Radar Absorban Kompozit Kaplama Geliştirme','İnsansız Kargo Gemisi Otonom Navigasyon Sistemi','Güneş Enerjili Yüksek İrtifa İHA Prototipi','Akıllı Tarım Dronu ile Bitki Hastalığı Tespiti','Yapay Zeka Destekli Hedef Tanıma Sistemi','Elektrikli VTOL Hava Taksisi Konsepti','Otonom Mayın Tespit ve İmha Robotu','Karbon Fiber Gövdeli Süpersonik Model Roket'],
-    1: ['Tarımsal İlaçlama için Çoklu Drone Filosu','Sıvı Yakıtlı Model Roket ile Yükseklik Rekoru','Otonom Yüzey Aracı ile Su Kalitesi İzleme','Dikey İniş Kalkış Teslimat Dronu','Deniz Arama Kurtarma Dronu','Hafif Kompozit Yapılı Taktik Mini İHA','Otonom Lojistik Quadcopter Sistemi','Güdümsüz Roket Fin Stabilizasyonu','İnsansız Yer Aracı ile Harita Çıkarma','Topçu Düzeltme Kanatçığı Tasarımı'],
-    2: ['Güneş Enerjili Sabit Kanatlı İHA Testi','Katı Yakıtlı Roket Motor Test Düzeneği','Sualtı Akustik Haberleşme Modemi','Sabit Kanatlı İHA Otopilot Kontrol Kartı','Hibrit Motor: Katı-Sıvı Yakıt Kombinasyonu','FPV Yarış Dronu Engel Algılama','Küçük Uydu Fırlatma Aracı Ön Tasarım','Taktik İletişim İHA Röle Görevi'],
+    0: [
+      {t:'Otonom Sürü İHA Takip ve Koordinasyon Sistemi',desc:'Üç adet quadrotor İHA arasında UWB haberleşme ile formasyon uçuşu gerçekleştiren otonom sürü kontrol sistemi. Lider-takipçi algoritması ile GPS-destekli rota planlaması ve engel kaçınma entegrasyonu sağlanmıştır.'},
+      {t:'Yüksek İrtifa Hibrit Roket Motoru Tasarımı',desc:'HTPB katı yakıt ve N₂O oksitleyici kullanan hibrit roket motorunun tasarımı, üretimi ve statik ateşleme testleri. Hedef itki profili 500 N olup, yanma odası basıncı ve özgül itki ölçümleri gerçekleştirilmiştir.'},
+      {t:'Otonom Sualtı Aracı ile Deniz Tabanı Haritalama',desc:'ROS2 tabanlı otonom sualtı aracı (AUV) ile sonar ve stereo kamera verisi kullanarak deniz tabanı batimetri haritası oluşturma. Dalış derinliği 30 m, navigasyon DVL ve INS füzyonu ile sağlanmıştır.'},
+      {t:'VTOL Sabit Kanatlı Kargo Dronu Prototipi',desc:'Tilt-rotor mekanizmalı VTOL sabit kanat platformu; 5 kg faydalı yük kapasitesiyle 60 km menzil hedeflenmiştir. Geçiş uçuşu kontrol algoritması Pixhawk 6X üzerinde doğrulanmıştır.'},
+      {t:'Radar Absorban Kompozit Kaplama Geliştirme',desc:'Karbon nanotüp katkılı epoksi reçine ile X-bandı (8-12 GHz) radar absorban malzeme geliştirilmiştir. Ölçüm sonuçları -18 dB yansıma kaybı ile düşük gözlenebilirlik hedefini karşılamaktadır.'},
+      {t:'İnsansız Kargo Gemisi Otonom Navigasyon Sistemi',desc:'LiDAR ve AIS verileri füzyonu ile açık denizde otonom navigasyon yapan insansız yüzey aracı. COLREG kurallarına uyumlu çarpışma önleme modülü simülasyon ortamında doğrulanmıştır.'},
+      {t:'Güneş Enerjili Yüksek İrtifa İHA Prototipi',desc:'3 m kanat açıklığında güneş panelli sabit kanat İHA; MPPT şarj sistemi ve LiPo batarya ile 8 saat dayanıklılık hedefleyen yüksek irtifa gözetleme platformu.'},
+      {t:'Akıllı Tarım Dronu ile Bitki Hastalığı Tespiti',desc:'Multispektral kamera taşıyan tarım dronu, NDVI analizi ve CNN tabanlı görüntü sınıflandırma ile buğday tarlalarında pas hastalığını erken tespit etmektedir.'},
+      {t:'Yapay Zeka Destekli Hedef Tanıma Sistemi',desc:'Elektro-optik gimbal kamerasından alınan video akışı üzerinde YOLOv8 tabanlı gerçek zamanlı hedef tespit ve takip sistemi. Jetson AGX Orin üzerinde 25 fps işlem hızına ulaşılmıştır.'},
+      {t:'Elektrikli VTOL Hava Taksisi Konsepti',desc:'İki kişilik elektrikli VTOL hava taksisi konsept tasarımı; aerodinamik analiz, batarya boyutlandırma ve şehir içi rota optimizasyonu CFD ve MATLAB simülasyonlarıyla gerçekleştirilmiştir.'},
+      {t:'Otonom Mayın Tespit ve İmha Robotu',desc:'Metal dedektörü ve yer penetran radar sensörü taşıyan paletli mobil robot platformu. Otonom tarama algoritması ile 50x50 m alanda mayın tespiti ve GPS koordinat işaretleme yapılmaktadır.'},
+      {t:'Karbon Fiber Gövdeli Süpersonik Model Roket',desc:'Karbon fiber kompozit gövdeli model roket; L sınıfı katı yakıt motoru ile Mach 1.2 hız hedeflenmiştir. Aerodinamik ısınma analizi ve fin flutter simülasyonları OpenRocket ile doğrulanmıştır.'},
+    ],
+    1: [
+      {t:'Tarımsal İlaçlama için Çoklu Drone Filosu',desc:'Dört hexacopter ile koordineli tarımsal ilaçlama operasyonu; otomatik şerit paylaşımı ve dolum istasyonu yönetimi ile 50 dekarlık alan 45 dakikada tamamlanmaktadır.'},
+      {t:'Sıvı Yakıtlı Model Roket ile Yükseklik Rekoru',desc:'Etanol-LOX sıvı yakıtlı model roket motoru tasarımı; basınçla besleme sistemi ve özel enjektör plakası ile 3000 m irtifa hedeflenmiştir.'},
+      {t:'Otonom Yüzey Aracı ile Su Kalitesi İzleme',desc:'GPS güdümlü katamaran platformu üzerinde pH, çözünmüş oksijen ve bulanıklık sensörleri ile göl su kalitesi haritalama. Veriler LoRa ile kıyı istasyonuna aktarılmaktadır.'},
+      {t:'Dikey İniş Kalkış Teslimat Dronu',desc:'Quad-tilt mekanizmalı teslimat dronu; 2 kg paket kapasitesi, mıknatıslı bırakma sistemi ve otomatik iniş pedine dönüş özellikleri ile 15 km menzil sağlamaktadır.'},
+      {t:'Deniz Arama Kurtarma Dronu',desc:'Termal kamera ve can simidi bırakma mekanizması taşıyan deniz üstü arama-kurtarma İHA platformu. Rüzgar kompanzasyonlu hovering ve otomatik arama paterni uçuşu desteklenmektedir.'},
+      {t:'Hafif Kompozit Yapılı Taktik Mini İHA',desc:'1.2 kg kalkış ağırlığında, el fırlatmalı sabit kanat mini İHA. Kevlar-karbon hibrit yapı ve katlanır kanat mekanizması ile sırt çantasında taşınabilir tasarım.'},
+      {t:'Otonom Lojistik Quadcopter Sistemi',desc:'QR kod tabanlı iniş noktası tanıma ve yük bırakma sistemi ile donatılmış lojistik quadcopter. ArduPilot Lua script ile waypoint tabanlı çoklu teslimat görevi yönetilmektedir.'},
+      {t:'Güdümsüz Roket Fin Stabilizasyonu',desc:'Model roket için pasif aerodinamik stabilizasyon amacıyla farklı fin geometrilerinin rüzgar tüneli testleri ve CFD analizleri yapılarak optimal konfigürasyon belirlenmiştir.'},
+      {t:'İnsansız Yer Aracı ile Harita Çıkarma',desc:'SLAM algoritması ve stereo kamera ile iç mekan harita çıkarma yeteneğine sahip dört tekerlekli otonom kara aracı. ROS2 tabanlı navigasyon 0.5 m çözünürlüklü occupancy grid üretmektedir.'},
+      {t:'Topçu Düzeltme Kanatçığı Tasarımı',desc:'Mevcut mühimmat gövdesine entegre edilebilir kanatçık kiti konsept tasarımı; servo-aktüatörlü kontrol yüzeyleri ve IMU tabanlı güdüm algoritması MATLAB ortamında simüle edilmiştir.'},
+    ],
+    2: [
+      {t:'Güneş Enerjili Sabit Kanatlı İHA Testi',desc:'2 m kanat açıklığında esnek güneş hücresi kaplı sabit kanat İHA; uçuş testlerinde batarya ömrüne %40 katkı sağlayan güneş enerjisi entegrasyonu doğrulanmıştır.'},
+      {t:'Katı Yakıtlı Roket Motor Test Düzeneği',desc:'Yük hücresi, basınç sensörü ve yüksek hızlı kamera ile donatılmış statik ateşleme test standı. K ve L sınıfı motorlar için itki eğrisi ve yanma verimi ölçümü yapılmaktadır.'},
+      {t:'Sualtı Akustik Haberleşme Modemi',desc:'FSK modülasyonlu piezoelektrik transdüser tabanlı sualtı akustik modem; 500 m menzilde 1200 bps veri hızı ile AUV komut-kontrol haberleşmesi sağlamaktadır.'},
+      {t:'Sabit Kanatlı İHA Otopilot Kontrol Kartı',desc:'STM32F7 tabanlı özel otopilot kartı; IMU, GPS, barometre ve pitot tüpü entegrasyonu ile sabit kanat uçuş kontrol yazılımı geliştirilmiştir.'},
+      {t:'Hibrit Motor: Katı-Sıvı Yakıt Kombinasyonu',desc:'Parafin bazlı katı yakıt ve hidrojen peroksit oksitleyici kullanan hibrit motor prototipi. Regresyon hızı ve özgül itki ölçümleri ile performans karakterizasyonu yapılmıştır.'},
+      {t:'FPV Yarış Dronu Engel Algılama',desc:'FPV yarış dronuna eklenen ön-bakış stereo kamera ve FPGA tabanlı derinlik haritası işlemcisi ile düşük gecikme süreli engel algılama sistemi.'},
+      {t:'Küçük Uydu Fırlatma Aracı Ön Tasarım',desc:'10 kg LEO yük kapasiteli üç aşamalı katı yakıtlı fırlatma aracı ön tasarımı. Yörünge mekaniği simülasyonları ve yapısal analiz ANSYS ile tamamlanmıştır.'},
+      {t:'Taktik İletişim İHA Röle Görevi',desc:'Sabit kanat İHA üzerinde radyo röle sistemi ile kesintisiz taktik haberleşme sağlayan platform. UHF ve VHF bant geçirgen anten ve otomatik frekans yönetimi entegre edilmiştir.'},
+    ],
   },
   'TUBITAK-2204A': {
-    0: ['Yapay Zeka Destekli Erken Orman Yangını Tespiti','Tarımsal Atıklardan Ağır Metal Filtreleme Membranı','Giyilebilir Postür Düzeltme Sensörü ve Mobil Uygulaması','Mikroalg Biyoreaktörü ile Atmosferik CO₂ Yakalama','Atık Yağlardan Biyodizel Üretim Optimizasyonu','Deprem Erken Uyarı Sensör Ağı Prototipi','Meyve Olgunluk Tespiti için Hiperspektral Görüntüleme','Su Kirliliğinin Yapay Zeka ile İzlenmesi','Grafen Katkılı Beton Dayanıklılık Analizi','Otonom Böcek Robot ile Mikro-Tozlaşma'],
-    1: ['Arı Kolonisi Sağlığı İzleme Sistemi','Biyobozunur Plastik Üretiminde Mısır Nişastası','Toprak Neminin Yapay Zeka ile Tahmini','Göl Ekosistemlerinde Mikroplastik Analizi','Güneş Paneli Temizleme Robotu','Propolis Antibiyotik Araştırması','Yenilenebilir Enerji Hibrit Modelleme','Kentsel Isı Adası Uydu Analizi'],
-    2: ['Güneş Paneli Verimlilik Artırma Kaplaması','Su Arıtmada Doğal Zeolitlerin Kullanımı','Sürdürülebilir Ambalaj Malzemesi Geliştirme','Hava Kalitesi İzleme Sensörü Tasarımı','Bitki Büyüme ve LED Spektrumu İlişkisi','Yağmur Suyu Hasadı ve Arıtım Sistemi'],
+    0: [
+      {t:'Yapay Zeka Destekli Erken Orman Yangını Tespiti',desc:'Gözetleme kamerası görüntüleri üzerinde duman ve alev tespiti yapan CNN modeli; EfficientNet-B3 omurga ile %96 doğruluk oranında erken uyarı sağlamaktadır. Yanlış alarm oranı güneş parlaması ve sis koşullarında test edilmiştir.'},
+      {t:'Tarımsal Atıklardan Ağır Metal Filtreleme Membranı',desc:'Pirinç kabuğu ve fındık kabuğu biyokütlesinden sentezlenen aktif karbon membranların kurşun ve kadmiyum iyonlarına karşı adsorpsiyon kapasitesi incelenmiştir. Langmuir izotermi ile 98 mg/g kapasite belirlenmiştir.'},
+      {t:'Giyilebilir Postür Düzeltme Sensörü ve Mobil Uygulaması',desc:'MPU6050 ivmeölçer ile sırt eğimini ölçen giyilebilir cihaz; eşik aşımında titreşim geri bildirimi ve günlük postür raporu sunan React Native mobil uygulamasıyla entegre çalışmaktadır.'},
+      {t:'Mikroalg Biyoreaktörü ile Atmosferik CO₂ Yakalama',desc:'Chlorella vulgaris mikroalg kültürü barındıran 10 L fotobiyoreaktör ile atmosferik CO₂ yakalama verimliliği ölçülmüştür. LED aydınlatma spektrumu ve pH optimizasyonu ile günlük 2.3 g/L biyokütle üretimi sağlanmıştır.'},
+      {t:'Atık Yağlardan Biyodizel Üretim Optimizasyonu',desc:'Evsel atık kızartma yağlarından bazik katalizör ile transesterifikasyon yöntemiyle biyodizel üretimi. Metanol-yağ oranı, sıcaklık ve katalizör miktarı Taguchi yöntemiyle optimize edilmiştir.'},
+      {t:'Deprem Erken Uyarı Sensör Ağı Prototipi',desc:'MEMS ivmeölçer tabanlı düşük maliyetli sismik sensör düğümleri; P-dalgası algılandığında LoRa ağı üzerinden merkeze uyarı gönderen dağıtık erken uyarı sistemi prototipi.'},
+      {t:'Meyve Olgunluk Tespiti için Hiperspektral Görüntüleme',desc:'400-1000 nm aralığında hiperspektral kamera ile domates olgunluk seviyesinin tahribatsız tespiti. PLS-DA sınıflandırıcı ile dört olgunluk aşaması %93 doğrulukla ayırt edilmiştir.'},
+      {t:'Su Kirliliğinin Yapay Zeka ile İzlenmesi',desc:'Nehir yüzeyinden alınan drone görüntülerinde yağ tabakası ve atık birikimi tespiti yapan segmentasyon modeli. U-Net mimarisi ile piksel bazında %91 IoU değerine ulaşılmıştır.'},
+      {t:'Grafen Katkılı Beton Dayanıklılık Analizi',desc:'Çimento karışımına farklı oranlarda grafen oksit eklenerek basınç dayanımı, eğilme mukavemeti ve su geçirgenliği testleri yapılmıştır. %0.05 katkı oranında basınç dayanımı %28 artmıştır.'},
+      {t:'Otonom Böcek Robot ile Mikro-Tozlaşma',desc:'Sera ortamında çiçek tozlaşmasını taklit eden 8 cm boyutunda mikro robot; titreşim motoru ile polen transfer mekanizması ve kızılötesi çiçek algılama sistemi entegre edilmiştir.'},
+    ],
+    1: [
+      {t:'Arı Kolonisi Sağlığı İzleme Sistemi',desc:'Kovan içi sıcaklık, nem ve ses seviyesi verilerini toplayan IoT sensör sistemi; makine öğrenmesi ile ana arı kaybı ve varroa enfestasyonu erken uyarısı sağlamaktadır.'},
+      {t:'Biyobozunur Plastik Üretiminde Mısır Nişastası',desc:'Mısır nişastası ve gliserol karışımından termoplastik nişasta film üretimi; çekme mukavemeti, su buharı geçirgenliği ve toprakta bozunma hızı testleri ile karakterizasyon yapılmıştır.'},
+      {t:'Toprak Neminin Yapay Zeka ile Tahmini',desc:'Kapasitif toprak nemi sensörleri ve meteoroloji verisi kullanarak LSTM modeli ile 72 saatlik toprak nemi tahmini; sulama zamanlaması optimizasyonu hedeflenmiştir.'},
+      {t:'Göl Ekosistemlerinde Mikroplastik Analizi',desc:'Ankara çevresindeki üç gölden alınan su ve sediman örneklerinde mikroplastik konsantrasyonu ve polimer tipi FTIR spektroskopisi ile belirlenmiştir.'},
+      {t:'Güneş Paneli Temizleme Robotu',desc:'Güneş paneli yüzeyinde otonom hareket eden raylı temizleme robotu; fırça ve basınçlı hava sistemiyle toz ve kuş pisliği temizliği yaparak panel verimini %12 artırmaktadır.'},
+      {t:'Propolis Antibiyotik Araştırması',desc:'Farklı coğrafi bölgelerden toplanan propolis örneklerinin Staphylococcus aureus ve E. coli üzerindeki antimikrobiyal etkinliği disk difüzyon yöntemiyle karşılaştırılmıştır.'},
+      {t:'Yenilenebilir Enerji Hibrit Modelleme',desc:'Güneş ve rüzgar enerjisi verilerini birleştiren hibrit enerji sistemi HOMER Pro ile modellenmiş; Ankara koşullarında optimum panel-türbin oranı ve batarya kapasitesi belirlenmiştir.'},
+      {t:'Kentsel Isı Adası Uydu Analizi',desc:'Landsat-8 termal bant uydu görüntüleri ile İstanbul kentsel ısı adası etkisinin 2015-2025 yılları arasındaki değişimi NDVI ve yüzey sıcaklığı korelasyonu ile analiz edilmiştir.'},
+    ],
+    2: [
+      {t:'Güneş Paneli Verimlilik Artırma Kaplaması',desc:'TiO₂ nanopartikül katkılı anti-reflektif kaplama ile güneş paneli cam yüzeyinde ışık geçirgenliği artırılmış; %3.5 verimlilik kazanımı ölçülmüştür.'},
+      {t:'Su Arıtmada Doğal Zeolitlerin Kullanımı',desc:'Gördes zeolit yataklarından elde edilen doğal klinoptilolitin amonyum ve ağır metal iyonlarını adsorpsiyon kapasitesi kolon deneyleriyle belirlenmiştir.'},
+      {t:'Sürdürülebilir Ambalaj Malzemesi Geliştirme',desc:'Kitosan ve jelatin bazlı biyobozunur film; zerdeçal ekstraktı katkısıyla antimikrobiyal özellik kazandırılmış, gıda ambalajında raf ömrü uzatma potansiyeli test edilmiştir.'},
+      {t:'Hava Kalitesi İzleme Sensörü Tasarımı',desc:'MQ serisi gaz sensörleri ve PM2.5 lazer sensörü ile Arduino tabanlı taşınabilir hava kalitesi ölçüm cihazı; veriler SD karta kaydedilip web arayüzünde görselleştirilmektedir.'},
+      {t:'Bitki Büyüme ve LED Spektrumu İlişkisi',desc:'Kırmızı, mavi ve beyaz LED kombinasyonlarının marul büyüme hızı, yaprak alanı ve klorofil içeriği üzerindeki etkisi kontrollü sera ortamında 45 günlük deney ile incelenmiştir.'},
+      {t:'Yağmur Suyu Hasadı ve Arıtım Sistemi',desc:'Çatı yüzeyinden toplanan yağmur suyunun kum-çakıl filtrasyon ve UV dezenfeksiyon ile arıtılarak sulama ve tuvalet suyu olarak kullanılabilirliği test edilmiştir.'},
+    ],
   },
   'IEEE-APSSDC': {
-    0: ['Phased Array Antenna for 28 GHz mmWave 5G','Wearable UHF RFID Tag Antenna for Patient Tracking','Dual-Band Circularly Polarized Patch for GPS/GLONASS','Metamaterial Absorber for Radar Cross-Section Reduction','Reconfigurable Metasurface for Beam Steering','Textile-Integrated Antenna Array for Body Area Networks','Frequency-Tunable Slot Antenna Using Varactor Diodes','SIW-Based Diplexer for TX-RX Systems','Millimeter-Wave Lens Antenna for Automotive Radar','Fractal Antenna for Ultra-Wideband Applications'],
-    1: ['Reconfigurable FSS for 5G Shielding','Compact MIMO Antenna for Sub-6 GHz Handsets','SIW Filter for Ka-Band','Broadband Log-Periodic for EMC Testing','MIMO Antenna for Wi-Fi 6E Access Points','Circularly Polarized Horn for Satellite Comm','Implantable Antenna for Deep Tissue Biotelemetry','Dual-Polarized Base Station Antenna'],
-    2: ['Dielectric Resonator Antenna for mmWave Imaging','Flexible Inkjet-Printed Antenna for Wearable IoT','Patch Antenna Array for 24 GHz Doppler Radar','Wearable Antenna for UHF Emergency Comm','Compact Loop Antenna for NFC/WPT','Printed Yagi-Uda for Direction Finding'],
+    0: [
+      {t:'Phased Array Antenna for 28 GHz mmWave 5G',desc:'A 16-element patch phased array on Rogers RO4003C with corporate feed network and 5-bit digital phase shifters, achieving ±45° beam scanning with 22 dBi peak gain at 28 GHz.'},
+      {t:'Wearable UHF RFID Tag Antenna for Patient Tracking',desc:'A flexible dipole-based RFID tag antenna printed on Kapton substrate, designed to operate on the human body at 915 MHz with a read range exceeding 5 m despite body-loading effects.'},
+      {t:'Dual-Band Circularly Polarized Patch for GPS/GLONASS',desc:'A stacked patch antenna providing RHCP at L1 (1575 MHz) and L2 (1227 MHz) with axial ratio below 2 dB across both bands, intended for precision agriculture GNSS receivers.'},
+      {t:'Metamaterial Absorber for Radar Cross-Section Reduction',desc:'A polarization-insensitive metamaterial absorber using resistively loaded split-ring resonators, achieving greater than 90% absorption from 8 to 12 GHz for RCS reduction applications.'},
+      {t:'Reconfigurable Metasurface for Beam Steering',desc:'A 1-bit reconfigurable intelligent surface with PIN-diode-switched unit cells at 5.8 GHz, electronically steering a reflected beam over ±60° with measured 1.5 dB scanning loss.'},
+      {t:'Textile-Integrated Antenna Array for Body Area Networks',desc:'A two-element conductive-thread antenna array embroidered into a polyester sports shirt, operating at 2.45 GHz for WBAN with -15 dB mutual coupling despite close inter-element spacing.'},
+      {t:'Frequency-Tunable Slot Antenna Using Varactor Diodes',desc:'A CPW-fed slot antenna whose resonant frequency tunes continuously from 2.2 to 3.8 GHz via reverse-biased varactor loading, covering LTE bands 1 through 7 with a single aperture.'},
+      {t:'SIW-Based Diplexer for TX-RX Systems',desc:'A substrate-integrated-waveguide diplexer at 24/28 GHz for full-duplex mmWave front-ends, fabricated on a single Rogers 5880 layer with better than 35 dB TX-RX isolation.'},
+      {t:'Millimeter-Wave Lens Antenna for Automotive Radar',desc:'A 3D-printed dielectric lens with gradient-index profile illuminated by an open-ended waveguide at 77 GHz, producing a 3° pencil beam with 28 dBi gain for long-range automotive radar.'},
+      {t:'Fractal Antenna for Ultra-Wideband Applications',desc:'A Minkowski-island fractal monopole printed on FR-4, covering 3.1 to 10.6 GHz with VSWR below 2:1 and a compact footprint 40% smaller than a conventional UWB disc monopole.'},
+    ],
+    1: [
+      {t:'Reconfigurable FSS for 5G Shielding',desc:'A frequency-selective surface with PIN-diode-switchable unit cells that toggles between pass and stop states at 3.5 GHz, enabling on-demand electromagnetic shielding for secure rooms.'},
+      {t:'Compact MIMO Antenna for Sub-6 GHz Handsets',desc:'A four-port MIMO antenna occupying 150x75 mm using orthogonal slot modes to achieve ECC below 0.05 across 3.3-3.8 GHz for 5G smartphone integration.'},
+      {t:'SIW Filter for Ka-Band',desc:'A fourth-order Chebyshev bandpass filter implemented in SIW at 26 GHz with 800 MHz bandwidth, 1.2 dB insertion loss, and 25 dB rejection at ±1.5 GHz offset.'},
+      {t:'Broadband Log-Periodic for EMC Testing',desc:'A printed log-periodic dipole array covering 200 MHz to 6 GHz for pre-compliance EMC measurements, with calibrated gain data traceable to a reference horn antenna.'},
+      {t:'MIMO Antenna for Wi-Fi 6E Access Points',desc:'An eight-port ceiling-mount MIMO antenna covering 5.925-7.125 GHz (Wi-Fi 6E) with dual-polarized patch elements and port-to-port isolation exceeding 22 dB.'},
+      {t:'Circularly Polarized Horn for Satellite Comm',desc:'A corrugated conical horn antenna with septum polarizer producing RHCP at Ku-band (12.5 GHz) with 0.5 dB axial ratio and 20 dBi gain for VSAT ground terminals.'},
+      {t:'Implantable Antenna for Deep Tissue Biotelemetry',desc:'A miniaturized PIFA operating in the MedRadio band (401-406 MHz) encapsulated in biocompatible silicone, with link-budget analysis for 10 mm implant depth in muscle tissue.'},
+      {t:'Dual-Polarized Base Station Antenna',desc:'A wideband dual-polarized cross-dipole antenna element for macro base stations covering 1.7-2.7 GHz with ±45° slant polarization, 65° HPBW, and 17 dBi gain.'},
+    ],
+    2: [
+      {t:'Dielectric Resonator Antenna for mmWave Imaging',desc:'A cylindrical dielectric resonator antenna excited in the HEM11 mode at 60 GHz, achieving 12 dBi gain and 18% impedance bandwidth for short-range imaging applications.'},
+      {t:'Flexible Inkjet-Printed Antenna for Wearable IoT',desc:'A silver-nanoparticle inkjet-printed meander-line antenna on PET film, resonating at 2.45 GHz with -12 dBi gain, surviving 500 bend cycles to a 15 mm radius.'},
+      {t:'Patch Antenna Array for 24 GHz Doppler Radar',desc:'A 2x4 series-fed patch array on Rogers 5880 for K-band CW Doppler radar, providing 18 dBi gain with a fan beam for traffic speed measurement.'},
+      {t:'Wearable Antenna for UHF Emergency Comm',desc:'A flexible inverted-F antenna integrated into a firefighter jacket collar, operating at 430 MHz with ground-plane independence verified through on-body measurements.'},
+      {t:'Compact Loop Antenna for NFC/WPT',desc:'A planar spiral-loop antenna at 13.56 MHz optimized for simultaneous NFC data transfer and 2W wireless power transfer to wearable medical devices.'},
+      {t:'Printed Yagi-Uda for Direction Finding',desc:'A five-element printed Yagi-Uda at 900 MHz with 9 dBi gain and 50° HPBW, used as the element in a four-quadrant DF array for wildlife VHF collar tracking.'},
+    ],
   },
   'CANSAT-2025': {
-    0: ['Autogyro Descent and Precision Landing System','Dual-Redundant Telemetry with LoRa Failover','Multi-Sensor Atmospheric Profiling Payload','Deployable Aerobrake Heat Shield Demonstrator','Split-Body CanSat with Wireless Inter-Module Telemetry','GNSS-Denied Navigation Using Barometric-IMU Fusion','Thermal Imaging Mission for Wildfire Detection','Controlled Descent Using Active Fin Steering','Radiation Dosimetry for High-Altitude Profiling','AI-Powered Image Classification During Descent'],
-    1: ['Parafoil Guided Recovery with GPS Waypoints','Solar-Powered Secondary Mission: UV Index Mapping','Deployable Boom Magnetometer Suite','Hydrogen Fuel Cell Ground Recovery Vehicle','Dual-Camera Stereoscopic Terrain Mapping','CanSat-to-CanSat Mesh Communication','Biodegradable Structure CanSat Design','Acoustic Wind Profiling Payload'],
-    2: ['Maple-Seed Inspired Passive Descent Vehicle','Ground Station with Real-Time 3D Trajectory','Glider Recovery with Autonomous Steering','LoRa Long-Range Telemetry Ground Station','Atmospheric Particulate Matter Sampling','Parachute Deployment Optimization via ML'],
+    0: [
+      {t:'Autogyro Descent and Precision Landing System',desc:'Replaces the traditional parachute with a folding autogyro rotor blade assembly that deploys at apogee. Achieves a controlled 5 m/s descent rate with GPS-guided heading corrections targeting a 10 m landing circle.'},
+      {t:'Dual-Redundant Telemetry with LoRa Failover',desc:'Primary telemetry uses 915 MHz FSK at 19.2 kbps; a secondary LoRa channel activates automatically if packet loss exceeds 20%, ensuring continuous data downlink throughout the 600 m descent.'},
+      {t:'Multi-Sensor Atmospheric Profiling Payload',desc:'Carries BME680, SCD41, and UV-B sensors to build a vertical atmospheric profile of temperature, humidity, CO₂, and UV irradiance from 700 m AGL to ground, sampled at 10 Hz.'},
+      {t:'Deployable Aerobrake Heat Shield Demonstrator',desc:'A spring-loaded deployable drag device made from Nomex fabric and carbon-fiber ribs, demonstrating controlled deceleration from 30 m/s to 8 m/s within the first 200 m of descent.'},
+      {t:'Split-Body CanSat with Wireless Inter-Module Telemetry',desc:'The CanSat separates at apogee into a sensor pod and a gliding recovery vehicle, communicating via a 2.4 GHz radio link. Both modules transmit independent telemetry to the ground station.'},
+      {t:'GNSS-Denied Navigation Using Barometric-IMU Fusion',desc:'Demonstrates position estimation during simulated GPS jamming by fusing barometric altitude, 9-DOF IMU data, and a terrain-referenced navigation algorithm with 15 m CEP accuracy.'},
+      {t:'Thermal Imaging Mission for Wildfire Detection',desc:'Mounts a FLIR Lepton 3.5 thermal camera to detect ground hotspots during descent, processing thermal frames on an RP2040 to flag anomalies and geotag them with concurrent GPS fixes.'},
+      {t:'Controlled Descent Using Active Fin Steering',desc:'Four servo-actuated fins provide roll and pitch control during parachute descent, guided by a PID controller tracking GPS waypoints to steer the CanSat toward a designated landing zone.'},
+      {t:'Radiation Dosimetry for High-Altitude Profiling',desc:'A Geiger-Muller tube and SiPM-based scintillator measure ionizing radiation dose rate from launch to landing, building a vertical dose profile relevant to aviation and balloon missions.'},
+      {t:'AI-Powered Image Classification During Descent',desc:'A downward-facing camera captures terrain images during descent, classified on-board by a TensorFlow Lite model into land-cover categories (vegetation, water, urban, bare soil) and transmitted in real time.'},
+    ],
+    1: [
+      {t:'Parafoil Guided Recovery with GPS Waypoints',desc:'A ram-air parafoil with servo-controlled brake toggles guides the CanSat through four GPS waypoints during descent, achieving a 25 m landing accuracy in field tests.'},
+      {t:'Solar-Powered Secondary Mission: UV Index Mapping',desc:'Thin-film solar cells supplement the battery during descent while a VEML6075 UV sensor maps UV-A and UV-B intensity at 5 m altitude increments for atmospheric research.'},
+      {t:'Deployable Boom Magnetometer Suite',desc:'A 30 cm spring-loaded boom extends after ejection to distance a fluxgate magnetometer from the CanSat electronics, measuring geomagnetic field variation with 10 nT resolution.'},
+      {t:'Hydrogen Fuel Cell Ground Recovery Vehicle',desc:'A PEM fuel-cell-powered rover navigates to the CanSat landing coordinates using GPS, retrieves the payload, and returns to the launch site autonomously.'},
+      {t:'Dual-Camera Stereoscopic Terrain Mapping',desc:'Two synchronized OV5640 cameras capture stereo image pairs during descent, processed on the ground into a 3D point cloud for terrain reconstruction of the landing area.'},
+      {t:'CanSat-to-CanSat Mesh Communication',desc:'Two CanSats launched in sequence form a 900 MHz mesh relay, extending telemetry range by 60% and demonstrating multi-node swarm communication for future missions.'},
+      {t:'Biodegradable Structure CanSat Design',desc:'The airframe is constructed from PLA and mycelium composite panels that fully biodegrade within 90 days, addressing environmental concerns for CanSats that cannot be recovered.'},
+      {t:'Acoustic Wind Profiling Payload',desc:'Four MEMS microphones arranged in a tetrahedral array measure wind speed and direction during descent via time-of-arrival acoustic anemometry, providing 1 Hz wind profiles.'},
+    ],
+    2: [
+      {t:'Maple-Seed Inspired Passive Descent Vehicle',desc:'A single-blade autorotation design inspired by maple samaras achieves a stable 4 m/s descent without active control, with the spin rate providing attitude stabilization.'},
+      {t:'Ground Station with Real-Time 3D Trajectory',desc:'A Python/Qt ground station application receives 10 Hz telemetry and renders the CanSat trajectory in a 3D map view with altitude, velocity, and orientation overlays.'},
+      {t:'Glider Recovery with Autonomous Steering',desc:'The CanSat transitions to a fixed-wing glider configuration after parachute release, autonomously steering toward the launch site using proportional navigation guidance.'},
+      {t:'LoRa Long-Range Telemetry Ground Station',desc:'A high-gain Yagi antenna and LoRa receiver achieve reliable telemetry reception at 8 km range using spreading factor 10 at 868 MHz with forward error correction.'},
+      {t:'Atmospheric Particulate Matter Sampling',desc:'A miniature impactor sampler collects PM2.5 and PM10 particles on adhesive substrate during descent, analyzed post-flight under a microscope for morphology and composition.'},
+      {t:'Parachute Deployment Optimization via ML',desc:'A random-forest model trained on 200 simulation runs predicts optimal parachute deployment altitude based on real-time wind and descent-rate data, minimizing landing dispersion.'},
+    ],
   },
 };
 
@@ -531,33 +910,90 @@ const orgAdvisors = {
   'CMU-CS': [{n:'Prof. David Patterson',aff:'Carnegie Mellon, SCS'},{n:'Dr. Lisa Chen',aff:'Carnegie Mellon, SCS'},{n:'Prof. Robert Singh',aff:'Carnegie Mellon, ECE'},{n:'Dr. Amanda Torres',aff:'Carnegie Mellon, LTI'},{n:'Prof. Michael Hoffman',aff:'Carnegie Mellon, ISR'},{n:'Dr. Karen White',aff:'Carnegie Mellon, SCS'}],
   'TEKNOFEST': [{n:'Prof. Serhat Öztürk',aff:'İTÜ, Uçak Mühendisliği'},{n:'Dr. Fatma Korkmaz',aff:'ODTÜ, Havacılık'},{n:'Prof. Murat Yıldız',aff:'İTÜ, Makina Mühendisliği'},{n:'Dr. Zehra Aksoy',aff:'YTÜ, Mekatronik'},{n:'Prof. Hakan Güneş',aff:'Boğaziçi, Elektrik Müh.'},{n:'Dr. Canan Eriş',aff:'Eskişehir Teknik, Havacılık'}],
   'TUBITAK-2204A': [{n:'Dr. Merve Yıldırım',aff:'Ankara Fen Lisesi'},{n:'Selin Karadeniz',aff:'İstanbul Atatürk Fen Lisesi'},{n:'Ahmet Çelik',aff:'İzmir Fen Lisesi'},{n:'Dr. Burcu Eren',aff:'ODTÜ GV Lisesi'},{n:'Mehmet Kaya',aff:'Galatasaray Lisesi'}],
-  'IEEE-APSSDC': [{n:'Prof. Harold Kim',aff:'U. Michigan, ECE'},{n:'Dr. Sarah Novak',aff:'Georgia Tech, ECE'},{n:'Prof. Wei Zhang',aff:'UCLA, EE'},{n:'Dr. Anita Patel',aff:'Purdue, ECE'},{n:'Prof. Diane Mitchell',aff:'Ohio State, ECE'}],
-  'CANSAT-2025': [{n:'Prof. Richard Kline',aff:'Virginia Tech, Aerospace'},{n:'Dr. Samantha Ford',aff:'MIT, AeroAstro'},{n:'Prof. Douglas Park',aff:'CU Boulder, Aerospace'},{n:'Dr. Yuki Tanaka',aff:'Caltech, GALCIT'},{n:'Prof. Michael Torres',aff:'Purdue, AAE'}],
+  'IEEE-APSSDC': [{n:'Prof. Harold Kim',aff:'U. Michigan, ECE'},{n:'Dr. Sarah Novak',aff:'Georgia Tech, ECE'},{n:'Prof. Wei Zhang',aff:'UCLA, EE'},{n:'Dr. Anita Patel',aff:'Purdue, ECE'},{n:'Prof. Gregory Harmon',aff:'Ohio State, ECE'}],
+  'CANSAT-2025': [{n:'Prof. Richard Kline',aff:'Virginia Tech, Aerospace'},{n:'Dr. Samantha Ford',aff:'MIT, AeroAstro'},{n:'Prof. Douglas Park',aff:'CU Boulder, Aerospace'},{n:'Dr. Yuki Tanaka',aff:'Caltech, GALCIT'},{n:'Prof. Brian Caldwell',aff:'Purdue, AAE'}],
 };
 
-const namesTr = ['Tolga Erim','Melis Kavak','Ozan Çelebi','Ezgi Doruk','Caner Turgut','Aslı Tezcan','Berk Gündüz','Ceyda Vural','Korhan Alkan','Sinem Uslu','Arda Keçeci','Zeynep Gül','Baran Tekin','Kübra Şen','Mert Çakır','İrem Demirci','Hakan Kurt','Elif Yılmaz','Sinan Koç','Ece Yıldırım','Yiğit Polat','Damla Kılıç','Kaan Avcı','Büşra Doğan','Alperen Turan','Rüya Işık','Emre Baş','Gizem Aksoy','Serkan Taşkın','Deniz Ünal','Onur Çelik','Selin Akay','Burak Aslan','Beren Yücel','Kerem Arıcan','Esra Kaya','Umut Şahin','Ceren Erdoğan','Eren Güler','Tuğçe Can','Doğukan Arslan','Nisa Öztürk','Barış Yıldız','Cansu Demir','Furkan Polat','Hazal Koç','Tuna Bakır','Merve Karaca','Alp Sönmez','Defne Çetin','Oğuzhan Kara','Pelin Aydın','Efe Güneş','Nehir Tosun','Berke Şimşek','İlayda Başaran','Doruk Acar','Cemre Uçar','Taylan Ergin','Yağmur Tunç','Adem Yılmaztürk','Sevval Kaplan','Cenk Duman','Beyza Güler','Batuhan Koçak','Dilan Aktaş','Kutay Erdal','Betül Sezer','Çağrı Özkan','Zehra Kurt','Görkem Taş','Eylül Özdemir','Volkan Arı','Sude Bulut','Alihan Topçu','Irmak Genç','Oğuz Balcı','Havva Keskin','Atakan Yavuz','Melisa Tuncer'];
-const namesEn = ['Elias Boyd','Clara Dawson','Miles Cunningham','Sophie Clarke','Nolan Davies','Maya Jenkins','Julian Hayes','Eva Harding','Leo Gallagher','Tessa Rowan','Adam Bennett','Hazel Foster','Cole Harrison','Lucy Brooks','Dylan Reed','Aurora Price','Ethan Ward','Stella Myers','Connor Ross','Zoe Powell','Lucas Sullivan','Grace Kelly','Mason Bell','Ruby Murphy','Logan Bailey','Lily Cooper','Caleb Richardson','Mia Howard','Nathan Cox','Chloe Ward','Isaac Perez','Emma Peterson','Owen Gray','Avery James','Wyatt Watson','Ella Brooks','Jack Kelly','Aria Sanders','Ryan Price','Scarlett Wood','Liam Fletcher','Olivia Chen','Noah Patterson','Amelia Wright','Henry Torres','Charlotte Kim','Samuel Rivera','Harper Morgan','Benjamin Cruz','Abigail Reeves','Theodore Grant','Eleanor Marsh','Sebastian Cross','Victoria Hale','Daniel Frost','Penelope Blake','Alexander Dunn','Layla Stone','Matthew Doyle','Isla Webb','James Thornton','Violet Keane','Andrew Holden','Naomi Swift','Patrick Rowe','Sophia Linden','Christopher Vale','Alice Brennan','Gabriel Locke','Hannah Pratt','Dominic Hurst','Madeline Ford','Vincent Crane','Piper York','Marcus Shore','Sienna West','Oscar Quinn','Jade Sinclair','Felix Palmer','Willow Drake'];
+const namesTr = [
+  'Tolga Erim','Melis Kavak','Ozan Çelebi','Ezgi Doruk','Caner Turgut','Aslı Tezcan','Berk Gündüz','Ceyda Vural',
+  'Korhan Alkan','Sinem Uslu','Arda Keçeci','Zeynep Gül','Baran Tekin','Kübra Şen','Mert Çakır','İrem Demirci',
+  'Hakan Kurt','Elif Yılmaz','Sinan Koç','Ece Yıldırım','Yiğit Polat','Damla Kılıç','Kaan Avcı','Büşra Doğan',
+  'Alperen Turan','Rüya Işık','Emre Baş','Gizem Aksoy','Serkan Taşkın','Deniz Ünal','Onur Çelik','Selin Akay',
+  'Burak Aslan','Beren Yücel','Kerem Arıcan','Esra Kaya','Umut Şahin','Ceren Erdoğan','Eren Güler','Tuğçe Can',
+  'Doğukan Arslan','Nisa Öztürk','Barış Yıldız','Cansu Demir','Furkan Polat','Hazal Koç','Tuna Bakır','Merve Karaca',
+  'Alp Sönmez','Defne Çetin','Oğuzhan Kara','Pelin Aydın','Efe Güneş','Nehir Tosun','Berke Şimşek','İlayda Başaran',
+  'Doruk Acar','Cemre Uçar','Taylan Ergin','Yağmur Tunç','Adem Yılmaztürk','Sevval Kaplan','Cenk Duman','Beyza Güler',
+  'Batuhan Koçak','Dilan Aktaş','Kutay Erdal','Betül Sezer','Çağrı Özkan','Zehra Kurt','Görkem Taş','Eylül Özdemir',
+  'Volkan Arı','Sude Bulut','Alihan Topçu','Irmak Genç','Oğuz Balcı','Havva Keskin','Atakan Yavuz','Melisa Tuncer',
+  // ── expanded pool (81-180) ──
+  'Taner Özen','Dicle Arslan','Kağan Erdem','Naz Tunalı','İlker Durmaz','Sıla Yılmazer','Berkay Kuruç','Melike Savaş',
+  'Altan Çevik','Peri Ergin','Sergen Koray','Duygu Başak','Tunahan Korkut','Azra Evren','Rıdvan Taş','Ebru Gökçe',
+  'Fatih Tezel','Nur Akdeniz','Selçuk Taner','İpek Sarıca','Emrah Polat','Berra Yılmaz','Oktay Çınar','Simge Kalkan',
+  'Yunus Emre Boz','Aslıhan Coşkun','Gökhan Kılınç','Tuğba Erdem','Semih Karataş','Ceylin Aydoğan','Levent Dursun','Ebrar Korkmaz',
+  'Ulaş Sevinç','Nil Akyüz','Bartu Güney','Hande Polat','Turgay Keskin','Müge Çelik','Oğulcan Demirel','Elif Naz Balcı',
+  'Koray Sert','Mina Kaplan','Tayfun Aydın','Derin Alkan','Batıkan Sevim','Ada Toprak','Umutcan Demir','Şevval Güneş',
+  'Halil Ercan','Burcu Deniz','Erdem Uzun','Bengisu Işık','Polat Çetin','Gökçen Aksoy','Veysel Kara','Ülkü Tuncer',
+  'Mazhar Özdemir','Yaren Uçar','Baturalp Koç','Nihan Sezer','Gürkan Ateş','Pınar Şahin','Akın Bulut','Sibel Acar',
+  'Buğra Soydan','İnci Tokgöz','Utku Erdem','Sena Yücel','Ege Duran','Bilge Karakuş','Tarık Arslan','Melis Denizhan',
+  'Canberk Yıldız','Dila Öztürk','Serhat Çakır','Azra Beyaz','Doğan Eren','Fulya Kozan','Cem Turgut','İdil Akbaş',
+  'Kenan Bozkaya','Burcu Tan','Alper Bayraktar','Şule Ergün','Oktay Başaran','Derya Sönmez','Haluk Güler','Rana Keskin',
+  'Barın Çelik','Ezgi Nur Kavak','Taygun Arıkan','Neslihan Koray','Özgür Baran','Feride Aktaş','Volkan Demir','Candan Yıldız',
+  'Utkan Gökmen','Melodi Tuncel'
+];
+const namesEn = [
+  'Elias Boyd','Clara Dawson','Miles Cunningham','Sophie Clarke','Nolan Davies','Maya Jenkins','Julian Hayes','Eva Harding',
+  'Leo Gallagher','Tessa Rowan','Adam Bennett','Hazel Foster','Cole Harrison','Lucy Brooks','Dylan Reed','Aurora Price',
+  'Ethan Ward','Stella Myers','Connor Ross','Zoe Powell','Lucas Sullivan','Grace Kelly','Mason Bell','Ruby Murphy',
+  'Logan Bailey','Lily Cooper','Caleb Richardson','Mia Howard','Nathan Cox','Chloe Ward','Isaac Perez','Emma Peterson',
+  'Owen Gray','Avery James','Wyatt Watson','Ella Brooks','Jack Kelly','Aria Sanders','Ryan Price','Scarlett Wood',
+  'Liam Fletcher','Olivia Chen','Noah Patterson','Amelia Wright','Henry Torres','Charlotte Kim','Samuel Rivera','Harper Morgan',
+  'Benjamin Cruz','Abigail Reeves','Theodore Grant','Eleanor Marsh','Sebastian Cross','Victoria Hale','Daniel Frost','Penelope Blake',
+  'Alexander Dunn','Layla Stone','Matthew Doyle','Isla Webb','James Thornton','Violet Keane','Andrew Holden','Naomi Swift',
+  'Patrick Rowe','Sophia Linden','Christopher Vale','Alice Brennan','Gabriel Locke','Hannah Pratt','Dominic Hurst','Madeline Ford',
+  'Vincent Crane','Piper York','Marcus Shore','Sienna West','Oscar Quinn','Jade Sinclair','Felix Palmer','Willow Drake',
+  // ── expanded pool (81-180) ──
+  'Declan Holt','Iris Mercer','Tristan Blake','Cassidy Wren','Spencer Leigh','Margot Frey','Reid Calloway','Selene Ashford',
+  'Griffin Hale','Tatum Pierce','Jasper Voss','Freya Langston','Ronan Kirby','Briar Sutton','Beckett Thorne','Celia Graves',
+  'Sawyer Pace','Gemma Whitlock','Rhys Davenport','Keira Stanton','Brooks Aldridge','Maren Kingsley','Colton Sawyer','Neve Cassidy',
+  'Jensen Holt','Willa Prescott','Emmett Lawson','Darcy Irvine','Callum Harding','Alina Frost','Fletcher Byrne','Rosalie Grant',
+  'Anders Vance','Maeve Alcott','Quinn Radley','Celeste Whitmore','Nolan Gage','Leona Stratton','Davis Carver','Faye Alderman',
+  'Everett Moon','Thea Langford','Sterling Cain','Brynn Ellery','Finley Archer','Marlowe Stein','Kieran Blake','Dahlia Novak',
+  'Vaughn Kelley','Elowen Chase','Barrett Fox','Sage Beaumont','Royce Hendrix','Lyra Pemberton','Dillon Kane','Tessa Marlow',
+  'Conrad Wells','Ivy Sheridan','Lennox Gray','Harlow Sinclair','Pierce Dalton','Elise Whitfield','Beau Garrett','Ada Carrington',
+  'Sullivan Drake','Wren Ellsworth','Hayes Drummond','Nora Kingsley','Landon Howe','Camille Darrow','Calder Shaw','Junia Phelps',
+  'Thatcher Lyle','Elodie Kincaid','Holden Sharpe','Mabel Trent','Keaton Voss','Brielle Osborn','Corbin Wolfe','Lena Fairchild',
+  'Silas Hartley','June Holbrook','Graham Henley','Esme Darling','Porter Haines','Nadia Glenn','Merrick Towne','Lydia Campion',
+  'Cedric Rush','Odette Marsh','Burke Linton','Clarity Vane','Ronan Blackwell','Winona Steele','Ellis Greer','Tamsin Hale',
+  'Desmond Pryor','Astrid Lyons'
+];
 
+const _usedTr = new Set(), _usedEn = new Set();
 function genMembers(count, lang) {
-  let list = lang === 'tr' ? [...namesTr] : [...namesEn];
-  list.sort(() => random() - 0.5);
-  return JSON.stringify(list.slice(0, count).map((n, i) => ({name: n, order: i+1}))).replace(/'/g, "''");
+  const used = lang === 'tr' ? _usedTr : _usedEn;
+  const pool = lang === 'tr' ? namesTr : namesEn;
+  const avail = pool.filter(n => !used.has(n));
+  const shuffled = [...avail].sort(() => random() - 0.5);
+  const picked = shuffled.slice(0, Math.min(count, shuffled.length));
+  picked.forEach(n => used.add(n));
+  return JSON.stringify(picked.map((n, i) => ({name: n, order: i+1}))).replace(/'/g, "''");
 }
 
 let projList = [];
 periodData.forEach(pd => {
+  // Reset per-period so names are unique within a period but can repeat across semesters
+  _usedTr.clear(); _usedEn.clear();
   const o = orgs.find(x => x.code === pd.org);
-  const count = projCountForIdx(pd.histIdx);
+  const count = projCountForOrgIdx(pd.org, pd.histIdx);
   const pool = (projectPools[pd.org] || {})[pd.histIdx] || [];
   const archs = archForCount(count);
   for (let i = 0; i < Math.min(count, pool.length); i++) {
     const pjId = uuid(`proj-${pd.id}-${i}`);
-    let title, arch;
-    if (typeof pool[i] === 'object') { title = pool[i].t; arch = pool[i].arch; }
-    else { title = pool[i]; arch = archs[i % archs.length]; }
+    const entry = typeof pool[i] === 'object' ? pool[i] : { t: pool[i] };
+    const title = entry.t;
+    const arch = entry.arch || archs[i % archs.length];
     const advisor = (orgAdvisors[pd.org] || [])[i % (orgAdvisors[pd.org] || []).length] || {n:'TBD',aff:'TBD'};
     const mem = genMembers(randInt(3, 5), o.lang);
-    const desc = genProjectDesc(title, o.lang);
+    const desc = entry.desc || '';
     out.push(`INSERT INTO projects (id, period_id, title, project_no, members, advisor_name, advisor_affiliation, description) VALUES ('${pjId}', '${pd.id}', '${escapeSql(title)}', ${i+1}, '${mem}', '${escapeSql(advisor.n)}', '${escapeSql(advisor.aff)}', '${escapeSql(desc)}') ON CONFLICT DO NOTHING;`);
     projList.push({id: pjId, pId: pd.id, org: pd.org, isCur: pd.isCur, arch, title});
   }
@@ -579,7 +1015,7 @@ const orgJurors = {
   'TEKNOFEST': [{n:'Prof. Kemal Özdemir',aff:'İTÜ, Havacılık ve Uzay'},{n:'Dr. Eda Sarıgül',aff:'TUSAŞ (TAI), Ar-Ge'},{n:'Onur Yalçın',aff:'Baykar Teknoloji, İHA'},{n:'Prof. Buse Karagöz',aff:'ODTÜ, Makina Müh.'},{n:'Cemil Demirtaş',aff:'Roketsan, Güdüm'},{n:'Dr. Aylin Çevik',aff:'TÜBİTAK SAGE'},{n:'Prof. Yasemin Ertürk',aff:'Eskişehir Teknik, Havacılık'},{n:'Dr. Burak Yıldırım',aff:'TÜBİTAK UZAY'},{n:'Melih Şahin',aff:'TEI, Motor Tasarım'},{n:'Prof. Sevim Çalışkan',aff:'İYTE, Makina Müh.'},{n:'Ahmet Günay',aff:'ASELSAN, Radar'},{n:'Dr. Gülşen Aktaş',aff:'Ankara Üni., Uzay Bilimleri'}],
   'TUBITAK-2204A': [{n:'Prof. Hasan Yüksel',aff:'Boğaziçi, Fizik'},{n:'Dr. Elif Aydın',aff:'Hacettepe, Biyoloji'},{n:'Prof. Okan Birdal',aff:'Koç Üni., Kimya'},{n:'Dr. Sevgi Toprak',aff:'Ankara Üni., Fen Bilimleri'},{n:'Prof. Burak Çetin',aff:'ODTÜ, Matematik'},{n:'Dr. Selim Konuk',aff:'İstanbul Üni., Fizik'},{n:'Prof. Didem Sağır',aff:'Ege Üni., Biyokimya'},{n:'Dr. Kenan Erol',aff:'Sabancı Üni., Biyoloji'},{n:'Ayşegül Mazlum',aff:'TÜBİTAK MAM, Gıda'},{n:'Prof. İbrahim Yılmaz',aff:'Ankara Üni., Fizik'}],
   'IEEE-APSSDC': [{n:'Prof. Raymond Chen',aff:'U. Michigan, ECE'},{n:'Dr. Catherine Liu',aff:'Georgia Tech, ECE'},{n:'Prof. Kenneth Walsh',aff:'UIUC, ECE'},{n:'Dr. Priya Raghavan',aff:'Purdue, ECE'},{n:'Prof. Diane Mitchell',aff:'Ohio State, ECE'},{n:'Dr. Akira Tanaka',aff:'U. Tokyo, EEIS'},{n:'Prof. Marco Rossi',aff:'Politecnico di Milano'},{n:'Dr. Fatima Al-Rashidi',aff:'KAUST, EE'},{n:'Prof. Neil Ferguson',aff:'U. Edinburgh, Engineering'},{n:'Dr. Soo-Jin Kim',aff:'KAIST, EE'}],
-  'CANSAT-2025': [{n:'Dr. James Whitfield',aff:'Virginia Tech, Aerospace'},{n:'Prof. Laura Henderson',aff:'CU Boulder, Aerospace'},{n:'Col. Robert Drake',aff:'US Air Force Academy'},{n:'Dr. Megan Yoshida',aff:'NASA Goddard'},{n:'Prof. Michael Torres',aff:'Purdue, AAE'},{n:'Dr. Rebecca Stone',aff:'Johns Hopkins APL'},{n:'Prof. Thomas Chen',aff:'Georgia Tech, Aerospace'},{n:'Dr. Lisa Nakamura',aff:'NASA JPL'},{n:'Maj. David Wells',aff:'US Naval Academy'},{n:'Dr. Katherine Morris',aff:'MIT Lincoln Lab'}],
+  'CANSAT-2025': [{n:'Dr. James Whitfield',aff:'Virginia Tech, Aerospace'},{n:'Prof. Laura Henderson',aff:'CU Boulder, Aerospace'},{n:'Col. Robert Drake',aff:'US Air Force Academy'},{n:'Dr. Megan Yoshida',aff:'NASA Goddard'},{n:'Prof. Nathan Cooper',aff:'Purdue, AAE'},{n:'Dr. Rebecca Stone',aff:'Johns Hopkins APL'},{n:'Prof. Tyler Grant',aff:'Georgia Tech, Aerospace'},{n:'Dr. Lisa Nakamura',aff:'NASA JPL'},{n:'Maj. David Wells',aff:'US Naval Academy'},{n:'Dr. Katherine Morris',aff:'MIT Lincoln Lab'}],
 };
 
 const palette = ['#F59E0B','#3B82F6','#8B5CF6','#EC4899','#10B981','#EF4444','#6366F1','#14B8A6','#F97316','#A855F7','#22C55E','#06B6D4','#E11D48','#84CC16'];
@@ -598,29 +1034,53 @@ orgs.forEach(o => {
 
 const pinHash = "$2a$06$D1E3X/QGg9sM4W0.A3vQG.n9v6p0y5NlKJ/K6W9fHq7.HkH9n.AWe";
 let authList = [];
+
+// Every period gets these guaranteed slots (assigned to first N jurors in order)
+const PERIOD_SLOTS = ['InProgress', 'Editing', 'ReadyToSubmit', 'NotStarted'];
+
 periodData.forEach(pd => {
   let pJurors = jurorIdList.filter(j => j.org === pd.org);
   pJurors = pJurors.slice(0, Math.min(activeJurorsForIdx(pd.histIdx), pJurors.length));
+
+  // 2-3 PIN-blocking entries per semester (deterministic)
+  const pinBlockCount = (pd.histIdx === 0 ? 3 : 2);
+
   pJurors.forEach((j, jix) => {
-    let semanticState; const r = random();
-    if (pd.histIdx === 0) {
-      if (r < 0.55) semanticState = 'Completed'; else if (r < 0.80) semanticState = 'InProgress'; else if (r < 0.85) semanticState = 'Ready'; else if (r < 0.93) semanticState = 'Editing'; else if (r < 0.98) semanticState = 'Locked'; else semanticState = 'Blocked';
-    } else if (pd.histIdx === 1) {
-      if (r < 0.75) semanticState = 'Completed'; else if (r < 0.90) semanticState = 'InProgress'; else if (r < 0.95) semanticState = 'Ready'; else semanticState = 'Editing';
+    let semanticState;
+    if (jix < PERIOD_SLOTS.length) {
+      semanticState = PERIOD_SLOTS[jix];
+    } else if (jix < PERIOD_SLOTS.length + pinBlockCount) {
+      semanticState = (jix % 2 === 0) ? 'Locked' : 'Blocked';
     } else {
-      if (r < 0.85) semanticState = 'Completed'; else if (r < 0.95) semanticState = 'InProgress'; else semanticState = 'Ready';
+      semanticState = 'Completed';
     }
-    let authObj = { jId: j.id, pId: pd.id, org: pd.org, isCur: pd.isCur, histIdx: pd.histIdx, semanticState, name: j.n, event: pd.event, eventDays: pd.eventDays };
-    let q = `INSERT INTO juror_period_auth (juror_id, period_id, pin_hash`; let vals = `VALUES ('${j.id}', '${pd.id}', '${pinHash}'`;
-    if (semanticState === 'Completed' || semanticState === 'Editing') { q += `, final_submitted_at`; vals += `, ${randSqlTs(pd.event, pd.eventDays * 2, pd.eventDays * 20)}`; }
-    if (semanticState === 'Editing') { q += `, edit_enabled, edit_reason, edit_expires_at`; vals += `, true, 'Late submission due to connectivity issue', ${sqlTs(pd.event, pd.eventDays * 24 + 48)}`; }
-    if (semanticState === 'Locked') { const lt = randSqlTs(pd.event, 2, pd.eventDays * 12); q += `, failed_attempts, locked_until, locked_at`; vals += `, ${randInt(3, 5)}, ${lt} + interval '30 minutes', ${lt}`; }
-    if (semanticState === 'Blocked') { q += `, is_blocked`; vals += `, true`; }
+
+    const authObj = { jId: j.id, pId: pd.id, org: pd.org, isCur: pd.isCur, histIdx: pd.histIdx, semanticState, name: j.n, event: pd.event, eventDays: pd.eventDays };
+    let q = `INSERT INTO juror_period_auth (juror_id, period_id, pin_hash`;
+    let vals = `VALUES ('${j.id}', '${pd.id}', '${pinHash}'`;
+    if (semanticState === 'Completed' || semanticState === 'Editing') {
+      q += `, final_submitted_at`;
+      vals += `, ${randSqlTs(pd.event, pd.eventDays * 2, pd.eventDays * 20)}`;
+    }
+    if (semanticState === 'Editing') {
+      q += `, edit_enabled, edit_reason, edit_expires_at`;
+      vals += `, true, 'Late submission due to connectivity issue', ${sqlTs(pd.event, pd.eventDays * 24 + 48)}`;
+    }
+    if (semanticState === 'Locked') {
+      const lt = randSqlTs(pd.event, 2, pd.eventDays * 12);
+      q += `, failed_attempts, locked_until, locked_at`;
+      vals += `, ${randInt(3, 5)}, ${lt} + interval '30 minutes', ${lt}`;
+    }
+    if (semanticState === 'Blocked') {
+      q += `, is_blocked`;
+      vals += `, true`;
+    }
     out.push(`${q}) ${vals}) ON CONFLICT DO NOTHING;`);
     authList.push(authObj);
   });
 });
 out.push('');
+
 
 // ═══════════════════════════════════════════════════════════════
 // SCORING — juror personality bias, variable coverage, bilingual comments
@@ -657,7 +1117,7 @@ const defaultCommentsEn = ['Reasonable work overall.','Good effort.','Needs furt
 const defaultCommentsTr = ['Genel olarak makul bir çalışma.','İyi bir çaba.','Daha fazla gelişim gerekiyor.'];
 
 authList.forEach(auth => {
-  if (['Blocked','Locked','Ready'].includes(auth.semanticState)) return;
+  if (['Blocked','Locked','NotStarted'].includes(auth.semanticState)) return;
   const myProjs = projList.filter(p => p.pId === auth.pId);
   if (myProjs.length === 0) return;
   const periodCrits = periodCriteriaMap[auth.pId] || [];

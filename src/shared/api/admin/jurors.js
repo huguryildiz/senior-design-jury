@@ -114,6 +114,25 @@ export async function listLockedJurors({ periodId }) {
   }));
 }
 
+export async function countTodayLockEvents({ periodId }) {
+  if (!periodId) throw new Error("countTodayLockEvents: periodId required");
+
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const { count, error } = await supabase
+    .from("juror_period_auth")
+    .select("juror_id", { count: "exact", head: true })
+    .eq("period_id", periodId)
+    .gte("locked_at", dayStart.toISOString())
+    .lt("locked_at", dayEnd.toISOString());
+
+  if (error) throw error;
+  return count || 0;
+}
+
 export async function unlockJurorPin({ jurorId, periodId }) {
   if (!jurorId || !periodId) throw new Error("unlockJurorPin: jurorId and periodId required");
   const { data, error } = await supabase.rpc("rpc_juror_unlock_pin", {

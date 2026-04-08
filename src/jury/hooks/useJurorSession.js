@@ -14,7 +14,7 @@
 // The handlers that drive PIN submission (handlePinSubmit) live in the
 // orchestrator because they call _loadPeriod after a successful verify.
 //
-// PIN lockout policy is DB-enforced (5 attempts → 30 min). The state here
+// PIN lockout policy is DB-enforced and policy-driven. The state here
 // is purely display state reflecting what the RPC returns.
 // See: docs/refactor/phase-00-baseline.md — PIN Failure and Lockout Policy.
 // ============================================================
@@ -22,7 +22,7 @@
 import { useState } from "react";
 import { KEYS } from "@/shared/storage";
 
-const MAX_PIN_ATTEMPTS = 5;
+const DEFAULT_MAX_PIN_ATTEMPTS = 5;
 
 export function useJurorSession() {
   const [jurorId, setJurorId] = useState(() => {
@@ -34,7 +34,8 @@ export function useJurorSession() {
   const [issuedPin, setIssuedPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [pinErrorCode, setPinErrorCode] = useState("");
-  const [pinAttemptsLeft, setPinAttemptsLeft] = useState(MAX_PIN_ATTEMPTS);
+  const [pinMaxAttempts, setPinMaxAttempts] = useState(DEFAULT_MAX_PIN_ATTEMPTS);
+  const [pinAttemptsLeft, setPinAttemptsLeft] = useState(DEFAULT_MAX_PIN_ATTEMPTS);
   const [pinLockedUntil, setPinLockedUntil] = useState("");
 
   // Resets all PIN error/lockout display state to clean initial values.
@@ -42,7 +43,7 @@ export function useJurorSession() {
   const clearPinErrors = () => {
     setPinError("");
     setPinErrorCode("");
-    setPinAttemptsLeft(MAX_PIN_ATTEMPTS);
+    setPinAttemptsLeft(pinMaxAttempts);
     setPinLockedUntil("");
   };
 
@@ -52,9 +53,10 @@ export function useJurorSession() {
     issuedPin, setIssuedPin,
     pinError, setPinError,
     pinErrorCode, setPinErrorCode,
+    pinMaxAttempts, setPinMaxAttempts,
     pinAttemptsLeft, setPinAttemptsLeft,
     pinLockedUntil, setPinLockedUntil,
     clearPinErrors,
-    MAX_PIN_ATTEMPTS,
+    MAX_PIN_ATTEMPTS: pinMaxAttempts,
   };
 }

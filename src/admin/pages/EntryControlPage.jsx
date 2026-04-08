@@ -228,7 +228,10 @@ export default function EntryControlPage() {
         getEntryTokenHistory(periodId),
       ]);
       setStatus(s);
-      setTokenHistory(history);
+      const normalizedHistory = [...(history || [])].sort((a, b) => (
+        toTimestampMs(b?.created_at) - toTimestampMs(a?.created_at)
+      ));
+      setTokenHistory(normalizedHistory);
     } catch (e) {
       setError(e?.unauthorized ? "Session expired — please log in again." : "Could not load token status.");
     }
@@ -268,6 +271,8 @@ export default function EntryControlPage() {
     try {
       const token = await generateEntryToken(periodId);
       if (token) {
+        setHistorySortKey("created_at");
+        setHistorySortDir("desc");
         setRawToken(token);
         storageSetRawToken(periodId, token);
         await loadStatus();
@@ -541,7 +546,11 @@ export default function EntryControlPage() {
       case "access_id":
         return dirMul * String(a?.access_id || "").localeCompare(String(b?.access_id || ""), undefined, { numeric: true, sensitivity: "base" });
       case "created_at":
-        return dirMul * (Date.parse(a?.created_at || "") - Date.parse(b?.created_at || ""));
+        {
+          const createdDiff = Date.parse(a?.created_at || "") - Date.parse(b?.created_at || "");
+          if (createdDiff !== 0) return dirMul * createdDiff;
+          return dirMul * String(a?.id || "").localeCompare(String(b?.id || ""));
+        }
       case "expires_at":
         return dirMul * (Date.parse(a?.expires_at || "") - Date.parse(b?.expires_at || ""));
       case "session_count":
@@ -552,7 +561,7 @@ export default function EntryControlPage() {
         return 0;
     }
   });
-  const latestToken = hasTokenHistory ? tokenHistory[0] : null;
+  const latestToken = hasTokenHistory ? sortedTokenHistory[0] : null;
   const revokedCount = status?.revoked_count ?? tokenHistory.filter((token) => token.is_revoked).length;
   const totalEntries = status?.total_entries ?? tokenHistory.length;
   const recentActivities = useMemo(() => {
@@ -1003,7 +1012,7 @@ export default function EntryControlPage() {
             <thead>
               <tr>
                 <th className={`sortable${historySortKey === "access_id" ? " sorted" : ""}`} onClick={() => handleHistorySort("access_id")}>
-                  Access ID <SortIcon colKey="access_id" sortKey={historySortKey} sortDir={historySortDir} />
+                  Reference ID <SortIcon colKey="access_id" sortKey={historySortKey} sortDir={historySortDir} />
                 </th>
                 <th className={`sortable${historySortKey === "created_at" ? " sorted" : ""}`} onClick={() => handleHistorySort("created_at")}>
                   Created <SortIcon colKey="created_at" sortKey={historySortKey} sortDir={historySortDir} />

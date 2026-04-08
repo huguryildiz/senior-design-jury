@@ -204,6 +204,7 @@ policy reads.
 | `rpc_jury_authenticate(period_id, juror_name, affiliation, force_reissue)` | Find/create juror; generate bcrypt PIN; return `pin_plain_once` if new |
 | `rpc_jury_verify_pin(period_id, juror_name, affiliation, pin)` | Verify bcrypt PIN; issue session token (SHA-256 hash stored); reads `maxLoginAttempts` from `security_policy`; lockout on failure |
 | `rpc_jury_validate_entry_token(token)` | Validate entry token (SHA-256 lookup, revocation check, TTL from `security_policy`) |
+| `rpc_jury_validate_entry_reference(reference)` | Validate short access reference ID and resolve to the same token/period payload used by jury gate |
 | `rpc_jury_upsert_score(period_id, project_id, juror_id, session_token, scores JSONB, comment)` | Upsert `score_sheets` + `score_sheet_items`; enforces edit-window check if already finalized |
 | `rpc_jury_finalize_submission(period_id, juror_id, session_token)` | Set `final_submitted_at`; close edit window fields |
 | `rpc_jury_get_scores(period_id, juror_id, session_token)` | Return all scores for a juror in a period |

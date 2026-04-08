@@ -21,7 +21,7 @@ import { useCallback } from "react";
 import { getActiveCriteria } from "../../shared/criteriaHelpers";
 import { DEMO_MODE } from "@/shared/lib/demoMode";
 import { supabase, clearPersistedSession } from "@/shared/lib/supabaseClient";
-import { getJuryAccess } from "../../shared/storage";
+import { getJuryAccess, getJuryAccessGrant } from "../../shared/storage";
 import * as publicApi from "../../shared/api";
 import {
   buildTokenPeriod,
@@ -57,6 +57,21 @@ async function ensureDemoAnonSession() {
 }
 
 async function resolveDemoPeriod(signal) {
+  const grantedAccess = getJuryAccessGrant();
+  if (grantedAccess?.period_id) {
+    return buildTokenPeriod(grantedAccess);
+  }
+
+  const grantedPeriodId = getJuryAccess();
+  if (grantedPeriodId) {
+    return {
+      id: grantedPeriodId,
+      name: "",
+      is_current: true,
+      is_locked: false,
+    };
+  }
+
   let tokenPeriod = null;
 
   const DEMO_ENTRY_TOKEN = import.meta.env.VITE_DEMO_ENTRY_TOKEN || "";
@@ -441,6 +456,15 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       const res = await verifyJurorPin(
         loading.periodId, identity.juryName, identity.affiliation, enteredPin
       );
+      const responseMaxAttempts =
+        typeof res?.max_attempts === "number" && res.max_attempts > 0
+          ? Math.trunc(res.max_attempts)
+          : null;
+      if (responseMaxAttempts !== null && responseMaxAttempts !== session.MAX_PIN_ATTEMPTS) {
+        session.setPinMaxAttempts(responseMaxAttempts);
+      }
+      const effectiveMaxAttempts = responseMaxAttempts ?? session.MAX_PIN_ATTEMPTS;
+
       if (!res?.ok) {
         loading.setLoadingState(null);
         const code = res?.error_code || "";
@@ -451,15 +475,15 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
           || (lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date());
         if (code === "period_inactive") {
           session.setPinErrorCode("period_inactive");
-          session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+          session.setPinAttemptsLeft(effectiveMaxAttempts);
           session.setPinError("This period is no longer active. Please start a new evaluation.");
         } else if (code === "not_found" || code === "juror_not_found" || code === "auth_not_found") {
           session.setPinErrorCode("not_found");
-          session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+          session.setPinAttemptsLeft(effectiveMaxAttempts);
           session.setPinError("No juror found with this name and affiliation.");
         } else if (code === "no_pin") {
           session.setPinErrorCode("no_pin");
-          session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+          session.setPinAttemptsLeft(effectiveMaxAttempts);
           session.setPinError("No PIN found for this period. Please start a new evaluation.");
         } else if (code === "juror_blocked") {
           session.setPinErrorCode("locked");
@@ -476,7 +500,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
           const failedAttempts =
             typeof res?.failed_attempts === "number" ? res.failed_attempts : null;
           if (failedAttempts !== null) {
-            session.setPinAttemptsLeft(Math.max(0, session.MAX_PIN_ATTEMPTS - failedAttempts));
+            session.setPinAttemptsLeft(Math.max(0, effectiveMaxAttempts - failedAttempts));
           }
           session.setPinError("Incorrect PIN.");
         } else {
@@ -489,7 +513,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       const sessionToken = String(res?.session_token || "").trim();
       if (!sessionToken) {
         loading.setLoadingState(null);
-        session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+        session.setPinAttemptsLeft(effectiveMaxAttempts);
         session.setPinErrorCode("network");
         session.setPinLockedUntil("");
         session.setPinError("Session could not be established. Please try again.");
@@ -503,14 +527,14 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
         session.setIssuedPin(res.pin_plain_once);
         session.setPinError("");
         session.setPinErrorCode("");
-        session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+        session.setPinAttemptsLeft(effectiveMaxAttempts);
         session.setPinLockedUntil("");
         loading.setLoadingState(null);
         workflow.setStep("pin_reveal");
         return;
       }
       session.setIssuedPin("");
-      session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+      session.setPinAttemptsLeft(effectiveMaxAttempts);
       session.setPinLockedUntil("");
       loading.setLoadingState(null);
       // Resolve the full period object (with criteria_config) from the loaded list.

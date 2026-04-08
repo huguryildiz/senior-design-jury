@@ -13,6 +13,7 @@ SET policy = '{
   "maxLoginAttempts": 5,
   "requireSpecialChars": true,
   "tokenTtl": "24h",
+  "pinLockCooldown": "30m",
   "ccOnPinReset": true,
   "ccOnScoreEdit": false
 }'::JSONB || policy
@@ -38,7 +39,7 @@ SET policy = policy - 'allowMultiDevice'
 WHERE id = 1
   AND policy ? 'allowMultiDevice';
 
--- 2. Patch rpc_jury_verify_pin: read maxLoginAttempts from security_policy.
+-- 2. Patch rpc_jury_verify_pin: read maxLoginAttempts + pinLockCooldown from security_policy.
 CREATE OR REPLACE FUNCTION public.rpc_jury_verify_pin(
   p_period_id   UUID,
   p_juror_name  TEXT,
@@ -56,17 +57,38 @@ DECLARE
   v_session_token   TEXT;
   v_now             TIMESTAMPTZ := now();
   v_max_attempts    INT;
+  v_lock_cooldown   TEXT;
+  v_lock_duration   INTERVAL;
   v_new_failed      INT;
 BEGIN
-  -- Read maxLoginAttempts from security_policy; fall back to 5.
-  SELECT COALESCE((policy->>'maxLoginAttempts')::INT, 5)
-  INTO v_max_attempts
+  -- Read lockout policy from security_policy; fall back to 5 attempts + 30 minutes.
+  SELECT
+    COALESCE(
+      CASE WHEN (policy->>'maxLoginAttempts') ~ '^[0-9]+$'
+           THEN (policy->>'maxLoginAttempts')::INT END,
+      5
+    ),
+    COALESCE(policy->>'pinLockCooldown', '30m')
+  INTO v_max_attempts, v_lock_cooldown
   FROM security_policy
   WHERE id = 1;
 
   IF NOT FOUND THEN
     v_max_attempts := 5;
+    v_lock_cooldown := '30m';
   END IF;
+
+  IF v_max_attempts < 1 THEN
+    v_max_attempts := 5;
+  END IF;
+
+  v_lock_duration := CASE lower(v_lock_cooldown)
+    WHEN '5m'  THEN INTERVAL '5 minutes'
+    WHEN '10m' THEN INTERVAL '10 minutes'
+    WHEN '15m' THEN INTERVAL '15 minutes'
+    WHEN '60m' THEN INTERVAL '60 minutes'
+    ELSE            INTERVAL '30 minutes'
+  END;
 
   SELECT id INTO v_juror_id
   FROM jurors
@@ -74,7 +96,11 @@ BEGIN
     AND lower(trim(affiliation)) = lower(trim(p_affiliation));
 
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', false, 'error_code', 'juror_not_found')::JSON;
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'juror_not_found',
+      'max_attempts', v_max_attempts
+    )::JSON;
   END IF;
 
   SELECT * INTO v_auth_row
@@ -82,16 +108,28 @@ BEGIN
   WHERE juror_id = v_juror_id AND period_id = p_period_id;
 
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', false, 'error_code', 'auth_not_found')::JSON;
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'auth_not_found',
+      'max_attempts', v_max_attempts
+    )::JSON;
   END IF;
 
   IF v_auth_row.is_blocked THEN
-    RETURN jsonb_build_object('ok', false, 'error_code', 'juror_blocked')::JSON;
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'juror_blocked',
+      'max_attempts', v_max_attempts
+    )::JSON;
   END IF;
 
   IF v_auth_row.locked_until IS NOT NULL AND v_auth_row.locked_until > v_now THEN
-    RETURN jsonb_build_object('ok', false, 'error_code', 'pin_locked',
-      'locked_until', v_auth_row.locked_until)::JSON;
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'pin_locked',
+      'locked_until', v_auth_row.locked_until,
+      'max_attempts', v_max_attempts
+    )::JSON;
   END IF;
 
   -- Verify bcrypt PIN
@@ -110,7 +148,8 @@ BEGIN
     RETURN jsonb_build_object(
       'ok',            true,
       'juror_id',      v_juror_id,
-      'session_token', v_session_token
+      'session_token', v_session_token,
+      'max_attempts',  v_max_attempts
     )::JSON;
   ELSE
     v_new_failed := v_auth_row.failed_attempts + 1;
@@ -118,7 +157,7 @@ BEGIN
     UPDATE juror_period_auth
     SET failed_attempts = v_new_failed,
         locked_until    = CASE WHEN v_new_failed >= v_max_attempts
-                               THEN v_now + interval '30 minutes' ELSE NULL END,
+                               THEN v_now + v_lock_duration ELSE NULL END,
         locked_at       = CASE WHEN v_new_failed >= v_max_attempts
                                THEN v_now ELSE locked_at END
     WHERE juror_id = v_juror_id AND period_id = p_period_id;
@@ -128,14 +167,16 @@ BEGIN
         'ok', false,
         'error_code', 'pin_locked',
         'failed_attempts', v_new_failed,
-        'locked_until', v_now + interval '30 minutes'
+        'locked_until', v_now + v_lock_duration,
+        'max_attempts', v_max_attempts
       )::JSON;
     END IF;
 
     RETURN jsonb_build_object(
       'ok', false,
       'error_code', 'invalid_pin',
-      'failed_attempts', v_new_failed
+      'failed_attempts', v_new_failed,
+      'max_attempts', v_max_attempts
     )::JSON;
   END IF;
 END;

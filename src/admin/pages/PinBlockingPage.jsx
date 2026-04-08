@@ -1,13 +1,14 @@
 // src/admin/pages/PinBlockingPage.jsx
 // ============================================================
 // PIN Blocking page: real backend wiring via usePinBlocking.
-// Threshold: 3 failed attempts → 15m auto-lock (DB value).
+// Threshold and lock duration are policy-driven (Security Policy).
 // Props: organizationId, selectedPeriodId from AdminLayout.
 // ============================================================
 
 import { useEffect } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { usePinBlocking } from "../hooks/usePinBlocking";
+import { useSecurityPolicy } from "@/auth/SecurityPolicyContext";
 import FbAlert from "@/shared/ui/FbAlert";
 
 function formatEta(lockedUntil) {
@@ -23,9 +24,31 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function parseFailThreshold(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 5;
+}
+
+function parseCooldownMinutes(value) {
+  if (typeof value !== "string") return 30;
+  const match = value.trim().match(/^(\d+)\s*m$/i);
+  if (!match) return 30;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 30;
+}
+
 export default function PinBlockingPage() {
   const { selectedPeriodId } = useAdminContext();
-  const { lockedJurors, loading, error, loadLockedJurors, handleUnlock, handleUnlockAll } =
+  const policy = useSecurityPolicy();
+  const {
+    lockedJurors,
+    todayLockEvents,
+    loading,
+    error,
+    loadLockedJurors,
+    handleUnlock,
+    handleUnlockAll,
+  } =
     usePinBlocking({ periodId: selectedPeriodId });
 
   useEffect(() => {
@@ -33,6 +56,10 @@ export default function PinBlockingPage() {
   }, [loadLockedJurors]);
 
   const noPeriod = !selectedPeriodId;
+  const failThreshold = parseFailThreshold(policy?.maxLoginAttempts);
+  const cooldownMinutes = parseCooldownMinutes(policy?.pinLockCooldown);
+  const cooldownBadge = `${cooldownMinutes}m`;
+  const cooldownLabel = `${cooldownMinutes} minute${cooldownMinutes !== 1 ? "s" : ""}`;
 
   return (
     <div className="page">
@@ -43,7 +70,7 @@ export default function PinBlockingPage() {
 
       {/* Lock policy alert */}
       <FbAlert variant="warning" style={{ marginBottom: 12 }} title="Lock policy is active">
-        Jurors are locked for 15 minutes after 3 failed attempts. Manual unlock is logged in Audit Log.
+        Jurors are locked for {cooldownLabel} after {failThreshold} failed attempt{failThreshold !== 1 ? "s" : ""}. Manual unlock is logged in Audit Log.
       </FbAlert>
 
       {noPeriod ? (
@@ -64,11 +91,15 @@ export default function PinBlockingPage() {
               <div className="scores-kpi-item-label">Currently Locked</div>
             </div>
             <div className="scores-kpi-item">
-              <div className="scores-kpi-item-value">3</div>
+              <div className="scores-kpi-item-value">{loading ? "…" : todayLockEvents}</div>
+              <div className="scores-kpi-item-label">Today Lock Events</div>
+            </div>
+            <div className="scores-kpi-item">
+              <div className="scores-kpi-item-value">{failThreshold}</div>
               <div className="scores-kpi-item-label">Fail Threshold</div>
             </div>
             <div className="scores-kpi-item">
-              <div className="scores-kpi-item-value">15m</div>
+              <div className="scores-kpi-item-value">{cooldownBadge}</div>
               <div className="scores-kpi-item-label">Auto Unlock Window</div>
             </div>
           </div>
@@ -172,11 +203,11 @@ export default function PinBlockingPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
           <div style={{ padding: "11px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--surface-1)" }}>
             <div className="text-xs text-muted" style={{ marginBottom: 3 }}>Max failed attempts</div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>3 attempts</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{failThreshold} attempt{failThreshold !== 1 ? "s" : ""}</div>
           </div>
           <div style={{ padding: "11px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--surface-1)" }}>
             <div className="text-xs text-muted" style={{ marginBottom: 3 }}>Temporary lock duration</div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>15 minutes</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{cooldownLabel}</div>
           </div>
           <div style={{ padding: "11px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--surface-1)" }}>
             <div className="text-xs text-muted" style={{ marginBottom: 3 }}>Audit integration</div>

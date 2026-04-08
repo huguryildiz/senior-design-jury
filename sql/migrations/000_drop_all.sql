@@ -63,6 +63,7 @@ DROP FUNCTION IF EXISTS public.rpc_jury_authenticate(UUID, TEXT, TEXT, BOOLEAN, 
 DROP FUNCTION IF EXISTS public.rpc_jury_authenticate(UUID, TEXT, TEXT, BOOLEAN)             CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_jury_verify_pin(UUID, TEXT, TEXT, TEXT)                  CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_jury_validate_entry_token(TEXT)                          CASCADE;
+DROP FUNCTION IF EXISTS public.rpc_jury_validate_entry_reference(TEXT)                      CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_jury_upsert_score(UUID, UUID, UUID, TEXT, JSONB, TEXT)   CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_jury_finalize_submission(UUID, UUID, TEXT)               CASCADE;
 DROP FUNCTION IF EXISTS public.rpc_jury_get_scores(UUID, UUID, TEXT)                        CASCADE;

@@ -38,6 +38,14 @@ export async function verifyEntryToken(token) {
   return data;
 }
 
+export async function verifyEntryReference(reference) {
+  const { data, error } = await supabase.rpc("rpc_jury_validate_entry_reference", {
+    p_reference: String(reference || "").trim(),
+  });
+  if (error) throw error;
+  return data;
+}
+
 // ── Score upsert (RPC) ──────────────────────────────────────
 
 export async function upsertScore(periodId, projectId, jurorId, sessionToken, scores, comment, criteriaConfig) {
@@ -204,7 +212,7 @@ export async function finalizeJurorSubmission(periodId, jurorId, sessionToken) {
 export async function listPeriods(signal) {
   let query = supabase
     .from("periods")
-    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(name, subtitle, contact_email)")
+    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(code, name, subtitle, contact_email)")
     .eq("is_visible", true)
     .order("created_at", { ascending: false });
   if (signal) query = query.abortSignal(signal);

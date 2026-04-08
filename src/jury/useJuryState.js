@@ -264,6 +264,7 @@ export default function useJuryState() {
     // PIN
     pinError:        session.pinError,
     pinErrorCode:    session.pinErrorCode,
+    pinMaxAttempts:  session.pinMaxAttempts,
     pinAttemptsLeft: session.pinAttemptsLeft,
     pinLockedUntil:  session.pinLockedUntil,
     handlePinSubmit:          handlers.handlePinSubmit,

@@ -13,6 +13,7 @@ export const DEFAULT_POLICY = {
   maxLoginAttempts: 5,
   requireSpecialChars: true,
   tokenTtl: "24h",
+  pinLockCooldown: "30m",
   ccOnPinReset: true,
   ccOnScoreEdit: false,
 };

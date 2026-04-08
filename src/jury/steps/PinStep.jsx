@@ -15,7 +15,7 @@ const PIN_STEP_TOUR_STEPS = [
   {
     selector: ".ps-tour-submit",
     title: "Verify & Continue",
-    body: "Once all 4 digits are filled, click here to verify. You have 5 attempts before a temporary lockout.",
+    body: "Once all 4 digits are filled, click here to verify.",
     placement: "above",
   },
 ];
@@ -24,6 +24,9 @@ export default function PinStep({ state, onBack }) {
   const pinRefs = useRef([]);
   const [submitting, setSubmitting] = useState(false);
   const [filledCount, setFilledCount] = useState(0);
+  const pinMaxAttempts = Number.isFinite(Number(state.pinMaxAttempts)) && Number(state.pinMaxAttempts) > 0
+    ? Math.trunc(Number(state.pinMaxAttempts))
+    : 5;
 
   // Clear and refocus on PIN error; also reset spinner
   useEffect(() => {
@@ -135,7 +138,13 @@ export default function PinStep({ state, onBack }) {
 
       <SpotlightTour
         sessionKey="dj_tour_pin_step"
-        steps={PIN_STEP_TOUR_STEPS}
+        steps={[
+          PIN_STEP_TOUR_STEPS[0],
+          {
+            ...PIN_STEP_TOUR_STEPS[1],
+            body: `Once all 4 digits are filled, click here to verify. You have ${pinMaxAttempts} attempt${pinMaxAttempts === 1 ? "" : "s"} before a temporary lockout.`,
+          },
+        ]}
         delay={800}
       />
     </div>

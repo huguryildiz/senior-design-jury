@@ -14,6 +14,7 @@ import { supabase } from "../core/client";
  *   maxLoginAttempts: number,
  *   requireSpecialChars: boolean,
  *   tokenTtl: string,
+ *   pinLockCooldown: string,
  *   allowMultiDevice: boolean,
  *   updated_at: string|null
  * }>}
@@ -34,6 +35,7 @@ export async function getSecurityPolicy() {
  *   maxLoginAttempts: number,
  *   requireSpecialChars: boolean,
  *   tokenTtl: string,
+ *   pinLockCooldown: string,
  *   allowMultiDevice: boolean
  * }} policy
  */

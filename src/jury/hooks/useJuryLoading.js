@@ -77,10 +77,14 @@ export function useJuryLoading() {
           try { await supabase.auth.signOut({ scope: "local" }); } catch (_) {}
         }
 
-        // Demo mode: prefer entry token period, but always fall back to active demo period.
+        // Demo mode: prefer the period granted by the scanned entry token.
+        // Only fall back to VITE_DEMO_ENTRY_TOKEN when no granted period exists.
         if (DEMO_MODE) {
+          const grantedPeriodId = getJuryAccess();
           let tokenPeriod = null;
-          if (DEMO_ENTRY_TOKEN) {
+          if (grantedPeriodId) {
+            tokenPeriod = { id: grantedPeriodId };
+          } else if (DEMO_ENTRY_TOKEN) {
             try {
               const tokenRes = await verifyEntryToken(DEMO_ENTRY_TOKEN);
               if (!alive) return;
@@ -94,7 +98,11 @@ export function useJuryLoading() {
           try {
             const allPeriods = await listPeriods(ctrl.signal);
             if (!alive) return;
-            res = pickDemoPeriod(allPeriods, tokenPeriod);
+            if (grantedPeriodId) {
+              res = (allPeriods || []).find((p) => p.id === grantedPeriodId) || tokenPeriod;
+            } else {
+              res = pickDemoPeriod(allPeriods, tokenPeriod);
+            }
           } catch (_) {
             // Non-fatal: listPeriods might fail due transient network/RLS.
           }
