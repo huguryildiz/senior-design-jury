@@ -594,6 +594,56 @@ out.push('');
 out.push(`-- Scoring`);
 out.push(`\nBEGIN;\n`);
 
+const scoreCommentsByArch = {
+  star: [
+    'Outstanding work across all criteria. One of the strongest presentations of the day.',
+    'Excellent project — deep technical understanding and very polished delivery.',
+    'Impressive depth combined with clear communication. Top marks well deserved.',
+    'This team stood out. Well-structured, well-presented, and technically sound.',
+    'Exceptional overall. The prototype was working flawlessly during the demo.',
+  ],
+  solid: [
+    'Good solid work. A few rough edges but a strong submission overall.',
+    'Competent presentation. The technical implementation is well done.',
+    'Well-prepared team. Minor improvements in delivery would push this to the top tier.',
+    'Reliable work. The written report was particularly well organized.',
+    'Solid engineering. The team handled the Q&A confidently.',
+  ],
+  highvar: [
+    'Interesting project with high peaks but some inconsistency in the presentation.',
+    'Strong technical ideas; the team would benefit from more practice presenting.',
+    'The concept is excellent — execution was uneven across team members.',
+    'Creative approach. Some criteria were handled much better than others.',
+    'Promising work, but the quality varied significantly between sections.',
+  ],
+  tech_strong_comm_weak: [
+    'Technically impressive, but the oral presentation needs improvement.',
+    'The implementation is solid; the report and slides need more clarity.',
+    'Strong engineering work. Communication skills could be developed further.',
+    'Great technical results. The team should work on structuring their explanations.',
+    'Solid system, but the team struggled to convey the significance of their work.',
+  ],
+  weak_tech_strong_team: [
+    'Well-organized team with clear delivery, but technical depth was limited.',
+    'Good teamwork and communication. The technical implementation needs more rigor.',
+    'Very professional delivery; the underlying solution needs further development.',
+    'Excellent presentation skills. The system itself has room for improvement.',
+    'The team presented confidently but the technical contributions were thin.',
+  ],
+  borderline: [
+    'The project meets minimum requirements but could use further development.',
+    'Some promising ideas but both execution and presentation need work.',
+    'Average performance overall. Needs stronger technical grounding.',
+    'The team showed effort but the results were not convincing across all criteria.',
+    'A fair attempt. Significant improvements needed before this is production-ready.',
+  ],
+};
+const defaultComments = [
+  'Reasonable effort. Some areas need more polish.',
+  'The project addresses an interesting problem.',
+  'Adequate work overall.',
+];
+
 authList.forEach(auth => {
   if (auth.blocked || auth.locked) return;
   if (auth.semanticState === 'Ready' || auth.semanticState === 'NotStarted') return;
@@ -629,15 +679,21 @@ authList.forEach(auth => {
 
     let ssId = uuid(`ss-${auth.jId}-${proj.id}`);
     let sst = `${BASE_TIME} - interval '${randInt(1, 48)} hours'`;
-    
+
     if (!auth.isCur) {
       const pd = periodData.find(x => x.id === auth.pId);
       sst = `timestamp '${pd.start}' + interval '${randInt(2,10)} days'`;
     }
 
+    let ssComment = 'NULL';
+    if (ssStatus === 'submitted' && random() < 0.55) {
+      const pool = scoreCommentsByArch[proj.arch] || defaultComments;
+      ssComment = `'${escapeSql(pick(pool))}'`;
+    }
+
     out.push(`
-    INSERT INTO score_sheets (id, period_id, project_id, juror_id, status, started_at, last_activity_at) 
-    VALUES ('${ssId}', '${auth.pId}', '${proj.id}', '${auth.jId}', '${ssStatus}', ${sst} - interval '30 mins', ${sst})
+    INSERT INTO score_sheets (id, period_id, project_id, juror_id, status, comment, started_at, last_activity_at)
+    VALUES ('${ssId}', '${auth.pId}', '${proj.id}', '${auth.jId}', '${ssStatus}', ${ssComment}, ${sst} - interval '30 mins', ${sst})
     ON CONFLICT DO NOTHING;
     `);
     
