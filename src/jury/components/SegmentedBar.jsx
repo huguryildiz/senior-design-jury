@@ -44,8 +44,8 @@ export default function SegmentedBar({ projects, scores, criteria, current, onNa
           <span className="dj-seg-legend-dot" style={{ background: "#f59e0b" }} />
           {partialCount} partial
         </span>
-        <span className="dj-seg-legend-item" style={{ color: "#64748b" }}>
-          <span className="dj-seg-legend-dot" style={{ background: "#475569" }} />
+        <span className="dj-seg-legend-item" style={{ color: "#94a3b8" }}>
+          <span className="dj-seg-legend-dot" style={{ background: "#94a3b8" }} />
           {emptyCount} empty
         </span>
       </div>

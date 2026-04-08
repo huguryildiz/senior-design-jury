@@ -7,7 +7,7 @@
 -- =============================================================================
 -- Changes from v0:
 --   short_name -> code (UNIQUE NOT NULL)
---   + institution_name TEXT
+--   + subtitle TEXT (was institution_name)
 --   + settings JSONB DEFAULT '{}'
 --   + updated_at TIMESTAMPTZ
 --   status CHECK updated: removed 'limited'
@@ -16,7 +16,7 @@ CREATE TABLE organizations (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code              TEXT UNIQUE NOT NULL,
   name              TEXT NOT NULL,
-  institution_name  TEXT,
+  subtitle          TEXT,
   contact_email     TEXT,
   status            TEXT NOT NULL DEFAULT 'active'
                     CHECK (status IN ('active', 'disabled', 'archived')),

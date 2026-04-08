@@ -20,7 +20,7 @@ describe("IdentityStep", () => {
       currentPeriodInfo: {
         name: "Spring 2026",
         organizations: {
-          institution_name: "TED University",
+          subtitle: "TED University",
           name: "Electrical & Electronics Engineering",
         },
       },
@@ -34,7 +34,8 @@ describe("IdentityStep", () => {
     expect(
       screen.getByText("Electrical & Electronics Engineering")
     ).toBeInTheDocument();
-    expect(screen.getByText("5 Groups")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("Groups")).toBeInTheDocument();
   });
 
   it("does not render period metadata when current period is missing", () => {

@@ -14,7 +14,7 @@
 // The handlers that drive PIN submission (handlePinSubmit) live in the
 // orchestrator because they call _loadPeriod after a successful verify.
 //
-// PIN lockout policy is DB-enforced (3 attempts → 15 min). The state here
+// PIN lockout policy is DB-enforced (3 attempts → 5 min). The state here
 // is purely display state reflecting what the RPC returns.
 // See: docs/refactor/phase-00-baseline.md — PIN Failure and Lockout Policy.
 // ============================================================

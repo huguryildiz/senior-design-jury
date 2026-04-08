@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Jury Theme Toggle Placement Mockup</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh;padding:40px 24px 60px}
+
+  h1{text-align:center;font-size:28px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{text-align:center;color:#64748b;font-size:14px;margin-bottom:48px}
+
+  /* ── Grid ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px;max-width:1400px;margin:0 auto}
+
+  /* ── Phone frame ── */
+  .phone{background:#1a1d2e;border-radius:24px;border:2px solid rgba(148,163,184,.1);overflow:hidden;position:relative;min-height:520px;display:flex;flex-direction:column}
+  .phone-label{position:absolute;top:-28px;left:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#94a3b8}
+
+  /* ── Stepper bar ── */
+  .stepper{display:flex;align-items:center;gap:0;padding:12px 16px;background:rgba(10,15,26,.97);border-bottom:1px solid rgba(148,163,184,.06);flex-shrink:0}
+  .step-dot{width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(100,116,139,.25);display:grid;place-items:center;font-size:8px;font-weight:700;color:#475569;flex-shrink:0}
+  .step-dot.active{border-color:#3b82f6;background:rgba(59,130,246,.15);color:#93c5fd;box-shadow:0 0 0 4px rgba(59,130,246,.08)}
+  .step-dot.done{border-color:#22c55e;background:#22c55e;color:#fff;font-size:0}
+  .step-dot.done::after{content:"✓";font-size:9px}
+  .step-conn{flex:1;height:1px;background:rgba(100,116,139,.15);min-width:8px;max-width:40px}
+  .step-conn.filled{background:rgba(34,197,94,.35)}
+
+  /* ── Phone body ── */
+  .phone-body{flex:1;padding:24px 20px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+  /* ── Glass card ── */
+  .glass{background:rgba(30,41,59,.3);border:1px solid rgba(148,163,184,.08);border-radius:16px;padding:24px 20px}
+
+  /* ── Mock elements ── */
+  .mock-icon{width:44px;height:44px;border-radius:12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.15);margin:0 auto 12px;display:grid;place-items:center;font-size:18px}
+  .mock-title{font-size:16px;font-weight:700;text-align:center;margin-bottom:4px}
+  .mock-sub{font-size:11px;color:#64748b;text-align:center;margin-bottom:16px}
+  .mock-input{height:36px;border-radius:10px;background:rgba(15,23,42,.5);border:1px solid rgba(100,116,139,.15);margin-bottom:10px}
+  .mock-btn{height:40px;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#6366f1);margin-top:8px}
+  .mock-link{text-align:center;font-size:11px;color:#60a5fa;margin-top:12px}
+
+  /* ── PIN boxes ── */
+  .pin-row{display:flex;gap:10px;justify-content:center;margin:20px 0}
+  .pin-box{width:44px;height:52px;border-radius:10px;background:rgba(15,23,42,.5);border:1px solid rgba(100,116,139,.15)}
+
+  /* ── Score criterion ── */
+  .crit-card{background:rgba(15,23,42,.3);border:1px solid rgba(100,116,139,.1);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+  .crit-label{font-size:10px;font-weight:600;color:#94a3b8;margin-bottom:6px}
+  .crit-slider{height:4px;border-radius:2px;background:rgba(100,116,139,.2)}
+  .crit-slider-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#3b82f6,#6366f1);width:60%}
+
+  /* ── Bottom bar ── */
+  .bottom-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(10,15,26,.95);border-top:1px solid rgba(148,163,184,.06);flex-shrink:0}
+  .bot-score{font-size:14px;font-weight:700;flex:1}
+  .bot-score span{font-size:11px;color:#475569;font-weight:400}
+  .bot-submit{height:32px;padding:0 16px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#6366f1);font-size:11px;font-weight:600;color:#fff;display:flex;align-items:center;gap:4px}
+
+  /* ── Done step ── */
+  .done-check{width:56px;height:56px;border-radius:50%;background:rgba(34,197,94,.12);border:2px solid #22c55e;display:grid;place-items:center;margin:0 auto 12px;font-size:24px}
+  .done-pill{display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#4ade80;font-size:10px;font-weight:600;margin-bottom:8px}
+  .rank-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:rgba(15,23,42,.3);margin-bottom:4px;font-size:11px}
+  .rank-num{width:20px;height:20px;border-radius:50%;background:rgba(59,130,246,.15);display:grid;place-items:center;font-size:9px;font-weight:700;color:#60a5fa;flex-shrink:0}
+  .rank-row:first-child .rank-num{background:rgba(234,179,8,.15);color:#facc15}
+
+  /* ════════════════════════════════════════════════
+     TOGGLE INDICATOR
+     ════════════════════════════════════════════════ */
+  .toggle-icon{font-size:14px;cursor:default;flex-shrink:0;color:#64748b;line-height:1}
+
+  /* Recommended placement highlight */
+  .toggle-highlight{position:relative}
+  .toggle-highlight::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px dashed #f59e0b;animation:pulse-ring 2s ease-in-out infinite}
+  @keyframes pulse-ring{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+
+  .toggle-label{position:absolute;white-space:nowrap;font-size:9px;font-weight:700;color:#f59e0b;letter-spacing:.5px;text-transform:uppercase}
+  .toggle-label.top{bottom:calc(100% + 14px);left:50%;transform:translateX(-50%)}
+  .toggle-label.left{right:calc(100% + 12px);top:50%;transform:translateY(-50%)}
+  .toggle-label.right{left:calc(100% + 12px);top:50%;transform:translateY(-50%)}
+
+  /* ── Option cards ── */
+  .options{max-width:1400px;margin:56px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+  .opt-card{background:rgba(30,41,59,.3);border:1px solid rgba(148,163,184,.08);border-radius:16px;padding:20px;position:relative;overflow:hidden}
+  .opt-card.recommended{border-color:rgba(34,197,94,.3)}
+  .opt-card.recommended::before{content:"RECOMMENDED";position:absolute;top:12px;right:-28px;background:#22c55e;color:#fff;font-size:8px;font-weight:700;letter-spacing:1px;padding:2px 32px;transform:rotate(45deg)}
+  .opt-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:700;letter-spacing:.5px;margin-bottom:8px}
+  .opt-tag.a{background:rgba(59,130,246,.15);color:#60a5fa}
+  .opt-tag.b{background:rgba(34,197,94,.15);color:#4ade80}
+  .opt-tag.c{background:rgba(168,85,247,.15);color:#c084fc}
+  .opt-title{font-size:15px;font-weight:700;margin-bottom:6px}
+  .opt-desc{font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:12px}
+  .opt-pros{list-style:none;font-size:11px;color:#64748b}
+  .opt-pros li{padding:3px 0;padding-left:16px;position:relative}
+  .opt-pros li::before{content:"✓";position:absolute;left:0;color:#22c55e;font-weight:700}
+  .opt-cons li::before{content:"✕";color:#ef4444}
+
+  .section-title{text-align:center;font-size:18px;font-weight:700;margin:56px 0 24px;color:#e2e8f0}
+
+  /* ── Spacer ── */
+  .spacer{flex:1}
+
+  /* ── Return Home row ── */
+  .home-row{display:flex;align-items:center;justify-content:center;gap:0;margin-top:12px;position:relative}
+  .home-row .mock-link{margin:0}
+</style>
+</head>
+<body>
+
+<h1>Theme Toggle Placement</h1>
+<p class="subtitle">Jury flow — where should the light/dark toggle live?</p>
+
+<!-- ════════════════════════════════════════════════
+     OPTION A — Return Home row (recommended)
+     ════════════════════════════════════════════════ -->
+<p class="section-title">Option A — "Return Home" Satırı</p>
+<div class="grid">
+
+  <!-- Identity -->
+  <div style="position:relative">
+    <div class="phone-label">1 · Identity</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot active">1</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">2</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">3</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">4</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">5</div>
+      </div>
+      <div class="phone-body">
+        <div class="glass">
+          <div class="mock-icon">👤</div>
+          <div class="mock-title">Jury Information</div>
+          <div class="mock-sub">Enter your details to begin</div>
+          <div class="mock-input"></div>
+          <div class="mock-input"></div>
+          <div class="mock-input"></div>
+          <div class="mock-btn"></div>
+          <div class="home-row">
+            <div class="mock-link">← Return Home</div>
+            <div style="flex:1"></div>
+            <div class="toggle-highlight" style="position:relative">
+              <span class="toggle-icon">🌙</span>
+              <span class="toggle-label right">Toggle here</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIN -->
+  <div style="position:relative">
+    <div class="phone-label">2 · PIN</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot done">1</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot active">2</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">3</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">4</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">5</div>
+      </div>
+      <div class="phone-body">
+        <div class="glass">
+          <div class="mock-icon">🔒</div>
+          <div class="mock-title">Enter Your PIN</div>
+          <div class="mock-sub">4-digit session PIN</div>
+          <div class="pin-row">
+            <div class="pin-box"></div>
+            <div class="pin-box"></div>
+            <div class="pin-box"></div>
+            <div class="pin-box"></div>
+          </div>
+          <div class="mock-btn"></div>
+          <div class="home-row">
+            <div class="mock-link">← Back</div>
+            <div style="flex:1"></div>
+            <div class="toggle-highlight" style="position:relative">
+              <span class="toggle-icon">🌙</span>
+              <span class="toggle-label right">Toggle here</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eval -->
+  <div style="position:relative">
+    <div class="phone-label">4 · Scoring</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot done">1</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">2</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">3</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot active">4</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">5</div>
+      </div>
+      <div class="phone-body" style="padding:16px 12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Project Alpha</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:12px">Ali V., Ayşe K.</div>
+        <div class="crit-card">
+          <div class="crit-label">Technical (0–30)</div>
+          <div class="crit-slider"><div class="crit-slider-fill" style="width:75%"></div></div>
+        </div>
+        <div class="crit-card">
+          <div class="crit-label">Design (0–30)</div>
+          <div class="crit-slider"><div class="crit-slider-fill" style="width:50%"></div></div>
+        </div>
+        <div class="crit-card">
+          <div class="crit-label">Delivery (0–30)</div>
+          <div class="crit-slider"><div class="crit-slider-fill" style="width:40%"></div></div>
+        </div>
+        <div class="crit-card">
+          <div class="crit-label">Teamwork (0–10)</div>
+          <div class="crit-slider"><div class="crit-slider-fill" style="width:80%"></div></div>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <div class="bot-score">68 <span>/ 100</span></div>
+        <div class="toggle-highlight" style="position:relative">
+          <span class="toggle-icon">🌙</span>
+          <span class="toggle-label top">Toggle</span>
+        </div>
+        <div class="bot-submit">Submit ▶</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done -->
+  <div style="position:relative">
+    <div class="phone-label">5 · Summary</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot done">1</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">2</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">3</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">4</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot active">5</div>
+      </div>
+      <div class="phone-body" style="align-items:center;text-align:center">
+        <div class="done-check">✓</div>
+        <div class="done-pill">Evaluation Submitted</div>
+        <div class="mock-title">Thank you!</div>
+        <div class="mock-sub" style="margin-bottom:16px">You've evaluated all 5 groups</div>
+        <div style="width:100%">
+          <div class="rank-row"><div class="rank-num">1</div><div style="flex:1">Project Alpha</div><div style="color:#64748b">92</div></div>
+          <div class="rank-row"><div class="rank-num">2</div><div style="flex:1">Project Beta</div><div style="color:#64748b">85</div></div>
+          <div class="rank-row"><div class="rank-num">3</div><div style="flex:1">Project Gamma</div><div style="color:#64748b">78</div></div>
+        </div>
+        <div class="spacer"></div>
+        <div class="home-row" style="width:100%;margin-top:16px">
+          <div class="mock-link">← Return to Home</div>
+          <div style="flex:1"></div>
+          <div class="toggle-highlight" style="position:relative">
+            <span class="toggle-icon">🌙</span>
+            <span class="toggle-label right">Toggle</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     OPTION B — Stepper bar right (current)
+     ════════════════════════════════════════════════ -->
+<p class="section-title">Option B — Stepper Bar Sağ Ucu (şu anki)</p>
+<div class="grid">
+  <div style="position:relative">
+    <div class="phone-label">All steps</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot active">1</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">2</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">3</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">4</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">5</div>
+        <div style="flex:1"></div>
+        <div class="toggle-highlight" style="position:relative">
+          <span class="toggle-icon">🌙</span>
+          <span class="toggle-label right" style="right:-70px">Toggle</span>
+        </div>
+      </div>
+      <div class="phone-body">
+        <div class="glass" style="opacity:.4">
+          <div class="mock-icon">👤</div>
+          <div class="mock-title" style="opacity:.5">Content area</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B issue demo -->
+  <div style="position:relative">
+    <div class="phone-label">Problem: stepper gets cramped on narrow screens</div>
+    <div class="phone" style="max-width:280px">
+      <div class="stepper" style="padding:10px 8px">
+        <div class="step-dot active" style="width:16px;height:16px;font-size:7px">1</div>
+        <div class="step-conn" style="min-width:4px;max-width:14px"></div>
+        <div class="step-dot" style="width:16px;height:16px;font-size:7px">2</div>
+        <div class="step-conn" style="min-width:4px;max-width:14px"></div>
+        <div class="step-dot" style="width:16px;height:16px;font-size:7px">3</div>
+        <div class="step-conn" style="min-width:4px;max-width:14px"></div>
+        <div class="step-dot" style="width:16px;height:16px;font-size:7px">4</div>
+        <div class="step-conn" style="min-width:4px;max-width:14px"></div>
+        <div class="step-dot" style="width:16px;height:16px;font-size:7px">5</div>
+        <div style="flex:1"></div>
+        <span class="toggle-icon" style="font-size:12px">🌙</span>
+      </div>
+      <div class="phone-body">
+        <div style="font-size:10px;color:#ef4444;text-align:center;margin-top:20px">Steps compress ↔ toggle steals space</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     OPTION C — Fixed FAB (original)
+     ════════════════════════════════════════════════ -->
+<p class="section-title">Option C — Fixed FAB (bottom-right)</p>
+<div class="grid">
+  <div style="position:relative">
+    <div class="phone-label">All steps</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot active">1</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">2</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">3</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">4</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">5</div>
+      </div>
+      <div class="phone-body">
+        <div class="glass" style="opacity:.4">
+          <div class="mock-icon">👤</div>
+          <div class="mock-title" style="opacity:.5">Content area</div>
+          <div class="mock-sub" style="opacity:.3">Unobstructed</div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:18px;right:18px" class="toggle-highlight">
+        <span class="toggle-icon" style="font-size:16px">🌙</span>
+        <span class="toggle-label left">FAB</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:relative">
+    <div class="phone-label">Eval step — FAB shifts up for bottom bar</div>
+    <div class="phone">
+      <div class="stepper">
+        <div class="step-dot done">1</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">2</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot done">3</div>
+        <div class="step-conn filled"></div>
+        <div class="step-dot active">4</div>
+        <div class="step-conn"></div>
+        <div class="step-dot">5</div>
+      </div>
+      <div class="phone-body" style="padding:16px 12px">
+        <div class="crit-card"><div class="crit-label">Technical</div><div class="crit-slider"><div class="crit-slider-fill"></div></div></div>
+        <div class="crit-card"><div class="crit-label">Design</div><div class="crit-slider"><div class="crit-slider-fill" style="width:50%"></div></div></div>
+        <div class="crit-card"><div class="crit-label">Delivery</div><div class="crit-slider"><div class="crit-slider-fill" style="width:30%"></div></div></div>
+      </div>
+      <div class="bottom-bar">
+        <div class="bot-score">68 <span>/ 100</span></div>
+        <div class="bot-submit">Submit ▶</div>
+      </div>
+      <div style="position:absolute;bottom:62px;right:18px" class="toggle-highlight">
+        <span class="toggle-icon" style="font-size:16px">🌙</span>
+        <span class="toggle-label left">Shifts up</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     COMPARISON TABLE
+     ════════════════════════════════════════════════ -->
+<p class="section-title">Karşılaştırma</p>
+<div class="options">
+  <div class="opt-card recommended">
+    <div class="opt-tag b">Option A</div>
+    <div class="opt-title">"Return Home" Satırı</div>
+    <div class="opt-desc">Toggle, her step'in alt utility alanında — "Return Home" veya "Back" linkinin karşı tarafında. Eval step'te bottom-bar'a taşınır.</div>
+    <ul class="opt-pros">
+      <li>Stepper bar'ı kirletmez</li>
+      <li>İçerikle çakışmaz (FAB gibi)</li>
+      <li>Utility action'larla doğal gruplanır</li>
+      <li>Responsive-safe — her ekran boyutunda çalışır</li>
+      <li>Linear, Notion, Figma pattern'ına uygun</li>
+    </ul>
+  </div>
+
+  <div class="opt-card">
+    <div class="opt-tag a">Option B</div>
+    <div class="opt-title">Stepper Bar Sağ Ucu</div>
+    <div class="opt-desc">Stepper dot'larının yanında, sağ kenarda. Şu anki implementasyon.</div>
+    <ul class="opt-pros">
+      <li>Her zaman görünür</li>
+      <li style="color:#ef4444" class="opt-cons"><li>Progress indicator'ı kirlityor</li>
+      <li style="color:#ef4444" class="opt-cons"><li>Dar ekranlarda step'ler sıkışıyor</li>
+      <li style="color:#ef4444" class="opt-cons"><li>Stepper'ın anlamsal bütünlüğünü bozuyor</li>
+    </ul>
+  </div>
+
+  <div class="opt-card">
+    <div class="opt-tag c">Option C</div>
+    <div class="opt-title">Fixed FAB</div>
+    <div class="opt-desc">Ekranın sağ altında sabit pozisyonlu floating button. Eski implementasyon.</div>
+    <ul class="opt-pros">
+      <li>Hiçbir layout'u etkilemez</li>
+      <li>Her zaman erişilebilir</li>
+      <li style="color:#ef4444" class="opt-cons"><li>İçerikle overlap riski</li>
+      <li style="color:#ef4444" class="opt-cons"><li>Eval step'te bottom bar ile çakışır</li>
+      <li style="color:#ef4444" class="opt-cons"><li>Generic, premium hissi düşük</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

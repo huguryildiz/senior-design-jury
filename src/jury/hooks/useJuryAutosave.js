@@ -67,6 +67,7 @@ export function useJuryAutosave({
   const [saveStatus, setSaveStatus] = useState("idle");
   const [sessionExpired, setSessionExpired] = useState(false);
   const lastWrittenRef = useRef({});
+  const inFlightRef = useRef(new Set()); // pids with an in-progress upsert
 
   // ── Core write: single group → single score row ───────────
   // Reads from refs (never from React state) for stale-closure safety.
@@ -99,7 +100,12 @@ export function useJuryAutosave({
         return true; // no data changes since last write — skip
       }
 
+      if (inFlightRef.current.has(pid)) {
+        return true; // concurrent write already in progress — skip to avoid lock contention
+      }
+
       setSaveStatus("saving");
+      inFlightRef.current.add(pid);
       try {
         await upsertScore(sid, pid, jid, sessionToken, snapshot.normalizedScores, snapshot.comment, criteriaConfig);
         lastWrittenRef.current[pid] = { key: snapshot.key };
@@ -112,6 +118,7 @@ export function useJuryAutosave({
         return true;
       } catch (e) {
         console.error("[writeGroup] upsertScore failed for pid", pid, e);
+
         if (isFinalSubmittedError(e)) {
           // Juror already has a finalized submission and edit is not enabled.
           // Scores are persisted in the DB — treat this as a successful skip.
@@ -129,6 +136,8 @@ export function useJuryAutosave({
         setSaveStatus("error");
         setTimeout(() => setSaveStatus("idle"), 3000);
         return false;
+      } finally {
+        inFlightRef.current.delete(pid);
       }
     },
     [editLockActive, stateRef, pendingScoresRef, pendingCommentsRef, setGroupSynced, setEditLockActive]

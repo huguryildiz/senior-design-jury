@@ -1,10 +1,11 @@
 // src/admin/pages/ProjectsPage.jsx — Phase 7
 // Projects management page. Structure from prototype lines 14001–14241.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Filter } from "lucide-react";
+import { BarChart2, Copy, Filter } from "lucide-react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import FbAlert from "@/shared/ui/FbAlert";
+import ConfirmDialog from "@/shared/ui/ConfirmDialog";
 import { FilterButton } from "@/shared/ui/FilterButton";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import { useManageProjects } from "../hooks/useManageProjects";
@@ -65,6 +66,7 @@ export default function ProjectsPage({
   isDemoMode = false,
   onDirtyChange,
   onCurrentSemesterChange,
+  onViewReviews,
 }) {
   const _toast = useToast();
   const { activeOrganization } = useAuth();
@@ -116,6 +118,9 @@ export default function ProjectsPage({
 
   // Drawer
   const [drawerProject, setDrawerProject] = useState(null);
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   // Import CSV state
   const cancelImportRef = useRef(false);
@@ -315,7 +320,7 @@ export default function ProjectsPage({
             return generateTableBlob(fmt, {
               filenameType: "Projects", sheetName: "Projects",
               periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
-              organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+              organization: activeOrganization?.name || "", department: activeOrganization?.subtitle || "",
               pdfTitle: "VERA — Projects", header, rows,
               colWidths: COLUMNS.map((c) => c.exportWidth),
             });
@@ -327,7 +332,7 @@ export default function ProjectsPage({
               await downloadTable(fmt, {
                 filenameType: "Projects", sheetName: "Projects",
                 periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
-                organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+                organization: activeOrganization?.name || "", department: activeOrganization?.subtitle || "",
                 pdfTitle: "VERA — Projects", header, rows,
                 colWidths: COLUMNS.map((c) => c.exportWidth),
               });
@@ -358,7 +363,7 @@ export default function ProjectsPage({
                   {c.label}
                 </th>
               ))}
-              <th style={{ width: 48 }}>Actions</th>
+              <th style={{ width: 48, textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -386,7 +391,7 @@ export default function ProjectsPage({
                 <td className="vera-datetime-text">
                   {formatUpdated(project.updated_at)}
                 </td>
-                <td>
+                <td style={{ textAlign: "right" }}>
                   <div className="juror-action-wrap" ref={openMenuId === project.id ? menuRef : null}>
                     <button
                       className="juror-action-btn"
@@ -412,14 +417,30 @@ export default function ProjectsPage({
                           Edit Project
                         </div>
                         <div className="juror-action-sep" />
+                        {onViewReviews && (
+                          <div className="juror-action-item" onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); onViewReviews(); }}>
+                            <BarChart2 size={14} />
+                            View Reviews
+                          </div>
+                        )}
+                        <div
+                          className="juror-action-item"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(null);
+                            await projects.handleDuplicateProject(project);
+                          }}
+                        >
+                          <Copy size={14} />
+                          Duplicate Project
+                        </div>
+                        <div className="juror-action-sep" />
                         <div
                           className="juror-action-item danger"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenMenuId(null);
-                            if (window.confirm(`Delete project "${project.title}"?`)) {
-                              projects.handleDeleteProject(project.id);
-                            }
+                            setDeleteTarget(project);
                           }}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -492,13 +513,10 @@ export default function ProjectsPage({
               <button
                 className="btn btn-outline btn-sm"
                 style={{ color: "var(--danger)", borderColor: "rgba(225,29,72,0.3)" }}
-                onClick={async () => {
+                onClick={() => {
                   const t = drawerProject;
                   setDrawerProject(null);
-                  if (window.confirm(`Delete project "${t.title}"?`)) {
-                    try { await projects.handleDeleteProject(t.id); }
-                    catch (e) { _toast.error(e?.message || "Could not delete project."); }
-                  }
+                  setDeleteTarget(t);
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -583,6 +601,21 @@ export default function ProjectsPage({
           const result = await projects.handleImportProjects(rows, { cancelRef: cancelImportRef });
           if (result?.ok === false) throw new Error(result.formError || "Import failed.");
           return result;
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
+        title="Delete Project"
+        body={deleteTarget ? `"${deleteTarget.title}" will be permanently deleted.` : ""}
+        warning="All scores submitted for this project will also be deleted."
+        confirmLabel="Delete Project"
+        cancelLabel="Cancel"
+        tone="danger"
+        onConfirm={async () => {
+          await projects.handleDeleteProject(deleteTarget.id);
+          setDeleteTarget(null);
         }}
       />
     </div>

@@ -4,22 +4,37 @@ import { useState } from "react";
 import {
   Check,
   ChevronDown,
-  Info,
+  ClipboardCheck,
+  Cloud,
+  CloudUpload,
   ListChecks,
-  Moon,
   Pencil,
   Send,
-  Sun,
-  TriangleAlert,
+  TrendingUp,
   UserRound,
 } from "lucide-react";
+import FbAlert from "../../shared/ui/FbAlert";
 import "../../styles/jury.css";
 import RubricSheet from "../components/RubricSheet";
 import SpotlightTour from "../components/SpotlightTour";
 import SegmentedBar from "../components/SegmentedBar";
 import ProjectDrawer from "../components/ProjectDrawer";
 import { StudentNames } from "@/shared/ui/EntityMeta";
-import { useTheme } from "@/shared/theme/ThemeProvider";
+
+const RUBRIC_TOUR_STEPS = [
+  {
+    selector: ".dj-rub-meta",
+    title: "Mapped Outcomes",
+    body: "Each criterion is tied to accreditation program outcomes — these show exactly which skills and competencies are being assessed.",
+    placement: "above",
+  },
+  {
+    selector: ".dj-rub-sheet-row",
+    title: "Scoring Bands",
+    body: "Use these band descriptions to calibrate your score. The highlighted band updates automatically as you enter a value.",
+    placement: "above",
+  },
+];
 
 // Per-criterion color scheme (matches prototype djCriteria color map)
 const CRIT_PALETTE = [
@@ -38,7 +53,6 @@ function getCritPalette(index) {
 export default function EvalStep({ state, onBack }) {
   const [rubricCritIndex, setRubricCritIndex] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
 
   if (!state.project) {
     return (
@@ -84,14 +98,16 @@ export default function EvalStep({ state, onBack }) {
           </div>
           <div className="dj-fh-header-right">
             {state.saveStatus === "saving" ? (
-              <span className="dj-save-pill saving">Saving...</span>
+              <span className="dj-save-pill saving">
+                <CloudUpload size={12} strokeWidth={2.5} />
+                Saving...
+              </span>
             ) : (
               <span className="dj-save-pill saved">
-                <Check size={12} strokeWidth={2.5} />
+                <Cloud size={12} strokeWidth={2.5} />
                 Saved
               </span>
             )}
-            <span className="dj-badge" style={{ fontSize: 8, padding: "2px 8px" }}>Live</span>
           </div>
         </div>
 
@@ -119,20 +135,15 @@ export default function EvalStep({ state, onBack }) {
         />
         <hr style={{ border: "none", borderBottom: "1px solid rgba(148,163,184,0.08)", margin: "6px 0 8px" }} />
 
-        {/* ── Info banner ── */}
-        <div className="fb-alert fba-warning" style={{ marginBottom: 10 }}>
-          <div className="fb-alert-icon"><Info size={15} strokeWidth={2} /></div>
-          <div className="fb-alert-body">
-            <span className="fb-alert-desc">Scores are saved automatically and reflected instantly in the admin panel.</span>
-          </div>
+        {/* ── Info line (subtle) ── */}
+        <div className="jury-info-line" style={{ marginBottom: 10, fontSize: 11 }}>
+          <span className="jury-info-dot jury-info-dot--amber" />
+          Scores save automatically and reflect instantly in the admin panel.
         </div>
         {inputsLocked && (
-          <div className="fb-alert fba-danger" style={{ marginBottom: 10 }}>
-            <div className="fb-alert-icon"><TriangleAlert size={15} strokeWidth={2} /></div>
-            <div className="fb-alert-body">
-              <span className="fb-alert-desc">This evaluation period is locked. Score inputs are disabled.</span>
-            </div>
-          </div>
+          <FbAlert variant="danger" style={{ marginBottom: 10 }}>
+            This evaluation period is locked. Score inputs are disabled.
+          </FbAlert>
         )}
 
         {/* ── Criteria Cards ── */}
@@ -212,13 +223,6 @@ export default function EvalStep({ state, onBack }) {
           </span>
         </div>
         <button
-          className="dj-theme-toggle"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? <Sun size={14} strokeWidth={2} /> : <Moon size={14} strokeWidth={2} />}
-        </button>
-        <button
           className={`dj-bottom-submit ${state.allComplete && !inputsLocked ? "active" : "disabled"}`}
           onClick={() => state.allComplete && !inputsLocked && state.handleRequestSubmit()}
           disabled={!state.allComplete || inputsLocked}
@@ -240,16 +244,47 @@ export default function EvalStep({ state, onBack }) {
 
       {/* ── Rubric bottom sheet ── */}
       {rubricCritIndex !== null && (
-        <RubricSheet
-          crit={state.effectiveCriteria[rubricCritIndex]}
-          score={state.scores[projId]?.[state.effectiveCriteria[rubricCritIndex]?.id] ?? ""}
-          outcomeLookup={state.outcomeLookup}
-          onClose={() => setRubricCritIndex(null)}
-        />
+        <>
+          <RubricSheet
+            crit={state.effectiveCriteria[rubricCritIndex]}
+            score={state.scores[projId]?.[state.effectiveCriteria[rubricCritIndex]?.id] ?? ""}
+            outcomeLookup={state.outcomeLookup}
+            onClose={() => setRubricCritIndex(null)}
+          />
+          {/* Rendered here (not inside RubricSheet) so position:fixed works — .dj-rub-sheet has transform */}
+          <SpotlightTour
+            sessionKey="dj_tour_rubric"
+            steps={RUBRIC_TOUR_STEPS}
+            delay={500}
+          />
+        </>
       )}
 
       {/* ── Spotlight guided tour (first visit only) ── */}
-      <SpotlightTour />
+      <SpotlightTour
+        sessionKey="dj_tour_eval"
+        steps={[
+          { selector: ".dj-group-bar", title: "Current Group", body: "Tap here to see all groups at a glance and jump to any one directly.", placement: "below" },
+          { selector: ".dj-seg-bar", title: "Progress Overview", body: "Each segment is a group — green means fully scored, amber means partial, grey means not started yet.", placement: "below" },
+          { selector: ".dj-score-input", title: "Enter Your Score", body: "Type a number and move on. Scores are saved automatically — no submit needed after each group.", placement: "above" },
+          { selector: ".dj-rubric-btn", title: "Scoring Rubric", body: "Unsure about a score? Tap Rubric to open the detailed band descriptions for this criterion.", placement: "below" },
+          { selector: ".dj-comment-box", title: "Optional Comments", body: "Leave free-text feedback for the admin panel. Not visible to students.", placement: "above" },
+          { selector: ".dj-sticky-bottom", title: "Submit When Done", body: "Once all groups are fully scored the Submit button activates. Your scores are already saved — this just finalises the session.", placement: "above" },
+        ]}
+      />
+
+      {/* ── Submit confirmation tour ── */}
+      {state.confirmingSubmit && (
+        <SpotlightTour
+          sessionKey="dj_tour_confirm"
+          steps={[
+            { selector: ".dj-confirm-summary", title: "Review Your Scores", body: "Check that all projects are scored and your average looks right before finalising.", placement: "below" },
+            { selector: ".dj-confirm-btn.cancel", title: "Not Ready?", body: "Tap Keep Editing to go back and adjust any scores — nothing is locked yet.", placement: "above" },
+            { selector: ".dj-confirm-btn.submit", title: "Finalise Submission", body: "Tap Submit to lock in your scores. This cannot be undone — scores will be marked as final.", placement: "above" },
+          ]}
+          delay={400}
+        />
+      )}
 
       {/* ── Submit confirmation overlay (B2 Minimal + Stats) ── */}
       {state.confirmingSubmit && (() => {
@@ -271,16 +306,30 @@ export default function EvalStep({ state, onBack }) {
                 <Check size={26} strokeWidth={2} />
               </div>
               <div className="dj-confirm-title">Submit Final Scores?</div>
-              <div className="dj-confirm-summary">
-                <span><span className="avg-score-cell">{scoredProjects}/{total}</span> scored</span>
-                <span className="dj-confirm-sep" />
-                <span className="avg-score-cell">Avg{" "}<span className="avg-score-value">{totalScore > 0 ? (totalScore / state.projects.length).toFixed(1) : "—"}</span><span className="avg-score-max"> /{totalMax}</span></span>
+              <div className="dj-confirm-subtitle">Your scores will be recorded as final. This cannot be reversed.</div>
+              <div className="dj-confirm-stats">
+                <div className="dj-confirm-stat-card">
+                  <div className="dj-confirm-stat-icon scored">
+                    <ClipboardCheck size={16} strokeWidth={2} />
+                  </div>
+                  <div className="dj-confirm-stat-value avg-score-cell">
+                    <span className="avg-score-value">{scoredProjects}</span>
+                    <span className="avg-score-max">/{total}</span>
+                  </div>
+                  <div className="dj-confirm-stat-label">Projects Scored</div>
+                </div>
+                <div className="dj-confirm-stat-card">
+                  <div className="dj-confirm-stat-icon avg">
+                    <TrendingUp size={16} strokeWidth={2} />
+                  </div>
+                  <div className="dj-confirm-stat-value avg-score-cell">
+                    <span className="avg-score-value">{totalScore > 0 ? (totalScore / state.projects.length).toFixed(1) : "—"}</span>
+                    <span className="avg-score-max">/{totalMax}</span>
+                  </div>
+                  <div className="dj-confirm-stat-label">Average Score</div>
+                </div>
               </div>
-              <div className="dj-confirm-warn-line">
-                <TriangleAlert size={12} strokeWidth={2} />
-                This action cannot be undone
-              </div>
-              <div className="dj-confirm-btn-row">
+<div className="dj-confirm-btn-row">
                 <button className="dj-confirm-btn cancel" onClick={state.handleCancelSubmit}>
                   <Pencil size={14} strokeWidth={2} />
                   Keep Editing

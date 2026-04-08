@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Theme Toggle Animation Concepts</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh;padding:40px 24px 80px}
+  h1{text-align:center;font-size:28px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{text-align:center;color:#64748b;font-size:14px;margin-bottom:48px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:32px;max-width:1200px;margin:0 auto}
+
+  /* ── Card ── */
+  .card{background:rgba(30,41,59,.3);border:1px solid rgba(148,163,184,.08);border-radius:20px;padding:32px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .card-tag{display:inline-block;padding:3px 10px;border-radius:6px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+  .card-tag.a{background:rgba(59,130,246,.15);color:#60a5fa}
+  .card-tag.b{background:rgba(34,197,94,.15);color:#4ade80}
+  .card-tag.c{background:rgba(168,85,247,.15);color:#c084fc}
+  .card-tag.d{background:rgba(234,179,8,.15);color:#facc15}
+  .card-tag.e{background:rgba(244,63,94,.15);color:#fb7185}
+  .card-title{font-size:16px;font-weight:700}
+  .card-desc{font-size:12px;color:#94a3b8;line-height:1.5}
+  .card-hint{font-size:10px;color:#475569;margin-top:auto}
+
+  /* ── Toggle area ── */
+  .toggle-area{width:80px;height:80px;border-radius:50%;background:rgba(15,23,42,.5);border:1px solid rgba(100,116,139,.12);display:grid;place-items:center;cursor:pointer;transition:background .3s}
+  .toggle-area:hover{background:rgba(30,41,59,.8)}
+  .toggle-area:active{transform:scale(.95)}
+
+  /* ══════════════════════════════════════
+     A — Morph (rotate + scale)
+     ══════════════════════════════════════ */
+  .morph-icon{width:28px;height:28px;color:#f59e0b;transition:transform .5s cubic-bezier(.4,0,.2,1),color .4s}
+  .morph-icon.is-sun{transform:rotate(0deg) scale(1);color:#f59e0b}
+  .morph-icon.is-moon{transform:rotate(360deg) scale(.85);color:#60a5fa}
+
+  /* ══════════════════════════════════════
+     B — Flip (3D Y-axis)
+     ══════════════════════════════════════ */
+  .flip-wrapper{perspective:200px;width:28px;height:28px}
+  .flip-inner{width:100%;height:100%;position:relative;transition:transform .6s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d}
+  .flip-inner.flipped{transform:rotateY(180deg)}
+  .flip-face{position:absolute;inset:0;backface-visibility:hidden;display:grid;place-items:center}
+  .flip-face.back{transform:rotateY(180deg)}
+  .flip-face svg{width:28px;height:28px}
+
+  /* ══════════════════════════════════════
+     C — Eclipse slide
+     ══════════════════════════════════════ */
+  .eclipse-wrap{width:28px;height:28px;position:relative;overflow:hidden}
+  .eclipse-sun,.eclipse-moon{position:absolute;inset:0;display:grid;place-items:center;transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .3s}
+  .eclipse-sun svg,.eclipse-moon svg{width:28px;height:28px}
+  .eclipse-wrap.is-dark .eclipse-sun{transform:translateY(100%) rotate(45deg);opacity:0}
+  .eclipse-wrap.is-dark .eclipse-moon{transform:translateY(0);opacity:1}
+  .eclipse-wrap.is-light .eclipse-sun{transform:translateY(0);opacity:1}
+  .eclipse-wrap.is-light .eclipse-moon{transform:translateY(-100%) rotate(-45deg);opacity:0}
+
+  /* ══════════════════════════════════════
+     D — Spring pop
+     ══════════════════════════════════════ */
+  .spring-icon{width:28px;height:28px;transition:transform .4s cubic-bezier(.34,1.56,.64,1),color .3s}
+  .spring-icon.pop{animation:spring-pop .5s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes spring-pop{0%{transform:scale(0) rotate(-180deg)}60%{transform:scale(1.2) rotate(20deg)}100%{transform:scale(1) rotate(0)}}
+
+  /* ══════════════════════════════════════
+     E — Rays burst (sun rays animate)
+     ══════════════════════════════════════ */
+  .rays-wrap{width:40px;height:40px;position:relative;display:grid;place-items:center}
+  .rays-core{width:28px;height:28px;transition:transform .4s,color .3s;z-index:1}
+  .rays-ring{position:absolute;inset:0;opacity:0;transition:opacity .4s,transform .4s}
+  .rays-ring.visible{opacity:1;animation:rays-spin 8s linear infinite}
+  @keyframes rays-spin{to{transform:rotate(360deg)}}
+  .ray{position:absolute;width:2px;height:6px;background:#f59e0b;border-radius:1px;left:50%;top:0;transform-origin:50% 20px}
+  .ray:nth-child(1){transform:rotate(0deg)}
+  .ray:nth-child(2){transform:rotate(45deg)}
+  .ray:nth-child(3){transform:rotate(90deg)}
+  .ray:nth-child(4){transform:rotate(135deg)}
+  .ray:nth-child(5){transform:rotate(180deg)}
+  .ray:nth-child(6){transform:rotate(225deg)}
+  .ray:nth-child(7){transform:rotate(270deg)}
+  .ray:nth-child(8){transform:rotate(315deg)}
+
+  /* ══════════════════════════════════════
+     F — Horizon rise/set
+     ══════════════════════════════════════ */
+  .horizon-wrap{width:48px;height:32px;position:relative;overflow:hidden;border-radius:0 0 24px 24px}
+  .horizon-line{position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(148,163,184,.3)}
+  .horizon-orb{position:absolute;left:50%;transform:translateX(-50%);transition:bottom .6s cubic-bezier(.4,0,.2,1),color .3s}
+  .horizon-orb svg{width:24px;height:24px}
+  .horizon-wrap.is-day .horizon-orb{bottom:4px;color:#f59e0b}
+  .horizon-wrap.is-night .horizon-orb{bottom:-14px;color:#60a5fa}
+  .horizon-glow{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);width:32px;height:16px;border-radius:16px 16px 0 0;transition:opacity .5s,background .3s}
+  .horizon-wrap.is-day .horizon-glow{opacity:1;background:radial-gradient(ellipse,rgba(251,191,36,.2) 0%,transparent 70%)}
+  .horizon-wrap.is-night .horizon-glow{opacity:0}
+
+  /* shared SVG style */
+  svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+
+<h1>Theme Toggle Animations</h1>
+<p class="subtitle">Click each icon to see the transition — pick one for VERA jury flow</p>
+
+<div class="grid">
+
+  <!-- A: Morph -->
+  <div class="card">
+    <span class="card-tag a">A</span>
+    <div class="card-title">Morph Rotate</div>
+    <div class="card-desc">360° spin + slight scale. Smooth, classic.</div>
+    <div class="toggle-area" onclick="toggleA(this)">
+      <svg class="morph-icon is-sun" viewBox="0 0 24 24" id="morphIcon">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    </div>
+    <div class="card-hint">Click to toggle</div>
+  </div>
+
+  <!-- B: Flip -->
+  <div class="card">
+    <span class="card-tag b">B</span>
+    <div class="card-title">3D Flip</div>
+    <div class="card-desc">Y-axis coin flip. Playful, distinctive.</div>
+    <div class="toggle-area" onclick="toggleB(this)">
+      <div class="flip-wrapper">
+        <div class="flip-inner" id="flipInner">
+          <div class="flip-face">
+            <svg viewBox="0 0 24 24" style="color:#f59e0b"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </div>
+          <div class="flip-face back">
+            <svg viewBox="0 0 24 24" style="color:#60a5fa"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-hint">Click to toggle</div>
+  </div>
+
+  <!-- C: Eclipse Slide -->
+  <div class="card">
+    <span class="card-tag c">C</span>
+    <div class="card-title">Eclipse Slide</div>
+    <div class="card-desc">Vertical slide + rotate. Elegant, minimal.</div>
+    <div class="toggle-area" onclick="toggleC(this)">
+      <div class="eclipse-wrap is-light" id="eclipseWrap">
+        <div class="eclipse-sun">
+          <svg viewBox="0 0 24 24" style="color:#f59e0b"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </div>
+        <div class="eclipse-moon">
+          <svg viewBox="0 0 24 24" style="color:#60a5fa"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-hint">Click to toggle</div>
+  </div>
+
+  <!-- D: Spring Pop -->
+  <div class="card">
+    <span class="card-tag d">D</span>
+    <div class="card-title">Spring Pop</div>
+    <div class="card-desc">Bounce-in with overshoot. Fun, energetic.</div>
+    <div class="toggle-area" onclick="toggleD(this)">
+      <svg class="spring-icon" viewBox="0 0 24 24" id="springIcon" style="color:#f59e0b">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    </div>
+    <div class="card-hint">Click to toggle</div>
+  </div>
+
+  <!-- E: Rays Burst -->
+  <div class="card">
+    <span class="card-tag e">E</span>
+    <div class="card-title">Rays Burst</div>
+    <div class="card-desc">Sun rays orbit slowly, disappear for moon. Ambient, premium.</div>
+    <div class="toggle-area" onclick="toggleE(this)">
+      <div class="rays-wrap" id="raysWrap">
+        <div class="rays-ring visible" id="raysRing">
+          <div class="ray"></div><div class="ray"></div><div class="ray"></div><div class="ray"></div>
+          <div class="ray"></div><div class="ray"></div><div class="ray"></div><div class="ray"></div>
+        </div>
+        <svg class="rays-core" viewBox="0 0 24 24" id="raysCore" style="color:#f59e0b">
+          <circle cx="12" cy="12" r="4"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card-hint">Click to toggle</div>
+  </div>
+
+  <!-- F: Horizon -->
+  <div class="card">
+    <span class="card-tag a">F</span>
+    <div class="card-title">Horizon Rise</div>
+    <div class="card-desc">Sun rises/sets behind a horizon line. Cinematic, storytelling.</div>
+    <div class="toggle-area" onclick="toggleF(this)">
+      <div class="horizon-wrap is-day" id="horizonWrap">
+        <div class="horizon-glow"></div>
+        <div class="horizon-orb">
+          <svg viewBox="0 0 24 24" id="horizonOrb"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" class="horizon-rays"/></svg>
+        </div>
+        <div class="horizon-line"></div>
+      </div>
+    </div>
+    <div class="card-hint">Click to toggle</div>
+  </div>
+
+</div>
+
+<script>
+/* ── A: Morph ── */
+let stateA = 'sun';
+function toggleA(el) {
+  const icon = el.querySelector('.morph-icon');
+  if (stateA === 'sun') {
+    icon.classList.remove('is-sun'); icon.classList.add('is-moon');
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+    stateA = 'moon';
+  } else {
+    icon.classList.remove('is-moon'); icon.classList.add('is-sun');
+    icon.innerHTML = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+    stateA = 'sun';
+  }
+}
+
+/* ── B: Flip ── */
+let stateB = 'sun';
+function toggleB(el) {
+  const inner = el.querySelector('.flip-inner');
+  inner.classList.toggle('flipped');
+  stateB = stateB === 'sun' ? 'moon' : 'sun';
+}
+
+/* ── C: Eclipse ── */
+let stateC = 'light';
+function toggleC(el) {
+  const w = el.querySelector('.eclipse-wrap');
+  if (stateC === 'light') { w.classList.remove('is-light'); w.classList.add('is-dark'); stateC = 'dark'; }
+  else { w.classList.remove('is-dark'); w.classList.add('is-light'); stateC = 'light'; }
+}
+
+/* ── D: Spring Pop ── */
+let stateD = 'sun';
+function toggleD(el) {
+  const icon = el.querySelector('.spring-icon');
+  icon.classList.remove('pop');
+  void icon.offsetWidth;
+  icon.classList.add('pop');
+  if (stateD === 'sun') {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+    icon.style.color = '#60a5fa';
+    stateD = 'moon';
+  } else {
+    icon.innerHTML = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+    icon.style.color = '#f59e0b';
+    stateD = 'sun';
+  }
+}
+
+/* ── E: Rays ── */
+let stateE = 'sun';
+function toggleE(el) {
+  const core = el.querySelector('.rays-core');
+  const ring = el.querySelector('.rays-ring');
+  if (stateE === 'sun') {
+    core.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+    core.style.color = '#60a5fa';
+    core.style.transform = 'rotate(360deg)';
+    ring.classList.remove('visible');
+    stateE = 'moon';
+  } else {
+    core.innerHTML = '<circle cx="12" cy="12" r="4"/>';
+    core.style.color = '#f59e0b';
+    core.style.transform = 'rotate(0)';
+    ring.classList.add('visible');
+    stateE = 'sun';
+  }
+}
+
+/* ── F: Horizon ── */
+let stateF = 'day';
+function toggleF(el) {
+  const w = el.querySelector('.horizon-wrap');
+  const orb = el.querySelector('#horizonOrb');
+  const rays = orb.querySelector('.horizon-rays');
+  if (stateF === 'day') {
+    w.classList.remove('is-day'); w.classList.add('is-night');
+    orb.style.color = '#60a5fa';
+    if (rays) rays.style.opacity = '0';
+    stateF = 'night';
+  } else {
+    w.classList.remove('is-night'); w.classList.add('is-day');
+    orb.style.color = '#f59e0b';
+    if (rays) rays.style.opacity = '1';
+    stateF = 'day';
+  }
+}
+</script>
+</body>
+</html>

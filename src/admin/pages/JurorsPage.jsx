@@ -567,7 +567,7 @@ export default function JurorsPage({
     return generateTableBlob(fmt, {
       filenameType: "Jurors", sheetName: "Jurors",
       periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
-      organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+      organization: activeOrganization?.name || "", department: activeOrganization?.subtitle || "",
       pdfTitle: "VERA — Jurors", header, rows,
       colWidths: JUROR_COLUMNS.map((c) => c.exportWidth),
     });
@@ -579,7 +579,7 @@ export default function JurorsPage({
       await downloadTable(fmt, {
         filenameType: "Jurors", sheetName: "Jurors",
         periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",
-        organization: activeOrganization?.name || "", department: activeOrganization?.institution_name || "",
+        organization: activeOrganization?.name || "", department: activeOrganization?.subtitle || "",
         pdfTitle: "VERA — Jurors", header, rows,
         colWidths: JUROR_COLUMNS.map((c) => c.exportWidth),
       });
@@ -610,7 +610,7 @@ export default function JurorsPage({
               <th className="text-center">Average Score{periodMaxScore != null ? ` (${periodMaxScore})` : ""}</th>
               <th>Status</th>
               <th>Last Active</th>
-              <th style={{ width: "48px" }}>Actions</th>
+              <th style={{ width: "48px", textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -666,7 +666,7 @@ export default function JurorsPage({
                       <span className="vera-datetime-text">{formatRelative(lastActive)}</span>
                     </PremiumTooltip>
                   </td>
-                  <td className="col-actions">
+                  <td className="col-actions" style={{ textAlign: "right" }}>
                     <div className={`juror-action-wrap${openMenuId === jid && openMenuPlacement === "up" ? " menu-up" : ""}`} ref={openMenuId === jid ? menuRef : null}>
                       <button
                         className="juror-action-btn"

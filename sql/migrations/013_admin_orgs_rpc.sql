@@ -53,7 +53,7 @@ BEGIN
         'id',               o.id,
         'code',             o.code,
         'name',             o.name,
-        'institution_name', o.institution_name,
+        'subtitle',         o.subtitle,
         'contact_email',    o.contact_email,
         'status',           o.status,
         'settings',         o.settings,

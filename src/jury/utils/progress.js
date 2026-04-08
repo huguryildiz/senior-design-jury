@@ -103,8 +103,17 @@ export const buildProgressCheck = (projectList, seedScores, options = {}, criter
   const criteriaTotalCount = totalCount * criteria.length;
   const allSubmitted = isFinalSubmitted;
 
+  // Determine the most recent timestamp from progress rows
+  const lastWorkedAt = progressRows.reduce((latest, r) => {
+    if (!r.timestamp) return latest;
+    return !latest || new Date(r.timestamp) > new Date(latest) ? r.timestamp : latest;
+  }, "");
+
   return {
     rows: progressRows,
+    isInProgress: hasProgress && !allSubmitted,
+    groupsCompleted: filledCount,
+    lastWorkedAt,
     filledCount,
     totalCount,
     criteriaFilledCount,

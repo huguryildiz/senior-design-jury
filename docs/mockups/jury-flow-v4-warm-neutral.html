@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VERA Jury Flow v4 - Warm Neutral</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Warm Neutral Palette */
+      --bg-primary: #faf9f7;
+      --bg-secondary: #f0eeeb;
+      --bg-card: #ffffff;
+      --text-heading: #1c1917;
+      --text-body: #44403c;
+      --text-muted: #78716c;
+      --text-light: #a8a29e;
+      --accent-primary: #2563eb;
+      --accent-secondary: #d97706;
+      --accent-blue: #3b82f6;
+      --accent-emerald: #10b981;
+      --accent-violet: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-green: #059669;
+      --accent-rose: #e11d48;
+      --border-warm: #e7e5e4;
+      --shadow-warm: rgba(120, 80, 30, 0.06);
+      --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+      --shadow-lifted: 0 8px 16px rgba(120, 80, 30, 0.08);
+      --alert-info-bg: #eff6ff;
+      --alert-info-border: #3b82f6;
+      --alert-error-bg: #fff1f2;
+      --alert-error-border: #e11d48;
+      --alert-warning-bg: #fffbeb;
+      --alert-warning-border: #f59e0b;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-body);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    /* ─ Screen Container ─ */
+    .screen {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ─ Header Stepper ─ */
+    .stepper-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 32px;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .stepper-bar::before {
+      content: '';
+      position: absolute;
+      top: 12px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--bg-secondary);
+      z-index: 0;
+    }
+
+    .stepper-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      flex: 1;
+    }
+
+    .stepper-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      border: 2px solid var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      transition: all 0.3s ease;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .stepper-step.completed .stepper-circle {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: white;
+    }
+
+    .stepper-step.active .stepper-circle {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: white;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    .stepper-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.2;
+      max-width: 50px;
+    }
+
+    .stepper-step.completed .stepper-label {
+      color: var(--accent-green);
+    }
+
+    .stepper-step.active .stepper-label {
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+
+    /* ─ Cards & Sections ─ */
+    .card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 20px;
+      border: 1px solid var(--border-warm);
+    }
+
+    .card.accent-left {
+      border-left: 4px solid var(--accent-primary);
+    }
+
+    .card.accent-emerald {
+      border-left: 4px solid var(--accent-emerald);
+    }
+
+    .card.accent-violet {
+      border-left: 4px solid var(--accent-violet);
+    }
+
+    .card.accent-amber {
+      border-left: 4px solid var(--accent-amber);
+    }
+
+    .alert {
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      border-left: 4px solid;
+      display: flex;
+      gap: 12px;
+    }
+
+    .alert.info {
+      background: var(--alert-info-bg);
+      border-color: var(--alert-info-border);
+      color: var(--accent-primary);
+    }
+
+    .alert.error {
+      background: var(--alert-error-bg);
+      border-color: var(--alert-error-border);
+      color: var(--accent-rose);
+    }
+
+    .alert.warning {
+      background: var(--alert-warning-bg);
+      border-color: var(--alert-warning-border);
+      color: var(--accent-amber);
+    }
+
+    .alert-icon {
+      flex-shrink: 0;
+      font-size: 16px;
+      margin-top: 2px;
+    }
+
+    .alert-content {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ─ Icon Circles ─ */
+    .icon-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 24px;
+    }
+
+    .icon-circle.blue-light {
+      background: rgba(37, 99, 235, 0.1);
+    }
+
+    .icon-circle.green-light {
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .icon-circle.amber-light {
+      background: rgba(217, 119, 6, 0.1);
+    }
+
+    .icon-circle.gray-light {
+      background: rgba(120, 113, 108, 0.1);
+    }
+
+    /* ─ Typography ─ */
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 16px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    /* ─ Forms ─ */
+    .input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border-warm);
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      background: var(--bg-secondary);
+      color: var(--text-body);
+      transition: all 0.2s ease;
+      margin-bottom: 16px;
+    }
+
+    .input:focus {
+      outline: none;
+      background: var(--bg-card);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .input::placeholder {
+      color: var(--text-light);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ─ Meta Grid ─ */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .meta-cell {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--border-warm);
+    }
+
+    .meta-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+
+    /* ─ Buttons ─ */
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-block;
+      text-align: center;
+      text-decoration: none;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-primary) 0%, #1d4ed8 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-body);
+      border: 1px solid var(--border-warm);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-warm);
+    }
+
+    .btn-text {
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 500;
+      padding: 0;
+      width: auto;
+      font-size: 13px;
+    }
+
+    .btn-text:hover {
+      color: var(--accent-primary);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--accent-primary);
+      border: 2px solid var(--accent-primary);
+      padding: 10px 22px;
+    }
+
+    .btn-outline:hover {
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    /* ─ Button Groups ─ */
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn-group .btn {
+      flex: 1;
+    }
+
+    /* ─ PIN Input Grid ─ */
+    .pin-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .pin-input {
+      width: 100%;
+      height: 72px;
+      font-size: 32px;
+      font-weight: 700;
+      text-align: center;
+      border: 2px solid var(--border-warm);
+      border-radius: 12px;
+      background: var(--bg-card);
+      color: var(--text-heading);
+      transition: all 0.2s ease;
+    }
+
+    .pin-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .pin-input.error {
+      border-color: var(--accent-rose);
+      box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1);
+    }
+
+    /* ─ PIN Digit Squares ─ */
+    .pin-reveal-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .pin-digit-square {
+      aspect-ratio: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-warm);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text-heading);
+      box-shadow: 0 2px 8px rgba(120, 80, 30, 0.08);
+    }
+
+    /* ─ Progress Bar ─ */
+    .progress-container {
+      margin-bottom: 24px;
+    }
+
+    .progress-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border-warm);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-blue) 100%);
+      transition: width 0.3s ease;
+    }
+
+    /* ─ Stats Container ─ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-cell {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--border-warm);
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    /* ─ Scoring Screen ─ */
+    .scoring-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-warm);
+    }
+
+    .juror-info {
+      flex: 1;
+    }
+
+    .juror-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-heading);
+      margin-bottom: 2px;
+    }
+
+    .juror-role {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .group-badge {
+      background: var(--accent-primary);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .group-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-warm);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .group-bar:hover {
+      box-shadow: var(--shadow-hover);
+      border-color: var(--accent-primary);
+    }
+
+    .group-title {
+      flex: 1;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+
+    .group-nav {
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    /* ─ Progress Segments ─ */
+    .progress-segments {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .segment {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border-warm);
+    }
+
+    .segment.completed {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+    }
+
+    .segment.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    /* ─ Criteria Card ─ */
+    .criteria-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border-warm);
+      border-left: 4px solid;
+    }
+
+    .criteria-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .criteria-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+
+    .criteria-score {
+      background: var(--bg-secondary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-heading);
+    }
+
+    .score-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-warm);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--bg-secondary);
+      color: var(--text-body);
+      margin-bottom: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .score-input:focus {
+      outline: none;
+      background: var(--bg-card);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .criteria-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 8px;
+      display: block;
+    }
+
+    /* ─ Sticky Footer ─ */
+    .sticky-footer {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-warm);
+      border-radius: 16px 16px 0 0;
+      padding: 20px;
+      margin: 24px -20px -20px -20px;
+      box-shadow: 0 -2px 8px rgba(120, 80, 30, 0.08);
+    }
+
+    /* ─ Done Screen ─ */
+    .celebration-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(5, 150, 105, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      margin: 0 auto 24px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      background: rgba(5, 150, 105, 0.15);
+      color: var(--accent-green);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+    }
+
+    .done-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 20px;
+    }
+
+    .rating-stars {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      font-size: 28px;
+    }
+
+    .star {
+      color: var(--accent-amber);
+    }
+
+    .rankings-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-warm);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .ranking-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-warm);
+    }
+
+    .ranking-row:last-child {
+      border-bottom: none;
+    }
+
+    .ranking-position {
+      background: var(--bg-secondary);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-right: 12px;
+    }
+
+    .ranking-position.gold {
+      background: rgba(217, 119, 6, 0.15);
+      color: var(--accent-amber);
+      font-weight: 800;
+    }
+
+    .ranking-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+
+    .ranking-score {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      margin-right: 8px;
+    }
+
+    /* ─ Locked Screen ─ */
+    .lock-icon-large {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .status-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .timer-display {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--accent-amber);
+      text-align: center;
+      margin-bottom: 8px;
+      font-family: 'Inter', monospace;
+      letter-spacing: 2px;
+    }
+
+    .timer-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--accent-amber);
+      padding-bottom: 12px;
+    }
+
+    .email-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-warm);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .email-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 8px;
+    }
+
+    .email-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-warm);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--bg-card);
+      color: var(--text-body);
+      margin-bottom: 12px;
+    }
+
+    .email-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .email-error {
+      background: var(--alert-error-bg);
+      color: var(--accent-rose);
+      border: 1px solid var(--alert-error-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─ Screen Switcher ─ */
+    .screen-switcher {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-warm);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lifted);
+      padding: 8px;
+      z-index: 999;
+    }
+
+    .switcher-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 32px);
+      gap: 4px;
+    }
+
+    .switcher-btn {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border-warm);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .switcher-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .switcher-btn.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: white;
+    }
+
+    /* ─ Responsive ─ */
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .stepper-bar {
+        margin-bottom: 24px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .pin-input {
+        height: 64px;
+        font-size: 28px;
+      }
+
+      .pin-digit-square {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ═══════════════════════════════ SCREEN 1: IDENTITY ═══════════════════════════════ -->
+    <div class="screen active" data-screen="1">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step active">
+          <div class="stepper-circle">1</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">2</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">3</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">4</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">5</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">6</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">7</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Icon & Title -->
+      <div class="icon-circle blue-light">👤</div>
+      <h1>Jury Information</h1>
+      <p class="subtitle">Let's get to know you</p>
+
+      <!-- Info Alert -->
+      <div class="alert info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-content">
+          Your information helps us organize the evaluation fairly and ensures quality feedback on all projects.
+        </div>
+      </div>
+
+      <!-- Meta Grid -->
+      <div class="meta-grid">
+        <div class="meta-cell">
+          <span class="meta-icon">🎓</span>
+          <div class="meta-label">Role</div>
+          <div class="meta-value">Evaluator</div>
+        </div>
+        <div class="meta-cell">
+          <span class="meta-icon">🏢</span>
+          <div class="meta-label">Institution</div>
+          <div class="meta-value">TED University</div>
+        </div>
+        <div class="meta-cell">
+          <span class="meta-icon">⏰</span>
+          <div class="meta-label">Session</div>
+          <div class="meta-value">5–10 min</div>
+        </div>
+        <div class="meta-cell">
+          <span class="meta-icon">📋</span>
+          <div class="meta-label">Projects</div>
+          <div class="meta-value">~12</div>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="form-group">
+        <label class="label">Full Name</label>
+        <input type="text" class="input" placeholder="Dr. Jane Smith" value="">
+      </div>
+
+      <div class="form-group">
+        <label class="label">Department or Organization</label>
+        <input type="text" class="input" placeholder="Electrical Engineering" value="">
+      </div>
+
+      <!-- Buttons -->
+      <button class="btn btn-primary" onclick="switchScreen(2)">Next: Enter PIN</button>
+      <button class="btn btn-text" style="margin-top: 12px;">← Return Home</button>
+    </div>
+
+    <!-- ═══════════════════════════════ SCREEN 2: PIN ENTRY ═══════════════════════════════ -->
+    <div class="screen" data-screen="2">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step active">
+          <div class="stepper-circle">2</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">3</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">4</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">5</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">6</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">7</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Icon & Title -->
+      <div class="icon-circle gray-light">🔐</div>
+      <h1>Enter Your PIN</h1>
+      <p class="subtitle">4-digit code provided by the organizer</p>
+
+      <!-- Error Alert (shown on demand) -->
+      <div class="alert error" id="pinError" style="display: none;">
+        <div class="alert-icon">❌</div>
+        <div class="alert-content">
+          Incorrect PIN. Please check and try again.
+        </div>
+      </div>
+
+      <!-- PIN Input Grid -->
+      <div class="pin-grid">
+        <input type="text" class="pin-input" maxlength="1" inputmode="numeric" placeholder="0">
+        <input type="text" class="pin-input" maxlength="1" inputmode="numeric" placeholder="0">
+        <input type="text" class="pin-input" maxlength="1" inputmode="numeric" placeholder="0">
+        <input type="text" class="pin-input" maxlength="1" inputmode="numeric" placeholder="0">
+      </div>
+
+      <!-- Buttons -->
+      <button class="btn btn-primary" onclick="switchScreen(3)">Verify PIN</button>
+      <button class="btn btn-text" style="margin-top: 12px;" onclick="switchScreen(1)">← Back</button>
+    </div>
+
+    <!-- ═══════════════════════════════ SCREEN 3: PIN REVEAL ═══════════════════════════════ -->
+    <div class="screen" data-screen="3">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step active">
+          <div class="stepper-circle">3</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">4</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">5</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">6</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">7</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Icon & Title -->
+      <div class="icon-circle amber-light">🔑</div>
+      <h1>Your Session PIN</h1>
+      <p class="subtitle">Save this for resuming later</p>
+
+      <!-- PIN Digit Squares -->
+      <div class="pin-reveal-grid">
+        <div class="pin-digit-square">4</div>
+        <div class="pin-digit-square">7</div>
+        <div class="pin-digit-square">9</div>
+        <div class="pin-digit-square">2</div>
+      </div>
+
+      <!-- Info Alert -->
+      <div class="alert info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-content">
+          Keep this PIN safe. You'll need it if you want to pause and come back.
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <button class="btn btn-outline" style="margin-bottom: 12px;">📋 Copy PIN</button>
+      <button class="btn btn-primary" onclick="switchScreen(4)">Begin Evaluation</button>
+      <button class="btn btn-text" style="margin-top: 12px;" onclick="switchScreen(2)">← Back</button>
+    </div>
+
+    <!-- ═══════════════════════════════ SCREEN 4: LOCKED ═══════════════════════════════ -->
+    <div class="screen" data-screen="4">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step active">
+          <div class="stepper-circle">4</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">5</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">6</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">7</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Icon & Title -->
+      <div class="icon-circle amber-light">🔒</div>
+      <h1>Session Locked</h1>
+
+      <!-- Status Badge -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div class="status-badge" style="background: rgba(217, 119, 6, 0.15); color: var(--accent-amber);">⚠️ Previous Session Active</div>
+      </div>
+
+      <!-- Timer Display -->
+      <div class="timer-display">2:47</div>
+      <div class="timer-label">Time remaining in session</div>
+
+      <!-- Info Card -->
+      <div class="card">
+        <p style="font-size: 13px; margin-bottom: 12px;">Your previous session is still active. The system requires you to wait before starting a new evaluation.</p>
+        <p style="font-size: 12px; color: var(--text-muted);">You can also request a reset via email below if you've completed your evaluation.</p>
+      </div>
+
+      <!-- Email Section -->
+      <div class="email-section">
+        <div class="email-label">Request Session Reset</div>
+        <input type="email" class="email-input" placeholder="your.email@institution.edu">
+        <div class="email-error" id="emailError" style="display: none;">
+          <span>⚠️</span>
+          <span>Email not recognized. Please use your institution email.</span>
+        </div>
+        <button class="btn btn-primary" style="font-size: 13px; padding: 10px 16px;">Send Reset Request</button>
+      </div>
+
+      <button class="btn btn-text" style="margin-top: 12px;" onclick="switchScreen(3)">← Back</button>
+    </div>
+
+    <!-- ═══════════════════════════════ SCREEN 5: PROGRESS CHECK ═══════════════════════════════ -->
+    <div class="screen" data-screen="5">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step active">
+          <div class="stepper-circle">5</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">6</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">7</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Icon & Title -->
+      <div class="icon-circle blue-light">📊</div>
+      <h1>Your Progress</h1>
+      <p class="subtitle">Review what you've completed so far</p>
+
+      <!-- Progress Bar -->
+      <div class="progress-container">
+        <div class="progress-label">
+          <span>Overall Progress</span>
+          <span>8 of 12</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 67%;"></div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="card">
+        <div class="stats-grid">
+          <div class="stat-cell">
+            <div class="stat-value">8</div>
+            <div class="stat-label">Evaluated</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Remaining</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value">~6 min</div>
+            <div class="stat-label">Est. Time</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value">67%</div>
+            <div class="stat-label">Complete</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Alert -->
+      <div class="alert info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-content">
+          You're making excellent progress! Complete the remaining projects to finish your evaluation session.
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <button class="btn btn-primary" onclick="switchScreen(6)">Resume Evaluation</button>
+      <button class="btn btn-text" style="margin-top: 12px;" onclick="switchScreen(4)">← Back</button>
+    </div>
+
+    <!-- ═══════════════════════════════ SCREEN 6: SCORING ═══════════════════════════════ -->
+    <div class="screen" data-screen="6">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step active">
+          <div class="stepper-circle">6</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step">
+          <div class="stepper-circle">7</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Scoring Header -->
+      <div class="scoring-header">
+        <div class="juror-info">
+          <div class="juror-name">Dr. Jane Smith</div>
+          <div class="juror-role">Electrical Engineering</div>
+        </div>
+        <div class="group-badge">Group 4 of 4</div>
+      </div>
+
+      <!-- Group Navigation -->
+      <div class="group-bar">
+        <div class="group-title">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Current Project</div>
+          <div>AI-Powered Solar Panel Optimizer</div>
+        </div>
+        <div class="group-nav">→</div>
+      </div>
+
+      <!-- Progress Segments -->
+      <div class="progress-segments">
+        <div class="segment completed"></div>
+        <div class="segment completed"></div>
+        <div class="segment completed"></div>
+        <div class="segment active"></div>
+      </div>
+
+      <!-- Criteria Cards -->
+      <div class="criteria-card accent-blue" style="border-left-color: var(--accent-blue);">
+        <div class="criteria-header">
+          <div class="criteria-name">Technical Depth</div>
+          <div class="criteria-score">24 / 30</div>
+        </div>
+        <input type="number" class="score-input" placeholder="0–30" value="24">
+        <span class="criteria-label">How well does the project demonstrate technical knowledge?</span>
+      </div>
+
+      <div class="criteria-card accent-emerald" style="border-left-color: var(--accent-emerald);">
+        <div class="criteria-header">
+          <div class="criteria-name">Design & Approach</div>
+          <div class="criteria-score">18 / 30</div>
+        </div>
+        <input type="number" class="score-input" placeholder="0–30" value="18">
+        <span class="criteria-label">Quality of design methodology and problem-solving</span>
+      </div>
+
+      <div class="criteria-card accent-violet" style="border-left-color: var(--accent-violet);">
+        <div class="criteria-header">
+          <div class="criteria-name">Presentation</div>
+          <div class="criteria-score">22 / 30</div>
+        </div>
+        <input type="number" class="score-input" placeholder="0–30" value="22">
+        <span class="criteria-label">Clarity and effectiveness of communication</span>
+      </div>
+
+      <div class="criteria-card accent-amber" style="border-left-color: var(--accent-amber);">
+        <div class="criteria-header">
+          <div class="criteria-name">Teamwork</div>
+          <div class="criteria-score">9 / 10</div>
+        </div>
+        <input type="number" class="score-input" placeholder="0–10" value="9">
+        <span class="criteria-label">Collaboration and team coordination evident</span>
+      </div>
+
+      <!-- Comments Section -->
+      <div class="form-group">
+        <label class="label">Additional Comments</label>
+        <textarea class="input" rows="3" placeholder="Share any feedback or observations (optional)" style="resize: vertical;"></textarea>
+      </div>
+
+      <!-- Sticky Footer -->
+      <div class="sticky-footer">
+        <button class="btn btn-primary" onclick="switchScreen(7)">Submit & Continue</button>
+        <button class="btn btn-secondary" style="margin-top: 10px;">Save Draft</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ SCREEN 7: DONE ═══════════════════════════════ -->
+    <div class="screen" data-screen="7">
+      <!-- Stepper Bar -->
+      <div class="stepper-bar">
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Info</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">PIN</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Verify</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Prep</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Check</div>
+        </div>
+        <div class="stepper-step completed">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Eval</div>
+        </div>
+        <div class="stepper-step active">
+          <div class="stepper-circle">✓</div>
+          <div class="stepper-label">Done</div>
+        </div>
+      </div>
+
+      <!-- Celebration Circle -->
+      <div class="celebration-circle">✓</div>
+
+      <!-- Status Badge -->
+      <div style="text-align: center;">
+        <div class="status-badge">✓ Evaluation Complete</div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="done-title" style="text-align: center; margin-bottom: 24px;">Thank You!</h1>
+
+      <!-- Rating Stars -->
+      <div class="rating-stars">
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+        <span class="star">★</span>
+      </div>
+
+      <!-- Summary -->
+      <div class="card">
+        <p style="text-align: center; font-size: 13px; margin-bottom: 16px;">You've successfully evaluated all 12 projects. Your feedback is invaluable to our team.</p>
+        <div class="stats-grid">
+          <div class="stat-cell">
+            <div class="stat-value">12</div>
+            <div class="stat-label">Evaluated</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-value">42 min</div>
+            <div class="stat-label">Total Time</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Rankings -->
+      <div style="margin-bottom: 20px;">
+        <h2 style="font-size: 14px; margin-bottom: 12px;">📈 Top Projects</h2>
+        <div class="rankings-card">
+          <div class="ranking-row">
+            <div class="ranking-position gold"><strong>1</strong></div>
+            <div class="ranking-title">Smart Energy Grid System</div>
+            <div class="ranking-score">94</div>
+          </div>
+          <div class="ranking-row">
+            <div class="ranking-position" style="background: rgba(37, 99, 235, 0.15); color: var(--accent-primary);">2</div>
+            <div class="ranking-title">AI Solar Optimizer</div>
+            <div class="ranking-score">89</div>
+          </div>
+          <div class="ranking-row">
+            <div class="ranking-position" style="background: rgba(139, 92, 246, 0.15); color: var(--accent-violet);">3</div>
+            <div class="ranking-title">Wireless Power Transfer</div>
+            <div class="ranking-score">87</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <button class="btn btn-outline" style="margin-bottom: 12px;">✏️ Request Edit</button>
+      <button class="btn btn-text" style="margin-top: 4px;">← Return Home</button>
+    </div>
+  </div>
+
+  <!-- Screen Switcher -->
+  <div class="screen-switcher">
+    <div class="switcher-grid">
+      <button class="switcher-btn active" onclick="switchScreen(1)" title="Identity">1</button>
+      <button class="switcher-btn" onclick="switchScreen(2)" title="PIN Entry">2</button>
+      <button class="switcher-btn" onclick="switchScreen(3)" title="PIN Reveal">3</button>
+      <button class="switcher-btn" onclick="switchScreen(4)" title="Locked">4</button>
+      <button class="switcher-btn" onclick="switchScreen(5)" title="Progress">5</button>
+      <button class="switcher-btn" onclick="switchScreen(6)" title="Scoring">6</button>
+      <button class="switcher-btn" onclick="switchScreen(7)" title="Done">7</button>
+    </div>
+  </div>
+
+  <script>
+    function switchScreen(screenNum) {
+      // Hide all screens
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+
+      // Show selected screen
+      document.querySelector(`[data-screen="${screenNum}"]`).classList.add('active');
+
+      // Update switcher buttons
+      document.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx + 1 === screenNum);
+      });
+
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    // PIN input auto-focus behavior
+    document.addEventListener('DOMContentLoaded', () => {
+      const pinInputs = document.querySelectorAll('[data-screen="2"] .pin-input');
+      pinInputs.forEach((input, idx) => {
+        input.addEventListener('input', (e) => {
+          if (e.target.value.length === 1 && idx < pinInputs.length - 1) {
+            pinInputs[idx + 1].focus();
+          }
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && idx > 0 && !e.target.value) {
+            pinInputs[idx - 1].focus();
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

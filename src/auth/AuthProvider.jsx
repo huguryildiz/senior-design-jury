@@ -121,12 +121,12 @@ export default function AuthProvider({ children }) {
           id: o.id,
           code: o.code ?? null,
           name: o.name ?? null,
-          institution_name: o.institution_name ?? null,
+          subtitle: o.subtitle ?? null,
           role: "super_admin",
         }));
       } catch {
         // listOrganizationsPublic may fail in demo (RLS) — keep super_admin role
-        organizationList = [{ id: null, code: null, name: null, institution_name: null, role: "super_admin" }];
+        organizationList = [{ id: null, code: null, name: null, subtitle: null, role: "super_admin" }];
       }
     } else {
       const memberships = await fetchMemberships();
@@ -135,7 +135,7 @@ export default function AuthProvider({ children }) {
         id: m.organization_id,
         code: m.organization?.code ?? null,
         name: m.organization?.name ?? null,
-        institution_name: m.organization?.institution_name ?? null,
+        subtitle: m.organization?.subtitle ?? null,
         role: m.role,
       }));
     }

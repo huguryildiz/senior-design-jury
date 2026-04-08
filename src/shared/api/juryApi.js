@@ -7,12 +7,13 @@ import { formatMembers } from "./fieldMapping";
 
 // ── Juror auth (RPCs) ────────────────────────────────────────
 
-export async function authenticateJuror(periodId, jurorName, affiliation, forceReissue = false) {
+export async function authenticateJuror(periodId, jurorName, affiliation, forceReissue = false, email = null) {
   const { data, error } = await supabase.rpc("rpc_jury_authenticate", {
     p_period_id: periodId,
     p_juror_name: String(jurorName || "").trim(),
     p_affiliation: String(affiliation || "").trim(),
     p_force_reissue: forceReissue,
+    p_email: email ? String(email).trim() : null,
   });
   if (error) throw error;
   return data;
@@ -199,7 +200,7 @@ export async function finalizeJurorSubmission(periodId, jurorId, sessionToken) {
 export async function listPeriods(signal) {
   let query = supabase
     .from("periods")
-    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(name, institution_name, contact_email)")
+    .select("id, name, is_current, is_locked, organization_id, framework_id, snapshot_frozen_at, poster_date, organizations(name, subtitle, contact_email)")
     .eq("is_visible", true)
     .order("created_at", { ascending: false });
   if (signal) query = query.abortSignal(signal);
@@ -268,6 +269,23 @@ export async function getCurrentSemester(signal, semesterId) {
   return null;
 }
 
+// ── PIN reset request (Edge Function) ───────────────────────
+
+export async function requestPinReset({ periodId, jurorName, affiliation, message, includeSuperAdmin }) {
+  const { data, error } = await supabase.functions.invoke("request-pin-reset", {
+    body: {
+      periodId,
+      jurorName: String(jurorName || "").trim(),
+      affiliation: String(affiliation || "").trim(),
+      message: message || undefined,
+      includeSuperAdmin: !!includeSuperAdmin,
+    },
+  });
+  if (error) throw error;
+  if (data?.ok === false) throw new Error(data.error || "Request failed");
+  return data;
+}
+
 // ── Retry wrappers ───────────────────────────────────────────
 
 export const listProjectsWithRetry = (...args) => listProjects(...args);
@@ -284,14 +302,19 @@ export async function getProjectRankings(periodId, sessionToken) {
   return data || [];
 }
 
-// ── Admin Impact (SECURITY DEFINER — bypasses RLS via session token) ──
+// ── Score Edit Request (Edge Function) ──────────────────────
 
-export async function getPeriodImpact(periodId, sessionToken) {
-  const { data, error } = await supabase.rpc("rpc_get_period_impact", {
-    p_period_id: periodId,
-    p_session_token: sessionToken,
+export async function requestScoreEdit({ periodId, jurorName, affiliation, sessionToken }) {
+  const { data, error } = await supabase.functions.invoke("request-score-edit", {
+    body: {
+      periodId,
+      jurorName: String(jurorName || "").trim(),
+      affiliation: String(affiliation || "").trim(),
+      sessionToken,
+    },
   });
   if (error) throw error;
+  if (data?.ok === false) throw new Error(data.error || "Request failed");
   return data;
 }
 

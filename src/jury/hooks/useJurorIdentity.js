@@ -1,7 +1,7 @@
 // src/jury/hooks/useJurorIdentity.js
 // ============================================================
-// Owns juror identity form state: name, affiliation, and the
-// auth/identity-step error message.
+// Owns juror identity form state: name, affiliation, email,
+// and the auth/identity-step error message.
 //
 // This hook has no effects and no async behavior. Handlers
 // that need to act on these values (handleIdentitySubmit) live
@@ -19,11 +19,13 @@ export function useJurorIdentity() {
   const [affiliation, setAffiliation] = useState(() => {
     try { return localStorage.getItem(KEYS.JURY_AFFILIATION) || sessionStorage.getItem(KEYS.JURY_AFFILIATION) || ""; } catch { return ""; }
   });
+  const [jurorEmail, setJurorEmail] = useState("");
   const [authError, setAuthError] = useState("");
 
   return {
     juryName, setJuryName,
     affiliation, setAffiliation,
+    jurorEmail, setJurorEmail,
     authError, setAuthError,
   };
 }

@@ -15,7 +15,7 @@ AS $$
     'evaluations',   (SELECT count(*) FROM scores_compat),
     'jurors',        (SELECT count(DISTINCT juror_id) FROM scores_compat),
     'projects',      (SELECT count(DISTINCT project_id) FROM scores_compat),
-    'institutions',  (SELECT json_agg(DISTINCT institution_name ORDER BY institution_name)
+    'institutions',  (SELECT json_agg(DISTINCT subtitle ORDER BY subtitle)
                        FROM organizations
                        WHERE status = 'active')
   );

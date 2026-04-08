@@ -3,6 +3,22 @@ import { useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { TeamMembersInline } from "@/shared/ui/EntityMeta";
 import { getProjectStatus, countFilledForProject } from "../utils/scoreState";
+import SpotlightTour from "./SpotlightTour";
+
+const DRAWER_TOUR_STEPS = [
+  {
+    selector: ".dj-drawer-summary",
+    title: "Scoring Overview",
+    body: "A quick summary of your progress — green means fully scored, amber means partial, grey means not started.",
+    placement: "below",
+  },
+  {
+    selector: ".dj-drawer-item",
+    title: "Jump to Any Group",
+    body: "Tap a group to navigate directly to it. The score and criteria count are shown on the right.",
+    placement: "below",
+  },
+];
 
 export default function ProjectDrawer({ open, onClose, projects, scores, criteria, current, onNavigate }) {
   const listRef = useRef(null);
@@ -119,6 +135,12 @@ export default function ProjectDrawer({ open, onClose, projects, scores, criteri
           })}
         </div>
       </div>
+
+      <SpotlightTour
+        sessionKey="dj_tour_drawer"
+        steps={DRAWER_TOUR_STEPS}
+        delay={400}
+      />
     </div>
   );
 }

@@ -281,6 +281,33 @@ export function useManageProjects({
     }
   };
 
+  const handleDuplicateProject = async (project) => {
+    if (!project || !viewPeriodId) return;
+    setMessage("");
+    clearPanelError("projects");
+    incLoading();
+    try {
+      const existingGroupNos = projects.map((p) => p.group_no).filter(Number.isFinite);
+      const nextGroupNo = existingGroupNos.length > 0 ? Math.max(...existingGroupNos) + 1 : 1;
+      const res = await createProject({
+        title: `${project.title} (Copy)`,
+        group_no: nextGroupNo,
+        members: Array.isArray(project.members) ? project.members : [],
+        periodId: viewPeriodId,
+      });
+      const projectId = res?.project_id || res?.projectId;
+      if (!projectId) throw new Error("Could not duplicate project.");
+      await loadProjects(viewPeriodId);
+      setMessage(`Project duplicated as No. ${nextGroupNo}`);
+      return { ok: true };
+    } catch (e) {
+      setPanelError("projects", e?.message || "Could not duplicate project.");
+      return { ok: false };
+    } finally {
+      decLoading();
+    }
+  };
+
   return {
     projects,
     applyProjectPatch,
@@ -290,5 +317,6 @@ export function useManageProjects({
     handleAddProject,
     handleEditProject,
     handleDeleteProject,
+    handleDuplicateProject,
   };
 }

@@ -469,6 +469,10 @@ export default function AdminLayout({ onReturnHome }) {
                 setSelectedPeriodId(periodId);
                 fetchData();
               }}
+              onViewReviews={() => {
+                setAdminTab("scores");
+                switchScoresView("details");
+              }}
             />
           )}
           {adminTab === "periods" && (

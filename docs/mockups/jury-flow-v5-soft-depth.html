@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VERA Jury Flow v5 – Soft Depth</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111113;
+      color: #fafafa;
+      line-height: 1.6;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    .main-viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: auto;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 400px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ── Typography ── */
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fafafa;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #a1a1aa;
+      margin-bottom: 24px;
+    }
+
+    .label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #71717a;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .label-inline {
+      font-size: 12px;
+      font-weight: 500;
+      color: #a1a1aa;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    /* ── Cards & Elevation ── */
+    .card {
+      background: #1e1e22;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .elevated-card {
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .meta-cell {
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .meta-label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #71717a;
+      margin-bottom: 6px;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fafafa;
+    }
+
+    /* ── Separator ── */
+    .separator {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.06);
+      margin: 20px 0;
+    }
+
+    /* ── Alert & Info ── */
+    .alert-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      color: #a1a1aa;
+      margin-bottom: 20px;
+    }
+
+    .alert-dot {
+      width: 4px;
+      height: 4px;
+      background: #3b82f6;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .alert-line.warning {
+      color: #a1a1aa;
+    }
+
+    .alert-line.warning .alert-dot {
+      background: #eab308;
+    }
+
+    .alert-line.success {
+      color: #22c55e;
+    }
+
+    .alert-line.success .alert-dot {
+      background: #22c55e;
+    }
+
+    .alert-line.error {
+      color: #ef4444;
+    }
+
+    .alert-line.error .alert-dot {
+      background: #ef4444;
+    }
+
+    .error-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(239, 68, 68, 0.08);
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .error-dot {
+      width: 4px;
+      height: 4px;
+      background: #ef4444;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .error-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .error-main {
+      font-size: 13px;
+      font-weight: 500;
+      color: #ef4444;
+    }
+
+    .error-sub {
+      font-size: 12px;
+      color: #a1a1aa;
+    }
+
+    /* ── Forms ── */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    textarea {
+      width: 100%;
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      color: #fafafa;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]::placeholder,
+    input[type="email"]::placeholder,
+    textarea::placeholder {
+      color: #52525b;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    input[type="text"] {
+      height: 44px;
+    }
+
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    /* ── Buttons ── */
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      width: 100%;
+      height: 44px;
+      margin-top: 20px;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-primary:active {
+      background: #1d4ed8;
+    }
+
+    .btn-primary:disabled {
+      background: #3f3f46;
+      cursor: not-allowed;
+    }
+
+    .btn-text {
+      background: none;
+      color: #71717a;
+      font-size: 13px;
+      text-align: center;
+      width: 100%;
+      margin-top: 16px;
+      padding: 0;
+    }
+
+    .btn-text:hover {
+      color: #a1a1aa;
+    }
+
+    .btn-small {
+      background: transparent;
+      border: 1px solid #71717a;
+      color: #71717a;
+      height: 32px;
+      padding: 0 12px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-small:hover {
+      border-color: #a1a1aa;
+      color: #a1a1aa;
+    }
+
+    .btn-outlined {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #a1a1aa;
+      width: 100%;
+      height: 44px;
+    }
+
+    .btn-outlined:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .btn-pill {
+      background: rgba(59, 130, 246, 0.1);
+      color: #a1a1aa;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 14px;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    /* ── PIN Input ── */
+    .pin-container {
+      display: grid;
+      grid-template-columns: repeat(4, 64px);
+      gap: 8px;
+      justify-content: center;
+      margin: 32px 0;
+    }
+
+    .pin-input {
+      width: 64px;
+      height: 64px;
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      color: #fafafa;
+      font-weight: 500;
+    }
+
+    .pin-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    /* ── PIN Reveal ── */
+    .pin-reveal-container {
+      display: grid;
+      grid-template-columns: repeat(4, 72px);
+      gap: 8px;
+      justify-content: center;
+      margin: 32px 0;
+    }
+
+    .pin-digit {
+      width: 72px;
+      height: 72px;
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-top: 2px solid #3b82f6;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      font-weight: 500;
+      color: #fafafa;
+    }
+
+    /* ── Status Pill ── */
+    .status-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .status-pill.lockout {
+      background: rgba(234, 179, 8, 0.1);
+      color: #eab308;
+    }
+
+    .status-pill.success {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+    }
+
+    /* ── Timer ── */
+    .timer-section {
+      text-align: center;
+      margin: 32px 0;
+    }
+
+    .timer-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #71717a;
+      margin-bottom: 12px;
+    }
+
+    .timer-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      font-weight: 500;
+      color: #fafafa;
+      margin-bottom: 12px;
+    }
+
+    .timer-hint {
+      font-size: 12px;
+      color: #71717a;
+    }
+
+    /* ── Help Card ── */
+    .help-card {
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+
+    .help-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fafafa;
+      margin-bottom: 12px;
+    }
+
+    .recipient-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #a1a1aa;
+    }
+
+    .recipient-avatar {
+      width: 28px;
+      height: 28px;
+      background: #3b82f6;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .recipient-tag {
+      font-size: 10px;
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: auto;
+    }
+
+    /* ── Progress Card ── */
+    .progress-card {
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .progress-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .progress-label {
+      color: #a1a1aa;
+    }
+
+    .progress-value {
+      color: #fafafa;
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #3f3f46;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #3b82f6;
+      border-radius: 3px;
+      width: 60%;
+    }
+
+    /* ── Eval Screen ── */
+    .eval-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .eval-juror-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .eval-juror-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fafafa;
+    }
+
+    .eval-juror-dept {
+      font-size: 12px;
+      color: #71717a;
+      margin-top: 2px;
+    }
+
+    .eval-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .save-pill {
+      font-size: 11px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    .live-badge {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .group-bar {
+      background: #1e1e22;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .group-info {
+      flex: 1;
+    }
+
+    .group-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fafafa;
+    }
+
+    .group-students {
+      font-size: 12px;
+      color: #71717a;
+      margin-top: 2px;
+    }
+
+    .group-progress {
+      font-size: 13px;
+      color: #a1a1aa;
+    }
+
+    .segmented-bar {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 20px;
+    }
+
+    .segment {
+      height: 4px;
+      flex: 1;
+      background: #3f3f46;
+      border-radius: 2px;
+    }
+
+    .segment.completed {
+      background: #22c55e;
+    }
+
+    .segment.active {
+      background: #3b82f6;
+    }
+
+    .criteria-card {
+      background: #1e1e22;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 3px solid #3b82f6;
+    }
+
+    .criteria-card.design {
+      border-left-color: #22c55e;
+    }
+
+    .criteria-card.delivery {
+      border-left-color: #8b5cf6;
+    }
+
+    .criteria-card.teamwork {
+      border-left-color: #f59e0b;
+    }
+
+    .criteria-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .criteria-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fafafa;
+    }
+
+    .rubric-btn {
+      font-size: 12px;
+      color: #3b82f6;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: none;
+    }
+
+    .rubric-btn:hover {
+      text-decoration: underline;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .score-input {
+      width: 56px;
+      height: 40px;
+      background: #27272a;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fafafa;
+      flex-shrink: 0;
+    }
+
+    .score-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .score-bar {
+      flex: 1;
+      height: 3px;
+      background: #3f3f46;
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      background: #3b82f6;
+      width: 80%;
+    }
+
+    .score-fraction {
+      font-size: 12px;
+      color: #a1a1aa;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .comments-section {
+      margin-top: 16px;
+    }
+
+    .eval-sticky-bottom {
+      background: #18181b;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 16px;
+      margin-left: -20px;
+      margin-right: -20px;
+      margin-bottom: -24px;
+      margin-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .score-summary {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .score-main {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fafafa;
+    }
+
+    .score-max {
+      font-size: 13px;
+      color: #71717a;
+    }
+
+    .score-count {
+      font-size: 11px;
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* ── Done Screen ── */
+    .done-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .success-circle {
+      width: 80px;
+      height: 80px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 40px;
+    }
+
+    .done-pill {
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .done-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fafafa;
+      margin-bottom: 8px;
+    }
+
+    .done-subtitle {
+      font-size: 14px;
+      color: #a1a1aa;
+    }
+
+    .feedback-section {
+      margin: 24px 0;
+    }
+
+    .feedback-label {
+      font-size: 13px;
+      color: #a1a1aa;
+      margin-bottom: 12px;
+    }
+
+    .star-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .star-btn {
+      width: 44px;
+      height: 44px;
+      background: #3f3f46;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .star-btn:hover {
+      background: #52525b;
+    }
+
+    .star-btn.active {
+      background: #eab308;
+      border-color: #eab308;
+    }
+
+    .rankings-section {
+      margin: 24px 0;
+    }
+
+    .rankings-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #a1a1aa;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rankings-icon {
+      width: 12px;
+      height: 12px;
+      background: currentColor;
+      mask: radial-gradient(circle at 30% 30%, #000 30%, transparent 30%),
+             radial-gradient(circle at 70% 30%, #000 30%, transparent 30%),
+             linear-gradient(135deg, #000 25%, transparent 25%, transparent 75%, #000 75%);
+      mask-composite: add;
+    }
+
+    .ranking-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 13px;
+    }
+
+    .ranking-row:last-child {
+      border-bottom: none;
+    }
+
+    .ranking-row.top {
+      border-left: 2px solid #eab308;
+      padding-left: 10px;
+    }
+
+    .rank-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #71717a;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .rank-number.first {
+      color: #eab308;
+      font-size: 14px;
+    }
+
+    .rank-title {
+      flex: 1;
+      color: #fafafa;
+    }
+
+    .rank-score {
+      font-weight: 600;
+      color: #a1a1aa;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* ── Stepper ── */
+    .stepper-bar {
+      background: #18181b;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      position: relative;
+      flex: 1;
+      min-width: 60px;
+    }
+
+    .step::after {
+      content: '';
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      width: 100%;
+      height: 1px;
+      background: #3f3f46;
+      z-index: 0;
+    }
+
+    .step:last-child::after {
+      display: none;
+    }
+
+    .step.completed::after,
+    .step.active ~ .step.completed::after {
+      background: #3b82f6;
+    }
+
+    .step-circle {
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: 1px solid #3f3f46;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #71717a;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step.active .step-circle {
+      background: #3b82f6;
+      color: white;
+      border: 1px solid #3b82f6;
+    }
+
+    .step.completed .step-circle {
+      background: #22c55e;
+      color: white;
+      border: 1px solid #22c55e;
+    }
+
+    .step-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #71717a;
+      text-align: center;
+    }
+
+    .step.active .step-label {
+      color: #fafafa;
+      font-weight: 600;
+    }
+
+    /* ── Screen Switcher ── */
+    .screen-switcher {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 4px;
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    .switcher-btn {
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: #71717a;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .switcher-btn:hover {
+      color: #a1a1aa;
+    }
+
+    .switcher-btn.active {
+      background: #3b82f6;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-viewport">
+      <!-- SCREEN 1: IDENTITY -->
+      <div class="screen active" id="screen-1">
+        <div class="title">Jury Information</div>
+        <div class="subtitle">Enter your details to begin the evaluation</div>
+
+        <div class="meta-grid">
+          <div class="meta-cell">
+            <div class="meta-label">Institution</div>
+            <div class="meta-value">TED University</div>
+          </div>
+          <div class="meta-cell">
+            <div class="meta-label">Department</div>
+            <div class="meta-value">Engineering</div>
+          </div>
+          <div class="meta-cell">
+            <div class="meta-label">Period</div>
+            <div class="meta-value">Spring 2026</div>
+          </div>
+          <div class="meta-cell">
+            <div class="meta-label">Groups</div>
+            <div class="meta-value">5 Total</div>
+          </div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="alert-line">
+          <div class="alert-dot"></div>
+          <span>Name and affiliation cannot be changed once evaluation starts.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="label-inline">Full Name</label>
+          <input type="text" placeholder="Dr. Jane Smith">
+        </div>
+
+        <div class="form-group">
+          <label class="label-inline">Department / Affiliation</label>
+          <input type="text" placeholder="Mechanical Engineering">
+        </div>
+
+        <button class="btn-primary" onclick="switchScreen(2)">Continue →</button>
+        <button class="btn-text" onclick="switchScreen('home')">← Return Home</button>
+      </div>
+
+      <!-- SCREEN 2: PIN ENTRY -->
+      <div class="screen" id="screen-2">
+        <div class="title">Enter Your PIN</div>
+        <div class="subtitle">You'll receive a 4-digit PIN from the coordinators</div>
+
+        <div class="error-block">
+          <div class="error-dot"></div>
+          <div class="error-text">
+            <div class="error-main">Verification Failed</div>
+            <div class="error-sub">2 attempts remaining</div>
+          </div>
+        </div>
+
+        <div class="pin-container">
+          <input type="text" class="pin-input" maxlength="1" placeholder="0">
+          <input type="text" class="pin-input" maxlength="1" placeholder="0">
+          <input type="text" class="pin-input" maxlength="1" placeholder="0">
+          <input type="text" class="pin-input" maxlength="1" placeholder="0">
+        </div>
+
+        <button class="btn-primary" onclick="switchScreen(3)">Verify PIN</button>
+        <button class="btn-text" onclick="switchScreen(1)">← Back</button>
+      </div>
+
+      <!-- SCREEN 3: PIN REVEAL -->
+      <div class="screen" id="screen-3">
+        <div class="title">Your Session PIN</div>
+        <div class="subtitle">Use this PIN to resume if disconnected</div>
+
+        <div class="pin-reveal-container">
+          <div class="pin-digit">9</div>
+          <div class="pin-digit">9</div>
+          <div class="pin-digit">9</div>
+          <div class="pin-digit">8</div>
+        </div>
+
+        <button class="btn-small">
+          <span>📋</span> Copy PIN
+        </button>
+
+        <div class="alert-line">
+          <div class="alert-dot"></div>
+          <span>Keep this PIN private. It's your session key.</span>
+        </div>
+
+        <button class="btn-primary" onclick="switchScreen(4)">→ Begin Evaluation</button>
+      </div>
+
+      <!-- SCREEN 4: LOCKED -->
+      <div class="screen" id="screen-4">
+        <div class="title">Account Temporarily Locked</div>
+        <div class="subtitle">Too many incorrect PIN attempts</div>
+
+        <div class="status-pill lockout">Security Lockout Active</div>
+
+        <div class="timer-section">
+          <div class="timer-label">Access restores in</div>
+          <div class="timer-display">04:32</div>
+          <div class="timer-hint">You can retry after the timer expires</div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div style="text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #71717a; margin: 20px 0;">or get help now</div>
+
+        <div class="help-card">
+          <div class="help-title">Request PIN Reset</div>
+          <div class="recipient-row">
+            <div class="recipient-avatar">C</div>
+            <div>coordinator@tedu.edu</div>
+            <div class="recipient-tag">To</div>
+          </div>
+          <div class="form-group">
+            <textarea placeholder="Reason for reset (optional)..."></textarea>
+          </div>
+          <button class="btn-primary" style="margin-top: 12px;">
+            📧 Request PIN Reset
+          </button>
+        </div>
+
+        <button class="btn-text" onclick="switchScreen(1)">← Start Over</button>
+      </div>
+
+      <!-- SCREEN 5: PROGRESS CHECK -->
+      <div class="screen" id="screen-5">
+        <div class="title">Your Progress</div>
+        <div class="subtitle">You have an in-progress session</div>
+
+        <div class="progress-card">
+          <div class="progress-row">
+            <span class="progress-label">Groups Completed</span>
+            <span class="progress-value">3 / 5</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">Last Active</span>
+            <span class="progress-value">2h ago</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 60%;"></div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="switchScreen(6)">Resume Evaluation</button>
+        <button class="btn-text" onclick="switchScreen(1)">← Back</button>
+      </div>
+
+      <!-- SCREEN 6: EVAL (SCORING) -->
+      <div class="screen" id="screen-6" style="padding-bottom: 80px;">
+        <div class="eval-header">
+          <div class="eval-juror-info">
+            <div class="eval-juror-name">Dr. Jane Smith</div>
+            <div class="eval-juror-dept">Mechanical Engineering</div>
+          </div>
+          <div class="eval-status">
+            <div class="save-pill">Saved ✓</div>
+            <div class="live-badge">Live</div>
+          </div>
+        </div>
+
+        <div class="group-bar">
+          <div class="group-info">
+            <div class="group-title">Group A</div>
+            <div class="group-students">Ahmed, Emma, Carlos</div>
+          </div>
+          <div class="group-progress">2/5</div>
+        </div>
+
+        <div class="segmented-bar">
+          <div class="segment completed"></div>
+          <div class="segment completed"></div>
+          <div class="segment active"></div>
+          <div class="segment"></div>
+          <div class="segment"></div>
+        </div>
+
+        <div class="alert-line success">
+          <div class="alert-dot"></div>
+          <span>Scores save automatically</span>
+        </div>
+
+        <!-- Technical -->
+        <div class="criteria-card">
+          <div class="criteria-header">
+            <div class="criteria-name">Technical Excellence</div>
+            <button class="rubric-btn">Rubric</button>
+          </div>
+          <div class="score-row">
+            <input type="text" class="score-input" value="25">
+            <div class="score-bar">
+              <div class="score-bar-fill" style="width: 83%;"></div>
+            </div>
+            <div class="score-fraction">25/30</div>
+          </div>
+        </div>
+
+        <!-- Design -->
+        <div class="criteria-card design">
+          <div class="criteria-header">
+            <div class="criteria-name">Design & Innovation</div>
+            <button class="rubric-btn">Rubric</button>
+          </div>
+          <div class="score-row">
+            <input type="text" class="score-input" value="24">
+            <div class="score-bar">
+              <div class="score-bar-fill" style="width: 80%; background: #22c55e;"></div>
+            </div>
+            <div class="score-fraction">24/30</div>
+          </div>
+        </div>
+
+        <!-- Delivery -->
+        <div class="criteria-card delivery">
+          <div class="criteria-header">
+            <div class="criteria-name">Delivery & Presentation</div>
+            <button class="rubric-btn">Rubric</button>
+          </div>
+          <div class="score-row">
+            <input type="text" class="score-input" value="—">
+            <div class="score-bar">
+              <div class="score-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="score-fraction">—/30</div>
+          </div>
+        </div>
+
+        <!-- Teamwork -->
+        <div class="criteria-card teamwork">
+          <div class="criteria-header">
+            <div class="criteria-name">Teamwork & Collaboration</div>
+            <button class="rubric-btn">Rubric</button>
+          </div>
+          <div class="score-row">
+            <input type="text" class="score-input" value="—">
+            <div class="score-bar">
+              <div class="score-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="score-fraction">—/10</div>
+          </div>
+        </div>
+
+        <div class="comments-section">
+          <label class="label-inline">Comments (Optional)</label>
+          <textarea placeholder="Any feedback or notes for the team..."></textarea>
+        </div>
+
+        <div class="eval-sticky-bottom">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <div class="score-main">78</div>
+            <div class="score-max">/ 100</div>
+            <div class="score-count">4/4 scored</div>
+          </div>
+          <button class="btn-primary" style="width: auto; height: 40px; margin: 0; padding: 0 20px;" onclick="switchScreen(7)">Submit ▶</button>
+        </div>
+      </div>
+
+      <!-- SCREEN 7: DONE -->
+      <div class="screen" id="screen-7">
+        <div class="done-header">
+          <div class="success-circle">✓</div>
+          <div class="done-pill">Evaluation Submitted</div>
+          <div class="done-title">Thank you, Dr. Smith!</div>
+          <div class="done-subtitle">You've evaluated all 5 groups</div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="feedback-section">
+          <div class="feedback-label">How was your experience?</div>
+          <div class="star-row">
+            <button class="star-btn">☆</button>
+            <button class="star-btn">☆</button>
+            <button class="star-btn active">★</button>
+            <button class="star-btn">☆</button>
+            <button class="star-btn">☆</button>
+          </div>
+          <textarea placeholder="Tell us what could be better..."></textarea>
+          <button class="btn-primary" style="margin-top: 12px;">Send Feedback</button>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="rankings-section">
+          <div class="rankings-title">
+            <svg class="rankings-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2 10v-8h2v8H2zM6 10v-5h2v5H6zM10 10V4h2v6h-2z"/>
+            </svg>
+            Current Rankings
+          </div>
+          <div class="ranking-row top">
+            <div class="rank-number first">1</div>
+            <div class="rank-title">Smart Water Meter</div>
+            <div class="rank-score">92</div>
+          </div>
+          <div class="ranking-row">
+            <div class="rank-number">2</div>
+            <div class="rank-title">Drone Mapping System</div>
+            <div class="rank-score">88</div>
+          </div>
+          <div class="ranking-row">
+            <div class="rank-number">3</div>
+            <div class="rank-title">AI Gesture Recognition</div>
+            <div class="rank-score">85</div>
+          </div>
+          <div class="ranking-row">
+            <div class="rank-number">4</div>
+            <div class="rank-title">Robotic Arm Controller</div>
+            <div class="rank-score">80</div>
+          </div>
+          <div class="ranking-row">
+            <div class="rank-number">5</div>
+            <div class="rank-title">Thermal Imaging Device</div>
+            <div class="rank-score">76</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 24px;">
+          <button class="btn-outlined">Request Edit</button>
+        </div>
+        <button class="btn-text">Return Home</button>
+      </div>
+    </div>
+
+    <!-- STEPPER BAR -->
+    <div class="stepper-bar">
+      <div class="step completed" onclick="switchScreen(1)">
+        <div class="step-circle">✓</div>
+        <div class="step-label">Identity</div>
+      </div>
+      <div class="step completed" onclick="switchScreen(2)">
+        <div class="step-circle">✓</div>
+        <div class="step-label">Verify</div>
+      </div>
+      <div class="step active" onclick="switchScreen(3)">
+        <div class="step-circle">3</div>
+        <div class="step-label">Session</div>
+      </div>
+      <div class="step" onclick="switchScreen(6)">
+        <div class="step-circle">4</div>
+        <div class="step-label">Score</div>
+      </div>
+      <div class="step" onclick="switchScreen(7)">
+        <div class="step-circle">5</div>
+        <div class="step-label">Done</div>
+      </div>
+    </div>
+
+    <!-- SCREEN SWITCHER -->
+    <div class="screen-switcher">
+      <button class="switcher-btn active" onclick="switchScreen(1)">1</button>
+      <button class="switcher-btn" onclick="switchScreen(2)">2</button>
+      <button class="switcher-btn" onclick="switchScreen(3)">3</button>
+      <button class="switcher-btn" onclick="switchScreen(4)">4</button>
+      <button class="switcher-btn" onclick="switchScreen(5)">5</button>
+      <button class="switcher-btn" onclick="switchScreen(6)">6</button>
+      <button class="switcher-btn" onclick="switchScreen(7)">7</button>
+    </div>
+  </div>
+
+  <script>
+    function switchScreen(screenNum) {
+      // Hide all screens
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+      // Show selected screen
+      if (screenNum !== 'home') {
+        const screen = document.getElementById(`screen-${screenNum}`);
+        if (screen) {
+          screen.classList.add('active');
+          updateStepper(screenNum);
+          updateSwitcher(screenNum);
+        }
+      }
+    }
+
+    function updateStepper(screenNum) {
+      const steps = document.querySelectorAll('.step');
+      steps.forEach((step, idx) => {
+        step.classList.remove('active');
+        step.classList.remove('completed');
+
+        const stepNum = idx + 1;
+        if (stepNum < screenNum) {
+          step.classList.add('completed');
+        } else if (stepNum === screenNum) {
+          step.classList.add('active');
+        }
+      });
+    }
+
+    function updateSwitcher(screenNum) {
+      document.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
+        btn.classList.remove('active');
+        if (idx + 1 === screenNum) {
+          btn.classList.add('active');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

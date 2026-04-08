@@ -21,9 +21,10 @@ export {
   upsertScoreWithRetry,
   listSemesters,
   getCurrentSemester,
-  getPeriodImpact,
   submitJuryFeedback,
   getProjectRankings,
+  requestPinReset,
+  requestScoreEdit,
 } from "./juryApi";
 
 export {

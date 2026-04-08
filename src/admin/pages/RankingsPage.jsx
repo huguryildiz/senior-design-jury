@@ -435,7 +435,7 @@ export default function RankingsPage({
           periodName,
           tenantCode: tc,
           organization: activeOrganization?.name || "",
-          department: activeOrganization?.institution_name || "",
+          department: activeOrganization?.subtitle || "",
           pdfTitle: "VERA — Rankings",
           pdfSubtitle: `${periodName || "All Periods"} · ${filteredRows.length} projects`,
           header,
@@ -739,7 +739,7 @@ export default function RankingsPage({
         reportTitle="Score Rankings"
         periodName={periodName}
         organization={activeOrganization?.name || ""}
-        department={activeOrganization?.institution_name || ""}
+        department={activeOrganization?.subtitle || ""}
         generateFile={async (fmt) => {
           const fmtMembers = (m) => {
             if (!m) return "";
@@ -750,7 +750,7 @@ export default function RankingsPage({
           return generateTableBlob(fmt, {
             filenameType: "Rankings", sheetName: "Rankings", periodName,
             tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
-            department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Rankings",
+            department: activeOrganization?.subtitle || "", pdfTitle: "VERA — Rankings",
             header, rows,
           });
         }}

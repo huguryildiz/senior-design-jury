@@ -10,7 +10,7 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
   const { activeOrganization } = useAuth();
   const tenantCode = activeOrganization?.code || "";
   const orgName = activeOrganization?.name || "";
-  const deptName = activeOrganization?.institution_name || "";
+  const deptName = activeOrganization?.subtitle || "";
 
   // Build per-criterion rows (one tab per criterion showing that criterion's score)
   function buildCriterionTabs(jurorList) {

@@ -3,10 +3,12 @@
 // Used by JurorBadge component and all admin pages.
 
 // Academic / honorific prefixes to strip (for avatar initials only)
-const TITLE_PREFIXES = /^(Prof\.\s*Dr\.|Doç\.\s*Dr\.|Yrd\.\s*Doç\.\s*Dr\.|Assoc\.\s*Prof\.\s*Dr\.|Asst\.\s*Prof\.\s*Dr\.|Prof\.|Doç\.|Dr\.|Assoc\.\s*Prof\.|Asst\.\s*Prof\.|Mr\.|Mrs\.|Ms\.|Miss\.)\s*/i;
+// TR: Prof., Dr., Doç., Yrd., Öğr., Gör., Ar., Av., Uzm., Müh., Mim., Vet., Ecz., Dt.
+// EN: Prof., Dr., Asst., Assoc., Mr., Mrs., Ms., Miss, Sir, Dame, Rev., Hon., Eng.
+const TITLE_PREFIXES = /^(Prof\.\s*Dr\.|Doç\.\s*Dr\.|Yrd\.\s*Doç\.\s*Dr\.|Assoc\.\s*Prof\.\s*Dr\.|Asst\.\s*Prof\.\s*Dr\.|Prof\.|Doç\.|Dr\.|Assoc\.\s*Prof\.|Asst\.\s*Prof\.|Yrd\.|Öğr\.|Gör\.|Ar\.|Av\.|Uzm\.|Müh\.|Mim\.|Vet\.|Ecz\.|Dt\.|Mr\.|Mrs\.|Ms\.|Miss\.|Sir|Dame|Rev\.|Hon\.|Eng\.)\s*/i;
 
 // Academic / honorific suffixes to strip (for avatar initials only)
-const TITLE_SUFFIXES = /[,\s]+(Ph\.?D\.?|M\.?Sc\.?|M\.?S\.?|M\.?A\.?|M\.?B\.?A\.?|B\.?Sc\.?|B\.?S\.?|M\.?D\.?|D\.?D\.?S\.?|J\.?D\.?|LL\.?M\.?|D\.?Phil\.?|Eng\.|Jr\.|Sr\.|II|III|IV)\.?\s*$/i;
+const TITLE_SUFFIXES = /[,\s]+(Ph\.?D\.?|M\.?Sc\.?|M\.?S\.?|M\.?A\.?|M\.?B\.?A\.?|B\.?Sc\.?|B\.?S\.?|M\.?D\.?|D\.?D\.?S\.?|J\.?D\.?|LL\.?M\.?|D\.?Phil\.?|Eng\.|Esq\.|Jr\.|Sr\.|II|III|IV|PE|RN)\.?\s*$/i;
 
 /**
  * Remove academic titles/honorifics from a juror name.
@@ -33,7 +35,8 @@ export function stripTitles(name) {
 
 /**
  * Extract initials from a name (strips both prefixes and suffixes).
- * "Prof. Dr. Ahmet Kaya, PhD" → "AK"
+ * "Prof. Dr. Ali Nezih Güven, PhD" → "ANG"
+ * "Ayşe Kaya" → "AK"
  * "Ayşe" → "AY"
  */
 export function jurorInitials(name) {
@@ -41,7 +44,7 @@ export function jurorInitials(name) {
   const parts = clean.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts.map((w) => w.charAt(0).toUpperCase()).join("");
 }
 
 // Deterministic hash → integer

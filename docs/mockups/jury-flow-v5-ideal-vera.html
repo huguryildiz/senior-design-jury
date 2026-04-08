@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERA Jury Flow v5 - Ideal Experience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Decorative blobs */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.07) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -15%;
+            right: -5%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            overflow-y: auto;
+            animation: dj-in 0.35s ease;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes dj-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Screen wrapper */
+        .screen-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            padding-top: 110px; /* stepper bar 70px + 40px gap */
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Stepper bar */
+        .stepper-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            gap: 0;
+        }
+
+        .stepper-container {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            max-width: 900px;
+            padding: 0 40px;
+        }
+
+        .stepper-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            min-width: 80px;
+        }
+
+        .stepper-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .stepper-step.done .stepper-circle {
+            background: #22c55e;
+            color: white;
+        }
+
+        .stepper-step.done .stepper-circle::after {
+            content: '✓';
+            font-weight: 700;
+        }
+
+        .stepper-step.active .stepper-circle {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .stepper-step.future .stepper-circle {
+            background: transparent;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            color: #71717a;
+        }
+
+        .stepper-label {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            transition: color 0.3s ease;
+        }
+
+        .stepper-step.done .stepper-label {
+            color: #94a3b8;
+        }
+
+        .stepper-step.active .stepper-label {
+            color: #3b82f6;
+        }
+
+        .stepper-step.future .stepper-label {
+            color: #475569;
+        }
+
+        .stepper-connector {
+            flex: 1;
+            height: 1px;
+            background: rgba(148, 163, 184, 0.08);
+            margin: 0 8px;
+            min-width: 30px;
+            transition: background 0.3s ease;
+        }
+
+        .stepper-step.done ~ .stepper-connector {
+            background: #3b82f6;
+        }
+
+        /* Screen numbers */
+        .screen-number-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 15;
+        }
+
+        .screen-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen-btn:hover {
+            background: rgba(15, 23, 42, 0.95);
+            border-color: rgba(148, 163, 184, 0.2);
+        }
+
+        .screen-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Glass card base */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(148, 163, 184, 0.04) inset;
+        }
+
+        /* Main content card */
+        .content-card {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .content-card.glass {
+            padding: 48px 40px;
+        }
+
+        /* Brand mark */
+        .brand-mark {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+
+        /* Titles */
+        .screen-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f1f5f9;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .screen-subtitle {
+            font-size: 14px;
+            color: #cbd5e1;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        /* Icon box */
+        .icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            position: relative;
+            font-size: 20px;
+        }
+
+        .icon-box.default {
+            background: linear-gradient(180deg, #23314d 0%, #16213a 100%);
+            border: 1px solid rgba(138, 167, 228, 0.18);
+            color: #c0d7ff;
+        }
+
+        .icon-box.primary {
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+        }
+
+        .icon-box.success {
+            background: linear-gradient(135deg, #22c55e, #10b981);
+            color: white;
+        }
+
+        .icon-box.warning {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: white;
+        }
+
+        /* Meta grid */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            background: rgba(30, 41, 59, 0.3);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .meta-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .meta-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #71717a;
+            font-weight: 500;
+        }
+
+        .meta-value {
+            font-size: 13px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        /* Info line */
+        .info-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 28px;
+        }
+
+        .info-dot {
+            color: #60a5fa;
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        /* Form fields */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group.with-avatar {
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .avatar-preview {
+            position: absolute;
+            right: 12px;
+            top: 34px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .form-input:not(:placeholder-shown) ~ .avatar-preview {
+            opacity: 1;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+        }
+
+        .btn-primary:disabled {
+            background: #3f3f46;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-secondary:hover {
+            border-color: rgba(148, 163, 184, 0.3);
+            background: rgba(148, 163, 184, 0.05);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: #60a5fa;
+            font-size: 13px;
+            padding: 8px 12px;
+        }
+
+        .btn-ghost:hover {
+            color: #93c5fd;
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        /* Text link */
+        .text-link {
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 13px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            margin-top: 16px;
+            display: block;
+            text-align: center;
+        }
+
+        .text-link:hover {
+            color: #f1f5f9;
+        }
+
+        /* PIN inputs */
+        .pin-inputs {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .pin-input {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            color: #f1f5f9;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s ease;
+            caret-color: #3b82f6;
+        }
+
+        .pin-input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        /* PIN dot indicator */
+        .pin-dots {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .pin-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(148, 163, 184, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .pin-dot.filled {
+            background: #3b82f6;
+            box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Error message */
+        .error-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12px;
+            color: #fca5a5;
+            margin-bottom: 20px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.18);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        /* PIN shield */
+        .pin-shield {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 12px;
+        }
+
+        .pin-digits {
+            display: flex;
+            gap: 12px;
+        }
+
+        .pin-digit-box {
+            width: 68px;
+            height: 68px;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-top: 2px solid #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Locked screen */
+        .locked-container {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .status-card {
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .status-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #fbbf24;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #fbbf24;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .timer {
+            font-size: 36px;
+            color: #fbbf24;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 8px;
+        }
+
+        .timer-text {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .divider-text {
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            margin: 24px 0;
+            position: relative;
+        }
+
+        .divider-text::before,
+        .divider-text::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: calc(50% - 40px);
+            height: 1px;
+            background: rgba(148, 163, 184, 0.08);
+        }
+
+        .divider-text::before {
+            left: 0;
+        }
+
+        .divider-text::after {
+            right: 0;
+        }
+
+        .help-card {
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .help-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #f1f5f9;
+        }
+
+        .help-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+        }
+
+        .help-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+
+        .help-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .help-email {
+            flex: 1;
+        }
+
+        .help-role {
+            font-size: 10px;
+            color: #71717a;
+        }
+
+        .tag-pill {
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .toggle-link {
+            color: #60a5fa;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .toggle-link:hover {
+            color: #93c5fd;
+        }
+
+        .textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 6px;
+            color: #f1f5f9;
+            font-size: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            resize: vertical;
+            min-height: 60px;
+            transition: all 0.2s ease;
+        }
+
+        .textarea:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+        }
+
+        .success-state {
+            text-align: center;
+            color: #22c55e;
+        }
+
+        .success-check {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        /* Progress screen */
+        .progress-card {
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .progress-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .progress-stat {
+            text-align: center;
+        }
+
+        .progress-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .progress-stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .progress-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #6366f1);
+            width: 60%;
+            border-radius: 3px;
+        }
+
+        .progress-percent {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+            min-width: 30px;
+        }
+
+        /* Scoring screen */
+        .juror-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(30, 41, 59, 0.4);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+
+        .juror-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .juror-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .juror-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .juror-name {
+            color: #f1f5f9;
+            font-weight: 600;
+        }
+
+        .juror-affil {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .juror-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #22c55e;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 4px;
+            height: 4px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        .live-badge {
+            background: rgba(251, 191, 36, 0.08);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .group-bar {
+            background: rgba(30, 41, 59, 0.4);
+            border-left: 3px solid #3b82f6;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .group-bar:hover {
+            background: rgba(30, 41, 59, 0.5);
+        }
+
+        .group-info {
+            flex: 1;
+        }
+
+        .group-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 4px;
+        }
+
+        .group-students {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        .group-counter {
+            font-size: 11px;
+            color: #cbd5e1;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .progress-segments {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 16px;
+        }
+
+        .progress-segment {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(148, 163, 184, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .progress-segment.completed {
+            background: #22c55e;
+        }
+
+        .progress-segment.current {
+            background: #3b82f6;
+            animation: pulse-blue 2s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .criteria-card {
+            background: rgba(30, 41, 59, 0.4);
+            border-left: 3px solid #60a5fa;
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .criteria-card.green {
+            border-left-color: #4ade80;
+        }
+
+        .criteria-card.indigo {
+            border-left-color: #818cf8;
+        }
+
+        .criteria-card.amber {
+            border-left-color: #fbbf24;
+        }
+
+        .criteria-card.teal {
+            border-left-color: #2dd4bf;
+        }
+
+        .criteria-card.pink {
+            border-left-color: #f472b6;
+        }
+
+        .criteria-card.complete {
+            background: rgba(30, 41, 59, 0.5);
+            border-left-color: #4ade80 !important;
+        }
+
+        .criteria-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .criteria-label-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .criteria-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .criteria-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .rubric-btn {
+            font-size: 11px;
+            color: #60a5fa;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+
+        .rubric-btn:hover {
+            color: #93c5fd;
+        }
+
+        .criteria-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .criteria-input {
+            width: 60px;
+            padding: 8px 8px;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 6px;
+            color: #f1f5f9;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .criteria-input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+        }
+
+        .criteria-progress {
+            flex: 1;
+            height: 4px;
+            background: rgba(148, 163, 184, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .criteria-progress-fill {
+            height: 100%;
+            background: #60a5fa;
+            width: 83%;
+        }
+
+        .criteria-fraction {
+            font-size: 12px;
+            color: #94a3b8;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+        }
+
+        .comments-section {
+            margin-bottom: 16px;
+        }
+
+        .comments-label {
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .sticky-bottom {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 520px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 25;
+        }
+
+        .total-score {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .total-score-num {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f1f5f9;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .total-score-max {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .total-status-pill {
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .total-status-pill.amber {
+            background: rgba(251, 191, 36, 0.08);
+            border-color: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+        }
+
+        /* Done screen */
+        .success-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #22c55e, #10b981);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+            color: white;
+        }
+
+        .success-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .done-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+
+        .done-subtitle {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        .thin-divider {
+            height: 1px;
+            background: rgba(148, 163, 184, 0.08);
+            margin: 20px 0;
+        }
+
+        .feedback-card {
+            background: rgba(30, 41, 59, 0.4);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .feedback-header {
+            font-size: 12px;
+            color: #cbd5e1;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .star-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .star {
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.4;
+            transition: opacity 0.2s ease;
+        }
+
+        .star.filled {
+            opacity: 1;
+        }
+
+        .star:hover,
+        .star:hover ~ .star {
+            opacity: 0.6;
+        }
+
+        .rankings-header {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #71717a;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 20px 0 12px;
+        }
+
+        .rankings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .ranking-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+        }
+
+        .ranking-row:last-child {
+            border-bottom: none;
+        }
+
+        .ranking-row.gold {
+            border-left: 2px solid #fbbf24;
+            padding-left: 6px;
+        }
+
+        .ranking-num {
+            font-size: 13px;
+            color: #71717a;
+            font-weight: 700;
+            min-width: 20px;
+        }
+
+        .ranking-num.gold {
+            color: #fbbf24;
+        }
+
+        .ranking-title {
+            flex: 1;
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+
+        .ranking-score {
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: right;
+            min-width: 30px;
+        }
+
+        .utility-links {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+
+        .utility-link {
+            color: #60a5fa;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .utility-link:hover {
+            color: #93c5fd;
+        }
+
+        /* Spacing utilities */
+        .mt-16 {
+            margin-top: 16px;
+        }
+
+        .container-narrow {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        /* Scoring wrapper */
+        .scoring-wrapper {
+            width: 100%;
+            max-width: 560px;
+            padding-top: 20px;
+        }
+
+        /* Icon symbols */
+        .icon {
+            display: inline-block;
+        }
+
+        /* ── Mobile portrait ── */
+        @media (max-width: 540px) {
+            .stepper-container {
+                padding: 0 16px;
+            }
+
+            .stepper-step {
+                min-width: 52px;
+            }
+
+            .stepper-connector {
+                min-width: 12px;
+            }
+
+            .screen-wrapper {
+                padding: 24px 16px;
+                padding-top: 86px; /* stepper bar 70px + gap */
+                justify-content: flex-start;
+            }
+
+            .content-card.glass {
+                padding: 28px 20px;
+            }
+
+            .container-narrow {
+                max-width: 100%;
+            }
+
+            .screen-title {
+                font-size: 22px;
+            }
+
+            .icon-box {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+                margin-bottom: 16px;
+            }
+
+            .brand-mark {
+                margin-bottom: 16px;
+            }
+
+            .screen-subtitle {
+                margin-bottom: 20px;
+            }
+        }
+
+        /* ── Mobile landscape (short viewport) ── */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .stepper-bar {
+                height: 52px;
+            }
+
+            .screen-wrapper {
+                padding: 16px 20px;
+                padding-top: 68px;
+                justify-content: flex-start;
+            }
+
+            .content-card.glass {
+                padding: 24px 32px;
+            }
+
+            .icon-box {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .brand-mark {
+                margin-bottom: 12px;
+            }
+
+            .screen-title {
+                font-size: 20px;
+                margin-bottom: 6px;
+            }
+
+            .screen-subtitle {
+                margin-bottom: 16px;
+            }
+
+            .meta-grid {
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+
+            .meta-cell {
+                padding: 10px 8px;
+            }
+
+            .form-group {
+                margin-bottom: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Stepper Bar -->
+    <div class="stepper-bar">
+        <div class="stepper-container">
+            <div class="stepper-step active" data-step="1">
+                <div class="stepper-circle">1</div>
+                <div class="stepper-label">Identity</div>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step future" data-step="2">
+                <div class="stepper-circle">2</div>
+                <div class="stepper-label">PIN</div>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step future" data-step="3">
+                <div class="stepper-circle">3</div>
+                <div class="stepper-label">Loading</div>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step future" data-step="4">
+                <div class="stepper-circle">4</div>
+                <div class="stepper-label">Scoring</div>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step future" data-step="5">
+                <div class="stepper-circle">5</div>
+                <div class="stepper-label">Summary</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 1: Identity -->
+    <div class="screen active" data-screen="1">
+        <div class="screen-wrapper">
+            <div class="content-card glass container-narrow">
+                <div class="brand-mark">VERA</div>
+                <div class="icon-box default">👤</div>
+                <h1 class="screen-title">Jury Information</h1>
+                <p class="screen-subtitle">Enter your details to begin the evaluation</p>
+
+                <div class="meta-grid">
+                    <div class="meta-cell">
+                        <div class="meta-icon" style="background: linear-gradient(135deg, #3b82f6, #6366f1); color: white;">🏫</div>
+                        <div class="meta-label">Role</div>
+                        <div class="meta-value">Faculty Jury</div>
+                    </div>
+                    <div class="meta-cell">
+                        <div class="meta-icon" style="background: linear-gradient(135deg, #22c55e, #10b981); color: white;">📅</div>
+                        <div class="meta-label">Session</div>
+                        <div class="meta-value">EE 491/492</div>
+                    </div>
+                    <div class="meta-cell">
+                        <div class="meta-icon" style="background: linear-gradient(135deg, #f59e0b, #ef4444); color: white;">⏰</div>
+                        <div class="meta-label">Duration</div>
+                        <div class="meta-value">~30 mins</div>
+                    </div>
+                    <div class="meta-cell">
+                        <div class="meta-icon" style="background: linear-gradient(135deg, #818cf8, #a855f7); color: white;">📊</div>
+                        <div class="meta-label">Projects</div>
+                        <div class="meta-value">5 groups</div>
+                    </div>
+                </div>
+
+                <div class="info-line">
+                    <span class="info-dot">•</span>
+                    <span>Name and Affiliation cannot be changed once evaluation starts.</span>
+                </div>
+
+                <form onsubmit="nextScreen(event, 2)">
+                    <div class="form-group with-avatar">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-input" placeholder="Dr. Sarah Johnson" required>
+                        <div class="avatar-preview">SJ</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Department / Affiliation</label>
+                        <input type="text" class="form-input" placeholder="Electrical Engineering" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Start Evaluation</button>
+                </form>
+
+                <a class="text-link">← Return Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 2: PIN Entry -->
+    <div class="screen" data-screen="2">
+        <div class="screen-wrapper">
+            <div class="content-card glass container-narrow">
+                <div class="icon-box primary">🔐</div>
+                <h1 class="screen-title">Enter Your PIN</h1>
+                <p class="screen-subtitle">4-digit code to resume your session</p>
+
+                <form onsubmit="nextScreen(event, 3)">
+                    <div class="pin-inputs" id="pinInputs">
+                        <input type="text" class="pin-input" maxlength="1" required>
+                        <input type="text" class="pin-input" maxlength="1" required>
+                        <input type="text" class="pin-input" maxlength="1" required>
+                        <input type="text" class="pin-input" maxlength="1" required>
+                    </div>
+
+                    <div class="pin-dots" id="pinDots">
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                        <div class="pin-dot"></div>
+                    </div>
+
+                    <div class="error-message" style="display: none;" id="pinError">
+                        <span>⚠</span>
+                        <span>Incorrect PIN — 2 attempts remaining</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Verify PIN</button>
+                </form>
+
+                <a class="text-link">← Back</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 3: PIN Reveal -->
+    <div class="screen" data-screen="3">
+        <div class="screen-wrapper">
+            <div class="content-card glass container-narrow">
+                <div class="icon-box default">🔑</div>
+                <h1 class="screen-title">Your Session PIN</h1>
+                <p class="screen-subtitle">Keep this PIN private and safe</p>
+
+                <div class="pin-shield">
+                    <div class="pin-digits">
+                        <div class="pin-digit-box">5</div>
+                        <div class="pin-digit-box">8</div>
+                        <div class="pin-digit-box">4</div>
+                        <div class="pin-digit-box">2</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <button class="btn btn-ghost">📋 Copy PIN</button>
+                </div>
+
+                <div class="info-line">
+                    <span class="info-dot">•</span>
+                    <span>Keep this PIN private. You will need it to resume later.</span>
+                </div>
+
+                <button class="btn btn-primary" onclick="nextScreen(null, 4)">Begin Evaluation →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 4: Locked (alternate state) -->
+    <div class="screen" data-screen="4-locked">
+        <div class="screen-wrapper">
+            <div class="locked-container">
+                <div class="content-card glass" style="padding: 48px 40px;">
+                    <div class="icon-box warning">⚠️</div>
+                    <h1 class="screen-title">Account Temporarily Locked</h1>
+                    <p class="screen-subtitle">Too many unsuccessful PIN attempts</p>
+
+                    <div class="status-card">
+                        <div class="status-label">
+                            <span class="status-dot"></span>
+                            SECURITY LOCKOUT
+                        </div>
+                        <div class="timer">04:32</div>
+                        <div class="timer-text">Access restores in</div>
+                        <div class="timer-text" style="margin-top: 8px;">You can retry after the timer expires</div>
+                    </div>
+
+                    <div class="divider-text">or get help now</div>
+
+                    <div class="help-card">
+                        <div class="help-header">
+                            <div class="help-icon">✉️</div>
+                            Request PIN Reset
+                        </div>
+                        <div class="help-row">
+                            <div class="help-avatar">DJ</div>
+                            <div class="help-email">dean.johnson@tedu.edu.tr</div>
+                            <div class="help-role">Dean</div>
+                            <div class="tag-pill">To</div>
+                        </div>
+                        <div class="toggle-link">+ Add CC</div>
+                        <textarea class="textarea" style="margin-top: 8px;" placeholder="Message (optional)"></textarea>
+                        <button class="btn btn-primary" style="margin-top: 12px;">Send Request</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 4: Progress (Locked alternative) -->
+    <div class="screen" data-screen="4-progress">
+        <div class="screen-wrapper">
+            <div class="content-card glass container-narrow">
+                <div class="icon-box primary">👋</div>
+                <h1 class="screen-title">Welcome Back</h1>
+                <p class="screen-subtitle">You have an in-progress evaluation</p>
+
+                <div class="progress-card">
+                    <div class="progress-stats">
+                        <div class="progress-stat">
+                            <div class="progress-stat-value">3/5</div>
+                            <div class="progress-stat-label">Groups Completed</div>
+                        </div>
+                        <div class="progress-stat">
+                            <div class="progress-stat-value">Today</div>
+                            <div class="progress-stat-label">Last Active</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width: 60%;"></div>
+                        </div>
+                        <div class="progress-percent">60%</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="nextScreen(null, 5)">Resume Evaluation</button>
+                <a class="text-link">← Start Fresh</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 5: Scoring -->
+    <div class="screen" data-screen="5">
+        <div class="scoring-wrapper">
+            <div class="juror-header">
+                <div class="juror-info">
+                    <div class="juror-avatar">SJ</div>
+                    <div class="juror-details">
+                        <div class="juror-name">Dr. Sarah Johnson</div>
+                        <div class="juror-affil">Electrical Engineering</div>
+                    </div>
+                </div>
+                <div class="juror-status">
+                    <div class="status-pill">
+                        <span class="status-dot"></span>
+                        Saved
+                    </div>
+                    <div class="live-badge">Live</div>
+                </div>
+            </div>
+
+            <div class="group-bar">
+                <div class="group-info">
+                    <div class="group-title">Group 3: Smart Home IoT Platform</div>
+                    <div class="group-students">Ahmed Hassan, Maria Garcia, Lee Chen</div>
+                </div>
+                <span class="group-counter">2/5</span>
+                <span>❯</span>
+            </div>
+
+            <div class="progress-segments">
+                <div class="progress-segment completed"></div>
+                <div class="progress-segment completed"></div>
+                <div class="progress-segment current"></div>
+                <div class="progress-segment"></div>
+                <div class="progress-segment"></div>
+            </div>
+
+            <div class="info-line">
+                <span class="info-dot">•</span>
+                <span>Scores save automatically and reflect in admin panel.</span>
+            </div>
+
+            <form onsubmit="nextScreen(event, 6)" id="scoringForm">
+                <div class="criteria-card green">
+                    <div class="criteria-header">
+                        <div class="criteria-label-group">
+                            <div class="criteria-dot"></div>
+                            <div class="criteria-label">Technical Knowledge</div>
+                        </div>
+                        <a class="rubric-btn">Rubric →</a>
+                    </div>
+                    <div class="criteria-input-row">
+                        <input type="number" class="criteria-input" value="25" min="0" max="30" required>
+                        <div class="criteria-progress">
+                            <div class="criteria-progress-fill" style="background: #4ade80; width: 83%;"></div>
+                        </div>
+                        <div class="criteria-fraction">25/30</div>
+                    </div>
+                </div>
+
+                <div class="criteria-card">
+                    <div class="criteria-header">
+                        <div class="criteria-label-group">
+                            <div class="criteria-dot"></div>
+                            <div class="criteria-label">Written Communication</div>
+                        </div>
+                        <a class="rubric-btn">Rubric →</a>
+                    </div>
+                    <div class="criteria-input-row">
+                        <input type="number" class="criteria-input" value="28" min="0" max="30" required>
+                        <div class="criteria-progress">
+                            <div class="criteria-progress-fill" style="width: 93%;"></div>
+                        </div>
+                        <div class="criteria-fraction">28/30</div>
+                    </div>
+                </div>
+
+                <div class="criteria-card indigo">
+                    <div class="criteria-header">
+                        <div class="criteria-label-group">
+                            <div class="criteria-dot"></div>
+                            <div class="criteria-label">Oral Presentation</div>
+                        </div>
+                        <a class="rubric-btn">Rubric →</a>
+                    </div>
+                    <div class="criteria-input-row">
+                        <input type="number" class="criteria-input" value="26" min="0" max="30" required>
+                        <div class="criteria-progress">
+                            <div class="criteria-progress-fill" style="background: #818cf8; width: 87%;"></div>
+                        </div>
+                        <div class="criteria-fraction">26/30</div>
+                    </div>
+                </div>
+
+                <div class="criteria-card amber">
+                    <div class="criteria-header">
+                        <div class="criteria-label-group">
+                            <div class="criteria-dot"></div>
+                            <div class="criteria-label">Teamwork</div>
+                        </div>
+                        <a class="rubric-btn">Rubric →</a>
+                    </div>
+                    <div class="criteria-input-row">
+                        <input type="number" class="criteria-input" value="9" min="0" max="10" required>
+                        <div class="criteria-progress">
+                            <div class="criteria-progress-fill" style="background: #fbbf24; width: 90%;"></div>
+                        </div>
+                        <div class="criteria-fraction">9/10</div>
+                    </div>
+                </div>
+
+                <div class="comments-section">
+                    <label class="comments-label">Comments (optional)</label>
+                    <textarea class="textarea" placeholder="Your feedback here..."></textarea>
+                </div>
+
+                <div style="height: 100px;"></div>
+
+                <div class="sticky-bottom">
+                    <div class="total-score">
+                        <div class="total-score-num">88</div>
+                        <div class="total-score-max">/ 100</div>
+                    </div>
+                    <div class="total-status-pill">4/4 scored</div>
+                    <button type="submit" class="btn btn-primary" style="width: auto; padding: 8px 16px;">Submit ▶</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Screen 6: Done -->
+    <div class="screen" data-screen="6">
+        <div class="screen-wrapper">
+            <div class="content-card glass container-narrow">
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <div class="success-circle">✓</div>
+                    <div class="success-badge">EVALUATION SUBMITTED</div>
+                </div>
+
+                <h1 class="done-title" style="text-align: center;">Thank you, Dr. Johnson!</h1>
+                <p class="done-subtitle" style="text-align: center;">You've evaluated all 5 groups successfully.</p>
+
+                <div class="thin-divider"></div>
+
+                <div class="feedback-card">
+                    <div class="feedback-header">How was your experience?</div>
+                    <div class="star-row">
+                        <span class="star filled">★</span>
+                        <span class="star filled">★</span>
+                        <span class="star filled">★</span>
+                        <span class="star filled">★</span>
+                        <span class="star filled">★</span>
+                    </div>
+                    <textarea class="textarea" placeholder="Tell us what you think..."></textarea>
+                    <button class="btn btn-primary" style="margin-top: 10px;">Send Feedback</button>
+                </div>
+
+                <div>
+                    <div class="rankings-header">
+                        📊 Current Rankings
+                    </div>
+                    <div class="rankings-list">
+                        <div class="ranking-row gold">
+                            <div class="ranking-num gold">1</div>
+                            <div class="ranking-title">Smart Home IoT Platform</div>
+                            <div class="ranking-score">88</div>
+                        </div>
+                        <div class="ranking-row">
+                            <div class="ranking-num">2</div>
+                            <div class="ranking-title">Automated Irrigation System</div>
+                            <div class="ranking-score">85</div>
+                        </div>
+                        <div class="ranking-row">
+                            <div class="ranking-num">3</div>
+                            <div class="ranking-title">Drone Delivery Network</div>
+                            <div class="ranking-score">82</div>
+                        </div>
+                        <div class="ranking-row">
+                            <div class="ranking-num">4</div>
+                            <div class="ranking-title">Real-time Translator</div>
+                            <div class="ranking-score">79</div>
+                        </div>
+                        <div class="ranking-row">
+                            <div class="ranking-num">5</div>
+                            <div class="ranking-title">Solar Tracking System</div>
+                            <div class="ranking-score">76</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="utility-links">
+                    <a class="utility-link">📧 Request Edit</a>
+                </div>
+
+                <a class="text-link">← Return to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen switcher -->
+    <div class="screen-number-widget">
+        <button class="screen-btn active" onclick="goToScreen(1)">1</button>
+        <button class="screen-btn" onclick="goToScreen(2)">2</button>
+        <button class="screen-btn" onclick="goToScreen(3)">3</button>
+        <button class="screen-btn" onclick="goToScreen('4-locked')">4L</button>
+        <button class="screen-btn" onclick="goToScreen('4-progress')">4P</button>
+        <button class="screen-btn" onclick="goToScreen(5)">5</button>
+        <button class="screen-btn" onclick="goToScreen(6)">6</button>
+    </div>
+
+    <script>
+        let currentScreen = 1;
+        let completedSteps = [];
+
+        function goToScreen(screenNum) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.screen-btn').forEach(b => b.classList.remove('active'));
+
+            const screen = document.querySelector(`[data-screen="${screenNum}"]`);
+            if (screen) {
+                screen.classList.add('active');
+                currentScreen = screenNum;
+            }
+
+            const btn = document.querySelector(`.screen-btn[onclick="goToScreen(${screenNum})"]`);
+            if (btn) btn.classList.add('active');
+
+            updateStepper();
+        }
+
+        function nextScreen(event, screenNum) {
+            if (event) event.preventDefault();
+            goToScreen(screenNum);
+            window.scrollTo(0, 0);
+        }
+
+        function updateStepper() {
+            const stepMap = {
+                1: 1, 2: 2, 3: 2, '4-locked': 3, '4-progress': 3, 5: 4, 6: 5
+            };
+            const currentStep = stepMap[currentScreen];
+
+            document.querySelectorAll('.stepper-step').forEach((step, idx) => {
+                const stepNum = idx + 1;
+                step.classList.remove('active', 'done', 'future');
+
+                if (stepNum < currentStep) {
+                    step.classList.add('done');
+                } else if (stepNum === currentStep) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.add('future');
+                }
+            });
+        }
+
+        // PIN inputs auto-focus
+        document.getElementById('pinInputs')?.addEventListener('keyup', (e) => {
+            if (e.target.classList.contains('pin-input')) {
+                const value = e.target.value;
+                const dots = document.querySelectorAll('#pinDots .pin-dot');
+                const inputs = document.querySelectorAll('.pin-input');
+
+                inputs.forEach((inp, idx) => {
+                    if (inp.value) {
+                        dots[idx].classList.add('filled');
+                    } else {
+                        dots[idx].classList.remove('filled');
+                    }
+                });
+
+                if (value && e.target.nextElementSibling?.classList.contains('pin-input')) {
+                    e.target.nextElementSibling.focus();
+                }
+            }
+        });
+
+        // Scoring form total update
+        document.getElementById('scoringForm')?.addEventListener('input', (e) => {
+            if (e.target.classList.contains('criteria-input')) {
+                const inputs = document.querySelectorAll('#scoringForm .criteria-input');
+                let total = 0;
+                inputs.forEach(inp => {
+                    total += parseInt(inp.value) || 0;
+                });
+
+                const totalEl = document.querySelector('.total-score-num');
+                if (totalEl) totalEl.textContent = total;
+            }
+        });
+
+        // Avatar preview
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const preview = e.target.parentElement.querySelector('.avatar-preview');
+                if (preview && e.target.value) {
+                    const initials = e.target.value.split(' ').map(n => n[0]).join('').toUpperCase();
+                    preview.textContent = initials;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

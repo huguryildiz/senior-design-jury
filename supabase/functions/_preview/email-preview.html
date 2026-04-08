@@ -23,6 +23,7 @@
     <button onclick="show('token', this)">Entry Token</button>
     <button onclick="show('export', this)">Export Report</button>
     <button onclick="show('maintenance', this)">Maintenance Notice</button>
+    <button onclick="show('pinreset', this)">PIN Reset Request</button>
   </nav>
   <div id="preview"></div>
 
@@ -261,6 +262,55 @@
         </table>`;
     }
 
+    function pinResetTpl() {
+      const jurorName    = "Dr. Ayşe Kaya";
+      const affiliation  = "Electrical Engineering";
+      const orgName      = "TED University";
+      const periodName   = "EE 492 — Spring 2026";
+      const message      = "I forgot my PIN and cannot proceed. Please reset it as soon as possible.";
+      const metaLine     = [affiliation, orgName].filter(Boolean).join(" &middot; ");
+
+      const messageBlock = `
+        <tr><td style="padding:0 48px 16px;">
+          <div style="padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;">Message from juror</p>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:#e2e8f0;font-style:italic;">&ldquo;${message}&rdquo;</p>
+          </div>
+        </td></tr>`;
+
+      return `
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f0f1a; padding:40px 0;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+              <tr><td style="background:linear-gradient(90deg,#f59e0b,#ef4444,#f59e0b); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+              <tr><td align="center" style="padding:40px 40px 20px;">
+                <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;"><span style="color:#f1f5f9;">V</span><span style="color:#93c5fd;">ERA</span></div>
+              </td></tr>
+              <tr><td align="center" style="padding:8px 48px 12px;">
+                <h1 style="margin:0; font-size:25px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">PIN Reset Request</h1>
+              </td></tr>
+              <tr><td align="center" style="padding:0 48px 8px;">
+                <p style="margin:0; font-size:15px; line-height:1.7; color:#a0aec0;">A juror has been locked out and is requesting a PIN reset.</p>
+              </td></tr>
+              <tr><td style="padding:0 48px 16px;">
+                <div style="padding:16px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
+                  <p style="margin:0 0 4px; font-size:18px; font-weight:700; color:#ffffff;">${jurorName}</p>
+                  <p style="margin:0 0 16px; font-size:13px; color:#718096;">${metaLine}</p>
+                  <p style="margin:0; font-size:13px; color:#718096;">Period: <strong style="color:#a0aec0;">${periodName}</strong></p>
+                </div>
+              </td></tr>
+              ${messageBlock}
+              <tr><td style="padding:0 48px 16px;">
+                <p style="margin:0; font-size:14px; line-height:1.7; color:#a0aec0;">To reset this juror's PIN, go to <strong style="color:#f1f5f9;">Settings &rarr; Jurors</strong> in your admin panel and use the &ldquo;Reset PIN&rdquo; action.</p>
+              </td></tr>
+              <tr><td style="padding:0 48px;"><div style="border-top:1px solid rgba(255,255,255,0.08); font-size:0;">&nbsp;</div></td></tr>
+              <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 VERA. All rights reserved.</p></td></tr>
+              <tr><td style="background:linear-gradient(90deg,#f59e0b,#ef4444,#f59e0b); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+        </table>`;
+    }
+
     const templates = {
       reset:       tpl("Reset Password",       "There is a password reset request for your VERA account.",        "Use the button below to create your new password.",                                          "Reset Password"),
       changed:     tpl("Password Changed",     "Your VERA account password was successfully updated.",            "If you did not make this change, please contact support immediately.",                     "Go to VERA"),
@@ -270,6 +320,7 @@
       token:       tokenTpl(),
       export:      exportTpl(),
       maintenance: maintenanceTpl(),
+      pinreset:    pinResetTpl(),
     };
 
     function show(key, btn) {

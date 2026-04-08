@@ -508,7 +508,7 @@ export default function SettingsPage({ organizationId }) {
                       <tr key={org.id}>
                         <td style={{ fontWeight: 600 }}>{org.name}</td>
                         <td className="mono">{org.code}</td>
-                        <td>{org.institution_name || "—"}</td>
+                        <td>{org.subtitle || "—"}</td>
                         <td><OrgStatusBadge status={org.status} /></td>
                         <td className="text-center mono">
                           <span className="org-admin-count-label">Admins:</span>{" "}

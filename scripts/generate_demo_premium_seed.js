@@ -76,7 +76,7 @@ const orgs = [
 out.push(`-- Organizations`);
 orgs.forEach(o => {
   o.id = uuid('org-' + o.code);
-  out.push(`INSERT INTO organizations (id, institution_name, name, code, status, settings, updated_at) VALUES ('${o.id}', '${escapeSql(o.institution)}', '${escapeSql(o.name)}', '${o.code}', 'active', '{}', ${BASE_TIME}) ON CONFLICT DO NOTHING;`);
+  out.push(`INSERT INTO organizations (id, subtitle, name, code, status, settings, updated_at) VALUES ('${o.id}', '${escapeSql(o.institution)}', '${escapeSql(o.name)}', '${o.code}', 'active', '{}', ${BASE_TIME}) ON CONFLICT DO NOTHING;`);
 });
 out.push('');
 

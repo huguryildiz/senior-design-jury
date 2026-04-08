@@ -21,7 +21,8 @@ function getActiveBandIndex(rubric, score) {
 }
 
 export default function RubricSheet({ crit, score, outcomeLookup, onClose }) {
-  const [metaOpen, setMetaOpen] = useState(true);
+  const [metaOpen, setMetaOpen] = useState(false);
+  const [bandsOpen, setBandsOpen] = useState(false);
 
   if (!crit) return null;
 
@@ -88,20 +89,40 @@ export default function RubricSheet({ crit, score, outcomeLookup, onClose }) {
           </div>
         )}
 
-        {/* ── Rubric band rows ── */}
-        <div>
-          {rubric.map((band, i) => {
-            const tag = levelToTag(band.level);
-            const range = band.range || `${band.min}–${band.max}`;
-            return (
-              <div key={i} className={`dj-rub-sheet-row${i === activeBand ? " active" : ""}`}>
-                <span className="dj-rub-sheet-range">{range}</span>
-                <span className={`dj-rub-tag dj-rub-tag-${tag}`}>{band.level}</span>
-                <span className="dj-rub-sheet-desc">{band.desc}</span>
+        {/* ── Rubric band rows (collapsible, closed by default) ── */}
+        {rubric.length > 0 && (
+          <div className={`dj-rub-meta${bandsOpen ? " open" : ""}`} style={{ marginTop: 4 }}>
+            <button
+              className="dj-rub-meta-toggle"
+              type="button"
+              aria-expanded={bandsOpen}
+              onClick={() => setBandsOpen((v) => !v)}
+            >
+              <span className="dj-rub-meta-label">Scoring Bands</span>
+              <ChevronDown
+                className="dj-rub-meta-toggle-icon"
+                size={16}
+                strokeWidth={2.2}
+                aria-hidden="true"
+              />
+            </button>
+            <div className="dj-rub-meta-collapse" aria-hidden={!bandsOpen}>
+              <div className="dj-rub-meta-collapse-inner">
+                {rubric.map((band, i) => {
+                  const tag = levelToTag(band.level);
+                  const range = band.range || `${band.min}–${band.max}`;
+                  return (
+                    <div key={i} className={`dj-rub-sheet-row${i === activeBand ? " active" : ""}`}>
+                      <span className="dj-rub-sheet-range">{range}</span>
+                      <span className={`dj-rub-tag dj-rub-tag-${tag}`}>{band.level}</span>
+                      <span className="dj-rub-sheet-desc">{band.desc}</span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Current score badge ── */}
         {hasScore && (
@@ -119,6 +140,7 @@ export default function RubricSheet({ crit, score, outcomeLookup, onClose }) {
             </span>
           </div>
         )}
+
       </div>
     </>
   );

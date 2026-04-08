@@ -180,6 +180,16 @@ export default function useJuryState() {
     }
   }, [scoring.scores, workflow.step, scoring.groupSynced, editState.editMode, loading.projects, handlers.effectiveCriteria]);
 
+  // ── PIN lockout: redirect to locked recovery screen ──────
+  // When handlePinSubmit (or handlePeriodSelect) detects a lockout,
+  // it sets pinErrorCode to "locked". Redirect to the dedicated
+  // locked recovery screen instead of showing an inline alert.
+  useEffect(() => {
+    if (session.pinErrorCode === "locked" && workflow.step !== "locked") {
+      workflow.setStep("locked");
+    }
+  }, [session.pinErrorCode, workflow.step]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Session expired: redirect to PIN step ────────────────
   // When a write fails because the session token is invalid (e.g. another
   // device opened a new session, or the token expired), redirect the juror

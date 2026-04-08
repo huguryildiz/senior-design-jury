@@ -47,7 +47,6 @@ function makeState(overrides = {}) {
     handleEditScores: vi.fn(),
     tenantAdminEmail: "admin@example.com",
     periodName: "Spring 2026",
-    initialRankings: null,
     ...overrides,
   };
 }

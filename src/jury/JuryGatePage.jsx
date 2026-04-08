@@ -3,9 +3,10 @@
 // Verifies token against DB; on success stores grant and calls onGranted().
 
 import { useEffect, useRef, useState } from "react";
-import { ShieldAlert, ShieldOff, ArrowLeft, KeyRound, Loader2 } from "lucide-react";
+import { ShieldAlert, ArrowLeft, KeyRound, Loader2 } from "lucide-react";
 import { verifyEntryToken } from "../shared/api";
 import { setJuryAccess } from "../shared/storage";
+import FbAlert from "../shared/ui/FbAlert";
 import "../styles/jury.css";
 
 function extractToken(input) {
@@ -97,15 +98,9 @@ export default function JuryGatePage({ token, onGranted, onBack }) {
 
           {/* Denied banner */}
           {status === "denied" && (
-            <div className="fb-alert fba-danger" style={{ marginBottom: 16, textAlign: "left" }}>
-              <div className="fb-alert-icon">
-                <ShieldOff size={15} />
-              </div>
-              <div className="fb-alert-body">
-                <div className="fb-alert-title">Access denied</div>
-                <div className="fb-alert-desc">The link is invalid, expired, or has been revoked.</div>
-              </div>
-            </div>
+            <FbAlert variant="danger" title="Access denied" style={{ marginBottom: 16, textAlign: "left" }}>
+              The link is invalid, expired, or has been revoked.
+            </FbAlert>
           )}
 
           {/* Divider */}

@@ -195,7 +195,7 @@ describe("PIN lockout flow — useJuryState hook", () => {
     });
 
     expect(result.current.pinErrorCode).toBe("invalid");
-    expect(result.current.pinAttemptsLeft).toBe(2); // MAX(3) − failed(1)
+    expect(result.current.pinAttemptsLeft).toBe(4); // MAX(5) − failed(1)
   });
 
   qaTest("jury.pin.02", async () => {
@@ -266,7 +266,7 @@ describe("PIN lockout flow — useJuryState hook", () => {
     });
 
     expect(result.current.pinErrorCode).toBe("invalid");
-    expect(result.current.pinAttemptsLeft).toBe(1); // MAX(3) − failed(2)
+    expect(result.current.pinAttemptsLeft).toBe(3); // MAX(5) − failed(2)
   });
 });
 

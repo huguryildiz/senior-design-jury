@@ -1,0 +1,1723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VERA Jury Flow — Aurora Concept 3</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-purple: #8b5cf6;
+      --primary-cyan: #06b6d4;
+      --secondary-rose: #f43f5e;
+      --secondary-orange: #f97316;
+      --accent-emerald: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-pink: #ec4899;
+      --accent-amber: #f59e0b;
+      --dark-bg-primary: #1a1033;
+      --dark-bg-secondary: #0c1445;
+      --dark-bg-tertiary: #0a2540;
+      --glass-light: rgba(255, 255, 255, 0.05);
+      --glass-medium: rgba(255, 255, 255, 0.08);
+      --text-primary: #ffffff;
+      --text-secondary: #cbd5e1;
+      --text-tertiary: #94a3b8;
+      --input-bg: rgba(15, 23, 42, 0.8);
+      --input-border: rgba(148, 163, 184, 0.1);
+      --focus-ring-width: 2px;
+    }
+
+    body {
+      font-family: "DM Sans", sans-serif;
+      background: linear-gradient(135deg, var(--dark-bg-primary) 0%, var(--dark-bg-secondary) 50%, var(--dark-bg-tertiary) 100%);
+      background-size: 400% 400%;
+      animation: auroraShift 15s ease infinite;
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @keyframes auroraShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Animated aurora overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background:
+        radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 0%, rgba(244, 63, 94, 0.05) 0%, transparent 40%);
+      pointer-events: none;
+      z-index: 1;
+      animation: auroraGlow 8s ease-in-out infinite;
+    }
+
+    @keyframes auroraGlow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.5; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+    }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Glass card styling */
+    .card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(20, 25, 50, 0.5) 100%);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1),
+        0 0 40px rgba(139, 92, 246, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    /* Gradient border helper */
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(20, 25, 50, 0.5) 100%);
+      border-radius: 16px;
+      padding: 1px;
+      overflow: hidden;
+    }
+
+    .gradient-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .header-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+      border: 2px solid;
+      border-image: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan)) 1;
+      border-radius: 16px;
+      font-size: 32px;
+      box-shadow: 0 0 24px rgba(139, 92, 246, 0.2);
+    }
+
+    .header-icon.rose {
+      border-image-source: linear-gradient(135deg, var(--secondary-rose), var(--secondary-orange));
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%);
+      box-shadow: 0 0 24px rgba(244, 63, 94, 0.2);
+    }
+
+    .header-icon.emerald {
+      border-image-source: linear-gradient(135deg, var(--accent-emerald), var(--accent-blue));
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
+      box-shadow: 0 0 24px rgba(16, 185, 129, 0.2);
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-subtitle {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+
+    /* Alert box */
+    .alert {
+      background: rgba(15, 23, 42, 0.5);
+      border-left: 4px solid var(--primary-purple);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+
+    .alert.info {
+      border-left-color: var(--primary-cyan);
+    }
+
+    .alert.success {
+      border-left-color: var(--accent-emerald);
+    }
+
+    .alert.warning {
+      border-left-color: var(--secondary-orange);
+      background: rgba(249, 115, 22, 0.05);
+    }
+
+    .alert.danger {
+      border-left-color: var(--secondary-rose);
+      background: rgba(244, 63, 94, 0.05);
+    }
+
+    /* Meta grid */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .meta-item {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .meta-icon {
+      font-size: 20px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Input fields */
+    .input-group {
+      margin-bottom: 18px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .input-field,
+    .input-field:focus,
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-field:focus,
+    textarea:focus {
+      border-color: rgba(139, 92, 246, 0.3);
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow:
+        inset 0 0 0 3px rgba(139, 92, 246, 0.1),
+        0 0 0 var(--focus-ring-width) rgba(139, 92, 246, 0.3);
+    }
+
+    /* PIN inputs */
+    .pin-inputs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .pin-input {
+      width: 100%;
+      aspect-ratio: 1;
+      padding: 0;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(20, 25, 50, 0.5));
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-bottom: 2px solid var(--primary-purple);
+      border-radius: 14px;
+      color: var(--text-primary);
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      font-family: "JetBrains Mono", monospace;
+      outline: none;
+      transition: all 0.2s ease;
+      box-shadow: inset 0 0 8px rgba(139, 92, 246, 0.1);
+    }
+
+    .pin-input:focus {
+      border-bottom-color: var(--primary-cyan);
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(20, 25, 50, 0.7));
+      box-shadow:
+        inset 0 0 8px rgba(139, 92, 246, 0.15),
+        0 0 16px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Large PIN display */
+    .pin-display {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .pin-digit {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(20, 25, 50, 0.6));
+      border: 1px solid rgba(139, 92, 246, 0.25);
+      border-radius: 16px;
+      font-size: 40px;
+      font-weight: 700;
+      font-family: "JetBrains Mono", monospace;
+      box-shadow: inset 0 0 12px rgba(139, 92, 246, 0.1);
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      color: var(--text-primary);
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(139, 92, 246, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: rgba(148, 163, 184, 0.1);
+      color: var(--text-secondary);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(148, 163, 184, 0.15);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: none;
+      padding: 12px 0;
+      margin: 0;
+    }
+
+    .btn-ghost:hover {
+      color: var(--text-primary);
+    }
+
+    /* Copy button */
+    .btn-copy {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: transparent;
+      border: 2px solid;
+      border-image: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan)) 1;
+      border-radius: 12px;
+      color: var(--text-primary);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 16px;
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-copy:hover {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(6, 182, 212, 0.1));
+      box-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(249, 115, 22, 0.2));
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--secondary-orange);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      animation: pulseBadge 2s ease-in-out infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes pulseBadge {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Lock status */
+    .lock-status {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .lock-status-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        text-shadow: 0 0 16px rgba(244, 63, 94, 0.5), 0 0 32px rgba(244, 63, 94, 0.2);
+      }
+      50% {
+        text-shadow: 0 0 32px rgba(244, 63, 94, 0.8), 0 0 48px rgba(244, 63, 94, 0.4);
+      }
+    }
+
+    .lock-status-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .lock-status-reason {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      line-height: 1.5;
+    }
+
+    /* Timer */
+    .timer-section {
+      text-align: center;
+      margin: 24px 0;
+      padding: 20px;
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 14px;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .timer-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .timer-display {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+      letter-spacing: 2px;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(148, 163, 184, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      width: 45%;
+      border-radius: 3px;
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+    }
+
+    /* Stats layout */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-box {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Scoring section */
+    .scoring-header {
+      margin-bottom: 20px;
+    }
+
+    .juror-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(30, 41, 59, 0.4);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .juror-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .juror-details {
+      flex: 1;
+    }
+
+    .juror-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .juror-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* Group bar */
+    .group-bar {
+      margin-bottom: 20px;
+    }
+
+    .group-bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .group-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .group-progress {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .group-bar-visual {
+      display: flex;
+      gap: 3px;
+    }
+
+    .group-step {
+      flex: 1;
+      height: 4px;
+      background: rgba(148, 163, 184, 0.15);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .group-step.completed {
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+    }
+
+    .group-step.current {
+      background: linear-gradient(90deg, var(--primary-purple), var(--primary-cyan));
+      animation: pulseBar 1s ease-in-out infinite;
+    }
+
+    @keyframes pulseBar {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Criteria cards */
+    .criteria-card {
+      background: linear-gradient(135deg, rgba(20, 30, 50, 0.6), rgba(15, 25, 45, 0.5));
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .criteria-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, var(--primary-purple), var(--primary-cyan));
+    }
+
+    .criteria-card.blue::before {
+      background: linear-gradient(180deg, var(--accent-blue), var(--primary-cyan));
+    }
+
+    .criteria-card.emerald::before {
+      background: linear-gradient(180deg, var(--accent-emerald), var(--primary-cyan));
+    }
+
+    .criteria-card.pink::before {
+      background: linear-gradient(180deg, var(--primary-purple), var(--accent-pink));
+    }
+
+    .criteria-card.amber::before {
+      background: linear-gradient(180deg, var(--accent-amber), var(--secondary-orange));
+    }
+
+    .criteria-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding-left: 8px;
+    }
+
+    .criteria-score-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      outline: none;
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+      padding-left: 8px;
+    }
+
+    .criteria-score-input:focus {
+      border-color: var(--primary-purple);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+    }
+
+    .criteria-comment {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      padding-left: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 60px;
+      padding: 10px 12px;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    /* Sticky footer */
+    .sticky-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 16px 24px 24px;
+      background: linear-gradient(180deg, transparent, rgba(26, 16, 51, 0.95));
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      display: none;
+    }
+
+    .sticky-footer.active {
+      display: block;
+    }
+
+    /* Done screen */
+    .done-container {
+      text-align: center;
+    }
+
+    .celebration-ring {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: conic-gradient(from 0deg, var(--accent-emerald), var(--primary-cyan), var(--accent-emerald));
+      border-radius: 50%;
+      position: relative;
+      animation: rotateRing 3s linear infinite;
+      box-shadow: 0 0 32px rgba(16, 185, 129, 0.3);
+    }
+
+    @keyframes rotateRing {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .celebration-ring::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      background: var(--dark-bg-primary);
+      border-radius: 50%;
+    }
+
+    .check-mark {
+      font-size: 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .submitted-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, var(--accent-emerald), var(--primary-cyan));
+      border-radius: 20px;
+      color: var(--dark-bg-primary);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);
+    }
+
+    .done-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .done-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    .rankings-section {
+      text-align: left;
+      background: rgba(30, 41, 59, 0.3);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .rankings-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .ranking-item:last-child {
+      border-bottom: none;
+    }
+
+    .ranking-position {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.1);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+
+    .ranking-position.first {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: var(--dark-bg-primary);
+      font-weight: 700;
+    }
+
+    .ranking-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .ranking-score {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+    }
+
+    .stars {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    .star {
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: rgba(248, 113, 113, 0.3);
+    }
+
+    .star.active {
+      color: #fbbf24;
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+    }
+
+    .utility-links {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .utility-link {
+      flex: 1;
+      padding: 10px;
+      background: rgba(148, 163, 184, 0.05);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .utility-link:hover {
+      background: rgba(148, 163, 184, 0.1);
+      color: var(--text-primary);
+    }
+
+    /* Stepper Bar */
+    .stepper-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      margin-bottom: 28px;
+      padding-bottom: 12px;
+      position: relative;
+    }
+
+    .stepper-bar::after {
+      content: '';
+      position: absolute;
+      bottom: 24px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary-purple) 0%, var(--primary-cyan) 100%);
+      z-index: -1;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      position: relative;
+      z-index: 2;
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      background: rgba(30, 41, 59, 0.8);
+      border: 2px solid rgba(148, 163, 184, 0.2);
+      color: var(--text-tertiary);
+      transition: all 0.3s ease;
+    }
+
+    .step.completed .step-circle {
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      border-color: transparent;
+      color: var(--dark-bg-primary);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .step.active .step-circle {
+      border: 2px solid;
+      border-image: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan)) 1;
+      animation: pulseStep 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulseStep {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.1); }
+    }
+
+    .step-label {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+
+    .step.completed .step-label,
+    .step.active .step-label {
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    /* Return home link */
+    .return-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      margin-top: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .return-link:hover {
+      color: var(--text-primary);
+      gap: 8px;
+    }
+
+    /* Recipient rows */
+    .recipient-rows {
+      margin-bottom: 16px;
+    }
+
+    .recipient-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: rgba(30, 41, 59, 0.3);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+
+    .recipient-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      flex-shrink: 0;
+    }
+
+    .recipient-info {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Screen switcher */
+    .screen-switcher {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 6px;
+      z-index: 200;
+    }
+
+    .switcher-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
+      border: none;
+      color: var(--dark-bg-primary);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .switcher-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+    }
+
+    .switcher-btn.active {
+      background: linear-gradient(135deg, var(--primary-cyan), var(--primary-purple));
+      box-shadow: 0 0 24px rgba(6, 182, 212, 0.5);
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .container {
+        padding: 16px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .header-title {
+        font-size: 20px;
+      }
+
+      .done-title {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Screen 1: Identity -->
+    <div class="screen active" id="screen-1">
+      <div class="stepper-bar">
+        <div class="step active">
+          <div class="step-circle">1</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">2</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">3</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">4</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">5</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">6</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="header">
+          <div class="header-icon">👤</div>
+          <div class="header-title">Jury Information</div>
+          <div class="header-subtitle">Welcome to evaluation</div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-icon">🎓</span>
+            <div class="meta-label">Semester</div>
+            <div class="meta-value">Spring 2026</div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon">🏢</span>
+            <div class="meta-label">Institution</div>
+            <div class="meta-value">TED University</div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon">📊</span>
+            <div class="meta-label">Projects</div>
+            <div class="meta-value">18 Total</div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-icon">⏱️</span>
+            <div class="meta-label">Duration</div>
+            <div class="meta-value">~12 min</div>
+          </div>
+        </div>
+
+        <div class="alert info">
+          💡 You will evaluate projects across four criteria: technical excellence, documentation quality, presentation clarity, and collaborative effort.
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Full Name</label>
+          <input type="text" class="input-field" placeholder="Dr. Jane Smith" value="Dr. Jane Smith">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Department</label>
+          <input type="text" class="input-field" placeholder="Electrical Engineering" value="Electrical Engineering">
+        </div>
+
+        <button class="btn btn-primary" onclick="switchScreen(2)">Start Evaluation</button>
+        <a href="#" class="return-link">← Return Home</a>
+      </div>
+    </div>
+
+    <!-- Screen 2: PIN Entry -->
+    <div class="screen" id="screen-2">
+      <div class="stepper-bar">
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step active">
+          <div class="step-circle">2</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">3</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">4</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">5</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">6</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="header">
+          <div class="header-icon">🔐</div>
+          <div class="header-title">Enter PIN</div>
+          <div class="header-subtitle">4-digit security code</div>
+        </div>
+
+        <div class="alert danger">
+          ⚠️ Incorrect PIN. Please try again or contact the event administrator.
+        </div>
+
+        <label class="input-label" style="text-align: center; margin-bottom: 16px;">PIN</label>
+        <div class="pin-inputs">
+          <input type="text" class="pin-input" maxlength="1" placeholder="•" value="1">
+          <input type="text" class="pin-input" maxlength="1" placeholder="•" value="2">
+          <input type="text" class="pin-input" maxlength="1" placeholder="•">
+          <input type="text" class="pin-input" maxlength="1" placeholder="•">
+        </div>
+
+        <button class="btn btn-primary" onclick="switchScreen(3)">Verify PIN</button>
+        <button class="btn btn-ghost" onclick="switchScreen(1)">← Back</button>
+      </div>
+    </div>
+
+    <!-- Screen 3: PIN Reveal -->
+    <div class="screen" id="screen-3">
+      <div class="stepper-bar">
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step active">
+          <div class="step-circle">3</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">4</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">5</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">6</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="header">
+          <div class="header-icon">🔑</div>
+          <div class="header-title">Your PIN</div>
+          <div class="header-subtitle">First-time login</div>
+        </div>
+
+        <div class="pin-display">
+          <div class="pin-digit">8</div>
+          <div class="pin-digit">3</div>
+          <div class="pin-digit">7</div>
+          <div class="pin-digit">5</div>
+        </div>
+
+        <button class="btn-copy" onclick="alert('PIN copied to clipboard!')">
+          📋 Copy PIN
+        </button>
+
+        <div class="alert success">
+          ✓ Save your PIN for future sessions. You'll need it to log in again.
+        </div>
+
+        <button class="btn btn-primary" onclick="switchScreen(5)">Begin Evaluation</button>
+        <button class="btn btn-ghost" onclick="switchScreen(1)">← Back</button>
+      </div>
+    </div>
+
+    <!-- Screen 4: Locked -->
+    <div class="screen" id="screen-4">
+      <div class="stepper-bar">
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step active">
+          <div class="step-circle">4</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">5</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">6</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="lock-status">
+          <div class="lock-status-icon">🔒</div>
+          <div class="status-badge">⏸️ Session Paused</div>
+          <div class="lock-status-text">Evaluation Locked</div>
+          <div class="lock-status-reason">
+            Your evaluation has been paused by the administrator. Please contact the event support team for assistance.
+          </div>
+        </div>
+
+        <div class="timer-section">
+          <div class="timer-label">Time Remaining</div>
+          <div class="timer-display">2:47</div>
+        </div>
+
+        <div class="alert warning">
+          📧 Contact support at <strong>support@vera.edu</strong> or call <strong>+1 (555) 123-4567</strong>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Email Address</label>
+          <input type="email" class="input-field" placeholder="jane@university.edu" value="jane@university.edu">
+        </div>
+
+        <div class="recipient-rows">
+          <div class="recipient-row">
+            <div class="recipient-avatar"></div>
+            <div class="recipient-info">Support Team<br><span style="opacity: 0.7;">support@vera.edu</span></div>
+          </div>
+          <div class="recipient-row">
+            <div class="recipient-avatar"></div>
+            <div class="recipient-info">Event Admin<br><span style="opacity: 0.7;">admin@tedu.edu.tr</span></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="alert('Support request sent!')">Send Support Request</button>
+        <button class="btn btn-ghost" onclick="switchScreen(3)">← Back</button>
+      </div>
+    </div>
+
+    <!-- Screen 5: Progress Check -->
+    <div class="screen" id="screen-5">
+      <div class="stepper-bar">
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step active">
+          <div class="step-circle">5</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">6</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="header">
+          <div class="header-icon emerald">📈</div>
+          <div class="header-title">Your Progress</div>
+          <div class="header-subtitle">Continue your evaluation</div>
+        </div>
+
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 45%;"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value">8</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Remaining</div>
+            <div class="stat-value">10</div>
+          </div>
+        </div>
+
+        <div class="alert info">
+          👋 Welcome back! You've already reviewed 8 projects. Continue where you left off.
+        </div>
+
+        <button class="btn btn-primary" onclick="switchScreen(6)">Resume Evaluation</button>
+        <a href="#" class="return-link">← Return Home</a>
+      </div>
+    </div>
+
+    <!-- Screen 6: Scoring (Eval) -->
+    <div class="screen" id="screen-6">
+      <div class="stepper-bar">
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step active">
+          <div class="step-circle">6</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 180px;">
+        <div class="scoring-header">
+          <div class="juror-info">
+            <div class="juror-avatar">JS</div>
+            <div class="juror-details">
+              <div class="juror-name">Jane Smith</div>
+              <div class="juror-meta">Electrical Engineering • TEDU</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="group-bar">
+          <div class="group-bar-header">
+            <div class="group-name">Project 1: Autonomous Robot</div>
+            <div class="group-progress">4/4 scores</div>
+          </div>
+          <div class="group-bar-visual">
+            <div class="group-step completed"></div>
+            <div class="group-step completed"></div>
+            <div class="group-step completed"></div>
+            <div class="group-step completed"></div>
+          </div>
+        </div>
+
+        <div class="group-bar" style="margin-top: 20px;">
+          <div class="group-bar-header">
+            <div class="group-name">Project 2: Smart Home System</div>
+            <div class="group-progress">2/4 scores</div>
+          </div>
+          <div class="group-bar-visual">
+            <div class="group-step completed"></div>
+            <div class="group-step completed"></div>
+            <div class="group-step current"></div>
+            <div class="group-step"></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 20px;">
+          <div class="criteria-card blue">
+            <div class="criteria-name">🔧 Technical Excellence</div>
+            <input type="number" class="criteria-score-input" min="0" max="30" placeholder="0–30" value="22">
+            <div class="criteria-comment">Quality of design and implementation</div>
+          </div>
+
+          <div class="criteria-card emerald">
+            <div class="criteria-name">📄 Documentation</div>
+            <input type="number" class="criteria-score-input" min="0" max="30" placeholder="0–30" value="18">
+            <div class="criteria-comment">Clarity and completeness of written materials</div>
+          </div>
+
+          <div class="criteria-card pink">
+            <div class="criteria-name">🎤 Presentation</div>
+            <input type="number" class="criteria-score-input" min="0" max="30" placeholder="0–30" value="">
+            <div class="criteria-comment">Delivery and audience engagement</div>
+          </div>
+
+          <div class="criteria-card amber">
+            <div class="criteria-name">🤝 Teamwork</div>
+            <input type="number" class="criteria-score-input" min="0" max="10" placeholder="0–10" value="">
+            <div class="criteria-comment">Collaboration and shared effort</div>
+          </div>
+
+          <div class="input-group" style="margin-top: 16px;">
+            <label class="input-label">Optional Comments</label>
+            <textarea placeholder="Add feedback about this project..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky-footer active">
+        <button class="btn btn-primary" onclick="switchScreen(7)">Submit & Next Project</button>
+        <button class="btn btn-secondary" onclick="alert('Draft saved!')">Save Draft</button>
+      </div>
+    </div>
+
+    <!-- Screen 7: Done -->
+    <div class="screen" id="screen-7">
+      <div class="stepper-bar">
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Identity</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">PIN</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Reveal</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Locked</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Progress</div>
+        </div>
+        <div class="step completed">
+          <div class="step-circle">✓</div>
+          <div class="step-label">Scoring</div>
+        </div>
+        <div class="step active">
+          <div class="step-circle">7</div>
+          <div class="step-label">Done</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="done-container">
+          <div class="celebration-ring">
+            <div class="check-mark">✓</div>
+          </div>
+
+          <div class="submitted-badge">✓ All Submitted</div>
+
+          <div class="done-title">Evaluation Complete</div>
+          <div class="done-subtitle">
+            You've successfully evaluated all 18 projects. Thank you for your valuable feedback!
+          </div>
+
+          <div class="stars">
+            <span class="star active">⭐</span>
+            <span class="star active">⭐</span>
+            <span class="star active">⭐</span>
+            <span class="star active">⭐</span>
+            <span class="star active">⭐</span>
+          </div>
+
+          <div class="rankings-section">
+            <div class="rankings-title">📊 Top Projects (Your Rankings)</div>
+            <div class="ranking-item">
+              <div class="ranking-position first">#1</div>
+              <div class="ranking-title">Autonomous Robot Arm</div>
+              <div class="ranking-score">87/100</div>
+            </div>
+            <div class="ranking-item">
+              <div class="ranking-position">2</div>
+              <div class="ranking-title">Smart Home System</div>
+              <div class="ranking-score">82/100</div>
+            </div>
+            <div class="ranking-item">
+              <div class="ranking-position">3</div>
+              <div class="ranking-title">Medical Device Sensor</div>
+              <div class="ranking-score">79/100</div>
+            </div>
+          </div>
+
+          <div class="utility-links">
+            <a href="#" class="utility-link">📥 Export Results</a>
+            <a href="#" class="utility-link">🔗 Share Report</a>
+            <a href="#" class="utility-link">📧 Email Summary</a>
+          </div>
+
+          <a href="#" class="return-link" style="margin-top: 28px;">← Return Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen Switcher -->
+  <div class="screen-switcher">
+    <button class="switcher-btn active" onclick="switchScreen(1)" title="Identity">1</button>
+    <button class="switcher-btn" onclick="switchScreen(2)" title="PIN">2</button>
+    <button class="switcher-btn" onclick="switchScreen(3)" title="Reveal">3</button>
+    <button class="switcher-btn" onclick="switchScreen(4)" title="Locked">4</button>
+    <button class="switcher-btn" onclick="switchScreen(5)" title="Progress">5</button>
+    <button class="switcher-btn" onclick="switchScreen(6)" title="Scoring">6</button>
+    <button class="switcher-btn" onclick="switchScreen(7)" title="Done">7</button>
+  </div>
+
+  <script>
+    function switchScreen(screenNum) {
+      // Hide all screens
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+
+      // Show target screen
+      const targetScreen = document.getElementById(`screen-${screenNum}`);
+      if (targetScreen) {
+        targetScreen.classList.add('active');
+      }
+
+      // Update switcher buttons
+      document.querySelectorAll('.switcher-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx + 1 === screenNum);
+      });
+
+      // Update stepper bars
+      document.querySelectorAll('.stepper-bar').forEach(bar => {
+        bar.querySelectorAll('.step').forEach((step, idx) => {
+          const stepNum = idx + 1;
+          step.classList.remove('completed', 'active');
+
+          if (stepNum < screenNum) {
+            step.classList.add('completed');
+          } else if (stepNum === screenNum) {
+            step.classList.add('active');
+          }
+        });
+      });
+
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    // PIN input auto-advance
+    document.addEventListener('input', (e) => {
+      if (e.target.classList.contains('pin-input')) {
+        if (e.target.value.length === 1) {
+          const next = e.target.nextElementSibling;
+          if (next && next.classList.contains('pin-input')) {
+            next.focus();
+          }
+        }
+      }
+    });
+
+    // Initialize
+    switchScreen(1);
+  </script>
+</body>
+</html>

@@ -1,36 +1,15 @@
 // src/jury/components/SpotlightTour.jsx
-// 3-step guided tour for first-time jurors entering the eval screen.
-// Matches prototype djSpotlightSteps exactly.
-// Stored in sessionStorage so it only fires once per session.
+// Reusable guided tour overlay — renders a spotlight hole + tooltip per step.
+// Stored in sessionStorage so it only fires once per session per sessionKey.
 import { useState, useEffect, useRef } from "react";
 import { DEMO_MODE } from "../../shared/lib/demoMode";
 
-const SESSION_KEY = "dj_tour_done";
-
-const STEPS = [
-  {
-    selector: ".dj-rubric-btn",
-    title: "Rubric Guide",
-    body: "Click here to open the rubric bottom sheet with detailed scoring criteria and band descriptions.",
-    placement: "below",
-  },
-  {
-    selector: ".dj-score-input",
-    title: "Enter Your Score",
-    body: "Type a score here. The bar animates in real-time and auto-saves after each entry.",
-    placement: "above",
-  },
-  {
-    selector: ".dj-group-bar",
-    title: "Group Navigation",
-    body: "Use the arrows to navigate between groups, or tap the arrows to move forward and backward.",
-    placement: "below",
-  },
-];
-
 const PAD = 8;
 
-export default function SpotlightTour() {
+/**
+ * @param {{ steps: Array<{selector:string, title:string, body:string, placement:"above"|"below"}>, sessionKey?: string, delay?: number }} props
+ */
+export default function SpotlightTour({ steps, sessionKey = "dj_tour_done", delay = 700 }) {
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [hole, setHole] = useState(null);
@@ -38,25 +17,27 @@ export default function SpotlightTour() {
   const doneRef = useRef(false);
 
   useEffect(() => {
-    if (!DEMO_MODE) {
-      try {
-        if (sessionStorage.getItem(SESSION_KEY)) return;
-      } catch {}
-    }
+    if (!steps || steps.length === 0) return;
+    try {
+      if (sessionStorage.getItem(sessionKey)) return;
+    } catch {}
     const timer = setTimeout(() => {
       setActive(true);
       setStep(0);
-    }, 700);
+    }, delay);
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!active) return;
-    const s = STEPS[step];
+    const s = steps[step];
     if (!s) { skip(); return; }
 
     const target = document.querySelector(s.selector);
-    if (!target) { skip(); return; }
+    if (!target) {
+      if (step < steps.length - 1) { setStep((s) => s + 1); } else { skip(); }
+      return;
+    }
 
     const rect = target.getBoundingClientRect();
     setHole({
@@ -66,16 +47,22 @@ export default function SpotlightTour() {
       height: rect.height + PAD * 2,
     });
 
-    const tipLeft = Math.max(12, Math.min(rect.left, window.innerWidth - 260));
+    const TIP_W = 248;
+    const TIP_H = 170;
+    const tipLeft = Math.max(12, Math.min(rect.left, window.innerWidth - TIP_W - 12));
+    let tipTop;
     if (s.placement === "below") {
-      setTipPos({ top: rect.bottom + PAD + 12, left: tipLeft });
+      tipTop = rect.bottom + PAD + 12;
     } else {
-      setTipPos({ top: Math.max(12, rect.top - 160), left: tipLeft });
+      tipTop = rect.top - TIP_H - PAD - 12;
     }
+    // clamp vertically so tooltip never leaves the viewport
+    tipTop = Math.max(12, Math.min(tipTop, window.innerHeight - TIP_H - 12));
+    setTipPos({ top: tipTop, left: tipLeft });
   }, [active, step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function next() {
-    if (step >= STEPS.length - 1) { skip(); return; }
+    if (step >= steps.length - 1) { skip(); return; }
     setStep((s) => s + 1);
   }
 
@@ -83,15 +70,13 @@ export default function SpotlightTour() {
     if (doneRef.current) return;
     doneRef.current = true;
     setActive(false);
-    if (!DEMO_MODE) {
-      try { sessionStorage.setItem(SESSION_KEY, "1"); } catch {}
-    }
+    try { sessionStorage.setItem(sessionKey, "1"); } catch {}
   }
 
   if (!active || !hole) return null;
 
-  const isLast = step === STEPS.length - 1;
-  const s = STEPS[step];
+  const isLast = step === steps.length - 1;
+  const s = steps[step];
 
   return (
     <div
@@ -101,10 +86,8 @@ export default function SpotlightTour() {
         zIndex: 500,
         pointerEvents: "auto",
       }}
+      onClick={(e) => { e.stopPropagation(); skip(); }}
     >
-      {/* Invisible full-screen click layer — must be FIRST so tooltip renders on top */}
-      <div style={{ position: "absolute", inset: 0 }} onClick={skip} />
-
       {/* Dark mask with spotlight hole via box-shadow */}
       <div
         className="dj-spotlight-mask-hole"
@@ -120,7 +103,7 @@ export default function SpotlightTour() {
         }}
       />
 
-      {/* Tooltip — last in DOM so it sits above the click layer */}
+      {/* Tooltip — stopPropagation prevents root onClick (skip) from firing */}
       <div
         className="dj-spotlight-tooltip-box"
         style={{
@@ -130,9 +113,10 @@ export default function SpotlightTour() {
           transition: "all .35s cubic-bezier(0.22,1,0.36,1)",
           zIndex: 1,
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="dj-spotlight-progress">
-          Step {step + 1} of {STEPS.length}
+          Step {step + 1} of {steps.length}
         </div>
         <h4 className="dj-spotlight-title">
           {s.title}

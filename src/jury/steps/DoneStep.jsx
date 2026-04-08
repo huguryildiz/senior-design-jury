@@ -5,12 +5,13 @@ import {
   ArrowLeft,
   BarChart2,
   Check,
+  CheckCircle2,
+  Loader2,
   Mail,
   Send,
   Star,
-  TrendingUp,
 } from "lucide-react";
-import { submitJuryFeedback } from "../../shared/api";
+import { submitJuryFeedback, requestScoreEdit } from "../../shared/api";
 
 /* ── Confetti animation (unchanged) ── */
 function useConfetti() {
@@ -85,6 +86,32 @@ export default function DoneStep({ state, onBack }) {
     }
   }, [fbRating, fbComment, fbStatus, state.periodId, state.jurorSessionToken]);
 
+  // ── Edit request state ──
+  const [editReqStatus, setEditReqStatus] = useState("idle"); // idle | sending | sent | error
+
+  // Auto-dismiss error after 4 s
+  useEffect(() => {
+    if (editReqStatus !== "error") return;
+    const t = setTimeout(() => setEditReqStatus("idle"), 4000);
+    return () => clearTimeout(t);
+  }, [editReqStatus]);
+
+  const handleRequestEdit = useCallback(async () => {
+    if (editReqStatus !== "idle") return;
+    setEditReqStatus("sending");
+    try {
+      await requestScoreEdit({
+        periodId: state.periodId,
+        jurorName: state.juryName,
+        affiliation: state.affiliation,
+        sessionToken: state.jurorSessionToken,
+      });
+      setEditReqStatus("sent");
+    } catch {
+      setEditReqStatus("error");
+    }
+  }, [editReqStatus, state.periodId, state.juryName, state.affiliation, state.jurorSessionToken]);
+
   const handleReturnHome = () => {
     state.clearLocalSession();
     onBack();
@@ -93,28 +120,10 @@ export default function DoneStep({ state, onBack }) {
   const jurorName = state.juryName || "Juror";
   const groupCount = state.projects.length;
 
-  // ── Mailto for edit request ──
-  const adminEmail = state.tenantAdminEmail || "";
-  const superAdminEmail = import.meta.env.VITE_SUPER_ADMIN_EMAIL || "";
-  const periodName = state.periodName || "this evaluation period";
-  const mailtoSubject = encodeURIComponent(`Score Edit Request — ${periodName}`);
-  const mailtoBody = encodeURIComponent(
-    `Hello,\n\nI would like to request an edit to my submitted scores for ${periodName}.\n\nJuror: ${jurorName}\n\nThank you.`
-  );
-  const mailtoHref = adminEmail
-    ? `mailto:${adminEmail}?${superAdminEmail ? `cc=${superAdminEmail}&` : ""}subject=${mailtoSubject}&body=${mailtoBody}`
-    : null;
-
   // ── Rankings computation ──
+  const totalMax = (state.effectiveCriteria || []).reduce((s, c) => s + (c.max || 0), 0);
   const rankedProjects = [...state.projects]
     .sort((a, b) => (b.avg_score ?? 0) - (a.avg_score ?? 0));
-
-  function getRankDelta(projectId, currentRank) {
-    if (!state.initialRankings || state.projects.length <= 1) return null;
-    const before = state.initialRankings[projectId];
-    if (!before) return null;
-    return before.rank - currentRank; // positive = improved (moved up), negative = dropped
-  }
 
   return (
     <div className="jury-step" id="dj-step-done" style={{ justifyContent: "flex-start", paddingTop: 16, paddingBottom: 32 }}>
@@ -201,52 +210,71 @@ export default function DoneStep({ state, onBack }) {
           <div className="dj-done-rankings-header">
             <BarChart2 size={11} strokeWidth={2} />
             Current Rankings
+            {totalMax > 0 && <span className="dj-done-rankings-outof">/{totalMax}</span>}
+            <span className="dj-done-rankings-badge">
+              <span className="dj-live-dot" />
+              LIVE
+            </span>
           </div>
           {rankedProjects.map((project, idx) => {
             const rank = idx + 1;
-            const delta = getRankDelta(project.project_id, rank);
             const score = project.avg_score != null ? Number(project.avg_score).toFixed(1) : "—";
+            const pct = totalMax > 0 && project.avg_score != null
+              ? Math.min((Number(project.avg_score) / totalMax) * 100, 100)
+              : 0;
             return (
-              <div key={project.project_id} className="dj-done-rank-row">
+              <div key={project.project_id} className={`dj-done-rank-row${rank === 1 ? " rank-first" : ""}`}>
                 <span className={`dj-done-rank-num${rank === 1 ? " gold" : ""}`}>#{rank}</span>
-                <span className="dj-done-rank-title">{project.title}</span>
-                {delta === null || delta === 0 ? (
-                  <span className="dj-done-rank-badge badge-same">—</span>
-                ) : delta > 0 ? (
-                  <span className="dj-done-rank-badge badge-up">↑{delta}</span>
-                ) : (
-                  <span className="dj-done-rank-badge badge-down">↓{Math.abs(delta)}</span>
-                )}
-                <span className={`dj-done-rank-score${rank === 1 ? " top" : ""}`}>{score}</span>
+                <div className="dj-done-rank-body">
+                  <span className="dj-done-rank-title">{project.title}</span>
+                  <div className="dj-done-rank-bar-track">
+                    <div className={`dj-done-rank-bar-fill${rank === 1 ? " gold" : ""}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+                <span className="avg-score-cell dj-done-rank-score">
+                  {project.avg_score != null ? (
+                    <span className={`avg-score-value${rank === 1 ? " top" : ""}`}>{score}</span>
+                  ) : (
+                    <span className="avg-score-empty">—</span>
+                  )}
+                </span>
               </div>
             );
           })}
         </div>
 
-        {/* ═══ LAYER 3: Utility links ═══ */}
+        {/* ═══ LAYER 3: Request Edit ghost button ═══ */}
         <div className="dj-done-utility-links">
-          {mailtoHref ? (
-            <a href={mailtoHref} className="dj-done-utility-link">
+          {editReqStatus === "sent" ? (
+            <div className="dj-done-edit-req-sent">
+              <CheckCircle2 size={14} strokeWidth={2} />
+              Request sent — admin will be in touch.
+            </div>
+          ) : editReqStatus === "error" ? (
+            <div className="dj-done-edit-req-sent error">
               <Mail size={14} strokeWidth={2} />
-              Request Edit
-            </a>
+              Couldn't send — contact admin directly.
+            </div>
           ) : (
-            <span className="dj-done-utility-link disabled">
-              <Mail size={14} strokeWidth={2} />
-              Contact admin for edits
-            </span>
+            <button
+              className="dj-done-edit-req-btn"
+              onClick={handleRequestEdit}
+              disabled={editReqStatus === "sending"}
+            >
+              {editReqStatus === "sending" ? (
+                <Loader2 size={14} strokeWidth={2} className="dj-spin" />
+              ) : (
+                <Mail size={14} strokeWidth={2} />
+              )}
+              {editReqStatus === "sending" ? "Sending..." : "Request Edit"}
+            </button>
           )}
-          <div className="dj-done-utility-divider" />
-          <button className="dj-done-utility-link" onClick={() => state.setStep("admin_impact")}>
-            <TrendingUp size={14} strokeWidth={2} />
-            View Full Results
-          </button>
         </div>
 
         {/* ═══ LAYER 4: Return Home ═══ */}
         <button className="dj-done-home-link" onClick={handleReturnHome}>
           <ArrowLeft size={14} strokeWidth={2} />
-          Return to Home
+          Return Home
         </button>
 
       </div>

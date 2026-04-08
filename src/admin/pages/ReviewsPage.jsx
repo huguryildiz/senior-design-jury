@@ -342,7 +342,7 @@ export default function ReviewsPage({
         periodName,
         tenantCode: activeOrganization?.code || "",
         organization: activeOrganization?.name || "",
-        department: activeOrganization?.institution_name || "",
+        department: activeOrganization?.subtitle || "",
         pdfTitle: "VERA — Reviews",
         pdfSubtitle: `${periodName || "All Periods"} · ${sorted.length} reviews · ${uniqueJurors} jurors`,
         header,
@@ -670,7 +670,7 @@ export default function ReviewsPage({
         reportTitle="Reviews"
         periodName={periodName}
         organization={activeOrganization?.name || ""}
-        department={activeOrganization?.institution_name || ""}
+        department={activeOrganization?.subtitle || ""}
         generateFile={async (fmt) => {
           const header = [
             "Juror", "Affiliation",
@@ -686,7 +686,7 @@ export default function ReviewsPage({
           return generateTableBlob(fmt, {
             filenameType: "Reviews", sheetName: "Reviews", periodName,
             tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
-            department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Reviews",
+            department: activeOrganization?.subtitle || "", pdfTitle: "VERA — Reviews",
             header, rows,
           });
         }}

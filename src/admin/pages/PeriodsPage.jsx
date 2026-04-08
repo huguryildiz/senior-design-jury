@@ -339,7 +339,7 @@ export default function PeriodsPage({
             return generateTableBlob(fmt, {
               filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "all",
               tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
-              department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Evaluation Periods",
+              department: activeOrganization?.subtitle || "", pdfTitle: "VERA — Evaluation Periods",
               header, rows, colWidths: [28, 14, 10, 10, 18],
             });
           }}
@@ -352,7 +352,7 @@ export default function PeriodsPage({
               await downloadTable(fmt, {
                 filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "all",
                 tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
-                department: activeOrganization?.institution_name || "", pdfTitle: "VERA — Evaluation Periods",
+                department: activeOrganization?.subtitle || "", pdfTitle: "VERA — Evaluation Periods",
                 header, rows, colWidths: [28, 14, 10, 10, 18],
               });
               setExportOpen(false);

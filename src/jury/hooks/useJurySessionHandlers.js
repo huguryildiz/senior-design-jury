@@ -265,6 +265,9 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       }
       const name = String(identityOverride?.name ?? identity.juryName).trim();
       const affiliation = String(identityOverride?.affiliation ?? identity.affiliation).trim();
+      const email = identityOverride?.email !== undefined
+        ? (identityOverride.email || null)
+        : (identity.jurorEmail || null);
       if (!name || !affiliation) {
         identity.setAuthError("Please enter your full name and affiliation.");
         workflow.setStep("identity");
@@ -277,14 +280,12 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       loading.setTenantAdminEmail(selectedPeriod.organizations?.contact_email || "");
       loading.setLoadingState({ stage: "loading", message: "Preparing access…" });
       try {
-        const res = await authenticateJuror(selectedPeriod.id, name, affiliation, DEMO_MODE);
+        const res = await authenticateJuror(selectedPeriod.id, name, affiliation, false, email);
         if (res?.juror_name) identity.setJuryName(res.juror_name);
         if (res?.affiliation) identity.setAffiliation(res.affiliation);
 
-        // Demo mode: RPC returns needs_pin=true even for force_reissue because
-        // it conflates "PIN was generated" with "user must enter PIN". In demo
-        // mode, always show pin_reveal (display PIN) instead of pin (enter PIN).
-        if (DEMO_MODE && res?.pin_plain_once) {
+        // New PIN was just issued (new juror or demo force-reissue) — show it first.
+        if (res?.pin_plain_once) {
           session.setIssuedPin(res.pin_plain_once);
           session.setPinError("");
           session.setPinErrorCode("");
@@ -295,32 +296,23 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
           return;
         }
 
-        if (res?.needs_pin) {
-          session.setIssuedPin("");
-          session.setPinError("");
-          const lockedUntil = res?.locked_until || "";
-          const lockedDate  = lockedUntil ? new Date(lockedUntil) : null;
-          const isLocked    = lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date();
-          if (isLocked) {
-            session.setPinErrorCode("locked");
-            session.setPinAttemptsLeft(0);
-            session.setPinLockedUntil(lockedUntil);
-          } else {
-            session.setPinErrorCode("");
-            session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
-            session.setPinLockedUntil("");
-          }
-          loading.setLoadingState(null);
-          workflow.setStep("pin");
-          return;
-        }
-        session.setIssuedPin(res?.pin_plain_once || "");
+        // Returning juror — no new PIN, ask them to enter their existing PIN.
+        session.setIssuedPin("");
         session.setPinError("");
-        session.setPinErrorCode("");
-        session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
-        session.setPinLockedUntil("");
+        const lockedUntil = res?.locked_until || "";
+        const lockedDate  = lockedUntil ? new Date(lockedUntil) : null;
+        const isLocked    = lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date();
+        if (isLocked) {
+          session.setPinErrorCode("locked");
+          session.setPinAttemptsLeft(0);
+          session.setPinLockedUntil(lockedUntil);
+        } else {
+          session.setPinErrorCode("");
+          session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
+          session.setPinLockedUntil("");
+        }
         loading.setLoadingState(null);
-        workflow.setStep("pin_reveal");
+        workflow.setStep("pin");
       } catch (e) {
         loading.periodSelectLockRef.current = false;
         loading.setLoadingState(null);
@@ -336,17 +328,19 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
   );
 
   // ── Identity submit ────────────────────────────────────────
-  const handleIdentitySubmit = useCallback(async (nameParam, affiliationParam) => {
+  const handleIdentitySubmit = useCallback(async (nameParam, affiliationParam, emailParam) => {
     // Accept params directly from IdentityStep to avoid stale React state:
     // setJuryName/setAffiliation are async and wouldn't be flushed before this runs.
     const name = (nameParam != null ? nameParam : identity.juryName).trim();
     const affiliation = (affiliationParam != null ? affiliationParam : identity.affiliation).trim();
+    const jurorEmail = (emailParam != null ? emailParam : identity.jurorEmail || "").trim() || null;
     if (!name || !affiliation) {
       identity.setAuthError("Please enter your full name and affiliation.");
       return;
     }
     if (nameParam != null) identity.setJuryName(name);
     if (affiliationParam != null) identity.setAffiliation(affiliation);
+    if (emailParam != null) identity.setJurorEmail(emailParam);
     identity.setAuthError("");
     loading.loadAbortRef.current?.abort();
     const ctrl = new AbortController();
@@ -380,7 +374,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
         }
 
         loading.setPeriods([demoPeriod]);
-        await handlePeriodSelect(demoPeriod, { name, affiliation });
+        await handlePeriodSelect(demoPeriod, { name, affiliation, email: jurorEmail });
         return;
       }
 
@@ -400,7 +394,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       }
       loading.setPeriods(active);
       if (active.length === 1) {
-        await handlePeriodSelect(active[0], { name, affiliation });
+        await handlePeriodSelect(active[0], { name, affiliation, email: jurorEmail });
         return;
       }
       loading.setLoadingState(null);
@@ -426,35 +420,44 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       );
       if (!res?.ok) {
         loading.setLoadingState(null);
-        const failedAttempts =
-          typeof res?.failed_attempts === "number" ? res.failed_attempts : null;
+        const code = res?.error_code || "";
         const lockedUntil = res?.locked_until || "";
         const lockedDate  = lockedUntil ? new Date(lockedUntil) : null;
         const isLocked    =
-          res?.error_code === "locked"
+          code === "locked" || code === "pin_locked"
           || (lockedDate && !Number.isNaN(lockedDate.getTime()) && lockedDate > new Date());
-        if (res?.error_code === "period_inactive") {
+        if (code === "period_inactive") {
           session.setPinErrorCode("period_inactive");
           session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
           session.setPinError("This period is no longer active. Please start a new evaluation.");
-        } else if (res?.error_code === "not_found") {
+        } else if (code === "not_found" || code === "juror_not_found" || code === "auth_not_found") {
           session.setPinErrorCode("not_found");
           session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
           session.setPinError("No juror found with this name and affiliation.");
-        } else if (res?.error_code === "no_pin") {
+        } else if (code === "no_pin") {
           session.setPinErrorCode("no_pin");
           session.setPinAttemptsLeft(session.MAX_PIN_ATTEMPTS);
           session.setPinError("No PIN found for this period. Please start a new evaluation.");
+        } else if (code === "juror_blocked") {
+          session.setPinErrorCode("locked");
+          session.setPinAttemptsLeft(0);
+          session.setPinLockedUntil("");
+          session.setPinError("Your access has been blocked. Please contact the coordinators.");
         } else if (isLocked) {
           session.setPinErrorCode("locked");
           session.setPinAttemptsLeft(0);
           session.setPinLockedUntil(lockedUntil);
-          session.setPinError("locked");
-        } else {
+          session.setPinError("Too many failed attempts. Please try again later.");
+        } else if (code === "invalid_pin" || code === "invalid") {
           session.setPinErrorCode("invalid");
+          const failedAttempts =
+            typeof res?.failed_attempts === "number" ? res.failed_attempts : null;
           if (failedAttempts !== null) {
             session.setPinAttemptsLeft(Math.max(0, session.MAX_PIN_ATTEMPTS - failedAttempts));
           }
+          session.setPinError("Incorrect PIN.");
+        } else {
+          session.setPinErrorCode("invalid");
           session.setPinError("Incorrect PIN.");
         }
         return;
@@ -496,7 +499,7 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
       await _loadPeriod(
         fullPeriod,
         jid,
-        { showProgressCheck: true, showEmptyProgress: false }
+        { showProgressCheck: true, showEmptyProgress: true }
       );
     } catch (_) {
       loading.setLoadingState(null);

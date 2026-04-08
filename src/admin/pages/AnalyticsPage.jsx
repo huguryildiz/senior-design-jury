@@ -281,7 +281,7 @@ export default function AnalyticsPage({
   const _toast = useToast();
   const { activeOrganization } = useAuth();
   const orgName = activeOrganization?.name || "";
-  const deptName = activeOrganization?.institution_name || "";
+  const deptName = activeOrganization?.subtitle || "";
   const tc = activeOrganization?.code || "";
 
   // Fetch delta data: current period + immediately previous period, independently

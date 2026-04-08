@@ -85,8 +85,8 @@ export default function AdminSidebar({ adminTab, scoresView, setAdminTab, switch
             <span className="sb-tenant-dot" />
             <div className="sb-tenant-labels">
               <span className="sb-tenant-name">{orgLabel}</span>
-              {activeOrganization?.institution_name && (
-                <span className="sb-tenant-inst">{activeOrganization.institution_name}</span>
+              {activeOrganization?.subtitle && (
+                <span className="sb-tenant-inst">{activeOrganization.subtitle}</span>
               )}
             </div>
             <span className="sb-tenant-chevron">▾</span>
@@ -105,8 +105,8 @@ export default function AdminSidebar({ adminTab, scoresView, setAdminTab, switch
                 >
                   <div className="sb-tenant-item-info">
                     <div className="sb-tenant-item-dept">{org.name || org.code}</div>
-                    {org.institution_name && (
-                      <div className="sb-tenant-item-uni">{org.institution_name}</div>
+                    {org.subtitle && (
+                      <div className="sb-tenant-item-uni">{org.subtitle}</div>
                     )}
                   </div>
                   {org.id === activeOrganization?.id && <span className="sb-tenant-item-check">✓</span>}
