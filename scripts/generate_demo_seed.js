@@ -1,5 +1,9 @@
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // deterministic utility
 let _seed = 0.20260402;
@@ -1012,5 +1016,5 @@ out.push('');
 
 out.push(`COMMIT;\n`);
 
-fs.writeFileSync('/Users/huguryildiz/Documents/GitHub/VERA/sql/seeds/demo_seed.sql', out.join('\n'));
+fs.writeFileSync(path.resolve(__dirname, '../sql/seeds/demo_seed.sql'), out.join('\n'));
 console.log('Demo seed written to sql/seeds/demo_seed.sql');
