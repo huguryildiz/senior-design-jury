@@ -576,7 +576,7 @@ periodData.forEach(pd => {
 
     if (pd.isCur && pd.org === 'TEDU-EE' && jix === 8) {
       authObj.locked = true;
-      q += `, failed_attempts, locked_until, locked_at`; vals += `, 3, ${BASE_TIME} + interval '10 mins', ${BASE_TIME} - interval '5 mins'`;
+      q += `, failed_attempts, locked_until, locked_at`; vals += `, 3, ${BASE_TIME} + interval '5 mins', ${BASE_TIME}`;
     }
     if (pd.isCur && pd.org === 'TEDU-EE' && jix === 9) {
        authObj.blocked = true;
@@ -740,8 +740,8 @@ periodData.forEach(pd => {
     let t_id = uuid(t_plain);
     out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('${t_id}', '${pd.id}', '${t_hash}', false, ${BASE_TIME} - interval '30 days') ON CONFLICT DO NOTHING;`);
   } else {
-    out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('${uuid('tok1'+pd.id)}', '${pd.id}', '${sha256(uuid('t1'+pd.id))}', false, ${BASE_TIME} + interval '20 hours') ON CONFLICT DO NOTHING;`);
-    out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('${uuid('tok2'+pd.id)}', '${pd.id}', '${sha256(uuid('t2'+pd.id))}', false, ${BASE_TIME} + interval '20 hours') ON CONFLICT DO NOTHING;`);
+    out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('${uuid('tok1'+pd.id)}', '${pd.id}', '${sha256(uuid('t1'+pd.id))}', false, ${BASE_TIME} + interval '24 hours') ON CONFLICT DO NOTHING;`);
+    out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at) VALUES ('${uuid('tok2'+pd.id)}', '${pd.id}', '${sha256(uuid('t2'+pd.id))}', false, ${BASE_TIME} + interval '24 hours') ON CONFLICT DO NOTHING;`);
     out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, is_revoked, expires_at, last_used_at) VALUES ('${uuid('tok3'+pd.id)}', '${pd.id}', '${sha256(uuid('t3'+pd.id))}', true, ${BASE_TIME} - interval '2 days', ${BASE_TIME} - interval '2.1 days') ON CONFLICT DO NOTHING;`);
   }
 });
@@ -753,126 +753,190 @@ out.push('');
 out.push(`-- Audit Logs`);
 let auditObjList = [];
 
-// App actions
+const teduCurPeriod = periodData.find(pd => pd.org === 'TEDU-EE' && pd.isCur);
+const teduCurProjs  = projList.filter(p => p.pId === teduCurPeriod.id);
+const teduOrg       = orgs.find(x => x.code === 'TEDU-EE');
+
+// 1. admin.create — all orgs
 orgAdminIds.forEach((pId, i) => {
-  let o = orgs[i % orgs.length];
+  const o = orgs[i % orgs.length];
   auditObjList.push({
     action: 'admin.create', resType: 'profile', resId: pId, orgId: o.id,
     details: '{"role":"org_admin"}', timeStr: `${BASE_TIME} - interval '50 days'`
   });
 });
 
+// 2. application.approved / rejected
 orgAppIds.forEach(oa => {
-  let o = orgs.find(x => x.code === oa.org);
-  let status = appStatuses[orgs.indexOf(o)];
-  if(status === 'approved' || status === 'rejected') {
+  const o = orgs.find(x => x.code === oa.org);
+  const status = appStatuses[orgs.indexOf(o)];
+  if (status === 'approved' || status === 'rejected') {
     auditObjList.push({
-      action: `application.${status}`,
-      resType: 'org_application',
-      resId: oa.id,
-      orgId: o.id,
+      action: `application.${status}`, resType: 'org_application', resId: oa.id, orgId: o.id,
       details: `{"action":"${status}","reviewer":"System admin"}`,
       timeStr: `${BASE_TIME} - interval '${randInt(100, 300)} days'`
     });
   }
 });
 
-// Period & Framework actions (All Orgs)
-periodData.forEach((pd, idx) => {
-  let o = orgs.find(x => x.code === pd.org);
+// 3. period.create + period.lock / snapshot.freeze — all orgs
+periodData.forEach(pd => {
+  const o = orgs.find(x => x.code === pd.org);
   auditObjList.push({
-      action: 'period.create', resType: 'period', resId: pd.id, orgId: o.id,
-      details: `{"name":"${pd.name}","season":"${pd.s}"}`,
-      timeStr: `timestamp '${pd.start}' - interval '14 days'`
+    action: 'period.create', resType: 'period', resId: pd.id, orgId: o.id,
+    details: `{"name":"${pd.name}","season":"${pd.s}"}`,
+    timeStr: `timestamp '${pd.start}' - interval '14 days'`
   });
-  
-  if(!pd.isCur) {
+  if (!pd.isCur) {
     auditObjList.push({
-        action: 'period.lock', resType: 'period', resId: pd.id, orgId: o.id,
-        details: `{"action":"locked"}`,
-        timeStr: `timestamp '${pd.start}' + interval '120 days'`
+      action: 'period.lock', resType: 'period', resId: pd.id, orgId: o.id,
+      details: `{"action":"locked"}`,
+      timeStr: `timestamp '${pd.start}' + interval '120 days'`
     });
   } else {
     auditObjList.push({
-        action: 'snapshot.freeze', resType: 'period', resId: pd.id, orgId: o.id,
-        details: `{"action":"frozen"}`,
-        timeStr: `timestamp '${pd.start}' + interval '1 day'`
+      action: 'snapshot.freeze', resType: 'period', resId: pd.id, orgId: o.id,
+      details: `{"action":"frozen"}`,
+      timeStr: `timestamp '${pd.start}' + interval '1 day'`
     });
   }
 });
 
-const teduCurPeriod = periodData.find(pd => pd.org === 'TEDU-EE' && pd.isCur);
-const teduCurProjs = projList.filter(p => p.pId === teduCurPeriod.id);
-
-// Import projects
-teduCurProjs.forEach((p, idx) => {
-   if(idx === 0) {
-     auditObjList.push({
-        action: 'project.import', resType: 'period', resId: p.pId, orgId: orgs[0].id,
-        details: `{"imported_count":10,"source":"csv upload"}`,
-        timeStr: `${BASE_TIME} - interval '45 days'`
-     });
-   }
-   if(idx === 1) {
-     auditObjList.push({
-        action: 'project.create', resType: 'project', resId: p.id, orgId: orgs[0].id,
-        details: `{"title":"${p.title.substring(0,20)}"}`,
-        timeStr: `${BASE_TIME} - interval '40 days'`
-     });
-   }
+// 4. juror.import (batch) + juror.create (individual) — all orgs
+orgs.forEach(o => {
+  const curPd    = periodData.find(pd => pd.org === o.code && pd.isCur);
+  if (!curPd) return;
+  const orgJurors = jurorIdList.filter(j => j.org === o.code);
+  auditObjList.push({
+    action: 'juror.import', resType: 'juror', resId: orgJurors[0].id, orgId: o.id,
+    details: `{"imported_count":${Math.min(3, orgJurors.length)},"source":"csv upload"}`,
+    timeStr: `timestamp '${curPd.start}' - interval '30 days'`
+  });
+  orgJurors.slice(3).forEach((j, i) => {
+    auditObjList.push({
+      action: 'juror.create', resType: 'juror', resId: j.id, orgId: o.id,
+      details: `{"juror_name":"${escapeSql(j.n.substring(0, 25))}"}`,
+      timeStr: `timestamp '${curPd.start}' - interval '${28 - i} days'`
+    });
+  });
 });
 
-// TEDU-EE Cur auth logs
-authList.filter(a => a.pId === teduCurPeriod.id).forEach((a, i) => {
-  if (i === 0) {
-      auditObjList.push({
-        action: 'token.generate', resType: 'entry_token', resId: uuid('tok1'+teduCurPeriod.id), orgId: orgs[0].id,
-        details: `{"reason":"Jury list batch generate"}`,
-        timeStr: `${BASE_TIME} - interval '35 days'`
-     });
-  }
-  
-  if(a.locked) {
-      auditObjList.push({
-        action: 'juror.pin_locked', resType: 'juror_period_auth', resId: a.jId, orgId: orgs[0].id,
-        details: `{"juror":"${a.name}","attempts":3,"ip": "192.168.1.10"}`,
-        timeStr: `${BASE_TIME} - interval '${i * 2} hours'`
-     });
-  }
-  if(a.editing) {
-      auditObjList.push({
-        action: 'juror.edit_enabled', resType: 'juror_period_auth', resId: a.jId, orgId: orgs[0].id,
-        details: `{"juror":"${a.name}","reason":"Late extension request"}`,
-        timeStr: `${BASE_TIME} - interval '${i} hours'`
-     });
-  }
+// 5. project.import — all orgs current period
+orgs.forEach(o => {
+  const curPd    = periodData.find(pd => pd.org === o.code && pd.isCur);
+  if (!curPd) return;
+  const curProjs = projList.filter(p => p.pId === curPd.id);
+  auditObjList.push({
+    action: 'project.import', resType: 'period', resId: curPd.id, orgId: o.id,
+    details: `{"imported_count":${curProjs.length},"source":"csv upload"}`,
+    timeStr: `timestamp '${curPd.start}' - interval '25 days'`
+  });
 });
 
-// Manual score logs
-for(let i=0; i<6; i++) {
-   auditObjList.push({
-        action: 'score.submit', resType: 'score_sheet', resId: uuid(`audit-ss-${i}`), orgId: orgs[0].id,
-        details: `{"action":"submit","juror_activity":"finalized"}`,
-        timeStr: `${BASE_TIME} - interval '${(i + 1) * 3} hours'`
-   });
-}
-for(let i=0; i<2; i++) {
-   auditObjList.push({
-        action: 'score.update', resType: 'score_sheet', resId: uuid(`audit-ss-upd-${i}`), orgId: orgs[0].id,
-        details: `{"action":"update","corrections":2}`,
-        timeStr: `${BASE_TIME} - interval '${(i + 1) * 2} hours'`
-   });
-}
-
-// Token Revoke
+// 6. project.create + project.update (TEDU-EE), project.delete (CMU-CS)
 auditObjList.push({
-    action: 'token.revoke', resType: 'entry_token', resId: uuid('tok3'+teduCurPeriod.id), orgId: orgs[0].id,
-    details: `{"reason":"manual revocation due to email leak"}`,
-    timeStr: `${BASE_TIME} - interval '5 days'`
+  action: 'project.create', resType: 'project', resId: teduCurProjs[0].id, orgId: teduOrg.id,
+  details: `{"title":"${escapeSql(teduCurProjs[0].title.substring(0, 30))}"}`,
+  timeStr: `${BASE_TIME} - interval '40 days'`
+});
+auditObjList.push({
+  action: 'project.update', resType: 'project', resId: teduCurProjs[1].id, orgId: teduOrg.id,
+  details: `{"field":"title","old":"Draft Project","new":"${escapeSql(teduCurProjs[1].title.substring(0, 30))}"}`,
+  timeStr: `${BASE_TIME} - interval '38 days'`
+});
+const cmuCurPeriod = periodData.find(pd => pd.org === 'CMU-CS' && pd.isCur);
+const cmuOrg       = orgs.find(x => x.code === 'CMU-CS');
+auditObjList.push({
+  action: 'project.delete', resType: 'project', resId: uuid('deleted-proj-cmu'), orgId: cmuOrg.id,
+  details: `{"title":"Removed Draft","reason":"duplicate entry"}`,
+  timeStr: `timestamp '${cmuCurPeriod.start}' - interval '20 days'`
 });
 
-auditObjList.forEach((ad, i) => {
-  let aId = uuid(`audit-log-${ad.action}-${ad.resId}-${ad.timeStr}`);
+// 7. token.generate — all current-period orgs; token.revoke — TEDU-EE
+periodData.filter(pd => pd.isCur).forEach((pd, i) => {
+  const o = orgs.find(x => x.code === pd.org);
+  auditObjList.push({
+    action: 'token.generate', resType: 'entry_token', resId: uuid('tok1'+pd.id), orgId: o.id,
+    details: `{"reason":"Jury session QR code"}`,
+    timeStr: `timestamp '${pd.start}' - interval '${20 + i} days'`
+  });
+  auditObjList.push({
+    action: 'token.generate', resType: 'entry_token', resId: uuid('tok2'+pd.id), orgId: o.id,
+    details: `{"reason":"Backup QR code"}`,
+    timeStr: `timestamp '${pd.start}' - interval '${19 + i} days'`
+  });
+});
+auditObjList.push({
+  action: 'token.revoke', resType: 'entry_token', resId: uuid('tok3'+teduCurPeriod.id), orgId: teduOrg.id,
+  details: `{"reason":"manual revocation due to email leak"}`,
+  timeStr: `${BASE_TIME} - interval '5 days'`
+});
+
+// 8. pin.reset — TEDU-EE, CMU-CS, TEKNOFEST
+[{org: 'TEDU-EE', jIdx: 2}, {org: 'CMU-CS', jIdx: 1}, {org: 'TEKNOFEST', jIdx: 0}].forEach(({org, jIdx}) => {
+  const j = jurorIdList.find(x => x.org === org && x.idx === jIdx);
+  const o = orgs.find(x => x.code === org);
+  auditObjList.push({
+    action: 'pin.reset', resType: 'juror_period_auth', resId: j.id, orgId: o.id,
+    details: `{"juror":"${escapeSql(j.n.substring(0, 25))}","reason":"forgotten pin"}`,
+    timeStr: `${BASE_TIME} - interval '${15 + jIdx * 3} days'`
+  });
+});
+
+// 9. juror.pin_locked + juror.edit_enabled — TEDU-EE current period
+authList.filter(a => a.pId === teduCurPeriod.id).forEach((a, i) => {
+  if (a.locked) {
+    auditObjList.push({
+      action: 'juror.pin_locked', resType: 'juror_period_auth', resId: a.jId, orgId: teduOrg.id,
+      details: `{"juror":"${escapeSql(a.name)}","attempts":3,"ip":"192.168.1.10"}`,
+      timeStr: `${BASE_TIME} - interval '${(i + 1) * 2} hours'`
+    });
+  }
+  if (a.semanticState === 'Editing') {
+    auditObjList.push({
+      action: 'juror.edit_enabled', resType: 'juror_period_auth', resId: a.jId, orgId: teduOrg.id,
+      details: `{"juror":"${escapeSql(a.name)}","reason":"Late extension request","duration_minutes":60}`,
+      timeStr: `${BASE_TIME} - interval '${i + 1} hours'`
+    });
+  }
+});
+
+// 10. score.submit using real score_sheet IDs — TEDU-EE + CMU-CS Submitted jurors
+authList
+  .filter(a => (a.org === 'TEDU-EE' || a.org === 'CMU-CS') && a.semanticState === 'Completed' && a.isCur)
+  .slice(0, 8)
+  .forEach((a, i) => {
+    const o = orgs.find(x => x.code === a.org);
+    const myProjs = projList.filter(p => p.pId === a.pId);
+    myProjs.slice(0, 2).forEach(proj => {
+      const ssId = uuid(`ss-${a.jId}-${proj.id}`);
+      auditObjList.push({
+        action: 'score.submit', resType: 'score_sheet', resId: ssId, orgId: o.id,
+        details: `{"juror_activity":"finalized"}`,
+        timeStr: `${BASE_TIME} - interval '${(i + 1) * 3} hours'`
+      });
+    });
+  });
+
+// 11. score.update using real score_sheet IDs — Editing jurors
+authList
+  .filter(a => a.semanticState === 'Editing')
+  .slice(0, 3)
+  .forEach((a, i) => {
+    const o = orgs.find(x => x.code === a.org);
+    const myProjs = projList.filter(p => p.pId === a.pId);
+    if (myProjs[0]) {
+      const ssId = uuid(`ss-${a.jId}-${myProjs[0].id}`);
+      auditObjList.push({
+        action: 'score.update', resType: 'score_sheet', resId: ssId, orgId: o.id,
+        details: `{"corrections":2,"reason":"edit window granted"}`,
+        timeStr: `${BASE_TIME} - interval '${(i + 1) * 2} hours'`
+      });
+    }
+  });
+
+auditObjList.forEach(ad => {
+  const aId = uuid(`audit-log-${ad.action}-${ad.resId}-${ad.timeStr}`);
   out.push(`INSERT INTO audit_logs (id, organization_id, user_id, action, resource_type, resource_id, details, created_at) VALUES ('${aId}', '${ad.orgId}', NULL, '${ad.action}', '${ad.resType}', '${ad.resId}', '${escapeSql(ad.details)}', ${ad.timeStr}) ON CONFLICT DO NOTHING;`);
 });
 
