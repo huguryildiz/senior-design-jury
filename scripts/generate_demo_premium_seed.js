@@ -869,5 +869,5 @@ out.push('');
 
 out.push(`COMMIT;\n`);
 
-fs.writeFileSync('/Users/huguryildiz/Documents/GitHub/VERA/sql/seeds/1_demo_premium_seed.sql', out.join('\n'));
-console.log('Demo seed written to sql/seeds/1_demo_premium_seed.sql');
+fs.writeFileSync('/Users/huguryildiz/Documents/GitHub/VERA/sql/seeds/demo_seed.sql', out.join('\n'));
+console.log('Demo seed written to sql/seeds/demo_seed.sql');

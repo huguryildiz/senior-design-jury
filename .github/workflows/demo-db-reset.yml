@@ -28,4 +28,4 @@ jobs:
       - name: Run seed SQL against demo database
         env:
           DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
-        run: psql "$DEMO_DATABASE_URL" --no-psqlrc -v ON_ERROR_STOP=1 < sql/seeds/1_demo_premium_seed.sql
+        run: psql "$DEMO_DATABASE_URL" --no-psqlrc -v ON_ERROR_STOP=1 < sql/seeds/demo_seed.sql
