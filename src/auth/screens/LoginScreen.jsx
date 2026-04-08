@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CircleX, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import FbAlert from "@/shared/ui/FbAlert";
 import { KEYS } from "@/shared/storage/keys";
+import { useSecurityPolicy } from "@/auth/SecurityPolicyContext";
 
 const GOOGLE_ICON = (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -52,6 +53,7 @@ export default function LoginScreen({
 }) {
   const turnstileSiteKey = String(import.meta.env.VITE_TURNSTILE_SITE_KEY || "").trim();
   const requiresCaptcha = !!turnstileSiteKey;
+  const { googleOAuth, emailPassword, rememberMe: rememberMeEnabled } = useSecurityPolicy();
 
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
@@ -151,97 +153,105 @@ export default function LoginScreen({
             </FbAlert>
           )}
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="form-group">
-              <label className="form-label" htmlFor="login-email">Email</label>
-              <input
-                id="login-email"
-                className="form-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@university.edu"
-                autoComplete="email"
-                autoFocus
-                disabled={loading}
-              />
-            </div>
-
-            <div className="form-group">
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <label className="form-label" htmlFor="login-password" style={{ marginBottom: 0 }}>Password</label>
-                {onForgotPassword && (
-                  <button type="button" onClick={onForgotPassword} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-                    Forgot?
-                  </button>
-                )}
-              </div>
-              <div style={{ position: "relative" }}>
+          {emailPassword && (
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="form-group">
+                <label className="form-label" htmlFor="login-email">Email</label>
                 <input
-                  id="login-password"
+                  id="login-email"
                   className="form-input"
-                  type={showPass ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                  disabled={loading}
-                  style={{ paddingRight: "40px" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass((v) => !v)}
-                  tabIndex={-1}
-                  style={{
-                    position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
-                    background: "none", border: "none", padding: 0, cursor: "pointer",
-                    color: "var(--text-tertiary)", display: "flex", alignItems: "center",
-                  }}
-                  aria-label={showPass ? "Hide password" : "Show password"}
-                >
-                  {showPass ? EYE_OFF_ICON : EYE_ICON}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <label className="form-check">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => {
-                    setRememberMe(e.target.checked);
-                    try { localStorage.setItem(KEYS.ADMIN_REMEMBER_ME, String(e.target.checked)); } catch {}
-                  }}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@university.edu"
+                  autoComplete="email"
+                  autoFocus
                   disabled={loading}
                 />
-                {" "}Remember me
-              </label>
-            </div>
-
-            {requiresCaptcha && (
-              <div style={{ marginBottom: "16px" }}>
-                <div ref={widgetContainerRef} style={{ minHeight: "65px" }} />
               </div>
-            )}
 
-            <button type="submit" className="btn btn-primary" disabled={isSubmitDisabled} style={{ width: "100%", opacity: loading ? 0.7 : 1 }}>
-              {loading ? "Signing in…" : "Sign in"}
+              <div className="form-group">
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <label className="form-label" htmlFor="login-password" style={{ marginBottom: 0 }}>Password</label>
+                  {onForgotPassword && (
+                    <button type="button" onClick={onForgotPassword} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                      Forgot?
+                    </button>
+                  )}
+                </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    id="login-password"
+                    className="form-input"
+                    type={showPass ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                    disabled={loading}
+                    style={{ paddingRight: "40px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((v) => !v)}
+                    tabIndex={-1}
+                    style={{
+                      position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", padding: 0, cursor: "pointer",
+                      color: "var(--text-tertiary)", display: "flex", alignItems: "center",
+                    }}
+                    aria-label={showPass ? "Hide password" : "Show password"}
+                  >
+                    {showPass ? EYE_OFF_ICON : EYE_ICON}
+                  </button>
+                </div>
+              </div>
+
+              {rememberMeEnabled && (
+                <div className="form-row">
+                  <label className="form-check">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => {
+                        setRememberMe(e.target.checked);
+                        try { localStorage.setItem(KEYS.ADMIN_REMEMBER_ME, String(e.target.checked)); } catch {}
+                      }}
+                      disabled={loading}
+                    />
+                    {" "}Remember me
+                  </label>
+                </div>
+              )}
+
+              {requiresCaptcha && (
+                <div style={{ marginBottom: "16px" }}>
+                  <div ref={widgetContainerRef} style={{ minHeight: "65px" }} />
+                </div>
+              )}
+
+              <button type="submit" className="btn btn-primary" disabled={isSubmitDisabled} style={{ width: "100%", opacity: loading ? 0.7 : 1 }}>
+                {loading ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+          )}
+
+          {emailPassword && googleOAuth && (
+            <div className="login-divider">or</div>
+          )}
+
+          {googleOAuth && (
+            <button
+              type="button"
+              className="btn btn-google"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", width: "100%" }}
+            >
+              {GOOGLE_ICON}
+              <span>Continue with Google</span>
             </button>
-          </form>
-
-          <div className="login-divider">or</div>
-
-          <button
-            type="button"
-            className="btn btn-google"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", width: "100%" }}
-          >
-            {GOOGLE_ICON}
-            <span>Continue with Google</span>
-          </button>
+          )}
         </div>
 
         <div className="login-footer">
