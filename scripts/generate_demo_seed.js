@@ -356,8 +356,8 @@ out.push(`-- Periods and Snapshots`);
 const periodData = [];
 
 const orgPeriodsDef = {
-  'TEDU-EE': [{name:'Spring 2026',s:'Spring',start:'2026-02-01',end:'2026-06-15'},{name:'Fall 2025',s:'Fall',start:'2025-09-01',end:'2025-12-20'},{name:'Spring 2025',s:'Spring',start:'2025-02-01',end:'2025-06-15'},{name:'Fall 2024',s:'Fall',start:'2024-09-01',end:'2024-01-15'}],
-  'CMU-CS': [{name:'Spring 2026',s:'Spring',start:'2026-02-01',end:'2026-06-15'},{name:'Fall 2025',s:'Fall',start:'2025-09-01',end:'2025-12-20'},{name:'Spring 2025',s:'Spring',start:'2025-02-01',end:'2025-06-15'},{name:'Fall 2024',s:'Fall',start:'2024-09-01',end:'2024-01-15'}],
+  'TEDU-EE': [{name:'Spring 2026',s:'Spring',start:'2026-02-01',end:'2026-06-15'},{name:'Fall 2025',s:'Fall',start:'2025-09-01',end:'2025-12-20'},{name:'Spring 2025',s:'Spring',start:'2025-02-01',end:'2025-06-15'},{name:'Fall 2024',s:'Fall',start:'2024-09-01',end:'2025-01-15'}],
+  'CMU-CS': [{name:'Spring 2026',s:'Spring',start:'2026-02-01',end:'2026-06-15'},{name:'Fall 2025',s:'Fall',start:'2025-09-01',end:'2025-12-20'},{name:'Spring 2025',s:'Spring',start:'2025-02-01',end:'2025-06-15'},{name:'Fall 2024',s:'Fall',start:'2024-09-01',end:'2025-01-15'}],
   'TEKNOFEST': [{name:'2026 Season',s:'NULL',start:'2026-06-01',end:'2026-08-15'},{name:'2025 Season',s:'NULL',start:'2025-06-01',end:'2025-08-15'},{name:'2024 Season',s:'NULL',start:'2024-06-01',end:'2024-08-15'}],
   'TUBITAK-2204A': [{name:'2026 Competition',s:'NULL',start:'2026-06-01',end:'2026-08-15'},{name:'2025 Competition',s:'NULL',start:'2025-06-01',end:'2025-08-15'},{name:'2024 Competition',s:'NULL',start:'2024-06-01',end:'2024-08-15'}],
   'IEEE-APSSDC': [{name:'2026 Contest',s:'NULL',start:'2026-06-01',end:'2026-08-15'},{name:'2025 Contest',s:'NULL',start:'2025-06-01',end:'2025-08-15'},{name:'2024 Contest',s:'NULL',start:'2024-06-01',end:'2024-08-15'}],
@@ -516,9 +516,6 @@ const teduJurors = [
 const cmuJurors = ['Dr. Thomas Albright', 'Prof. Simon Caldwell', 'Nina Prescott', 'Wesley Dalton', 'Dr. Sofia Lang', 'Victor Sutton', 'Fiona Mercer'];
 const palette = ['#F59E0B', '#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#EF4444', '#6366F1', '#14B8A6', '#F97316', '#A855F7'];
 
-const genericJurorsTr = ['Alp Cengiz', 'Barış Öztürk', 'İrem Şahin', 'Gizem Çetin', 'Kaan Taş', 'Ceren Arslan'];
-const genericJurorsEn = ['Isaac Newton', 'Marie Curie', 'Ada Lovelace', 'Alan Turing']; // Just internal placeholders, let's use:
-// Better generic ones:
 const genJurorsTr = ['Kemal Aksoy', 'Eda Kılıç', 'Onur Yalın', 'Buse Kar', 'Cemil Demir', 'Aylin Çelik'];
 const genJurorsEn = ['Oliver Grant', 'Eleanor Cole', 'Sebastian Reed', 'Stella Brooks'];
 
