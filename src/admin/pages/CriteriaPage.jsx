@@ -38,6 +38,7 @@ export default function CriteriaPage() {
     isDemoMode = false,
     onDirtyChange,
     onCurrentSemesterChange,
+    onNavigate,
   } = useAdminContext();
   const _toast = useToast();
   const setMessage = useCallback((msg) => { if (msg) _toast.success(msg); }, [_toast]);
@@ -198,8 +199,29 @@ export default function CriteriaPage() {
         )}
       </div>
 
-      {/* No period selected */}
-      {!periods.viewPeriodId && (
+      {/* No periods exist yet */}
+      {!periods.viewPeriodId && periods.periodList.length === 0 && !panelError && (
+        <div className="crt-empty-state">
+          <div className="crt-empty-state-icon">
+            <ClipboardList size={28} strokeWidth={1.5} />
+          </div>
+          <div className="crt-empty-state-title">No evaluation periods yet</div>
+          <div className="crt-empty-state-desc">
+            Create an evaluation period first — then come back here to configure its criteria.
+          </div>
+          <button
+            className="crt-add-btn"
+            style={{ marginTop: 16 }}
+            onClick={() => onNavigate?.("periods")}
+          >
+            <Plus size={13} strokeWidth={2.2} />
+            Go to Evaluation Periods
+          </button>
+        </div>
+      )}
+
+      {/* Periods exist but none selected */}
+      {!periods.viewPeriodId && periods.periodList.length > 0 && (
         <div className="crt-empty-state">
           <div className="crt-empty-state-icon">
             <ClipboardList size={28} strokeWidth={1.5} />

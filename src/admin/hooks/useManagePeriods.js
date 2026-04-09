@@ -169,18 +169,16 @@ export function useManagePeriods({
 
   // ── Load functions ───────────────────────────────────────
   const loadPeriods = useCallback(async () => {
-    if (!organizationId) throw new Error("Organization context missing.");
-    let periods = await listPeriods(organizationId);
-    if (!periods.length) {
-      await new Promise((r) => setTimeout(r, 600));
-      periods = await listPeriods(organizationId);
+    if (!organizationId) {
+      setPeriodList([]);
+      setCurrentPeriodId("");
+      return [];
     }
-    if (!periods.length) {
-      throw new Error("No periods returned after retry. Check DB connectivity or RLS policy.");
-    }
+    const periods = await listPeriods(organizationId);
     setPeriodList(periods);
     const active = periods.find((s) => s.is_current) || periods[0];
     setCurrentPeriodId(active?.id || "");
+    return periods;
   }, [organizationId]);
 
   const refreshPeriods = useCallback(async () => {
