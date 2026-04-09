@@ -243,6 +243,18 @@ body:not(.dark-mode) .pin-block-progress-track{background:rgba(245,158,11,0.08) 
   background-repeat:no-repeat;
   background-position:right 14px center;
 }
+/* CustomSelect inside apply-field — match apply-input visuals without background-image */
+.apply-field .filter-dropdown-trigger{
+  width:100%;padding:11px 14px;height:auto;border:1px solid rgba(255,255,255,0.1);border-radius:10px;
+  font-size:14px;font-weight:400;background:rgba(255,255,255,0.06);color:#e2e8f0;
+}
+.apply-field .filter-dropdown-trigger:hover{
+  border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.09);
+}
+.apply-field .filter-dropdown-trigger.open{
+  border-color:rgba(59,130,246,0.5);box-shadow:0 0 0 3px rgba(59,130,246,0.1);background:rgba(255,255,255,0.09);
+}
+
 .apply-pw-wrap{position:relative}
 .apply-pw-wrap .apply-input{padding-right:42px}
 .apply-pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#475569;padding:4px;display:grid;place-items:center}

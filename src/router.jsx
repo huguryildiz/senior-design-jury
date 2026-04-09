@@ -1,7 +1,9 @@
 // src/router.jsx
 // ============================================================
 // Central route definitions for VERA — React Router v6.
-// All navigation is path-based. No more query-param routing.
+// Environment is determined purely by pathname:
+//   /demo/* → demo Supabase
+//   everything else → prod Supabase
 // ============================================================
 
 import { createBrowserRouter, Navigate } from "react-router-dom";
@@ -11,7 +13,6 @@ import AdminRouteLayout from "./layouts/AdminRouteLayout";
 import DemoLayout from "./layouts/DemoLayout";
 import AuthRouteLayout from "./layouts/AuthRouteLayout";
 import JuryGuard from "./guards/JuryGuard";
-import LegacyRedirects from "./LegacyRedirects";
 import ErrorBoundary from "@/shared/ui/ErrorBoundary";
 
 // ── Lazy-loaded page components ───────────────────────────────
@@ -45,31 +46,48 @@ const PinBlockingPage = lazy(() => import("@/admin/pages/PinBlockingPage"));
 const AuditLogPage = lazy(() => import("@/admin/pages/AuditLogPage"));
 const SettingsPage = lazy(() => import("@/admin/pages/SettingsPage"));
 
-// Maintenance
-const MaintenancePage = lazy(() => import("@/components/MaintenancePage"));
-
 // ── Suspense wrapper ──────────────────────────────────────────
 function SuspenseWrap({ children }) {
   return <Suspense fallback={null}>{children}</Suspense>;
 }
 
+// ── Jury flow child routes (shared between /jury and /demo/jury) ─
+const juryFlowRoute = {
+  element: (
+    <ErrorBoundary>
+      <SuspenseWrap><JuryFlow /></SuspenseWrap>
+    </ErrorBoundary>
+  ),
+  children: [
+    { index: true, element: <Navigate to="identity" replace /> },
+    { path: "identity",   element: null },
+    { path: "period",     element: null },
+    { path: "pin",        element: null },
+    { path: "pin-reveal", element: null },
+    { path: "locked",     element: null },
+    { path: "progress",   element: null },
+    { path: "evaluate",   element: null },
+    { path: "complete",   element: null },
+  ],
+};
+
 // ── Admin child routes (shared between /admin and /demo/admin) ─
 const adminChildRoutes = [
   { index: true, element: <Navigate to="overview" replace /> },
-  { path: "overview", element: <SuspenseWrap><OverviewPage /></SuspenseWrap> },
-  { path: "rankings", element: <SuspenseWrap><RankingsPage /></SuspenseWrap> },
-  { path: "analytics", element: <SuspenseWrap><AnalyticsPage /></SuspenseWrap> },
-  { path: "heatmap", element: <SuspenseWrap><HeatmapPage /></SuspenseWrap> },
-  { path: "reviews", element: <SuspenseWrap><ReviewsPage /></SuspenseWrap> },
-  { path: "jurors", element: <SuspenseWrap><JurorsPage /></SuspenseWrap> },
-  { path: "projects", element: <SuspenseWrap><ProjectsPage /></SuspenseWrap> },
-  { path: "periods", element: <SuspenseWrap><PeriodsPage /></SuspenseWrap> },
-  { path: "criteria", element: <SuspenseWrap><CriteriaPage /></SuspenseWrap> },
-  { path: "outcomes", element: <SuspenseWrap><OutcomesPage /></SuspenseWrap> },
+  { path: "overview",      element: <SuspenseWrap><OverviewPage /></SuspenseWrap> },
+  { path: "rankings",      element: <SuspenseWrap><RankingsPage /></SuspenseWrap> },
+  { path: "analytics",     element: <SuspenseWrap><AnalyticsPage /></SuspenseWrap> },
+  { path: "heatmap",       element: <SuspenseWrap><HeatmapPage /></SuspenseWrap> },
+  { path: "reviews",       element: <SuspenseWrap><ReviewsPage /></SuspenseWrap> },
+  { path: "jurors",        element: <SuspenseWrap><JurorsPage /></SuspenseWrap> },
+  { path: "projects",      element: <SuspenseWrap><ProjectsPage /></SuspenseWrap> },
+  { path: "periods",       element: <SuspenseWrap><PeriodsPage /></SuspenseWrap> },
+  { path: "criteria",      element: <SuspenseWrap><CriteriaPage /></SuspenseWrap> },
+  { path: "outcomes",      element: <SuspenseWrap><OutcomesPage /></SuspenseWrap> },
   { path: "entry-control", element: <SuspenseWrap><EntryControlPage /></SuspenseWrap> },
-  { path: "pin-blocking", element: <SuspenseWrap><PinBlockingPage /></SuspenseWrap> },
-  { path: "audit-log", element: <SuspenseWrap><AuditLogPage /></SuspenseWrap> },
-  { path: "settings", element: <SuspenseWrap><SettingsPage /></SuspenseWrap> },
+  { path: "pin-blocking",  element: <SuspenseWrap><PinBlockingPage /></SuspenseWrap> },
+  { path: "audit-log",     element: <SuspenseWrap><AuditLogPage /></SuspenseWrap> },
+  { path: "settings",      element: <SuspenseWrap><SettingsPage /></SuspenseWrap> },
 ];
 
 // ── Router ────────────────────────────────────────────────────
@@ -81,25 +99,21 @@ export const router = createBrowserRouter([
       // Landing
       {
         path: "/",
-        element: (
-          <LegacyRedirects>
-            <SuspenseWrap><LandingPage /></SuspenseWrap>
-          </LegacyRedirects>
-        ),
+        element: <SuspenseWrap><LandingPage /></SuspenseWrap>,
       },
 
-      // Auth routes (standalone, forced to prod environment)
+      // Auth routes (standalone, always prod)
       {
         element: <AuthRouteLayout />,
         children: [
-          { path: "/login", element: <SuspenseWrap><LoginScreen /></SuspenseWrap> },
-          { path: "/register", element: <SuspenseWrap><RegisterScreen /></SuspenseWrap> },
+          { path: "/login",           element: <SuspenseWrap><LoginScreen /></SuspenseWrap> },
+          { path: "/register",        element: <SuspenseWrap><RegisterScreen /></SuspenseWrap> },
           { path: "/forgot-password", element: <SuspenseWrap><ForgotPasswordScreen /></SuspenseWrap> },
-          { path: "/reset-password", element: <SuspenseWrap><ResetPasswordScreen /></SuspenseWrap> },
+          { path: "/reset-password",  element: <SuspenseWrap><ResetPasswordScreen /></SuspenseWrap> },
         ],
       },
 
-      // Jury Gate
+      // Prod jury gate
       {
         path: "/eval",
         element: (
@@ -109,40 +123,22 @@ export const router = createBrowserRouter([
         ),
       },
 
-      // Jury Flow (guarded by jury session)
+      // Prod jury flow (guarded by jury session)
       {
         path: "/jury",
         element: <JuryGuard />,
-        children: [
-          {
-            element: (
-              <ErrorBoundary>
-                <SuspenseWrap><JuryFlow /></SuspenseWrap>
-              </ErrorBoundary>
-            ),
-            children: [
-              { index: true, element: <Navigate to="identity" replace /> },
-              { path: "identity",  element: null },
-              { path: "period",    element: null },
-              { path: "pin",       element: null },
-              { path: "pin-reveal", element: null },
-              { path: "locked",    element: null },
-              { path: "progress",  element: null },
-              { path: "evaluate",  element: null },
-              { path: "complete",  element: null },
-            ],
-          },
-        ],
+        children: [juryFlowRoute],
       },
 
-      // Admin Panel (prod)
+      // Prod admin panel
       {
         path: "/admin",
         element: <AdminRouteLayout />,
         children: adminChildRoutes,
       },
 
-      // Demo routes
+      // ── Demo namespace (/demo/*) ──────────────────────────────
+      // Everything under /demo uses the demo Supabase instance.
       {
         path: "/demo",
         element: <DemoLayout />,
@@ -152,7 +148,35 @@ export const router = createBrowserRouter([
             index: true,
             element: <SuspenseWrap><DemoAdminLoader /></SuspenseWrap>,
           },
-          // /demo/admin/* → admin panel in demo mode
+          // /demo/login, /demo/register, etc. — auth screens against demo DB
+          {
+            path: "login",           element: <SuspenseWrap><LoginScreen /></SuspenseWrap>,
+          },
+          {
+            path: "register",        element: <SuspenseWrap><RegisterScreen /></SuspenseWrap>,
+          },
+          {
+            path: "forgot-password", element: <SuspenseWrap><ForgotPasswordScreen /></SuspenseWrap>,
+          },
+          {
+            path: "reset-password",  element: <SuspenseWrap><ResetPasswordScreen /></SuspenseWrap>,
+          },
+          // /demo/eval → jury gate (demo DB)
+          {
+            path: "eval",
+            element: (
+              <ErrorBoundary>
+                <SuspenseWrap><JuryGatePage /></SuspenseWrap>
+              </ErrorBoundary>
+            ),
+          },
+          // /demo/jury/* → jury flow (demo DB, guarded)
+          {
+            path: "jury",
+            element: <JuryGuard />,
+            children: [juryFlowRoute],
+          },
+          // /demo/admin/* → admin panel (demo DB)
           {
             path: "admin",
             element: <AdminRouteLayout />,
@@ -161,7 +185,7 @@ export const router = createBrowserRouter([
         ],
       },
 
-      // Legacy path: /jury-entry → /jury
+      // Legacy redirects
       { path: "/jury-entry", element: <Navigate to="/jury" replace /> },
 
       // Catch-all → landing

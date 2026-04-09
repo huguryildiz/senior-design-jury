@@ -179,7 +179,7 @@ export default function EntryControlPage() {
   const _toast = useToast();
 
   const entryUrl = rawToken
-    ? `${window.location.origin}/?eval=${encodeURIComponent(rawToken)}${isDemoMode ? "&env=demo" : ""}`
+    ? `${window.location.origin}${isDemoMode ? "/demo" : ""}/eval?t=${encodeURIComponent(rawToken)}`
     : "";
 
   useEffect(() => {

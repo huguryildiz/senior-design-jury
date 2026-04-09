@@ -1482,27 +1482,27 @@ periodData.forEach(pd => {
   // evaluation.complete — matches RPC action name
   myAuths.filter(a => a.semanticState==='Completed').forEach((a,i) => {
     if (myProjs.length === 0) return;
-    auditObjList.push({ action:'evaluation.complete',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[i%myProjs.length].id}`),orgId:o.id,userId:null,details:'{"juror_activity":"finalized"}',timeStr:randSqlTs(ev,2+i*2,evD*16+i*2) });
+    auditObjList.push({ action:'evaluation.complete',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[i%myProjs.length].id}`),orgId:o.id,userId:null,details:`{"juror_activity":"finalized","actor_name":"${escapeSql(a.name)}","juror_id":"${a.jId}"}`,timeStr:randSqlTs(ev,2+i*2,evD*16+i*2) });
   });
   myAuths.filter(a => a.semanticState==='Editing').slice(0,2).forEach((a,i) => {
     if (myProjs.length === 0) return;
-    auditObjList.push({ action:'score.update',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[0].id}`),orgId:o.id,userId:null,details:'{"corrections":2,"reason":"edit window granted"}',timeStr:randSqlTs(ev,evD*18+i*4,evD*22+i*4) });
+    auditObjList.push({ action:'score.update',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[0].id}`),orgId:o.id,userId:null,details:`{"corrections":2,"reason":"edit window granted","actor_name":"${escapeSql(a.name)}","juror_id":"${a.jId}"}`,timeStr:randSqlTs(ev,evD*18+i*4,evD*22+i*4) });
   });
   if (pd.isCur || pd.histIdx <= 1) {
     myAuths.filter(a => a.semanticState==='Completed'||a.semanticState==='InProgress').slice(0,pd.isCur?2:1).forEach((a,i) => {
-      auditObjList.push({ action:'pin.reset',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name.substring(0,25))}","reason":"forgotten pin"}`,timeStr:randSqlTs(ev,1+i*3,evD*10+i*3) });
+      auditObjList.push({ action:'pin.reset',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror_name":"${escapeSql(a.name)}","reason":"forgotten pin"}`,timeStr:randSqlTs(ev,1+i*3,evD*10+i*3) });
     });
   }
   myAuths.filter(a => a.semanticState==='Locked').slice(0,1).forEach(a => {
-    auditObjList.push({ action:'juror.pin_locked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:null,details:`{"juror":"${escapeSql(a.name)}","attempts":${randInt(3,5)}}`,timeStr:randSqlTs(ev,2,evD*12) });
+    auditObjList.push({ action:'juror.pin_locked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:null,details:`{"actor_name":"${escapeSql(a.name)}","attempts":${randInt(3,5)}}`,timeStr:randSqlTs(ev,2,evD*12) });
     // juror.pin_unlocked — admin unlocks the locked juror
-    auditObjList.push({ action:'juror.pin_unlocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name)}"}`,timeStr:randSqlTs(ev,evD*12+1,evD*14) });
+    auditObjList.push({ action:'juror.pin_unlocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror_name":"${escapeSql(a.name)}"}`,timeStr:randSqlTs(ev,evD*12+1,evD*14) });
   });
   myAuths.filter(a => a.semanticState==='Blocked').slice(0,1).forEach(a => {
-    auditObjList.push({ action:'juror.blocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name)}","reason":"admin action"}`,timeStr:randSqlTs(ev,1,evD*8) });
+    auditObjList.push({ action:'juror.blocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror_name":"${escapeSql(a.name)}","reason":"admin action"}`,timeStr:randSqlTs(ev,1,evD*8) });
   });
   myAuths.filter(a => a.semanticState==='Editing').slice(0,1).forEach(a => {
-    auditObjList.push({ action:'juror.edit_enabled',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name)}","reason":"Late extension","duration_minutes":60}`,timeStr:randSqlTs(ev,evD*16,evD*20) });
+    auditObjList.push({ action:'juror.edit_enabled',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror_name":"${escapeSql(a.name)}","reason":"Late extension","duration_minutes":60}`,timeStr:randSqlTs(ev,evD*16,evD*20) });
   });
   if (pd.histIdx === 0 && random() > 0.5) {
     auditObjList.push({ action:'period.update',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:'{"field":"end_date","reason":"calendar adjustment"}',timeStr:randSqlTs(pd.start,48,240) });

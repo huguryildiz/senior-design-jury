@@ -3,7 +3,7 @@
 // password strength indicator, and success state.
 
 import { useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserPlus, Eye, EyeOff, Check, Info } from "lucide-react";
 import FbAlert from "@/shared/ui/FbAlert";
 import { listOrganizationsPublic } from "@/shared/api";
@@ -84,6 +84,8 @@ function PasswordStrengthBar({ password, minLen, requireSpecial }) {
 
 export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHome, error: externalError }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const base = location.pathname.startsWith("/demo") ? "/demo" : "";
   const auth = useContext(AuthContext);
   const authUser = auth?.user || null;
   const authLoading = !!auth?.loading;
@@ -93,7 +95,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
     throw new Error("Registration is not configured in this screen context.");
   });
   const doCompleteProfile = auth?.completeProfile;
-  const goLogin = onSwitchToLogin || (() => navigate("/login"));
+  const goLogin = onSwitchToLogin || (() => navigate(`${base}/login`));
   const goHome = onReturnHome || (() => navigate("/"));
 
   const [fullName, setFullName] = useState(() => String(authUser?.name || "").trim());
@@ -125,7 +127,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
 
   useEffect(() => {
     if (!authLoading && authUser && !profileIncomplete) {
-      navigate("/admin", { replace: true });
+      navigate(`${base}/admin`, { replace: true });
     }
   }, [authLoading, authUser, profileIncomplete, navigate]);
 
@@ -256,7 +258,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
           <button
             type="button"
             className="apply-success-btn"
-            onClick={isGoogleApplicationFlow ? () => navigate("/admin") : goLogin}
+            onClick={isGoogleApplicationFlow ? () => navigate(`${base}/admin`) : goLogin}
           >
             {isGoogleApplicationFlow ? "Continue" : "Back to Sign In"}
           </button>
@@ -339,7 +341,6 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
               <label className="apply-label" htmlFor="reg-university">University</label>
               <CustomSelect
                 id="reg-university"
-                className="apply-select"
                 value={university}
                 onChange={(v) => setUniversity(v)}
                 disabled={loading || tenantsLoading}
@@ -355,7 +356,6 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
               <label className="apply-label" htmlFor="reg-dept">Department</label>
               <CustomSelect
                 id="reg-dept"
-                className="apply-select"
                 value={tenantId}
                 onChange={(v) => setTenantId(v)}
                 disabled={loading || !university}

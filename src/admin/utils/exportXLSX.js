@@ -61,16 +61,21 @@ export function buildExportFilename(type, periodName, ext = "xlsx", tenantCode =
 }
 
 export async function exportAuditLogsXLSX(rows, { filters = {}, search = "", tenantCode = "" } = {}) {
+  const { getActorInfo, formatActionLabel } = await import("./auditUtils");
   const XLSX = await import("xlsx-js-style");
-  const headers = ["Timestamp", "Type", "Actor", "Action"];
-  const data = (rows || []).map((r) => [
-    formatExportTimestamp(r.created_at),
-    r.entity_type ?? r.actor_type ?? "",
-    r.actor_id ?? (r.actor_type === "system" ? "System" : ""),
-    r.action ?? "",
-  ]);
+  const headers = ["Timestamp", "Actor", "Role", "Action", "Resource Type"];
+  const data = (rows || []).map((r) => {
+    const actor = getActorInfo(r);
+    return [
+      formatExportTimestamp(r.created_at),
+      actor.name,
+      actor.role,
+      formatActionLabel(r.action),
+      r.resource_type ?? "",
+    ];
+  });
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  ws["!cols"] = [22, 14, 36, 48].map((w) => ({ wch: w }));
+  ws["!cols"] = [22, 28, 18, 36, 20].map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Audit Log");
   XLSX.writeFile(wb, buildAuditExportFilename(filters, search, tenantCode));

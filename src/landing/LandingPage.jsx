@@ -176,7 +176,7 @@ export function LandingPage() {
             btn.classList.add("dj-loading");
             setTimeout(() => {
               btn.classList.remove("dj-loading");
-              navigate(demoToken ? `/eval?t=${demoToken}&env=demo` : "/eval");
+              navigate(demoToken ? `/demo/eval?t=${demoToken}` : "/eval");
             }, 500);
           }}>
             <svg className="dj-btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>

@@ -21,8 +21,6 @@ import { useGlobalTableSort } from "@/admin/hooks/useGlobalTableSort";
 import AdminSidebar from "@/admin/layout/AdminSidebar";
 import AdminHeader from "@/admin/layout/AdminHeader";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
-import { setEnvironment } from "@/shared/lib/environment";
-
 const LazyLoginForm            = lazy(() => import("@/auth/screens/LoginScreen"));
 const LazyRegisterForm         = lazy(() => import("@/auth/screens/RegisterScreen"));
 const LazyForgotPasswordForm   = lazy(() => import("@/auth/screens/ForgotPasswordScreen"));
@@ -96,12 +94,6 @@ export default function AdminRouteLayout() {
   const settingsDirtyRef = useRef(false);
   const { currentPage, basePath, isDemo, navigateTo } = useAdminNav({ settingsDirtyRef });
   const isDemoMode = isDemo;
-
-  // Force admin environment by route namespace to prevent cross-tenant token
-  // generation when a stale sessionStorage demo flag leaks into /admin.
-  useEffect(() => {
-    setEnvironment(isDemo ? "demo" : "prod");
-  }, [isDemo]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [selectedPeriodId, setSelectedPeriodId] = useState(null);

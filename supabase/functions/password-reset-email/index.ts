@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const appUrl = (Deno.env.get("NOTIFICATION_APP_URL") || "").trim() || "https://vera-eval.app";
-    const resetRedirect = `${appUrl}?page=reset-password`;
+    const resetRedirect = `${appUrl}/reset-password`;
 
     const admin = createClient(supabaseUrl, serviceKey);
     const { data, error } = await admin.auth.admin.generateLink({

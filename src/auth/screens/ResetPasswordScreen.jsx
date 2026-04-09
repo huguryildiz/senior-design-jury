@@ -3,7 +3,7 @@
 // Replaces src/components/auth/ResetPasswordCreateForm.jsx.
 
 import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import FbAlert from "@/shared/ui/FbAlert";
 import { AuthContext } from "@/auth/AuthProvider";
 import { useSecurityPolicy } from "@/auth/SecurityPolicyContext";
@@ -25,11 +25,13 @@ const EYE_OFF_ICON = (
 
 export default function ResetPasswordScreen({ onUpdatePassword, onBackToLogin }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const base = location.pathname.startsWith("/demo") ? "/demo" : "";
   const auth = useContext(AuthContext);
   const doUpdatePassword = onUpdatePassword || auth?.updatePassword || (async () => {
     throw new Error("Password update is not configured in this screen context.");
   });
-  const goLogin = onBackToLogin || (() => navigate("/login"));
+  const goLogin = onBackToLogin || (() => navigate(`${base}/login`));
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

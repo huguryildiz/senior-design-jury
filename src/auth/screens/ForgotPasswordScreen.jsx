@@ -3,18 +3,20 @@
 // Replaces src/components/auth/ForgotPasswordForm.jsx.
 
 import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import FbAlert from "@/shared/ui/FbAlert";
 import { AuthContext } from "@/auth/AuthProvider";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
 
 export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const base = location.pathname.startsWith("/demo") ? "/demo" : "";
   const auth = useContext(AuthContext);
   const doResetPassword = onResetPassword || auth?.resetPassword || (async () => {
     throw new Error("Password reset is not configured in this screen context.");
   });
-  const goLogin = onBackToLogin || (() => navigate("/login"));
+  const goLogin = onBackToLogin || (() => navigate(`${base}/login`));
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");

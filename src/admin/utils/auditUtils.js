@@ -198,6 +198,127 @@ export const buildAuditParams = (filters, limit, cursor, searchText) => {
   };
 };
 
+// ── Actor resolution ──────────────────────────────────────────
+
+const JUROR_ACTIONS = new Set([
+  "evaluation.complete",
+  "juror.pin_locked",
+  "juror.edit_mode_closed_on_resubmit",
+  "score.update",
+]);
+
+export function getInitials(name) {
+  if (!name) return "?";
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/**
+ * Categorise an audit log row and extract human-readable actor info.
+ *
+ * @param {object} log - Raw audit_logs row (with optional profiles join)
+ * @returns {{ type: 'admin'|'juror'|'system', name: string, role: string, initials: string|null }}
+ */
+export function getActorInfo(log) {
+  if (log.user_id) {
+    const name = log.profiles?.display_name || "Admin";
+    return { type: "admin", name, role: "Organization Admin", initials: getInitials(name) };
+  }
+  if (JUROR_ACTIONS.has(log.action) && log.details?.actor_name) {
+    const name = log.details.actor_name;
+    return { type: "juror", name, role: "Juror", initials: getInitials(name) };
+  }
+  return { type: "system", name: "System", role: "Automated", initials: null };
+}
+
+// ── Action labels ─────────────────────────────────────────────
+
+export const ACTION_LABELS = {
+  // Explicit RPC actions
+  "evaluation.complete": "Evaluation completed",
+  "pin.reset": "PIN reset",
+  "token.generate": "Token generated",
+  "token.revoke": "Token revoked",
+  "snapshot.freeze": "Snapshot frozen",
+  "juror.pin_locked": "Account locked (failed attempts)",
+  "juror.pin_unlocked": "Account unlocked",
+  "juror.edit_mode_enabled": "Edit mode granted",
+  "juror.edit_mode_closed_on_resubmit": "Edit mode closed (resubmit)",
+  "juror.blocked": "Juror blocked",
+  "admin.login": "Admin login",
+  "admin.create": "Admin created",
+  "application.approved": "Application approved",
+  "application.rejected": "Application rejected",
+  "period.create": "Period created",
+  "period.lock": "Period locked",
+  "period.update": "Period updated",
+  "criteria.update": "Criteria updated",
+  "export.scores": "Scores exported",
+  "juror.import": "Jurors imported",
+  "juror.create": "Juror created",
+  "juror.edit_enabled": "Edit mode granted",
+  "project.import": "Projects imported",
+  "project.create": "Project created",
+  "project.update": "Project updated",
+  "project.delete": "Project deleted",
+  "score.update": "Score updated",
+  // Trigger-based CRUD actions
+  "score_sheets.insert": "Score sheet created",
+  "score_sheets.update": "Score sheet updated",
+  "score_sheets.delete": "Score sheet deleted",
+  "projects.insert": "Project created",
+  "projects.update": "Project updated",
+  "projects.delete": "Project deleted",
+  "jurors.insert": "Juror created",
+  "jurors.update": "Juror updated",
+  "jurors.delete": "Juror deleted",
+  "periods.insert": "Period created",
+  "periods.update": "Period updated",
+  "periods.delete": "Period deleted",
+  "entry_tokens.insert": "Entry token created",
+  "entry_tokens.update": "Entry token updated",
+  "entry_tokens.delete": "Entry token deleted",
+  "memberships.insert": "Membership created",
+  "memberships.update": "Membership updated",
+  "memberships.delete": "Membership deleted",
+  "organizations.insert": "Organization created",
+  "organizations.update": "Organization updated",
+};
+
+/**
+ * Return a human-readable label for an audit action.
+ * Falls back to a best-effort title-case transformation.
+ */
+export function formatActionLabel(action) {
+  if (!action) return "—";
+  if (ACTION_LABELS[action]) return ACTION_LABELS[action];
+  // Fallback: convert "some_table.insert" → "Some table inserted"
+  const parts = action.split(".");
+  if (parts.length >= 2) {
+    const table = parts[0].replace(/_/g, " ");
+    const op = { insert: "created", update: "updated", delete: "deleted" }[parts[1]] || parts[1];
+    return `${table.charAt(0).toUpperCase() + table.slice(1)} ${op}`;
+  }
+  return action;
+}
+
+/**
+ * Build a detail string for the action context (e.g. affected juror name).
+ */
+export function formatActionDetail(log) {
+  if (!log.details) return "";
+  // For admin actions on jurors, show juror name
+  if (log.details.juror_name) return log.details.juror_name;
+  // For trigger-based CRUD, show operation · table
+  const op = log.details.operation || "";
+  const table = log.details.table || "";
+  return `${op} · ${table}`.replace(/^ · | · $/g, "");
+}
+
 // ── normalizeStudentNames ──────────────────────────────────────
 // Normalizes a free-text student name list (pasted from spreadsheet,
 // Word, or typed) into a consistent semicolon-separated string.

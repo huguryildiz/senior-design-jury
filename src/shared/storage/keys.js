@@ -4,7 +4,6 @@
 // ============================================================
 
 export const KEYS = {
-  PAGE: "vera_portal_page",
   JURY_ACCESS: "jury_access_period",
   JURY_ACCESS_GRANT: "jury_access_grant",
   ADMIN_UI_STATE: "jury_admin_ui_state_v1",

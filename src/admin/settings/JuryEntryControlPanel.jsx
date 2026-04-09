@@ -87,7 +87,7 @@ export default function JuryEntryControlPanel({
   const qrInstance              = useRef(null);
 
   const entryUrl = rawToken
-    ? `${window.location.origin}?eval=${encodeURIComponent(rawToken)}`
+    ? `${window.location.origin}${isDemoMode ? "/demo" : ""}/eval?t=${encodeURIComponent(rawToken)}`
     : "";
 
   // ── QR code instance ──────────────────────────────────────

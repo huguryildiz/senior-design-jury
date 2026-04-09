@@ -1,37 +1,33 @@
 // src/jury/JuryGatePage.jsx
-// Jury access gate — shown when landing with ?eval= or missing token.
-// Verifies token against DB; on success stores grant and calls onGranted().
+// Jury access gate — shown when landing with ?t= token or no token.
+// Verifies token against the active DB (determined by pathname: /demo/* → demo, else → prod).
+// On success stores the access grant and navigates to the jury flow.
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { ArrowLeft, KeyRound, Loader2 } from "lucide-react";
 import { listPeriodsPublic, verifyEntryReference, verifyEntryToken } from "../shared/api";
 import { setJuryAccess } from "../shared/storage";
-import { resolveEnvironment, setEnvironment } from "../shared/lib/environment";
 import FbAlert from "../shared/ui/FbAlert";
 import "../styles/jury.css";
 
-function extractTokenAndEnv(input) {
+/** Extract token from a pasted URL or raw code string. */
+function extractToken(input) {
   const s = String(input || "").trim();
   try {
     const url = new URL(s, window.location.origin);
-    const t = url.searchParams.get("t") || url.searchParams.get("eval");
-    const env = url.searchParams.get("env") === "demo" ? "demo" : null;
-    return {
-      token: t || s,
-      env,
-    };
+    return url.searchParams.get("t") || url.searchParams.get("eval") || s;
   } catch {
-    return { token: s, env: null };
+    return s;
   }
 }
 
+/** "demo-ORGCODE" shorthand → resolve period from public list. */
 function readDemoAlias(token) {
   const s = String(token || "").trim().toLowerCase();
   if (!s.startsWith("demo-")) return null;
   const orgCode = s.slice("demo-".length).trim();
-  if (!orgCode) return null;
-  return orgCode.toUpperCase();
+  return orgCode ? orgCode.toUpperCase() : null;
 }
 
 async function resolveDemoAliasGrant(token) {
@@ -65,22 +61,44 @@ function isReferenceId(value) {
 
 function mapDenyMessage(result) {
   const code = String(result?.error_code || "");
-  if (code === "token_expired") return "This access code has expired.";
-  if (code === "token_revoked") return "This access code has been revoked.";
+  if (code === "token_expired")       return "This access code has expired.";
+  if (code === "token_revoked")       return "This access code has been revoked.";
   if (code === "ambiguous_reference") return "This reference ID matches multiple tokens. Please use the full access link.";
-  if (code === "reference_not_found" || code === "invalid_reference") return "Reference ID not found. Please use the full access link or QR token.";
+  if (code === "reference_not_found" || code === "invalid_reference")
+    return "Reference ID not found. Please use the full access link or QR token.";
   return "The link is invalid, expired, or has been revoked.";
+}
+
+async function resolveAccessGrant(code) {
+  const aliasGrant = await resolveDemoAliasGrant(code);
+  if (aliasGrant) return aliasGrant;
+
+  if (isReferenceId(code)) {
+    try {
+      return await verifyEntryReference(code);
+    } catch {
+      // Backward compatibility for DBs where reference RPC is not deployed yet.
+    }
+  }
+
+  return await verifyEntryToken(code);
 }
 
 export default function JuryGatePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("t");
-  const envParam = searchParams.get("env");
-  const [status, setStatus]       = useState(token ? "loading" : "missing");
+
+  // Determine jury flow base path from current location.
+  // /demo/eval → /demo/jury, /eval → /jury
+  const isDemo = location.pathname.startsWith("/demo");
+  const juryBase = isDemo ? "/demo/jury" : "/jury";
+
+  const [status, setStatus]           = useState(token ? "loading" : "missing");
   const [denyMessage, setDenyMessage] = useState("");
-  const [manualToken, setManual]  = useState("");
-  const [verifying, setVerifying] = useState(false);
+  const [manualToken, setManual]      = useState("");
+  const [verifying, setVerifying]     = useState(false);
   const inputRef = useRef(null);
 
   function markDenied(message) {
@@ -88,97 +106,43 @@ export default function JuryGatePage() {
     setStatus("denied");
   }
 
-async function resolveAccessGrant(code, effectiveEnv) {
-  const aliasGrant = effectiveEnv === "demo"
-    ? await resolveDemoAliasGrant(code)
-    : null;
-  if (aliasGrant) return aliasGrant;
-
-    if (isReferenceId(code)) {
-      try {
-        return await verifyEntryReference(code);
-      } catch {
-        // Backward compatibility for DBs where reference RPC is not deployed yet.
-      }
-    }
-
-  return await verifyEntryToken(code);
-}
-
-function shouldTryOtherEnv(result) {
-  const code = String(result?.error_code || "");
-  return (
-    code === "token_not_found" ||
-    code === "reference_not_found" ||
-    code === "invalid_reference"
-  );
-}
-
-async function resolveAccessGrantWithEnvFallback(code, explicitEnv = null) {
-  const normalizedExplicit = explicitEnv === "demo" ? "demo" : null;
-  if (normalizedExplicit) {
-    setEnvironment("demo");
-    return { grant: await resolveAccessGrant(code, "demo"), env: "demo" };
+  function onGranted(grant) {
+    setJuryAccess(grant.period_id, grant);
+    navigate(`${juryBase}/identity`, { replace: true });
   }
-
-  const initialEnv = resolveEnvironment() === "demo" ? "demo" : "prod";
-  const fallbackEnv = initialEnv === "demo" ? "prod" : "demo";
-
-  setEnvironment(initialEnv);
-  const first = await resolveAccessGrant(code, initialEnv === "demo" ? "demo" : null);
-  if (first?.ok) return { grant: first, env: initialEnv };
-  if (!shouldTryOtherEnv(first)) return { grant: first, env: initialEnv };
-
-  setEnvironment(fallbackEnv);
-  const second = await resolveAccessGrant(code, fallbackEnv === "demo" ? "demo" : null);
-  if (second?.ok) return { grant: second, env: fallbackEnv };
-
-  setEnvironment(initialEnv);
-  return { grant: first, env: initialEnv };
-}
 
   useEffect(() => {
     if (!token) return;
     let active = true;
-    if (envParam === "demo") setEnvironment("demo");
 
-    const run = async () => {
+    (async () => {
       try {
-        const explicitEnv = envParam === "demo" ? "demo" : null;
-        if (!active) return;
-        const { grant: res, env: resolvedEnv } = await resolveAccessGrantWithEnvFallback(token, explicitEnv);
+        const res = await resolveAccessGrant(token);
         if (!active) return;
         if (res?.ok) {
-          setEnvironment(resolvedEnv === "demo" ? "demo" : "prod");
-          setJuryAccess(res.period_id, res);
-          navigate("/jury/identity", { replace: true });
+          onGranted(res);
         } else {
           markDenied(mapDenyMessage(res));
         }
       } catch {
         if (active) markDenied();
       }
-    };
+    })();
 
-    run();
     return () => { active = false; };
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleVerify(e) {
     e.preventDefault();
-    const parsed = extractTokenAndEnv(manualToken);
-    const t = parsed.token;
+    const t = extractToken(manualToken);
     if (!t) return;
     setVerifying(true);
     setStatus("missing");
     setDenyMessage("");
     try {
-      const explicitEnv = parsed.env === "demo" || envParam === "demo" ? "demo" : null;
-      const { grant: res, env: resolvedEnv } = await resolveAccessGrantWithEnvFallback(t, explicitEnv);
+      const res = await resolveAccessGrant(t);
       if (res?.ok) {
-        setEnvironment(resolvedEnv === "demo" ? "demo" : "prod");
-        setJuryAccess(res.period_id, res);
-        navigate("/jury/identity", { replace: true });
+        onGranted(res);
       } else {
         markDenied(mapDenyMessage(res));
       }

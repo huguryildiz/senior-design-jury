@@ -40,8 +40,9 @@ export default function JuryFlow() {
   // Keep URL in sync with current step
   useEffect(() => {
     const seg = STEP_TO_PATH[state.step];
-    if (seg && location.pathname !== `/jury/${seg}`) {
-      navigate(`/jury/${seg}`, { replace: true });
+    const juryBase = location.pathname.startsWith("/demo/jury") ? "/demo/jury" : "/jury";
+    if (seg && location.pathname !== `${juryBase}/${seg}`) {
+      navigate(`${juryBase}/${seg}`, { replace: true });
     }
   }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 

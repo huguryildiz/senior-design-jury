@@ -11,6 +11,8 @@ import {
   formatAuditTimestamp,
   getAuditDateRangeError,
   buildAuditParams,
+  getActorInfo,
+  formatActionLabel,
 } from "../utils/auditUtils";
 import { exportAuditLogsXLSX } from "../utils/exportXLSX";
 import { downloadTable } from "../utils/downloadTable";
@@ -201,7 +203,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
       let loops = 0;
       while (true) {
         const params = buildAuditParams(auditFilters, pageSize, cursor, auditSearch);
-        const rows = await adminListAuditLogs({ ...params, organizationId });
+        const rows = await listAuditLogs({ ...params, organizationId });
         if (!rows || rows.length === 0) break;
         all = [...all, ...rows];
         if (rows.length < pageSize) break;
@@ -224,14 +226,17 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
           const pad = (n) => String(n).padStart(2, "0");
           return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         };
-        const header = ["Timestamp", "Actor", "Action", "Entity", "Message"];
-        const dataRows = all.map((r) => [
-          fmtTs(r.created_at),
-          r.actor_type ?? "",
-          r.action ?? "",
-          r.entity_type ?? "",
-          r.message ?? "",
-        ]);
+        const header = ["Timestamp", "Actor", "Role", "Action", "Resource Type"];
+        const dataRows = all.map((r) => {
+          const actor = getActorInfo(r);
+          return [
+            fmtTs(r.created_at),
+            actor.name,
+            actor.role,
+            formatActionLabel(r.action),
+            r.resource_type ?? "",
+          ];
+        });
         await downloadTable(format, {
           filenameType: "Audit",
           sheetName: "Audit Log",

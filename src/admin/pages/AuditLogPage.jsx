@@ -13,6 +13,7 @@ import { useAuditLogFilters } from "../hooks/useAuditLogFilters";
 import { usePageRealtime } from "../hooks/usePageRealtime";
 import ExportPanel from "../components/ExportPanel";
 import CustomSelect from "@/shared/ui/CustomSelect";
+import { getActorInfo, formatActionLabel, formatActionDetail } from "../utils/auditUtils";
 
 // ── Chip helpers ──────────────────────────────────────────────
 const CHIP_MAP = {
@@ -27,22 +28,6 @@ const CHIP_MAP = {
 
 function getChip(resourceType) {
   return CHIP_MAP[resourceType] || { type: "eval", label: "System" };
-}
-
-function isSystemEvent(log) {
-  return !log.user_id;
-}
-
-function formatAction(action, resourceType) {
-  if (!action) return "—";
-  const parts = action.split(".");
-  if (parts.length >= 2) {
-    const op = parts[1];
-    const table = (resourceType || parts[0]).replace(/_/g, " ");
-    const opLabel = { insert: "created", update: "updated", delete: "deleted" }[op] || op;
-    return `${table.charAt(0).toUpperCase() + table.slice(1)} ${opLabel}`;
-  }
-  return action;
 }
 
 function SortIcon({ colKey, sortKey, sortDir }) {
@@ -131,7 +116,7 @@ export default function AuditLogPage() {
     const n = new Date();
     return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
   }).length;
-  const systemEvents = auditLogs.filter((l) => isSystemEvent(l)).length;
+  const systemEvents = auditLogs.filter((l) => getActorInfo(l).type === "system").length;
   const adminActions = total - systemEvents;
 
   const sortedAuditLogs = useMemo(() => {
@@ -148,12 +133,12 @@ export default function AuditLogPage() {
       } else if (sortKey === "resource_type") {
         cmp = getChip(a.resource_type).label.localeCompare(getChip(b.resource_type).label, "tr", { sensitivity: "base", numeric: true });
       } else if (sortKey === "actor") {
-        const aActor = isSystemEvent(a) ? "System" : `Admin ${String(a.user_id || "")}`;
-        const bActor = isSystemEvent(b) ? "System" : `Admin ${String(b.user_id || "")}`;
+        const aActor = getActorInfo(a).name;
+        const bActor = getActorInfo(b).name;
         cmp = aActor.localeCompare(bActor, "tr", { sensitivity: "base", numeric: true });
       } else if (sortKey === "action") {
-        cmp = formatAction(a.action, a.resource_type).localeCompare(
-          formatAction(b.action, b.resource_type),
+        cmp = formatActionLabel(a.action).localeCompare(
+          formatActionLabel(b.action),
           "tr",
           { sensitivity: "base", numeric: true }
         );
@@ -401,11 +386,11 @@ export default function AuditLogPage() {
 
               {sortedAuditLogs.map((log) => {
                 const chip = getChip(log.resource_type);
-                const system = isSystemEvent(log);
+                const actor = getActorInfo(log);
                 const ts = formatAuditTimestamp(log.created_at);
-                const detail = log.details ? `${log.details.operation || ""} · ${log.details.table || ""}`.replace(/^ · | · $/, "") : "";
+                const detail = formatActionDetail(log);
                 return (
-                  <tr key={log.id} className={system ? "audit-row-system" : ""}>
+                  <tr key={log.id} className={actor.type === "system" ? "audit-row-system" : ""}>
                     <td className="audit-ts">
                       <div className="audit-ts-main">{ts}</div>
                     </td>
@@ -413,27 +398,27 @@ export default function AuditLogPage() {
                       <span className={`audit-chip audit-chip-${chip.type}`}>{chip.label}</span>
                     </td>
                     <td className="audit-actor">
-                      {system ? (
+                      {actor.type === "system" ? (
                         <div className="audit-actor-avatar audit-actor-system">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
                             <path d="M12 2a10 10 0 110 20 10 10 0 010-20z" /><path d="M12 6v6l4 2" />
                           </svg>
                         </div>
                       ) : (
-                        <div className="audit-actor-avatar">
-                          {String(log.user_id || "").slice(0, 2).toUpperCase() || "A"}
+                        <div className={`audit-actor-avatar${actor.type === "juror" ? " audit-actor-juror" : ""}`}>
+                          {actor.initials}
                         </div>
                       )}
                       <div className="audit-actor-info">
-                        <div className="audit-actor-name" style={system ? { color: "var(--text-tertiary)" } : {}}>
-                          {system ? "System" : "Admin"}
+                        <div className="audit-actor-name" style={actor.type === "system" ? { color: "var(--text-tertiary)" } : {}}>
+                          {actor.name}
                         </div>
-                        <div className="audit-actor-role">{system ? "Automated" : "Organization Admin"}</div>
+                        <div className="audit-actor-role">{actor.role}</div>
                       </div>
                     </td>
                     <td>
                       <div className={`audit-action-main${isAuditStaleRefresh ? " opacity-40" : ""}`}>
-                        {formatAction(log.action, log.resource_type)}
+                        {formatActionLabel(log.action)}
                       </div>
                       {detail && (
                         <div className="audit-action-detail">{detail}</div>

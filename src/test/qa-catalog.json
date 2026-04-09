@@ -2943,39 +2943,6 @@
     "severity": "normal"
   },
   {
-    "id": "phaseA.app.01",
-    "module": "Phase A / Safety",
-    "area": "App — Page Resume",
-    "story": "URL token routes to jury_gate",
-    "scenario": "App routes to jury_gate when a ?t= URL parameter is present",
-    "whyItMatters": "QR code links contain a ?t= token. The app must immediately route to the gate page for verification.",
-    "risk": "Missing URL param handling would break QR code entry for jurors.",
-    "coverageStrength": "Strong",
-    "severity": "critical"
-  },
-  {
-    "id": "phaseA.app.02",
-    "module": "Phase A / Safety",
-    "area": "App — Page Resume",
-    "story": "localStorage page restoration",
-    "scenario": "App restores the last saved page from localStorage on mount, with correct jury access grant checks",
-    "whyItMatters": "Page persistence ensures admins and jurors return to their last view on refresh.",
-    "risk": "Incorrect restoration could expose the admin panel without authentication or skip jury gate.",
-    "coverageStrength": "Strong",
-    "severity": "critical"
-  },
-  {
-    "id": "phaseA.app.03",
-    "module": "Phase A / Safety",
-    "area": "App — Page Resume",
-    "story": "jury_gate never persisted",
-    "scenario": "App never saves jury_gate to localStorage, even when currently on that page",
-    "whyItMatters": "jury_gate is a transient verification screen. Persisting it would trap users in an infinite verification loop.",
-    "risk": "Persisting jury_gate would break page restoration for jurors.",
-    "coverageStrength": "Strong",
-    "severity": "critical"
-  },
-  {
     "id": "phaseA.sql.01",
     "module": "Phase A / Safety",
     "area": "SQL — Idempotency",

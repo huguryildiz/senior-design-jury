@@ -465,7 +465,7 @@ export default function JurorsPage() {
       const pid = selectedPeriodId || periods.viewPeriodId;
       if (pid) {
         const plain = await getActiveEntryTokenPlain(pid);
-        if (plain) tokenUrl = `${window.location.origin}?eval=${encodeURIComponent(plain)}`;
+        if (plain) tokenUrl = `${window.location.origin}${isDemoMode ? "/demo" : ""}/eval?t=${encodeURIComponent(plain)}`;
       }
     }
     await sendJurorPinEmail({

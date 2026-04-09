@@ -1823,6 +1823,22 @@ body:not(.dark-mode) .apply-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667a94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
 }
 
+/* CustomSelect inside apply-field — light mode */
+body:not(.dark-mode) .apply-field .filter-dropdown-trigger {
+  background: #f6f9fd !important;
+  border: 1px solid #d3dce8 !important;
+  color: #213248 !important;
+}
+body:not(.dark-mode) .apply-field .filter-dropdown-trigger:hover {
+  border-color: #b8c9df !important;
+  background: #f0f5fb !important;
+}
+body:not(.dark-mode) .apply-field .filter-dropdown-trigger.open {
+  background: #fcfdff !important;
+  border-color: #6d9de6 !important;
+  box-shadow: 0 0 0 3px rgba(92,140,220,0.16) !important;
+}
+
 body:not(.dark-mode) .apply-pw-toggle {
   color: #6f8198 !important;
 }

@@ -6,7 +6,7 @@ import { supabase } from "../core/client";
 export async function listAuditLogs(filters = {}) {
   let query = supabase
     .from("audit_logs")
-    .select("*")
+    .select("*, profiles(display_name)")
     .order("created_at", { ascending: false })
     .limit(filters.limit || 120);
 

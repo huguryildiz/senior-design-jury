@@ -4,7 +4,7 @@
 
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CircleX, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import FbAlert from "@/shared/ui/FbAlert";
 import { KEYS } from "@/shared/storage/keys";
 import { AuthContext } from "@/auth/AuthProvider";
@@ -55,6 +55,8 @@ export default function LoginScreen({
   initialPassword = "",
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const base = location.pathname.startsWith("/demo") ? "/demo" : "";
   const auth = useContext(AuthContext);
   const turnstileSiteKey = String(import.meta.env.VITE_TURNSTILE_SITE_KEY || "").trim();
   const requiresCaptcha = !!turnstileSiteKey;
@@ -67,8 +69,8 @@ export default function LoginScreen({
   const doGoogleLogin = typeof googleLoginCandidate === "function"
     ? googleLoginCandidate
     : (async () => { throw new Error("Google login handler is not configured correctly."); });
-  const goRegister = onSwitchToRegister || (() => navigate("/register"));
-  const goForgotPassword = onForgotPassword || (() => navigate("/forgot-password"));
+  const goRegister = onSwitchToRegister || (() => navigate(`${base}/register`));
+  const goForgotPassword = onForgotPassword || (() => navigate(`${base}/forgot-password`));
   const goHome = onReturnHome || (() => navigate("/"));
   const authUser = auth?.user || null;
   const authStateLoading = !!auth?.loading;
@@ -93,7 +95,7 @@ export default function LoginScreen({
 
   useEffect(() => {
     if (!authStateLoading && authUser) {
-      navigate("/admin", { replace: true });
+      navigate(`${base}/admin`, { replace: true });
     }
   }, [authStateLoading, authUser, navigate]);
 
