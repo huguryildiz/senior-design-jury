@@ -13,6 +13,7 @@ import {
   getScores,
   getProjectSummary,
   fullExport,
+  writeAuditLog,
 } from "@/shared/api";
 import { exportXLSX, buildExportFilename } from "../utils/exportXLSX";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
@@ -69,6 +70,10 @@ export default function ExportPage() {
         summaryData: results.flatMap((x) => x.summary),
         tenantCode,
       });
+      writeAuditLog("export.backup", {
+        resourceType: "score_sheets",
+        details: { format: "xlsx", periodCount: orderedSemesters.length },
+      }).catch(() => {});
       _toast.success(`Score report downloaded · ${orderedSemesters.length} period${orderedSemesters.length !== 1 ? "s" : ""} · Excel`);
     } catch (e) {
       _toast.error(e?.message || "Score report export failed — please try again");

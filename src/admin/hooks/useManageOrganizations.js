@@ -19,6 +19,7 @@ import {
   approveApplication,
   rejectApplication,
   notifyApplication,
+  writeAuditLog,
 } from "../../shared/api";
 
 const EMPTY_CREATE = {
@@ -353,6 +354,11 @@ export function useManageOrganizations({
         .find((a) => a.applicationId === applicationId);
 
       await approveApplication(applicationId);
+      writeAuditLog("application.approved", {
+        resourceType: "org_applications",
+        resourceId: applicationId,
+        details: { applicantEmail: appData?.email, applicantName: appData?.name },
+      }).catch(() => {});
 
       // Fire-and-forget notification (never blocks approve flow)
       if (appData?.email) {
@@ -389,6 +395,11 @@ export function useManageOrganizations({
         .find((a) => a.applicationId === applicationId);
 
       await rejectApplication(applicationId);
+      writeAuditLog("application.rejected", {
+        resourceType: "org_applications",
+        resourceId: applicationId,
+        details: { applicantEmail: appData?.email, applicantName: appData?.name },
+      }).catch(() => {});
 
       // Fire-and-forget notification (never blocks reject flow)
       if (appData?.email) {
@@ -474,6 +485,10 @@ export function useManageOrganizations({
         university: String(university || "").trim(),
         department: String(department || "").trim(),
       });
+      writeAuditLog("application.submitted", {
+        resourceType: "org_applications",
+        details: { applicantEmail: String(email || "").trim().toLowerCase(), organizationId },
+      }).catch(() => {});
       await loadOrgs();
       setMessage?.("Admin application created.");
       return { ok: true };

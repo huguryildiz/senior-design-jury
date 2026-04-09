@@ -17,13 +17,19 @@ import { getActorInfo, formatActionLabel, formatActionDetail } from "../utils/au
 
 // ── Chip helpers ──────────────────────────────────────────────
 const CHIP_MAP = {
-  entry_tokens:  { type: "token",    label: "Token" },
-  score_sheets:  { type: "eval",     label: "Evaluation" },
-  jurors:        { type: "juror",    label: "Juror" },
-  periods:       { type: "semester", label: "Period" },
-  projects:      { type: "project",  label: "Project" },
-  organizations: { type: "security", label: "Security" },
-  memberships:   { type: "security", label: "Security" },
+  entry_tokens:       { type: "token",    label: "Token" },
+  score_sheets:       { type: "eval",     label: "Evaluation" },
+  jurors:             { type: "juror",    label: "Juror" },
+  periods:            { type: "period",   label: "Period" },
+  projects:           { type: "project",  label: "Project" },
+  organizations:      { type: "security", label: "Security" },
+  memberships:        { type: "security", label: "Security" },
+  juror_period_auth:  { type: "juror",    label: "Juror" },
+  profiles:           { type: "security", label: "Auth" },
+  audit_logs:         { type: "security", label: "Audit" },
+  period_criteria:    { type: "period",   label: "Criteria" },
+  framework_outcomes: { type: "period",   label: "Outcome" },
+  org_applications:   { type: "security", label: "Application" },
 };
 
 function getChip(resourceType) {

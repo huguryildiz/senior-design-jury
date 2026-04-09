@@ -83,6 +83,7 @@ export {
   getActiveEntryToken,
   getActiveEntryTokenPlain,
   listAuditLogs,
+  writeAuditLog,
   fullExport,
   upsertProfile,
   getProfile,

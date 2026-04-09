@@ -204,7 +204,6 @@ const JUROR_ACTIONS = new Set([
   "evaluation.complete",
   "juror.pin_locked",
   "juror.edit_mode_closed_on_resubmit",
-  "score.update",
 ]);
 
 export function getInitials(name) {
@@ -260,7 +259,7 @@ export const ACTION_LABELS = {
   "export.scores": "Scores exported",
   "juror.import": "Jurors imported",
   "juror.create": "Juror created",
-  "juror.edit_enabled": "Edit mode granted",
+  "juror.edit_enabled": "Edit mode granted", // legacy alias → juror.edit_mode_enabled
   "project.import": "Projects imported",
   "project.create": "Project created",
   "project.update": "Project updated",
@@ -287,6 +286,23 @@ export const ACTION_LABELS = {
   "memberships.delete": "Membership deleted",
   "organizations.insert": "Organization created",
   "organizations.update": "Organization updated",
+  // Frontend-instrumented actions (via rpc_admin_write_audit_log)
+  "admin.login": "Admin login",
+  "export.scores": "Scores exported",
+  "export.rankings": "Rankings exported",
+  "export.heatmap": "Heatmap exported",
+  "export.analytics": "Analytics exported",
+  "export.audit": "Audit log exported",
+  "export.backup": "Backup exported",
+  "period.lock": "Evaluation locked",
+  "period.unlock": "Evaluation unlocked",
+  "criteria.save": "Criteria & outcomes saved",
+  "outcome.create": "Outcome created",
+  "outcome.update": "Outcome updated",
+  "outcome.delete": "Outcome deleted",
+  "application.submitted": "Application submitted",
+  "application.approved": "Application approved",
+  "application.rejected": "Application rejected",
 };
 
 /**

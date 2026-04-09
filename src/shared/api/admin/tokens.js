@@ -98,6 +98,16 @@ export async function revokeEntryToken(periodId) {
     .select();
   if (error) throw error;
 
+  // Emit audit log for revocation (the RPC path does this automatically,
+  // but this PostgREST path bypasses it)
+  import("./audit").then(({ writeAuditLog }) => {
+    writeAuditLog("token.revoke", {
+      resourceType: "entry_tokens",
+      resourceId: periodId,
+      details: { revokedCount: data?.length || 0 },
+    }).catch(() => {});
+  }).catch(() => {});
+
   const count = await countActiveSessions(periodId, new Date().toISOString());
 
   return { success: true, active_juror_count: count || 0 };

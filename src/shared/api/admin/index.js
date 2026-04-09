@@ -76,7 +76,7 @@ export {
   getActiveEntryTokenPlain,
 } from "./tokens";
 
-export { listAuditLogs } from "./audit";
+export { listAuditLogs, writeAuditLog } from "./audit";
 
 export { fullExport } from "./export";
 

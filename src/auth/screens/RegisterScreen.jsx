@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { UserPlus, Eye, EyeOff, Check, Info } from "lucide-react";
 import FbAlert from "@/shared/ui/FbAlert";
 import { listOrganizationsPublic } from "@/shared/api";
-import CustomSelect from "@/shared/ui/CustomSelect";
+import GroupedCombobox from "@/shared/ui/GroupedCombobox";
 import { AuthContext } from "@/auth/AuthProvider";
 import { useSecurityPolicy } from "@/auth/SecurityPolicyContext";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -20,9 +20,6 @@ function generateTemporaryPassword() {
   return `Va!${rand.slice(0, 14)}9Z`;
 }
 
-function getUniversityLabel(tenant) {
-  return String(tenant?.university || tenant?.name || "Organization").trim();
-}
 
 const normalizeError = (raw) => {
   const msg = String(raw || "").toLowerCase().trim();
@@ -100,7 +97,6 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
 
   const [fullName, setFullName] = useState(() => String(authUser?.name || "").trim());
   const [email, setEmail] = useState(() => String(authUser?.email || "").trim());
-  const [university, setUniversity] = useState("");
   const [tenantId, setTenantId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -146,30 +142,38 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
     return () => { active = false; };
   }, []);
 
-  const universityOptions = useMemo(
-    () => [...new Set(tenants.map(getUniversityLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [tenants]
+  const orgOptions = useMemo(
+    () =>
+      tenants.map((t) => ({
+        value: t.id,
+        label: t.subtitle || t.name,
+        group: t.name,
+        badge: t.code || "",
+      })),
+    [tenants],
   );
 
-  const departmentOptions = useMemo(() => {
-    if (!university) return [];
-    return tenants
-      .filter((t) => getUniversityLabel(t) === university)
-      .sort((a, b) => String(a?.department || "").localeCompare(String(b?.department || "")));
-  }, [university, tenants]);
+  const [touched, setTouched] = useState({});
+  const markTouched = (field) => setTouched((prev) => ({ ...prev, [field]: true }));
 
-  useEffect(() => {
-    if (!university) { setTenantId(""); return; }
-    if (!departmentOptions.some((d) => d.id === tenantId)) setTenantId("");
-  }, [university, departmentOptions, tenantId]);
+  const validations = {
+    name: fullName.trim().length > 0,
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
+    org: !!tenantId,
+    password: isValidPassword(password),
+    confirm: password === confirmPassword && confirmPassword.length > 0,
+  };
+
+  const fieldKeys = isGoogleApplicationFlow
+    ? ["name", "email", "org"]
+    : ["name", "email", "org", "password", "confirm"];
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     if (!fullName.trim()) { setError("Full name is required."); return; }
     if (!email.trim()) { setError("Work email is required."); return; }
-    if (!university) { setError("Please select a university or organization."); return; }
-    if (!tenantId) { setError("Please select a department."); return; }
+    if (!tenantId) { setError("Please select an organization."); return; }
     if (!isGoogleApplicationFlow) {
       if (!password) { setError("Password is required."); return; }
       if (password !== confirmPassword) { setError("Passwords do not match."); return; }
@@ -186,27 +190,22 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
     setLoading(true);
     try {
       const selectedTenant = tenants.find((t) => t.id === tenantId);
-      const deptLabel = String(selectedTenant?.department || selectedTenant?.name || "").trim();
+      const payload = {
+        name: fullName.trim(),
+        university: selectedTenant?.name || "",
+        department: selectedTenant?.subtitle || selectedTenant?.name || "",
+        tenantId,
+      };
       if (isGoogleApplicationFlow) {
         if (typeof doCompleteProfile !== "function") {
           throw new Error("Profile completion is not configured.");
         }
-        await doCompleteProfile({
-          name: fullName.trim(),
-          university: university.trim(),
-          department: deptLabel,
-          tenantId,
-        });
+        await doCompleteProfile(payload);
       } else {
-        await doRegister(email.trim(), generateTemporaryPassword(), {
-          name: fullName.trim(),
-          university: university.trim(),
-          department: deptLabel,
-          tenantId,
-        });
+        await doRegister(email.trim(), generateTemporaryPassword(), payload);
       }
       setSubmittedEmail(email.trim());
-      setSubmittedDept(`${university} — ${deptLabel}`);
+      setSubmittedDept(deptLabel ? `${uniLabel} — ${deptLabel}` : uniLabel);
       setSubmitted(true);
     } catch (err) {
       setError(normalizeError(extractErrorText(err) || "Application could not be submitted."));
@@ -263,13 +262,11 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
             {isGoogleApplicationFlow ? "Continue" : "Back to Sign In"}
           </button>
 
-          {onReturnHome && (
-            <div className="reg-home-link" style={{ marginTop: "16px" }}>
-              <button type="button" onClick={goHome} className="form-link">
-                &larr; Return Home
-              </button>
-            </div>
-          )}
+          <div className="login-footer" style={{ marginTop: "16px" }}>
+            <button type="button" onClick={goHome} className="form-link">
+              &larr; Return Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -303,6 +300,16 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
             </div>
           )}
 
+          {/* Progress indicator */}
+          <div className="apply-progress">
+            {fieldKeys.map((key) => (
+              <div
+                key={key}
+                className={`apply-progress-bar${validations[key] ? " apply-progress-bar--filled" : ""}`}
+              />
+            ))}
+          </div>
+
           {displayError && (
             <FbAlert variant="danger" style={{ marginBottom: "16px" }}>
               {displayError}
@@ -310,67 +317,82 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
           )}
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="apply-field">
-              <label className="apply-label" htmlFor="reg-name">Full Name</label>
+            <div className={`apply-field${touched.name && validations.name ? " apply-field--valid" : touched.name && !validations.name ? " apply-field--invalid" : ""}`}>
+              <div className="apply-label-row">
+                <label className="apply-label" htmlFor="reg-name" style={{ marginBottom: 0 }}>Full Name</label>
+                {touched.name && validations.name && (
+                  <span className="apply-valid-check"><Check size={12} strokeWidth={2.5} /></span>
+                )}
+              </div>
               <input
                 id="reg-name"
                 className="apply-input"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                onBlur={() => markTouched("name")}
                 placeholder="Dr. Jane Doe"
                 disabled={loading}
               />
+              {touched.name && !validations.name && (
+                <div className="apply-field-error">Full name is required.</div>
+              )}
             </div>
 
-            <div className="apply-field">
-              <label className="apply-label" htmlFor="reg-email">Institutional Email</label>
+            <div className={`apply-field${touched.email && validations.email ? " apply-field--valid" : touched.email && !validations.email ? " apply-field--invalid" : ""}`}>
+              <div className="apply-label-row">
+                <label className="apply-label" htmlFor="reg-email" style={{ marginBottom: 0 }}>Institutional Email</label>
+                {touched.email && validations.email && (
+                  <span className="apply-valid-check"><Check size={12} strokeWidth={2.5} /></span>
+                )}
+              </div>
               <input
                 id="reg-email"
                 className="apply-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => markTouched("email")}
                 placeholder="jane.doe@university.edu"
                 autoComplete="email"
                 disabled={loading || isGoogleApplicationFlow}
               />
+              {touched.email && !validations.email && (
+                <div className="apply-field-error">Valid email is required.</div>
+              )}
             </div>
 
-            <div className="apply-field">
-              <label className="apply-label" htmlFor="reg-university">University</label>
-              <CustomSelect
-                id="reg-university"
-                value={university}
-                onChange={(v) => setUniversity(v)}
-                disabled={loading || tenantsLoading}
-                options={[
-                  { value: "", label: tenantsLoading ? "Loading…" : "Select university…" },
-                  ...universityOptions.map((opt) => ({ value: opt, label: opt })),
-                ]}
-                ariaLabel="University"
-              />
-            </div>
-
-            <div className="apply-field">
-              <label className="apply-label" htmlFor="reg-dept">Department</label>
-              <CustomSelect
-                id="reg-dept"
+            <div className={`apply-field${touched.org && validations.org ? " apply-field--valid" : touched.org && !validations.org ? " apply-field--invalid" : ""}`}>
+              <div className="apply-label-row">
+                <label className="apply-label" htmlFor="reg-org" style={{ marginBottom: 0 }}>Organization</label>
+                {touched.org && validations.org && (
+                  <span className="apply-valid-check"><Check size={12} strokeWidth={2.5} /></span>
+                )}
+              </div>
+              <GroupedCombobox
+                id="reg-org"
                 value={tenantId}
-                onChange={(v) => setTenantId(v)}
-                disabled={loading || !university}
-                options={[
-                  { value: "", label: university ? "Select department…" : "Choose university first" },
-                  ...departmentOptions.map((opt) => ({ value: opt.id, label: opt.department || opt.name })),
-                ]}
-                ariaLabel="Department"
+                onChange={(v) => { setTenantId(v); markTouched("org"); }}
+                options={orgOptions}
+                placeholder={tenantsLoading ? "Loading…" : "Search university or department…"}
+                emptyMessage="No matching organizations found. Contact your department admin to set up VERA."
+                disabled={loading || tenantsLoading}
+                ariaLabel="Organization"
               />
+              {touched.org && !validations.org && (
+                <div className="apply-field-error">Please select an organization.</div>
+              )}
             </div>
 
             {!isGoogleApplicationFlow && (
               <>
-                <div className="apply-field">
-                  <label className="apply-label" htmlFor="reg-password">Password</label>
+                <div className={`apply-field${touched.password && validations.password ? " apply-field--valid" : touched.password && !validations.password ? " apply-field--invalid" : ""}`}>
+                  <div className="apply-label-row">
+                    <label className="apply-label" htmlFor="reg-password" style={{ marginBottom: 0 }}>Password</label>
+                    {touched.password && validations.password && (
+                      <span className="apply-valid-check"><Check size={12} strokeWidth={2.5} /></span>
+                    )}
+                  </div>
                   <div className="apply-pw-wrap">
                     <input
                       id="reg-password"
@@ -378,6 +400,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
                       type={showPass ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      onBlur={() => markTouched("password")}
                       placeholder={passwordPlaceholder}
                       autoComplete="new-password"
                       disabled={loading}
@@ -393,8 +416,13 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
                   />
                 </div>
 
-                <div className="apply-field" style={{ marginBottom: "24px" }}>
-                  <label className="apply-label" htmlFor="reg-confirm">Confirm Password</label>
+                <div className={`apply-field${touched.confirm && validations.confirm ? " apply-field--valid" : touched.confirm && !validations.confirm ? " apply-field--invalid" : ""}`} style={{ marginBottom: "24px" }}>
+                  <div className="apply-label-row">
+                    <label className="apply-label" htmlFor="reg-confirm" style={{ marginBottom: 0 }}>Confirm Password</label>
+                    {touched.confirm && validations.confirm && (
+                      <span className="apply-valid-check"><Check size={12} strokeWidth={2.5} /></span>
+                    )}
+                  </div>
                   <div className="apply-pw-wrap">
                     <input
                       id="reg-confirm"
@@ -402,6 +430,7 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
                       type={showConfirmPass ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
+                      onBlur={() => markTouched("confirm")}
                       placeholder="Re-enter password"
                       autoComplete="new-password"
                       disabled={loading}
@@ -436,13 +465,13 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
         {!isGoogleApplicationFlow && (
           <div className="apply-footer">
             Already have an account?{" "}
-            <button type="button" onClick={goLogin} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+            <button type="button" onClick={goLogin} className="form-link">
               Sign in
             </button>
           </div>
         )}
-        <div className="reg-home-link">
-          <button type="button" onClick={goHome} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+        <div className="login-footer" style={{ marginTop: "8px" }}>
+          <button type="button" onClick={goHome} className="form-link">
             &larr; Return Home
           </button>
         </div>

@@ -100,7 +100,7 @@ export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin })
         </div>
 
         <div className="login-footer">
-          <button type="button" onClick={goLogin} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={goLogin} className="form-link">
             ← Back to Sign In
           </button>
         </div>

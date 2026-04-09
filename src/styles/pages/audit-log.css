@@ -55,7 +55,7 @@
 .audit-chip-token{background:rgba(139,92,246,0.08);color:#8b5cf6;border-color:rgba(139,92,246,0.15)}
 .audit-chip-eval{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-ring)}
 .audit-chip-juror{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-ring)}
-.audit-chip-semester{background:var(--success-soft);color:var(--success);border-color:var(--success-ring)}
+.audit-chip-period{background:var(--success-soft);color:var(--success);border-color:var(--success-ring)}
 .audit-chip-project{background:rgba(6,182,212,0.08);color:#06b6d4;border-color:rgba(6,182,212,0.15)}
 .audit-chip-security{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-ring)}
 
@@ -63,7 +63,7 @@
 .dark-mode .audit-chip-token{background:rgba(167,139,250,0.12);color:#c4b5fd;border-color:rgba(167,139,250,0.25)}
 .dark-mode .audit-chip-eval{background:rgba(96,165,250,0.12);color:#93c5fd;border-color:rgba(96,165,250,0.25)}
 .dark-mode .audit-chip-juror{background:rgba(251,191,36,0.12);color:#fcd34d;border-color:rgba(251,191,36,0.25)}
-.dark-mode .audit-chip-semester{background:rgba(74,222,128,0.12);color:#86efac;border-color:rgba(74,222,128,0.25)}
+.dark-mode .audit-chip-period{background:rgba(74,222,128,0.12);color:#86efac;border-color:rgba(74,222,128,0.25)}
 .dark-mode .audit-chip-project{background:rgba(34,211,238,0.12);color:#67e8f9;border-color:rgba(34,211,238,0.25)}
 .dark-mode .audit-chip-security{background:rgba(248,113,113,0.12);color:#fca5a5;border-color:rgba(248,113,113,0.25)}
 

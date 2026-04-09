@@ -5,6 +5,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { exportRankingsXLSX } from "../utils/exportXLSX";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
+import { writeAuditLog } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
@@ -449,6 +450,10 @@ export default function RankingsPage() {
           rows,
         });
       }
+      writeAuditLog("export.rankings", {
+        resourceType: "score_sheets",
+        details: { format: exportFormat, rowCount: filteredRows.length },
+      }).catch(() => {});
       setExportPanelOpen(false);
       _toast.success("Rankings exported");
     } catch (e) {

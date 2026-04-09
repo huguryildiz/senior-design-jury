@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { outcomeValues } from "@/shared/stats";
+import { writeAuditLog } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
@@ -343,6 +344,10 @@ export default function AnalyticsPage() {
         const wb = buildAnalyticsWorkbook(exportParams);
         XLSX.writeFile(wb, buildExportFilename("Analytics", periodName || "all", "xlsx", tc));
       }
+      writeAuditLog("export.analytics", {
+        resourceType: "score_sheets",
+        details: { format },
+      }).catch(() => {});
       const fmtLabel = format === "pdf" ? "PDF" : format === "csv" ? "CSV" : "Excel";
       _toast.success(`Analytics exported · ${fmtLabel}${periodName ? ` · ${periodName}` : ""}`);
       setExportOpen(false);

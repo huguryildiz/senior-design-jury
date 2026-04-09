@@ -3,6 +3,16 @@
 
 import { supabase } from "../core/client";
 
+export async function writeAuditLog(action, { resourceType, resourceId, details } = {}) {
+  const { error } = await supabase.rpc("rpc_admin_write_audit_log", {
+    p_action: action,
+    p_resource_type: resourceType || null,
+    p_resource_id: resourceId || null,
+    p_details: details || {},
+  });
+  if (error) throw error;
+}
+
 export async function listAuditLogs(filters = {}) {
   let query = supabase
     .from("audit_logs")

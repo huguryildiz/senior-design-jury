@@ -328,6 +328,13 @@ export default function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signInWithPassword(credentials);
     if (error) throw error;
     if (!rememberMe) clearPersistedSession();
+    // Fire-and-forget audit log for admin login
+    import("@/shared/api").then(({ writeAuditLog }) => {
+      writeAuditLog("admin.login", {
+        resourceType: "profiles",
+        details: { method: "password" },
+      }).catch(() => {});
+    }).catch(() => {});
     return data;
   }, [policy.emailPassword]);
 

@@ -18,6 +18,7 @@ import {
   setEvalLock,
   listPeriodCriteria,
   listPeriodOutcomes,
+  writeAuditLog,
 } from "../../shared/api";
 import { getActiveCriteria } from "../../shared/criteria/criteriaHelpers";
 import { sortPeriodsByStartDateDesc } from "../../shared/periodSort";
@@ -330,6 +331,15 @@ export function useManagePeriods({
     incLoading();
     try {
       await savePeriodCriteria(periodId, config);
+      writeAuditLog("criteria.save", {
+        resourceType: "period_criteria",
+        resourceId: periodId,
+        details: {
+          criteriaCount: config.length,
+          outcomeMappingCount: config.reduce((s, c) => s + (c.outcomes?.length || 0), 0),
+          operation: "full_replace",
+        },
+      }).catch(() => {});
       // Re-fetch from DB to get canonical normalized shape
       const criteriaRows = await listPeriodCriteria(periodId);
       setCriteriaConfig(getActiveCriteria(criteriaRows));
@@ -407,6 +417,10 @@ export function useManagePeriods({
     setEvalLockError("");
     try {
       await setEvalLock(viewPeriodId, !!next.evalLockActive);
+      writeAuditLog(next.evalLockActive ? "period.lock" : "period.unlock", {
+        resourceType: "periods",
+        resourceId: viewPeriodId,
+      }).catch(() => {});
       applyPeriodPatch({ id: viewPeriodId, is_locked: !!next.evalLockActive });
       setSettings(next);
       const periodContext =

@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listAuditLogs } from "../../shared/api";
+import { listAuditLogs, writeAuditLog } from "../../shared/api";
 import {
   AUDIT_PAGE_SIZE,
   formatAuditTimestamp,
@@ -249,6 +249,10 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
           colWidths: [22, 12, 18, 16, 48],
         });
       }
+      writeAuditLog("export.audit", {
+        resourceType: "audit_logs",
+        details: { format, rowCount: all.length },
+      }).catch(() => {});
       setMessage(`${all.length} audit event${all.length !== 1 ? "s" : ""} exported`);
     } catch (e) {
       setAuditError(e?.message || "Could not export audit logs.");

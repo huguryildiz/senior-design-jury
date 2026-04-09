@@ -159,7 +159,7 @@ export default function JuryGatePage() {
         <div className="jury-step">
           <div className="jury-card dj-glass-card jury-gate-card" style={{ textAlign: "center" }}>
             <div className="jury-gate-spinner" />
-            <div className="jury-title">Verifying access…</div>
+            <div className="jury-title">Verifying Access…</div>
             <div className="jury-sub">Please wait while we validate your credentials.</div>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function JuryGatePage() {
           </div>
 
           {/* Header */}
-          <div className="jury-title" style={{ marginBottom: 8 }}>Enter your access code</div>
+          <div className="jury-title" style={{ marginBottom: 8 }}>Enter Your Access Code</div>
           <div className="jury-sub" style={{ marginBottom: 16 }}>
             Paste the link from your invitation email, or type your access code below.
           </div>

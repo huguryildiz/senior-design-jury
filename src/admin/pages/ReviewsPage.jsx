@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { CheckCircle2, Download, Filter, MessageSquare, Search, Send, X } from "lucide-react";
 import { useReviewsFilters } from "../hooks/useReviewsFilters";
+import { writeAuditLog } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
@@ -353,6 +354,10 @@ export default function ReviewsPage() {
         rows,
         colWidths: [24, 24, ...scoreCols.filter((c) => c.key !== "total").map(() => 10), 8, 12, 14, 32, 18],
       });
+      writeAuditLog("export.scores", {
+        resourceType: "score_sheets",
+        details: { format: exportFormat, rowCount: sorted.length },
+      }).catch(() => {});
       setShowExport(false);
       const fmtLabel = exportFormat === "pdf" ? "PDF" : exportFormat === "csv" ? "CSV" : "Excel";
       toast.success(`${sorted.length} review${sorted.length !== 1 ? "s" : ""} · ${uniqueJurors} juror${uniqueJurors !== 1 ? "s" : ""} exported · ${fmtLabel}`);

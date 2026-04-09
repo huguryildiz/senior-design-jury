@@ -13,6 +13,7 @@ import {
   listCriterionOutcomeMappings,
   upsertCriterionOutcomeMapping,
   deleteCriterionOutcomeMapping,
+  writeAuditLog,
 } from "@/shared/api";
 
 export function useFrameworkOutcomes({ frameworkId }) {
@@ -111,6 +112,11 @@ export function useFrameworkOutcomes({ frameworkId }) {
         );
       }
 
+      writeAuditLog("outcome.create", {
+        resourceType: "framework_outcomes",
+        resourceId: newOutcome.id,
+        details: { code, label: shortLabel, criterionCount: criterionIds.length },
+      }).catch(() => {});
       await loadAll();
       return newOutcome;
     },
@@ -144,6 +150,11 @@ export function useFrameworkOutcomes({ frameworkId }) {
         ),
       ]);
 
+      writeAuditLog("outcome.update", {
+        resourceType: "framework_outcomes",
+        resourceId: outcomeId,
+        details: { label, mappingsAdded: toAdd.length, mappingsRemoved: toRemove.length },
+      }).catch(() => {});
       await loadAll();
     },
     [frameworkId, mappings, loadAll]
@@ -152,6 +163,10 @@ export function useFrameworkOutcomes({ frameworkId }) {
   const removeOutcome = useCallback(
     async (outcomeId) => {
       await deleteOutcome(outcomeId);
+      writeAuditLog("outcome.delete", {
+        resourceType: "framework_outcomes",
+        resourceId: outcomeId,
+      }).catch(() => {});
       await loadAll();
     },
     [loadAll]

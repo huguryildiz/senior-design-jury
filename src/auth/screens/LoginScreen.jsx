@@ -203,7 +203,7 @@ export default function LoginScreen({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@university.edu"
+                  placeholder="Enter your email address"
                   autoComplete="email"
                   autoFocus
                   disabled={loading}
@@ -213,7 +213,7 @@ export default function LoginScreen({
               <div className="form-group">
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                   <label className="form-label" htmlFor="login-password" style={{ marginBottom: 0 }}>Password</label>
-                  <button type="button" onClick={goForgotPassword} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                  <button type="button" onClick={goForgotPassword} className="form-link">
                     Forgot?
                   </button>
                 </div>
@@ -294,17 +294,15 @@ export default function LoginScreen({
 
         <div className="login-footer">
           Don&apos;t have an account?{" "}
-          <button type="button" onClick={goRegister} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+          <button type="button" onClick={goRegister} className="form-link">
             Apply for access
           </button>
         </div>
-        {onReturnHome && (
-          <div className="login-footer" style={{ marginTop: "8px" }}>
-            <button type="button" onClick={goHome} className="form-link" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-              ← Return Home
-            </button>
-          </div>
-        )}
+        <div className="login-footer" style={{ marginTop: "8px" }}>
+          <button type="button" onClick={goHome} className="form-link">
+            ← Return Home
+          </button>
+        </div>
       </div>
     </div>
   );
