@@ -503,8 +503,21 @@ export default function PeriodsPage() {
               </tr>
             ) : filteredList.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
-                  No periods found.
+                <td colSpan={4} style={{ textAlign: "center", padding: "48px 24px" }}>
+                  <div style={{ color: "var(--text-tertiary)", marginBottom: 12 }}>
+                    {statusFilter !== "all"
+                      ? "No periods match the current filter."
+                      : "No evaluation periods yet. Create your first period to get started."}
+                  </div>
+                  {statusFilter === "all" && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{ width: "auto", padding: "8px 20px" }}
+                      onClick={openAddDrawer}
+                    >
+                      + Create First Period
+                    </button>
+                  )}
                 </td>
               </tr>
             ) : sortedFilteredList.map((period) => {

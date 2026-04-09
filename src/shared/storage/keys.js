@@ -18,4 +18,5 @@ export const KEYS = {
   JURY_RAW_TOKEN_PREFIX: "jury_raw_token_",
   ADMIN_ACTIVE_ORGANIZATION: "admin.active_organization_id",
   ADMIN_REMEMBER_ME: "admin.remember_me",
+  ADMIN_REMEMBERED_EMAIL: "admin.remembered_email",
 };

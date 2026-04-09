@@ -60,8 +60,6 @@ export async function createPeriod(payload) {
       is_locked: payload.is_locked ?? false,
       is_visible: payload.is_visible ?? true,
       framework_id: payload.framework_id || null,
-      criteria_config: payload.criteria_config || null,
-      outcome_config: payload.outcome_config || null,
     })
     .select()
     .single();
@@ -69,7 +67,7 @@ export async function createPeriod(payload) {
   return data;
 }
 
-export async function updatePeriod({ id, name, season, description, start_date, end_date, is_locked, is_visible, framework_id, criteria_config, outcome_config }) {
+export async function updatePeriod({ id, name, season, description, start_date, end_date, is_locked, is_visible, framework_id }) {
   if (!id) throw new Error("updatePeriod: id required");
   const updates = {};
   if (name !== undefined) updates.name = name;
@@ -80,8 +78,6 @@ export async function updatePeriod({ id, name, season, description, start_date, 
   if (is_locked !== undefined) updates.is_locked = is_locked;
   if (is_visible !== undefined) updates.is_visible = is_visible;
   if (framework_id !== undefined) updates.framework_id = framework_id;
-  if (criteria_config !== undefined) updates.criteria_config = criteria_config;
-  if (outcome_config !== undefined) updates.outcome_config = outcome_config;
 
   const { data, error } = await supabase
     .from("periods")

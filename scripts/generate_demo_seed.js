@@ -52,9 +52,9 @@ function randSqlTs(dateStr, minH, maxH) {
 
 const PROJECT_COUNTS = { current: 12, prev: 10, older: 8, oldest: 6 };
 // Per-org overrides: only specify keys that differ from defaults
-const PROJECT_COUNT_OVERRIDES = { 'TEDU-EE': { current: 5 } };
-const JUROR_ACTIVE   = { current: 10, prev: 8, older: 6, oldest: 5 };
-const TOKENS_PER_PERIOD = 3;
+const PROJECT_COUNT_OVERRIDES = { 'TEDU-EE': { current: 8 } };
+const JUROR_ACTIVE   = { current: 18, prev: 12, older: 8, oldest: 6 };
+const TOKENS_PER_PERIOD = 4;
 const ARCH_DIST_12 = ['star','star','solid','solid','wellrounded','highvar','tech_strong_comm_weak','weak_tech_strong_team','strong_late','borderline','average','partial'];
 const ARCH_DIST_10 = ['star','solid','solid','wellrounded','highvar','tech_strong_comm_weak','borderline','average','strong_late','partial'];
 const ARCH_DIST_8  = ['star','solid','solid','highvar','borderline','average','wellrounded','partial'];
@@ -122,7 +122,7 @@ CASCADE;
 // ═══════════════════════════════════════════════════════════════
 
 const orgs = [
-  { p: 1, name: 'Electrical-Electronics Engineering', institution: 'TED University', code: 'TEDU-EE', type: 'academic', lang: 'tr', descLang: 'en' },
+  { p: 1, name: 'Electrical-Electronics Engineering', institution: 'TED University', code: 'TEDU-EE', type: 'academic', lang: 'tr', descLang: 'en', commentLang: 'en' },
   { p: 2, name: 'Computer Science', institution: 'Carnegie Mellon University', code: 'CMU-CS', type: 'academic', lang: 'en', descLang: 'en' },
   { p: 3, name: 'TEKNOFEST', institution: 'Türkiye Technology Team Foundation', code: 'TEKNOFEST', type: 'competition', lang: 'tr', descLang: 'tr' },
   { p: 4, name: 'TÜBİTAK 2204-A', institution: 'Scientific and Technological Research Council of Türkiye', code: 'TUBITAK-2204A', type: 'competition', lang: 'tr', descLang: 'tr' },
@@ -135,11 +135,21 @@ const orgCreatedDates = {
   'TUBITAK-2204A': '2024-04-15', 'IEEE-APSSDC': '2024-05-01', 'CANSAT-2025': '2024-04-20',
 };
 
+const orgSettings = {
+  'TEDU-EE': '{"locale":"tr","notifications":{"email":true,"slack":false},"theme":"default","evaluation_day_reminder":true}',
+  'CMU-CS': '{"locale":"en","notifications":{"email":true,"slack":true},"theme":"default","auto_lock_after_hours":48}',
+  'TEKNOFEST': '{"locale":"tr","notifications":{"email":true,"slack":false},"theme":"default","multi_day_event":true}',
+  'TUBITAK-2204A': '{"locale":"tr","notifications":{"email":false,"slack":false},"theme":"default"}',
+  'IEEE-APSSDC': '{"locale":"en","notifications":{"email":true,"slack":false},"theme":"default"}',
+  'CANSAT-2025': '{"locale":"en","notifications":{"email":true,"slack":true},"theme":"default","recovery_tracking":true}',
+};
+
 out.push(`-- Organizations`);
 orgs.forEach(o => {
   o.id = uuid('org-' + o.code);
   const ts = sqlTs(orgCreatedDates[o.code]);
-  out.push(`INSERT INTO organizations (id, subtitle, name, code, status, settings, updated_at) VALUES ('${o.id}', '${escapeSql(o.institution)}', '${escapeSql(o.name)}', '${o.code}', 'active', '{}', ${ts}) ON CONFLICT DO NOTHING;`);
+  const settings = orgSettings[o.code] || '{}';
+  out.push(`INSERT INTO organizations (id, subtitle, name, code, status, settings, updated_at) VALUES ('${o.id}', '${escapeSql(o.institution)}', '${escapeSql(o.name)}', '${o.code}', 'active', '${settings}', ${ts}) ON CONFLICT DO NOTHING;`);
 });
 out.push('');
 
@@ -290,20 +300,20 @@ processOrgfw('TEDU-EE', 'MUDEK 2024', '1.0',
       ] }
   ],
   [
-    ['1.2','Adequate knowledge in mathematics, science and engineering','Demonstrate sufficient knowledge of mathematics, natural sciences, and engineering fundamentals to solve complex engineering problems.'],
-    ['2','Ability to formulate and solve complex engineering problems','Identify, define, formulate, and solve complex engineering problems by selecting and applying appropriate analysis and modeling methods.'],
-    ['3.1','Ability to design a complex system under realistic constraints','Design complex systems, processes, devices, or products under realistic constraints to meet identified needs.'],
-    ['3.2','Ability to apply modern design methods','Apply modern design techniques and tools appropriate to engineering practice, including computer-aided engineering.'],
-    ['8.1','Ability to function effectively in teams','Function effectively as a member or leader in teams, taking individual responsibility within disciplinary and multidisciplinary settings.'],
-    ['8.2','Ability to work in multi-disciplinary teams','Work effectively in multidisciplinary teams, contributing expertise while integrating perspectives from other disciplines.'],
-    ['9.1','Oral communication effectiveness','Communicate effectively through oral presentations, adapting communication style to diverse audiences.'],
-    ['9.2','Written communication effectiveness','Produce clear, well-structured written technical documents including reports, specifications, and design documentation.']
+    ['MDK 1.2','Adequate knowledge in mathematics, science and engineering','Demonstrate sufficient knowledge of mathematics, natural sciences, and engineering fundamentals to solve complex engineering problems.'],
+    ['MDK 2','Ability to formulate and solve complex engineering problems','Identify, define, formulate, and solve complex engineering problems by selecting and applying appropriate analysis and modeling methods.'],
+    ['MDK 3.1','Ability to design a complex system under realistic constraints','Design complex systems, processes, devices, or products under realistic constraints to meet identified needs.'],
+    ['MDK 3.2','Ability to apply modern design methods','Apply modern design techniques and tools appropriate to engineering practice, including computer-aided engineering.'],
+    ['MDK 8.1','Ability to function effectively in teams','Function effectively as a member or leader in teams, taking individual responsibility within disciplinary and multidisciplinary settings.'],
+    ['MDK 8.2','Ability to work in multi-disciplinary teams','Work effectively in multidisciplinary teams, contributing expertise while integrating perspectives from other disciplines.'],
+    ['MDK 9.1','Oral communication effectiveness','Communicate effectively through oral presentations, adapting communication style to diverse audiences.'],
+    ['MDK 9.2','Written communication effectiveness','Produce clear, well-structured written technical documents including reports, specifications, and design documentation.']
   ],
   [
-    {crit:'technical', outs:[{code:'1.2',weight:0.25},{code:'2',weight:0.25},{code:'3.1',weight:0.25},{code:'3.2',weight:0.25}]},
-    {crit:'design', outs:[{code:'9.2',weight:1.0}]},
-    {crit:'delivery', outs:[{code:'9.1',weight:1.0}]},
-    {crit:'teamwork', outs:[{code:'8.1',weight:0.5},{code:'8.2',weight:0.5}]}
+    {crit:'technical', outs:[{code:'MDK 1.2',weight:0.25},{code:'MDK 2',weight:0.25},{code:'MDK 3.1',weight:0.25},{code:'MDK 3.2',weight:0.25}]},
+    {crit:'design', outs:[{code:'MDK 9.2',weight:1.0}]},
+    {crit:'delivery', outs:[{code:'MDK 9.1',weight:1.0}]},
+    {crit:'teamwork', outs:[{code:'MDK 8.1',weight:0.5},{code:'MDK 8.2',weight:0.5}]}
   ]
 );
 
@@ -399,13 +409,20 @@ const orgPeriodsDef = {
   'CANSAT-2025': [
     {name:'2026 Season',s:'Spring',start:'2026-03-01',end:'2026-07-15',desc:'CanSat 2026 Launch Competition'},
     {name:'2025 Season',s:'Spring',start:'2025-03-01',end:'2025-07-15',desc:'CanSat 2025 Competition'},
-    {name:'2024 Season',s:'Spring',start:'2024-03-01',end:'2024-07-15',desc:'CanSat 2024 Competition'}],
+    {name:'2024 Season',s:'Spring',start:'2024-03-01',end:'2024-07-15',desc:'CanSat 2024 Competition'},
+    {name:'2027 Season (Draft)',s:'Spring',start:'2027-03-01',end:'2027-07-15',desc:'CanSat 2027 — Planning Phase',draft:true}],
 };
 
 // Criteria evolution: idx=0 is NEVER touched (current period preserved exactly)
 const criteriaEvolution = {
   'TEDU-EE': {
     1:{weights:{technical:30,design:28,delivery:30,teamwork:12},
+      descOverrides:{
+        technical:'Evaluates the technical depth of the engineering solution including problem definition, design rationale, and use of appropriate tools.',
+        design:'Assesses poster design quality including layout structure, figure labelling, and visual communication of technical results.',
+        delivery:'Evaluates oral presentation clarity, pacing, and the ability to respond to technical questions from the jury.',
+        teamwork:'Assesses individual contributions, equitable workload distribution, and professional conduct during the evaluation session.',
+      },
       rubricOverrides:{
         design:[
           {min:27,max:30,label:'Excellent',description:'Poster is visually compelling with logical flow. All figures are high quality and properly labelled.'},
@@ -421,6 +438,12 @@ const criteriaEvolution = {
         ],
       }},
     2:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report Quality',delivery:'Oral Presentation'},shortLabels:{design:'Report',delivery:'Oral'},
+      descOverrides:{
+        technical:'Evaluates engineering problem formulation, design methodology, and application of domain-specific knowledge.',
+        design:'Assesses the quality and structure of the written report including references, formatting, and technical clarity.',
+        delivery:'Evaluates oral presentation skills including confidence, pacing, audience awareness, and Q&A handling.',
+        teamwork:'Assesses balanced contribution across team members and individual understanding of the project scope.',
+      },
       rubricOverrides:{
         design:[
           {min:27,max:30,label:'Excellent',description:'Report is well-structured with clear sections, proper references, and professional formatting.'},
@@ -442,6 +465,12 @@ const criteriaEvolution = {
         ],
       }},
     3:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report',delivery:'Presentation',teamwork:'Team Participation'},shortLabels:{design:'Report',delivery:'Pres.',teamwork:'Team'},
+      descOverrides:{
+        technical:'Assesses the fundamental soundness of the engineering approach and adequacy of technical justification.',
+        design:'Evaluates the organization, completeness, and clarity of the written project report.',
+        delivery:'Assesses the ability to communicate project objectives, methods, and results during the oral presentation.',
+        teamwork:'Evaluates whether all team members can speak knowledgeably about the project and contribute during Q&A.',
+      },
       rubricOverrides:{
         technical:[
           {min:22,max:30,label:'Proficient',description:'Sound engineering approach with adequate technical justification.'},
@@ -467,6 +496,13 @@ const criteriaEvolution = {
   },
   'CMU-CS': {
     1:{weights:{problem_solving:25,system_design:25,implementation_quality:18,communication:22,teamwork:10},labels:{communication:'Communication Skills'},
+      descOverrides:{
+        problem_solving:'Evaluates the precision of problem identification, scope definition, and correctness of the chosen analytical approach.',
+        system_design:'Assesses system architecture decisions, modularity, and the rationale behind component boundaries.',
+        implementation_quality:'Evaluates code organization, test coverage, and adherence to software engineering best practices.',
+        communication:'Assesses written and oral communication effectiveness including audience awareness and presentation structure.',
+        teamwork:'Evaluates equitable contribution, collaboration tools usage, and team coordination effectiveness.',
+      },
       rubricOverrides:{
         communication:[
           {min:18,max:20,label:'Excellent',description:'Written and oral communication is clear, well-organized, and audience-appropriate.'},
@@ -476,6 +512,13 @@ const criteriaEvolution = {
         ],
       }},
     2:{weights:{problem_solving:30,system_design:25,implementation_quality:20,communication:15,teamwork:10},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture'},
+      descOverrides:{
+        problem_solving:'Assesses analytical rigor, problem decomposition quality, and identification of constraints and edge cases.',
+        system_design:'Evaluates architectural soundness, component modularity, interface design, and scalability considerations.',
+        implementation_quality:'Assesses code quality, testing strategy, continuous integration practices, and documentation completeness.',
+        communication:'Evaluates the clarity and completeness of project documentation and the effectiveness of team presentations.',
+        teamwork:'Assesses collaborative development practices including version control workflows and code review participation.',
+      },
       rubricOverrides:{
         problem_solving:[
           {min:22,max:25,label:'Excellent',description:'Demonstrates rigorous analytical thinking with precise problem decomposition.'},
@@ -491,6 +534,12 @@ const criteriaEvolution = {
         ],
       }},
     3:{weights:{problem_solving:30,system_design:30,implementation_quality:20,communication:20,teamwork:0},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture',communication:'Communication & Collaboration'},removeCriteria:['teamwork'],
+      descOverrides:{
+        problem_solving:'Evaluates structured problem decomposition, constraint analysis, and the rigor of the proposed solution approach.',
+        system_design:'Assesses software architecture quality including component cohesion, interface clarity, and design rationale.',
+        implementation_quality:'Evaluates overall code health, test adequacy, build reproducibility, and deployment readiness.',
+        communication:'Assesses project documentation quality, team collaboration evidence, and the ability to present technical work clearly.',
+      },
       rubricOverrides:{
         problem_solving:[
           {min:22,max:25,label:'Excellent',description:'Exceptional analytical rigor. Problem is fully decomposed with constraints identified.'},
@@ -514,6 +563,12 @@ const criteriaEvolution = {
   },
   'TEKNOFEST': {
     1:{labels:{team_execution:'Team Coordination'},
+      descOverrides:{
+        preliminary_report:'Assesses preliminary design report completeness, mission clarity, and feasibility of the proposed concept.',
+        critical_design:'Evaluates design maturity, subsystem readiness, and manufacturing feasibility at the CDR milestone.',
+        technical_performance:'Assesses system performance during competition demonstration under real operating conditions.',
+        team_execution:'Evaluates team coordination quality, role assignment clarity, and effectiveness during jury presentation.',
+      },
       rubricOverrides:{
         team_execution:[
           {min:14,max:15,label:'Excellent',description:'Team works as a cohesive unit with clear coordination and mutual support.'},
@@ -523,6 +578,11 @@ const criteriaEvolution = {
         ],
       }},
     2:{weights:{preliminary_report:30,critical_design:35,technical_performance:35,team_execution:0},labels:{critical_design:'Design Review',technical_performance:'Field Performance'},removeCriteria:['team_execution'],
+      descOverrides:{
+        preliminary_report:'Assesses the thoroughness and technical depth of the preliminary design documentation.',
+        critical_design:'Evaluates subsystem integration completeness and design verification evidence at review stage.',
+        technical_performance:'Assesses field-day performance against mission objectives under competition constraints.',
+      },
       rubricOverrides:{
         critical_design:[
           {min:27,max:30,label:'Excellent',description:'Design review demonstrates full system maturity with verified subsystem interfaces.'},
@@ -540,6 +600,11 @@ const criteriaEvolution = {
   },
   'TUBITAK-2204A': {
     1:{labels:{impact_and_presentation:'Presentation & Impact'},
+      descOverrides:{
+        originality:'Evaluates the novelty of the research question and uniqueness of the proposed methodology.',
+        scientific_method:'Assesses experimental design rigor, hypothesis clarity, and statistical validity of results.',
+        impact_and_presentation:'Evaluates presentation quality and the ability to articulate real-world applicability of findings.',
+      },
       rubricOverrides:{
         impact_and_presentation:[
           {min:22,max:25,label:'Excellent',description:'Presentation is polished and the real-world impact of results is convincingly argued.'},
@@ -549,6 +614,11 @@ const criteriaEvolution = {
         ],
       }},
     2:{weights:{originality:30,scientific_method:45,impact_and_presentation:25},labels:{originality:'Innovation',impact_and_presentation:'Impact Assessment'},
+      descOverrides:{
+        originality:'Assesses the degree of innovation and how the proposed idea advances beyond existing scientific literature.',
+        scientific_method:'Evaluates the rigor of experimental methodology including controls, sample adequacy, and reproducibility.',
+        impact_and_presentation:'Assesses data-driven impact analysis and the quality of oral and visual presentation delivery.',
+      },
       rubricOverrides:{
         originality:[
           {min:31,max:35,label:'Excellent',description:'Proposes a genuinely novel idea that advances the field beyond existing work.'},
@@ -566,6 +636,11 @@ const criteriaEvolution = {
   },
   'IEEE-APSSDC': {
     1:{labels:{application_and_presentation:'Application & Demo'},
+      descOverrides:{
+        creativity:'Evaluates novelty of the antenna design concept relative to existing literature and published designs.',
+        technical_merit:'Assesses simulation-measurement agreement quality and overall antenna performance metrics.',
+        application_and_presentation:'Evaluates the clarity of the proposed real-world use case and the quality of the live demonstration.',
+      },
       rubricOverrides:{
         application_and_presentation:[
           {min:27,max:30,label:'Excellent',description:'Live demo is compelling and clearly demonstrates a real-world application scenario.'},
@@ -575,6 +650,11 @@ const criteriaEvolution = {
         ],
       }},
     2:{weights:{creativity:25,technical_merit:45,application_and_presentation:30},labels:{creativity:'Innovation'},
+      descOverrides:{
+        creativity:'Assesses the degree of design innovation and differentiation from prior art in the antenna domain.',
+        technical_merit:'Evaluates RF performance quality, simulation-measurement correlation, and compliance with design specifications.',
+        application_and_presentation:'Assesses the practical relevance of the proposed application and overall presentation delivery.',
+      },
       rubricOverrides:{
         creativity:[
           {min:27,max:30,label:'Excellent',description:'Design introduces a novel concept or technique with clear differentiation from prior art.'},
@@ -592,6 +672,12 @@ const criteriaEvolution = {
   },
   'CANSAT-2025': {
     1:{labels:{data_and_documentation:'Data Analysis & Reporting'},
+      descOverrides:{
+        design_compliance:'Assesses adherence to specified volume, mass, and structural design constraints with margin documentation.',
+        mission_execution:'Evaluates primary and secondary mission objective completion with continuous telemetry reliability.',
+        data_and_documentation:'Assesses rigor of post-flight data analysis and overall completeness of written documentation.',
+        safety_and_recovery:'Evaluates adherence to range safety procedures and successful CanSat recovery after descent.',
+      },
       rubricOverrides:{
         data_and_documentation:[
           {min:22,max:25,label:'Excellent',description:'Post-flight data is rigorously analyzed and reporting is thorough with clear methodology.'},
@@ -601,6 +687,12 @@ const criteriaEvolution = {
         ],
       }},
     2:{weights:{design_compliance:20,mission_execution:40,data_and_documentation:20,safety_and_recovery:20},labels:{design_compliance:'Constraints Verification',mission_execution:'Flight Performance',data_and_documentation:'Data & Reports'},
+      descOverrides:{
+        design_compliance:'Evaluates constraint verification completeness including mass, volume, and structural margin analysis.',
+        mission_execution:'Assesses flight performance against primary objectives with emphasis on telemetry continuity.',
+        data_and_documentation:'Evaluates post-flight reporting quality, data visualization, and analytical methodology.',
+        safety_and_recovery:'Assesses descent rate control, recovery success, and compliance with all range safety protocols.',
+      },
       rubricOverrides:{
         design_compliance:[
           {min:18,max:20,label:'Excellent',description:'All mass, volume, and structural constraints verified with documented margin analysis.'},
@@ -630,14 +722,23 @@ orgs.forEach(o => {
   const fwId = uuid('fw-' + o.code);
   const defs = orgPeriodsDef[o.code] || [];
   defs.forEach((d, idx) => {
-    const isCurrent = idx === 0;
+    const isCurrent = idx === 0 && !d.draft;
+    const isDraft = !!d.draft;
     const pId = uuid(`period-${o.code}-${idx}`);
     const { evalDay, evalDays } = computeEvalWindow(d.start, d.end, o.type);
-    const frozenTs = sqlTs(evalDay, -24);
-    const updatedTs = isCurrent ? sqlTs(evalDay, -20) : sqlTs(evalDay, (evalDays + 3) * 24);
     let sn = d.s === 'NULL' ? 'NULL' : `'${d.s}'`;
 
-    out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', '${d.start}', '${d.end}', ${isCurrent}, ${!isCurrent}, true, ${frozenTs}, ${frozenTs}, ${updatedTs}) ON CONFLICT DO NOTHING;`);
+    if (isDraft) {
+      const draftTs = sqlTs('2026-03-15');
+      out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', '${d.start}', '${d.end}', false, false, false, NULL, NULL, ${draftTs}) ON CONFLICT DO NOTHING;`);
+      return; // draft periods have no criteria, projects, jurors, or tokens
+    }
+
+    const frozenTs = sqlTs(evalDay, -24);
+    const activatedTs = randSqlTs(d.start, 24, 72); // activated 1-3 days after period opens
+    const updatedTs = isCurrent ? sqlTs(evalDay, -20) : sqlTs(evalDay, (evalDays + 3) * 24);
+
+    out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', '${d.start}', '${d.end}', ${isCurrent}, ${!isCurrent}, true, ${frozenTs}, ${activatedTs}, ${updatedTs}) ON CONFLICT DO NOTHING;`);
 
     const evo = (criteriaEvolution[o.code] || {})[idx] || null;
     const removedKeys = evo?.removeCriteria || [];
@@ -659,7 +760,8 @@ orgs.forEach(o => {
       } else {
         rubricJson = c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max);
       }
-      const pcDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
+      const descText = evo?.descOverrides?.[c.key] || c.desc;
+      const pcDescSql = descText ? `'${escapeSql(descText)}'` : 'NULL';
       out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, short_label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${c.id}', '${c.key}', '${escapeSql(cLabel)}', '${escapeSql(cShort)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
       periodCrits.push({ key: c.key, max: c.max, weight: cWeight, pcId });
     });
@@ -702,6 +804,9 @@ const projectPools = {
       {t:'Autonomous Drone Navigation with LiDAR SLAM',arch:'highvar',desc:'Integrates a Velodyne Puck LiDAR with an NVIDIA Jetson Orin for real-time 3D SLAM on a custom hexacopter. Tested in GPS-denied indoor warehouse environments with obstacle avoidance and path replanning.'},
       {t:'GaN Power Amplifier Design for Sub-6 GHz 5G',arch:'tech_strong_comm_weak',desc:'Designs and fabricates a two-stage GaN HEMT power amplifier operating at 3.5 GHz with 42 dBm output power and 68% PAE. Doherty topology enables high linearity under modulated 5G NR signals.'},
       {t:'Biomedical Signal Processing for Sleep Apnea Detection',arch:'wellrounded',desc:'Develops a wearable single-channel EEG acquisition board paired with a TinyML classifier running on an nRF5340 SoC. Detects obstructive sleep apnea events with 94% sensitivity validated against clinical polysomnography.'},
+      {t:'Millimeter-Wave Beamforming Antenna Array Design and Characterization for Next-Generation 5G NR FR2 Base Station Applications',arch:'borderline',desc:'Designs a 16-element phased array antenna operating at 28 GHz with digital beamsteering capability. Measured beam patterns show 22 dBi gain with ±60° scanning range and -15 dB sidelobe levels.'},
+      {t:'Embedded Computer Vision System for Real-Time Traffic Sign Recognition',arch:'average',desc:'Implements a lightweight CNN on an STM32H7 MCU with an OV7670 camera module for real-time traffic sign classification at 10 fps. Achieves 91% accuracy on the GTSRB dataset subset.'},
+      {t:'Reconfigurable Intelligent Surface Prototype for Indoor Wireless Coverage Enhancement Using Varactor-Based Unit Cells and Software-Defined Control',arch:'partial',desc:'Fabricates a 10x10 varactor-based RIS operating at 5.8 GHz with electronically reconfigurable reflection phase. Demonstrates 8 dB SNR improvement in an indoor NLOS scenario.'},
     ],
     1: [
       {t:'Wearable ECG Monitor with BLE Connectivity',desc:'A compact three-lead ECG acquisition system built around the ADS1293 AFE, streaming data over BLE 5.0 to a companion mobile app for real-time arrhythmia flagging.'},
@@ -1002,7 +1107,9 @@ periodData.forEach(pd => {
     const entry = typeof pool[i] === 'object' ? pool[i] : { t: pool[i] };
     const title = entry.t;
     const arch = entry.arch || archs[i % archs.length];
-    const advisor = (orgAdvisors[pd.org] || [])[i % (orgAdvisors[pd.org] || []).length] || {n:'TBD',aff:'TBD'};
+    // Weighted advisor distribution: some advisors get 2-3 projects, others get 1
+    const advPool = orgAdvisors[pd.org] || [];
+    const advisor = advPool.length > 0 ? advPool[Math.floor(i * advPool.length / count)] : {n:'TBD',aff:'TBD'};
     const mem = genMembers(randInt(3, 5), o.lang);
     const desc = entry.desc || '';
     out.push(`INSERT INTO projects (id, period_id, title, project_no, members, advisor_name, advisor_affiliation, description) VALUES ('${pjId}', '${pd.id}', '${escapeSql(title)}', ${i+1}, '${mem}', '${escapeSql(advisor.n)}', '${escapeSql(advisor.aff)}', '${escapeSql(desc)}') ON CONFLICT DO NOTHING;`);
@@ -1021,15 +1128,55 @@ function jurorEmail(name) {
 }
 
 const orgJurors = {
-  'TEDU-EE': [{n:'Prof. Cihan Akpınar',aff:'Sabancı University, EE'},{n:'Dr. Aslıhan Koçak',aff:'Ohio State University, ECE'},{n:'Prof. Ferit Atasoy',aff:'METU, EE'},{n:'Dr. Pınar Dalkılıç',aff:'İstanbul Technical University, CE'},{n:'Engin Boztepe',aff:'Aselsan, RF Systems'},{n:'Dr. Serap Gündoğdu',aff:'TÜBİTAK BİLGEM'},{n:'Prof. Orhan Sezgin',aff:'Bilkent University, EE'},{n:'Yasin Erimbaş',aff:'Türk Telekom, R&D'},{n:'Dr. Nihan Ersoy',aff:'İTÜ, Electronics Eng.'},{n:'Dr. Alper Kılıç',aff:'Hacettepe University, EE'},{n:'Prof. Dilek Ünver',aff:'Gazi University, EE'},{n:'Dr. Emrah Kartal',aff:'Koç University, ECE'},{n:'Prof. Zehra Kaygısız',aff:'Boğaziçi University, EE'},{n:'Murat Aksoy',aff:'HAVELSAN, Electronic Warfare'}],
-  'CMU-CS': [{n:'Dr. Thomas Albright',aff:'MIT, CSAIL'},{n:'Prof. Simon Caldwell',aff:'Stanford University, CS'},{n:'Nina Prescott',aff:'Google Research'},{n:'Wesley Dalton',aff:'Microsoft Research'},{n:'Dr. Sofia Lang',aff:'UC Berkeley, EECS'},{n:'Victor Sutton',aff:'Meta AI'},{n:'Fiona Mercer',aff:'Carnegie Mellon, Robotics'},{n:'Prof. Jennifer Hayes',aff:'U. Washington, CSE'},{n:'Dr. Rajesh Patel',aff:'Amazon Science'},{n:'Prof. Michael Zhang',aff:'Princeton, CS'},{n:'Dr. Sarah Okafor',aff:'Apple ML Research'},{n:'Kevin Brennan',aff:'Stripe Engineering'}],
-  'TEKNOFEST': [{n:'Prof. Kemal Özdemir',aff:'İTÜ, Havacılık ve Uzay'},{n:'Dr. Eda Sarıgül',aff:'TUSAŞ (TAI), Ar-Ge'},{n:'Onur Yalçın',aff:'Baykar Teknoloji, İHA'},{n:'Prof. Buse Karagöz',aff:'ODTÜ, Makina Müh.'},{n:'Cemil Demirtaş',aff:'Roketsan, Güdüm'},{n:'Dr. Aylin Çevik',aff:'TÜBİTAK SAGE'},{n:'Prof. Yasemin Ertürk',aff:'Eskişehir Teknik, Havacılık'},{n:'Dr. Burak Yıldırım',aff:'TÜBİTAK UZAY'},{n:'Melih Şahin',aff:'TEI, Motor Tasarım'},{n:'Prof. Sevim Çalışkan',aff:'İYTE, Makina Müh.'},{n:'Ahmet Günay',aff:'ASELSAN, Radar'},{n:'Dr. Gülşen Aktaş',aff:'Ankara Üni., Uzay Bilimleri'}],
-  'TUBITAK-2204A': [{n:'Prof. Hasan Yüksel',aff:'Boğaziçi, Fizik'},{n:'Dr. Elif Aydın',aff:'Hacettepe, Biyoloji'},{n:'Prof. Okan Birdal',aff:'Koç Üni., Kimya'},{n:'Dr. Sevgi Toprak',aff:'Ankara Üni., Fen Bilimleri'},{n:'Prof. Burak Çetin',aff:'ODTÜ, Matematik'},{n:'Dr. Selim Konuk',aff:'İstanbul Üni., Fizik'},{n:'Prof. Didem Sağır',aff:'Ege Üni., Biyokimya'},{n:'Dr. Kenan Erol',aff:'Sabancı Üni., Biyoloji'},{n:'Ayşegül Mazlum',aff:'TÜBİTAK MAM, Gıda'},{n:'Prof. İbrahim Yılmaz',aff:'Ankara Üni., Fizik'}],
-  'IEEE-APSSDC': [{n:'Prof. Raymond Chen',aff:'U. Michigan, ECE'},{n:'Dr. Catherine Liu',aff:'Georgia Tech, ECE'},{n:'Prof. Kenneth Walsh',aff:'UIUC, ECE'},{n:'Dr. Priya Raghavan',aff:'Purdue, ECE'},{n:'Prof. Diane Mitchell',aff:'Ohio State, ECE'},{n:'Dr. Akira Tanaka',aff:'U. Tokyo, EEIS'},{n:'Prof. Marco Rossi',aff:'Politecnico di Milano'},{n:'Dr. Fatima Al-Rashidi',aff:'KAUST, EE'},{n:'Prof. Neil Ferguson',aff:'U. Edinburgh, Engineering'},{n:'Dr. Soo-Jin Kim',aff:'KAIST, EE'}],
-  'CANSAT-2025': [{n:'Dr. James Whitfield',aff:'Virginia Tech, Aerospace'},{n:'Prof. Laura Henderson',aff:'CU Boulder, Aerospace'},{n:'Col. Robert Drake',aff:'US Air Force Academy'},{n:'Dr. Megan Yoshida',aff:'NASA Goddard'},{n:'Prof. Nathan Cooper',aff:'Purdue, AAE'},{n:'Dr. Rebecca Stone',aff:'Johns Hopkins APL'},{n:'Prof. Tyler Grant',aff:'Georgia Tech, Aerospace'},{n:'Dr. Lisa Nakamura',aff:'NASA JPL'},{n:'Maj. David Wells',aff:'US Naval Academy'},{n:'Dr. Katherine Morris',aff:'MIT Lincoln Lab'}],
+  // ~65% TEDU affiliation (12/18), rest external
+  'TEDU-EE': [
+    {n:'Prof. Cihan Akpınar',aff:'TED University, EE'},{n:'Dr. Aslıhan Koçak',aff:'TED University, EE'},{n:'Prof. Ferit Atasoy',aff:'TED University, EE'},
+    {n:'Dr. Pınar Dalkılıç',aff:'TED University, CE'},{n:'Dr. Serap Gündoğdu',aff:'TED University, EE'},{n:'Prof. Orhan Sezgin',aff:'TED University, EE'},
+    {n:'Dr. Nihan Ersoy',aff:'TED University, EE'},{n:'Dr. Alper Kılıç',aff:'TED University, EE'},{n:'Prof. Dilek Ünver',aff:'TED University, EE'},
+    {n:'Dr. Emrah Kartal',aff:'TED University, Physics'},{n:'Prof. Zehra Kaygısız',aff:'TED University, EE'},{n:'Dr. Gökçe Tezcan',aff:'TED University, CE'},
+    // external jurors (~35%)
+    {n:'Engin Boztepe',aff:'Aselsan, RF Systems'},{n:'Yasin Erimbaş',aff:'TÜBİTAK BİLGEM'},{n:'Prof. Murat Aksoy',aff:'METU, EE'},
+    {n:'Dr. Hülya Çevik',aff:'Bilkent University, EE'},{n:'Prof. Tarkan Erdoğan',aff:'Hacettepe University, EE'},{n:'Dr. Selim Bayraktar',aff:'Sabancı University, EE'},
+  ],
+  // ~65% CMU affiliation (12/18), rest external
+  'CMU-CS': [
+    {n:'Prof. Simon Caldwell',aff:'Carnegie Mellon, SCS'},{n:'Fiona Mercer',aff:'Carnegie Mellon, Robotics'},{n:'Prof. Jennifer Hayes',aff:'Carnegie Mellon, SCS'},
+    {n:'Dr. Rajesh Patel',aff:'Carnegie Mellon, ECE'},{n:'Prof. Michael Zhang',aff:'Carnegie Mellon, LTI'},{n:'Dr. Sarah Okafor',aff:'Carnegie Mellon, SCS'},
+    {n:'Dr. Angela Russo',aff:'Carnegie Mellon, HCI'},{n:'Prof. David Kim',aff:'Carnegie Mellon, SCS'},{n:'Dr. Nathan Hollis',aff:'Carnegie Mellon, ECE'},
+    {n:'Prof. Claire Fontaine',aff:'Carnegie Mellon, Robotics'},{n:'Dr. Brian Takahashi',aff:'Carnegie Mellon, SCS'},{n:'Dr. Emily Strauss',aff:'Carnegie Mellon, LTI'},
+    // external jurors (~35%)
+    {n:'Dr. Thomas Albright',aff:'MIT, CSAIL'},{n:'Nina Prescott',aff:'Google Research'},{n:'Wesley Dalton',aff:'Microsoft Research'},
+    {n:'Dr. Sofia Lang',aff:'UC Berkeley, EECS'},{n:'Victor Sutton',aff:'Meta AI'},{n:'Kevin Brennan',aff:'Stripe Engineering'},
+  ],
+  'TEKNOFEST': [
+    {n:'Prof. Kemal Özdemir',aff:'İTÜ, Havacılık ve Uzay'},{n:'Dr. Eda Sarıgül',aff:'TUSAŞ (TAI), Ar-Ge'},{n:'Onur Yalçın',aff:'Baykar Teknoloji, İHA'},
+    {n:'Prof. Buse Karagöz',aff:'ODTÜ, Makina Müh.'},{n:'Cemil Demirtaş',aff:'Roketsan, Güdüm'},{n:'Dr. Aylin Çevik',aff:'TÜBİTAK SAGE'},
+    {n:'Prof. Yasemin Ertürk',aff:'Eskişehir Teknik, Havacılık'},{n:'Dr. Burak Yıldırım',aff:'TÜBİTAK UZAY'},{n:'Melih Şahin',aff:'TEI, Motor Tasarım'},
+    {n:'Prof. Sevim Çalışkan',aff:'İYTE, Makina Müh.'},{n:'Ahmet Günay',aff:'ASELSAN, Radar'},{n:'Dr. Gülşen Aktaş',aff:'Ankara Üni., Uzay Bilimleri'},
+    {n:'Prof. Tolga Karaman',aff:'İTÜ, Elektronik Müh.'},{n:'Dr. Nazlı Demirhan',aff:'TUSAŞ (TAI), Aviyonik'},
+  ],
+  'TUBITAK-2204A': [
+    {n:'Prof. Hasan Yüksel',aff:'Boğaziçi, Fizik'},{n:'Dr. Elif Aydın',aff:'Hacettepe, Biyoloji'},{n:'Prof. Okan Birdal',aff:'Koç Üni., Kimya'},
+    {n:'Dr. Sevgi Toprak',aff:'Ankara Üni., Fen Bilimleri'},{n:'Prof. Burak Çetin',aff:'ODTÜ, Matematik'},{n:'Dr. Selim Konuk',aff:'İstanbul Üni., Fizik'},
+    {n:'Prof. Didem Sağır',aff:'Ege Üni., Biyokimya'},{n:'Dr. Kenan Erol',aff:'Sabancı Üni., Biyoloji'},{n:'Ayşegül Mazlum',aff:'TÜBİTAK MAM, Gıda'},
+    {n:'Prof. İbrahim Yılmaz',aff:'Ankara Üni., Fizik'},{n:'Dr. Gülnaz Şen',aff:'Hacettepe, Kimya'},{n:'Prof. Erdem Tunç',aff:'ODTÜ, Biyoloji'},
+  ],
+  'IEEE-APSSDC': [
+    {n:'Prof. Raymond Chen',aff:'U. Michigan, ECE'},{n:'Dr. Catherine Liu',aff:'Georgia Tech, ECE'},{n:'Prof. Kenneth Walsh',aff:'UIUC, ECE'},
+    {n:'Dr. Priya Raghavan',aff:'Purdue, ECE'},{n:'Prof. Diane Mitchell',aff:'Ohio State, ECE'},{n:'Dr. Akira Tanaka',aff:'U. Tokyo, EEIS'},
+    {n:'Prof. Marco Rossi',aff:'Politecnico di Milano'},{n:'Dr. Fatima Al-Rashidi',aff:'KAUST, EE'},{n:'Prof. Neil Ferguson',aff:'U. Edinburgh, Engineering'},
+    {n:'Dr. Soo-Jin Kim',aff:'KAIST, EE'},{n:'Prof. Carlos Mendez',aff:'U. São Paulo, EE'},{n:'Dr. Helena Lindqvist',aff:'KTH, EE'},
+  ],
+  'CANSAT-2025': [
+    {n:'Dr. James Whitfield',aff:'Virginia Tech, Aerospace'},{n:'Prof. Laura Henderson',aff:'CU Boulder, Aerospace'},{n:'Col. Robert Drake',aff:'US Air Force Academy'},
+    {n:'Dr. Megan Yoshida',aff:'NASA Goddard'},{n:'Prof. Nathan Cooper',aff:'Purdue, AAE'},{n:'Dr. Rebecca Stone',aff:'Johns Hopkins APL'},
+    {n:'Prof. Tyler Grant',aff:'Georgia Tech, Aerospace'},{n:'Dr. Lisa Nakamura',aff:'NASA JPL'},{n:'Maj. David Wells',aff:'US Naval Academy'},
+    {n:'Dr. Katherine Morris',aff:'MIT Lincoln Lab'},{n:'Prof. Samuel Ortiz',aff:'U. Texas, Aerospace'},{n:'Dr. Christine Adler',aff:'Embry-Riddle, Aerospace'},
+  ],
 };
 
-const palette = ['#F59E0B','#3B82F6','#8B5CF6','#EC4899','#10B981','#EF4444','#6366F1','#14B8A6','#F97316','#A855F7','#22C55E','#06B6D4','#E11D48','#84CC16'];
+// Extended palette for 18+ jurors per org (no color repeats within org)
+const palette = ['#F59E0B','#3B82F6','#8B5CF6','#EC4899','#10B981','#EF4444','#6366F1','#14B8A6','#F97316','#A855F7','#22C55E','#06B6D4','#E11D48','#84CC16','#0EA5E9','#D946EF','#F43F5E','#059669'];
 let jurorIdList = [];
 orgs.forEach(o => {
   (orgJurors[o.code] || []).forEach((j, i) => {
@@ -1098,7 +1245,14 @@ out.push('');
 // ═══════════════════════════════════════════════════════════════
 
 out.push(`-- Scoring`);
-const jurorBiases = [1.02,0.97,1.04,0.98,1.00,0.96,1.03,1.01,0.99,1.05,0.95,1.06,0.98,1.02];
+// Includes 2 extreme biases: harsh (0.88) and lenient (1.12) for JurorConsistencyHeatmap
+const jurorBiases = [1.02,0.97,1.04,0.98,1.00,0.96,1.03,1.01,0.99,1.05,0.88,1.12,0.98,1.02,1.00,0.97,1.03,0.99];
+
+// Comment rates by archetype — star/partial get more comments
+const commentRates = {star:0.85,partial:0.70,solid:0.55,wellrounded:0.55,highvar:0.60,tech_strong_comm_weak:0.60,borderline:0.60,average:0.40,weak_tech_strong_team:0.40,strong_late:0.40};
+
+// Score duration by archetype (minutes) for started_at calculation
+const scoreDurations = {star:[10,20],solid:[20,30],wellrounded:[20,30],highvar:[30,50],tech_strong_comm_weak:[25,40],weak_tech_strong_team:[25,35],borderline:[30,45],average:[25,35],strong_late:[20,35],partial:[40,60]};
 
 const commentPoolsEn = {
   star:['Exceptional work across all dimensions.','Outstanding technical depth and professional presentation.','Truly impressive innovation and mastery.','Top-tier project. Clear problem definition, excellent execution.','Remarkable quality — set the bar for the session.'],
@@ -1128,7 +1282,8 @@ const defaultCommentsEn = ['Reasonable work overall.','Good effort.','Needs furt
 const defaultCommentsTr = ['Genel olarak makul bir çalışma.','İyi bir çaba.','Daha fazla gelişim gerekiyor.'];
 
 authList.forEach(auth => {
-  if (['Blocked','Locked','NotStarted'].includes(auth.semanticState)) return;
+  // Locked jurors get partial scores (scored before lockout), Blocked/NotStarted skip entirely
+  if (['Blocked','NotStarted'].includes(auth.semanticState)) return;
   const myProjs = projList.filter(p => p.pId === auth.pId);
   if (myProjs.length === 0) return;
   const periodCrits = periodCriteriaMap[auth.pId] || [];
@@ -1137,11 +1292,21 @@ authList.forEach(auth => {
   let targetCount = myProjs.length;
   if (auth.semanticState === 'InProgress') {
     targetCount = Math.max(1, Math.floor(myProjs.length * (randInt(50, 80) / 100)));
+  } else if (auth.semanticState === 'Locked') {
+    // Locked jurors scored 30-50% of projects before lockout
+    targetCount = Math.max(1, Math.floor(myProjs.length * (randInt(30, 50) / 100)));
   }
 
   const o = orgs.find(x => x.code === auth.org);
   const jurorIdx = jurorIdList.findIndex(j => j.id === auth.jId);
   const bias = jurorBiases[jurorIdx % jurorBiases.length];
+
+  // Scoring time clustering: 70% during 09-17, 20% during 17-22, 10% next day
+  const timeRoll = random();
+  let evalHourMin, evalHourMax;
+  if (timeRoll < 0.70) { evalHourMin = 0; evalHourMax = 8; }       // 09:00-17:00 (base is 09:00)
+  else if (timeRoll < 0.90) { evalHourMin = 8; evalHourMax = 13; }  // 17:00-22:00
+  else { evalHourMin = 15; evalHourMax = 23; }                       // next day morning
 
   let scoredCount = 0;
   myProjs.forEach(proj => {
@@ -1152,17 +1317,26 @@ authList.forEach(auth => {
       itemsToScore = Math.max(1, Math.floor(periodCrits.length * 0.5));
       ssStatus = 'in_progress';
     }
+    if (auth.semanticState === 'Locked') {
+      ssStatus = 'in_progress'; // locked jurors never finalized
+    }
     const ssId = uuid(`ss-${auth.jId}-${proj.id}`);
-    const sst = randSqlTs(auth.evalDay, 1, auth.evalDays * 20);
+    const sst = randSqlTs(auth.evalDay, evalHourMin + scoredCount * 0.3, evalHourMax + scoredCount * 0.3);
+
+    // Variable duration per archetype
+    const dur = scoreDurations[proj.arch] || [25, 35];
+    const durationMin = randInt(dur[0], dur[1]);
 
     let ssComment = 'NULL';
-    if (ssStatus === 'submitted' && random() < 0.55) {
-      const pools = o.lang === 'tr' ? commentPoolsTr : commentPoolsEn;
-      const defs = o.lang === 'tr' ? defaultCommentsTr : defaultCommentsEn;
+    const cRate = commentRates[proj.arch] ?? 0.55;
+    if (ssStatus === 'submitted' && random() < cRate) {
+      const cLang = (o.commentLang || o.lang);
+      const pools = cLang === 'tr' ? commentPoolsTr : commentPoolsEn;
+      const defs = cLang === 'tr' ? defaultCommentsTr : defaultCommentsEn;
       ssComment = `'${escapeSql(pick(pools[proj.arch] || defs))}'`;
     }
 
-    out.push(`INSERT INTO score_sheets (id, period_id, project_id, juror_id, status, comment, started_at, last_activity_at) VALUES ('${ssId}', '${auth.pId}', '${proj.id}', '${auth.jId}', '${ssStatus}', ${ssComment}, ${sst} - interval '30 mins', ${sst}) ON CONFLICT DO NOTHING;`);
+    out.push(`INSERT INTO score_sheets (id, period_id, project_id, juror_id, status, comment, started_at, last_activity_at) VALUES ('${ssId}', '${auth.pId}', '${proj.id}', '${auth.jId}', '${ssStatus}', ${ssComment}, ${sst} - interval '${durationMin} minutes', ${sst}) ON CONFLICT DO NOTHING;`);
 
     let scoredItems = 0;
     periodCrits.forEach(c => {
@@ -1172,7 +1346,7 @@ authList.forEach(auth => {
       else if (arch==='solid') s=Math.floor(c.max*randInt(74,85)/100);
       else if (arch==='wellrounded') s=Math.floor(c.max*randInt(78,88)/100);
       else if (arch==='strong_late') { s = (c.key==='delivery'||c.key==='design'||c.key==='communication') ? Math.floor(c.max*randInt(68,78)/100) : Math.floor(c.max*randInt(82,92)/100); }
-      else if (arch==='partial') s=Math.floor(c.max*randInt(55,70)/100);
+      else if (arch==='partial') { s = (scoredItems === 1 && random() > 0.7) ? 0 : Math.floor(c.max*randInt(55,70)/100); } // edge: sometimes 0 score
       else if (arch==='highvar') s=Math.floor(c.max*randInt(50,100)/100);
       else if (arch==='tech_strong_comm_weak') { s = (c.key==='delivery'||c.key==='communication'||c.key==='design') ? Math.floor(c.max*0.65) : Math.floor(c.max*0.90); }
       else if (arch==='weak_tech_strong_team') { s = (c.key==='technical'||c.key==='design'||c.key.includes('tech')) ? Math.floor(c.max*0.55) : Math.floor(c.max*0.85); }
@@ -1180,6 +1354,8 @@ authList.forEach(auth => {
       else if (arch==='average') s=Math.floor(c.max*randInt(65,78)/100);
       else s=Math.floor(c.max*randInt(65,85)/100);
       s = Math.max(0, Math.min(c.max, Math.round(s * bias)));
+      // Edge case: lenient grader (bias >= 1.10) on star project → allow perfect score
+      if (bias >= 1.10 && arch === 'star') s = Math.min(c.max, Math.round(c.max * randInt(95, 100) / 100));
       out.push(`INSERT INTO score_sheet_items (id, score_sheet_id, period_criterion_id, score_value) VALUES ('${uuid(`ssi-${ssId}-${c.key}`)}', '${ssId}', '${c.pcId}', ${s}) ON CONFLICT DO NOTHING;`);
     });
     scoredCount++;
@@ -1188,7 +1364,7 @@ authList.forEach(auth => {
 out.push('');
 
 // ═══════════════════════════════════════════════════════════════
-// ENTRY TOKENS — 3 per every period
+// ENTRY TOKENS — 4 per period: active, active, revoked, expired
 // ═══════════════════════════════════════════════════════════════
 
 out.push(`-- Entry Tokens`);
@@ -1199,19 +1375,32 @@ periodData.forEach(pd => {
     const tokenPlain = uuid(`token-plain-${pd.id}-${i}`);
     const tokenHash = sha256(tokenPlain);
     const isRevoked = (i === 2);
+    const isExpired = (i === 3); // naturally expired (TTL ran out)
     let expiresAt, lastUsedAt, createdAt;
     if (pd.isCur) {
       createdAt = randSqlTs(pd.evalDay, -168, -72);
-      expiresAt = sqlTs(pd.evalDay, (i === 0 ? 24 : 48) + pd.evalDays * 24);
-      lastUsedAt = i < 2 ? randSqlTs(pd.evalDay, 0, pd.evalDays * 12) : randSqlTs(pd.evalDay, -48, -12);
+      if (isExpired) {
+        // expired token: created before eval, expired 24h later (TTL ran out)
+        createdAt = randSqlTs(pd.evalDay, -120, -96);
+        expiresAt = sqlTs(pd.evalDay, -72); // expired well before eval day
+        lastUsedAt = randSqlTs(pd.evalDay, -100, -80);
+      } else {
+        expiresAt = sqlTs(pd.evalDay, (i === 0 ? 24 : 48) + pd.evalDays * 24);
+        lastUsedAt = i < 2 ? randSqlTs(pd.evalDay, 0, pd.evalDays * 12) : randSqlTs(pd.evalDay, -48, -12);
+      }
     } else {
       createdAt = randSqlTs(pd.evalDay, -240, -96);
-      expiresAt = sqlTs(pd.evalDay, (pd.evalDays + 3) * 24);
-      lastUsedAt = i === 0 ? randSqlTs(pd.evalDay, 0, pd.evalDays * 20) : (i === 1 ? 'NULL' : randSqlTs(pd.evalDay, 0, pd.evalDays * 8));
+      if (isExpired) {
+        expiresAt = sqlTs(pd.evalDay, -48); // expired before eval
+        lastUsedAt = randSqlTs(pd.evalDay, -72, -50);
+      } else {
+        expiresAt = sqlTs(pd.evalDay, (pd.evalDays + 3) * 24);
+        lastUsedAt = i === 0 ? randSqlTs(pd.evalDay, 0, pd.evalDays * 20) : (i === 1 ? 'NULL' : randSqlTs(pd.evalDay, 0, pd.evalDays * 8));
+      }
     }
     const luSql = lastUsedAt === 'NULL' ? 'NULL' : lastUsedAt;
     out.push(`INSERT INTO entry_tokens (id, period_id, token_hash, token_plain, is_revoked, expires_at, last_used_at, created_at) VALUES ('${tokenId}', '${pd.id}', '${tokenHash}', '${tokenPlain}', ${isRevoked}, ${expiresAt}, ${luSql}, ${createdAt}) ON CONFLICT DO NOTHING;`);
-    tokenList.push({ id: tokenId, pId: pd.id, org: pd.org, isRevoked });
+    tokenList.push({ id: tokenId, pId: pd.id, org: pd.org, isRevoked, isExpired });
   }
 });
 out.push('');
@@ -1223,18 +1412,29 @@ out.push('');
 out.push(`-- Audit Logs`);
 let auditObjList = [];
 
+// Helper: get first admin UUID for an org (for user_id attribution)
+function adminFor(orgCode) { return (orgAdminMap[orgCode] || [])[0] || null; }
+
 orgs.forEach(o => {
+  const adminId = adminFor(o.code);
   (orgAdminMap[o.code] || []).forEach(pId => {
-    auditObjList.push({ action:'admin.create',resType:'profile',resId:pId,orgId:o.id,details:'{"role":"org_admin"}',timeStr:sqlTs(orgCreatedDates[o.code],randInt(0,48)) });
+    auditObjList.push({ action:'admin.create',resType:'profile',resId:pId,orgId:o.id,userId:null,details:'{"role":"org_admin"}',timeStr:sqlTs(orgCreatedDates[o.code],randInt(0,48)) });
   });
+  // Admin login events (2-3 per org, around org creation)
+  if (adminId) {
+    for (let li = 0; li < randInt(2, 3); li++) {
+      auditObjList.push({ action:'admin.login',resType:'profile',resId:adminId,orgId:o.id,userId:adminId,details:'{"method":"email"}',timeStr:randSqlTs(orgCreatedDates[o.code],li*48,li*48+48) });
+    }
+  }
 });
 orgAppIds.forEach(oa => {
   const o = orgs.find(x => x.code === oa.org); const st = appStatuses[orgs.indexOf(o)];
-  if (st === 'approved' || st === 'rejected') auditObjList.push({ action:`application.${st}`,resType:'org_application',resId:oa.id,orgId:o.id,details:`{"action":"${st}"}`,timeStr:sqlTs(orgCreatedDates[o.code],randInt(48,168)) });
+  if (st === 'approved' || st === 'rejected') auditObjList.push({ action:`application.${st}`,resType:'org_application',resId:oa.id,orgId:o.id,userId:null,details:`{"action":"${st}"}`,timeStr:sqlTs(orgCreatedDates[o.code],randInt(48,168)) });
 });
 
 periodData.forEach(pd => {
   const o = orgs.find(x => x.code === pd.org);
+  const adminId = adminFor(pd.org);
   const myProjs = projList.filter(p => p.pId === pd.id);
   const myJurors = jurorIdList.filter(j => j.org === pd.org);
   const myTokens = tokenList.filter(t => t.pId === pd.id);
@@ -1242,66 +1442,85 @@ periodData.forEach(pd => {
 
   const ev = pd.evalDay, evD = pd.evalDays;
 
-  auditObjList.push({ action:'period.create',resType:'period',resId:pd.id,orgId:o.id,details:`{"name":"${escapeSql(pd.name)}","start_date":"${pd.start}","end_date":"${pd.end}"}`,timeStr:randSqlTs(pd.start,24,168) });
+  auditObjList.push({ action:'period.create',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:`{"name":"${escapeSql(pd.name)}","start_date":"${pd.start}","end_date":"${pd.end}"}`,timeStr:randSqlTs(pd.start,24,168) });
 
   if (pd.isCur) {
-    auditObjList.push({ action:'snapshot.freeze',resType:'period',resId:pd.id,orgId:o.id,details:'{"action":"frozen"}',timeStr:sqlTs(ev,-24) });
+    auditObjList.push({ action:'snapshot.freeze',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:'{"action":"frozen"}',timeStr:sqlTs(ev,-24) });
   } else {
-    auditObjList.push({ action:'period.lock',resType:'period',resId:pd.id,orgId:o.id,details:'{"action":"locked"}',timeStr:sqlTs(ev,(evD+7)*24) });
+    auditObjList.push({ action:'period.lock',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:'{"action":"locked"}',timeStr:sqlTs(ev,(evD+7)*24) });
+  }
+
+  // Admin login around eval day
+  if (adminId) {
+    auditObjList.push({ action:'admin.login',resType:'profile',resId:adminId,orgId:o.id,userId:adminId,details:'{"method":"email"}',timeStr:randSqlTs(ev,-2,2) });
+    if (pd.isCur) auditObjList.push({ action:'admin.login',resType:'profile',resId:adminId,orgId:o.id,userId:adminId,details:'{"method":"email"}',timeStr:randSqlTs(ev,evD*8,evD*16) });
   }
 
   if (myJurors.length > 0) {
     const ic = Math.min(Math.floor(myJurors.length * 0.6), myJurors.length);
-    auditObjList.push({ action:'juror.import',resType:'juror',resId:myJurors[0].id,orgId:o.id,details:`{"imported_count":${ic},"source":"csv upload"}`,timeStr:randSqlTs(ev,-720,-336) });
+    auditObjList.push({ action:'juror.import',resType:'juror',resId:myJurors[0].id,orgId:o.id,userId:adminId,details:`{"imported_count":${ic},"source":"csv upload"}`,timeStr:randSqlTs(ev,-720,-336) });
     myJurors.slice(ic).slice(0, 3).forEach((j, i) => {
-      auditObjList.push({ action:'juror.create',resType:'juror',resId:j.id,orgId:o.id,details:`{"juror_name":"${escapeSql(j.n.substring(0,25))}"}`,timeStr:randSqlTs(ev,-336+i*24,-240+i*24) });
+      auditObjList.push({ action:'juror.create',resType:'juror',resId:j.id,orgId:o.id,userId:adminId,details:`{"juror_name":"${escapeSql(j.n.substring(0,25))}"}`,timeStr:randSqlTs(ev,-336+i*24,-240+i*24) });
     });
   }
 
   if (myProjs.length > 0) {
-    auditObjList.push({ action:'project.import',resType:'period',resId:pd.id,orgId:o.id,details:`{"imported_count":${myProjs.length},"source":"csv upload"}`,timeStr:randSqlTs(ev,-600,-240) });
-    if (myProjs.length > 2) auditObjList.push({ action:'project.create',resType:'project',resId:myProjs[myProjs.length-1].id,orgId:o.id,details:`{"title":"${escapeSql(myProjs[myProjs.length-1].title.substring(0,40))}"}`,timeStr:randSqlTs(ev,-192,-96) });
-    if (myProjs.length > 3 && random() > 0.4) auditObjList.push({ action:'project.update',resType:'project',resId:myProjs[1].id,orgId:o.id,details:'{"field":"members","reason":"team member change"}',timeStr:randSqlTs(ev,-144,-48) });
-    if (myProjs.length > 1 && random() > 0.6) auditObjList.push({ action:'project.delete',resType:'project',resId:myProjs[myProjs.length-1].id,orgId:o.id,details:'{"reason":"duplicate entry removed"}',timeStr:randSqlTs(ev,-96,-48) });
+    auditObjList.push({ action:'project.import',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:`{"imported_count":${myProjs.length},"source":"csv upload"}`,timeStr:randSqlTs(ev,-600,-240) });
+    if (myProjs.length > 2) auditObjList.push({ action:'project.create',resType:'project',resId:myProjs[myProjs.length-1].id,orgId:o.id,userId:adminId,details:`{"title":"${escapeSql(myProjs[myProjs.length-1].title.substring(0,40))}"}`,timeStr:randSqlTs(ev,-192,-96) });
+    if (myProjs.length > 3 && random() > 0.4) auditObjList.push({ action:'project.update',resType:'project',resId:myProjs[1].id,orgId:o.id,userId:adminId,details:'{"field":"members","reason":"team member change"}',timeStr:randSqlTs(ev,-144,-48) });
+    if (myProjs.length > 1 && random() > 0.6) auditObjList.push({ action:'project.delete',resType:'project',resId:myProjs[myProjs.length-1].id,orgId:o.id,userId:adminId,details:'{"reason":"duplicate entry removed"}',timeStr:randSqlTs(ev,-96,-48) });
   }
 
   myTokens.forEach((tok, i) => {
-    auditObjList.push({ action:'token.generate',resType:'entry_token',resId:tok.id,orgId:o.id,details:`{"reason":"${i===0?'Jury session QR code':i===1?'Backup QR code':'Staff entry token'}"}`,timeStr:randSqlTs(ev,-336+i*24,-168+i*24) });
+    const reason = i === 0 ? 'Jury session QR code' : i === 1 ? 'Backup QR code' : i === 2 ? 'Staff entry token' : 'Short-lived test token';
+    auditObjList.push({ action:'token.generate',resType:'entry_token',resId:tok.id,orgId:o.id,userId:adminId,details:`{"reason":"${reason}"}`,timeStr:randSqlTs(ev,-336+i*24,-168+i*24) });
   });
   myTokens.filter(t => t.isRevoked).forEach(tok => {
-    auditObjList.push({ action:'token.revoke',resType:'entry_token',resId:tok.id,orgId:o.id,details:'{"reason":"manual revocation"}',timeStr:randSqlTs(ev,-48,evD*12) });
+    auditObjList.push({ action:'token.revoke',resType:'entry_token',resId:tok.id,orgId:o.id,userId:adminId,details:'{"reason":"manual revocation"}',timeStr:randSqlTs(ev,-48,evD*12) });
   });
 
+  // evaluation.complete — matches RPC action name
   myAuths.filter(a => a.semanticState==='Completed').forEach((a,i) => {
     if (myProjs.length === 0) return;
-    auditObjList.push({ action:'score.submit',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[i%myProjs.length].id}`),orgId:o.id,details:'{"juror_activity":"finalized"}',timeStr:randSqlTs(ev,2+i*2,evD*16+i*2) });
+    auditObjList.push({ action:'evaluation.complete',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[i%myProjs.length].id}`),orgId:o.id,userId:null,details:'{"juror_activity":"finalized"}',timeStr:randSqlTs(ev,2+i*2,evD*16+i*2) });
   });
   myAuths.filter(a => a.semanticState==='Editing').slice(0,2).forEach((a,i) => {
     if (myProjs.length === 0) return;
-    auditObjList.push({ action:'score.update',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[0].id}`),orgId:o.id,details:'{"corrections":2,"reason":"edit window granted"}',timeStr:randSqlTs(ev,evD*18+i*4,evD*22+i*4) });
+    auditObjList.push({ action:'score.update',resType:'score_sheet',resId:uuid(`ss-${a.jId}-${myProjs[0].id}`),orgId:o.id,userId:null,details:'{"corrections":2,"reason":"edit window granted"}',timeStr:randSqlTs(ev,evD*18+i*4,evD*22+i*4) });
   });
   if (pd.isCur || pd.histIdx <= 1) {
     myAuths.filter(a => a.semanticState==='Completed'||a.semanticState==='InProgress').slice(0,pd.isCur?2:1).forEach((a,i) => {
-      auditObjList.push({ action:'pin.reset',resType:'juror_period_auth',resId:a.jId,orgId:o.id,details:`{"juror":"${escapeSql(a.name.substring(0,25))}","reason":"forgotten pin"}`,timeStr:randSqlTs(ev,1+i*3,evD*10+i*3) });
+      auditObjList.push({ action:'pin.reset',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name.substring(0,25))}","reason":"forgotten pin"}`,timeStr:randSqlTs(ev,1+i*3,evD*10+i*3) });
     });
   }
   myAuths.filter(a => a.semanticState==='Locked').slice(0,1).forEach(a => {
-    auditObjList.push({ action:'juror.pin_locked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,details:`{"juror":"${escapeSql(a.name)}","attempts":${randInt(3,5)}}`,timeStr:randSqlTs(ev,2,evD*12) });
+    auditObjList.push({ action:'juror.pin_locked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:null,details:`{"juror":"${escapeSql(a.name)}","attempts":${randInt(3,5)}}`,timeStr:randSqlTs(ev,2,evD*12) });
+    // juror.pin_unlocked — admin unlocks the locked juror
+    auditObjList.push({ action:'juror.pin_unlocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name)}"}`,timeStr:randSqlTs(ev,evD*12+1,evD*14) });
   });
   myAuths.filter(a => a.semanticState==='Blocked').slice(0,1).forEach(a => {
-    auditObjList.push({ action:'juror.blocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,details:`{"juror":"${escapeSql(a.name)}","reason":"admin action"}`,timeStr:randSqlTs(ev,1,evD*8) });
+    auditObjList.push({ action:'juror.blocked',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name)}","reason":"admin action"}`,timeStr:randSqlTs(ev,1,evD*8) });
   });
   myAuths.filter(a => a.semanticState==='Editing').slice(0,1).forEach(a => {
-    auditObjList.push({ action:'juror.edit_enabled',resType:'juror_period_auth',resId:a.jId,orgId:o.id,details:`{"juror":"${escapeSql(a.name)}","reason":"Late extension","duration_minutes":60}`,timeStr:randSqlTs(ev,evD*16,evD*20) });
+    auditObjList.push({ action:'juror.edit_enabled',resType:'juror_period_auth',resId:a.jId,orgId:o.id,userId:adminId,details:`{"juror":"${escapeSql(a.name)}","reason":"Late extension","duration_minutes":60}`,timeStr:randSqlTs(ev,evD*16,evD*20) });
   });
   if (pd.histIdx === 0 && random() > 0.5) {
-    auditObjList.push({ action:'period.update',resType:'period',resId:pd.id,orgId:o.id,details:'{"field":"end_date","reason":"calendar adjustment"}',timeStr:randSqlTs(pd.start,48,240) });
+    auditObjList.push({ action:'period.update',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:'{"field":"end_date","reason":"calendar adjustment"}',timeStr:randSqlTs(pd.start,48,240) });
+  }
+  // Criteria update log for evolved periods
+  if (pd.histIdx > 0 && (criteriaEvolution[pd.org] || {})[pd.histIdx]) {
+    auditObjList.push({ action:'criteria.update',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:'{"reason":"criteria weights adjusted for this period"}',timeStr:randSqlTs(pd.start,72,240) });
+  }
+  // Export log for completed (locked) periods
+  if (!pd.isCur && pd.histIdx <= 2) {
+    auditObjList.push({ action:'export.scores',resType:'period',resId:pd.id,orgId:o.id,userId:adminId,details:'{"format":"xlsx","scope":"full"}',timeStr:sqlTs(ev,(evD+10)*24) });
   }
 });
 
 auditObjList.forEach(ad => {
   const aId = uuid(`audit-${ad.action}-${ad.resId}-${String(ad.timeStr).substring(0,30)}`);
-  out.push(`INSERT INTO audit_logs (id, organization_id, user_id, action, resource_type, resource_id, details, created_at) VALUES ('${aId}', '${ad.orgId}', NULL, '${ad.action}', '${ad.resType}', '${ad.resId}', '${escapeSql(ad.details)}', ${ad.timeStr}) ON CONFLICT DO NOTHING;`);
+  const userSql = ad.userId ? `'${ad.userId}'` : 'NULL';
+  out.push(`INSERT INTO audit_logs (id, organization_id, user_id, action, resource_type, resource_id, details, created_at) VALUES ('${aId}', '${ad.orgId}', ${userSql}, '${ad.action}', '${ad.resType}', '${ad.resId}', '${escapeSql(ad.details)}', ${ad.timeStr}) ON CONFLICT DO NOTHING;`);
 });
 out.push('');
 
@@ -1311,45 +1530,70 @@ out.push('');
 
 out.push(`-- Jury Feedback`);
 const juryFeedbackData = [
+  // TEDU-EE — comments in English (commentLang: 'en')
   {pSeed:'period-TEDU-EE-0',jSeed:'juror-TEDU-EE-0',rating:4,comment:null,pub:false},
-  {pSeed:'period-TEDU-EE-0',jSeed:'juror-TEDU-EE-1',rating:5,comment:'Çok kullanışlı bir sistem. Poster günü sorunsuz değerlendirme yapabildik.',pub:true},
-  {pSeed:'period-TEDU-EE-0',jSeed:'juror-TEDU-EE-3',rating:4,comment:'Arayüz sade ve hızlı. Rubrik bandları çok yardımcı oldu.',pub:true},
+  {pSeed:'period-TEDU-EE-0',jSeed:'juror-TEDU-EE-1',rating:5,comment:'Very practical system. We completed all evaluations on poster day without any issues.',pub:true},
+  {pSeed:'period-TEDU-EE-0',jSeed:'juror-TEDU-EE-3',rating:4,comment:'Clean interface with fast response. The rubric bands were extremely helpful.',pub:true},
+  {pSeed:'period-TEDU-EE-0',jSeed:'juror-TEDU-EE-5',rating:3,comment:'Decent tool overall, but the mobile layout could use improvement for tablet users.',pub:true},
   {pSeed:'period-TEDU-EE-1',jSeed:'juror-TEDU-EE-0',rating:5,comment:null,pub:false},
-  {pSeed:'period-TEDU-EE-1',jSeed:'juror-TEDU-EE-2',rating:4,comment:'Her seferinde daha iyi oluyor.',pub:true},
+  {pSeed:'period-TEDU-EE-1',jSeed:'juror-TEDU-EE-2',rating:4,comment:'Gets better every semester.',pub:true},
+  // CMU-CS
   {pSeed:'period-CMU-CS-0',jSeed:'juror-CMU-CS-0',rating:5,comment:'Replaced our old paper-based system entirely. The export feature saves hours.',pub:true},
   {pSeed:'period-CMU-CS-0',jSeed:'juror-CMU-CS-1',rating:4,comment:'Solid tool. Configurable criteria made it easy to adapt.',pub:true},
   {pSeed:'period-CMU-CS-0',jSeed:'juror-CMU-CS-3',rating:5,comment:'Clean and intuitive. Scoring 12 projects took less than an hour.',pub:true},
+  {pSeed:'period-CMU-CS-0',jSeed:'juror-CMU-CS-5',rating:2,comment:'Had connectivity issues during the session. Lost some progress before it autosaved.',pub:false},
   {pSeed:'period-CMU-CS-1',jSeed:'juror-CMU-CS-0',rating:5,comment:null,pub:false},
   {pSeed:'period-CMU-CS-1',jSeed:'juror-CMU-CS-1',rating:3,comment:null,pub:false},
   {pSeed:'period-CMU-CS-2',jSeed:'juror-CMU-CS-0',rating:4,comment:null,pub:false},
   {pSeed:'period-CMU-CS-2',jSeed:'juror-CMU-CS-1',rating:5,comment:'Third semester using VERA. It keeps getting better.',pub:true},
+  // TEKNOFEST
   {pSeed:'period-TEKNOFEST-0',jSeed:'juror-TEKNOFEST-0',rating:5,comment:'Yüzlerce takımı hızlıca değerlendirdik. Sistem çok stabil.',pub:true},
   {pSeed:'period-TEKNOFEST-0',jSeed:'juror-TEKNOFEST-2',rating:4,comment:'Yarışma ortamında çok pratik. QR ile giriş mükemmel.',pub:true},
+  {pSeed:'period-TEKNOFEST-0',jSeed:'juror-TEKNOFEST-4',rating:3,comment:'Kullanılabilir ama yarışma günü internet kesintisinde sorun yaşadık.',pub:false},
   {pSeed:'period-TEKNOFEST-1',jSeed:'juror-TEKNOFEST-0',rating:4,comment:null,pub:false},
   {pSeed:'period-TEKNOFEST-1',jSeed:'juror-TEKNOFEST-1',rating:5,comment:'Kullanımı çok kolay, eğitim bile gerekmedi.',pub:true},
+  // IEEE-APSSDC
   {pSeed:'period-IEEE-APSSDC-0',jSeed:'juror-IEEE-APSSDC-0',rating:5,comment:'Incredibly smooth experience. No hiccups.',pub:true},
   {pSeed:'period-IEEE-APSSDC-0',jSeed:'juror-IEEE-APSSDC-1',rating:4,comment:'Clean interface, very intuitive.',pub:true},
   {pSeed:'period-IEEE-APSSDC-0',jSeed:'juror-IEEE-APSSDC-2',rating:5,comment:'Best evaluation tool for design contest reviews.',pub:true},
   {pSeed:'period-IEEE-APSSDC-1',jSeed:'juror-IEEE-APSSDC-0',rating:5,comment:null,pub:false},
   {pSeed:'period-IEEE-APSSDC-1',jSeed:'juror-IEEE-APSSDC-2',rating:5,comment:'Used VERA again — consistently excellent.',pub:true},
+  // CANSAT-2025
   {pSeed:'period-CANSAT-2025-0',jSeed:'juror-CANSAT-2025-0',rating:5,comment:'Evaluated all teams in a single afternoon. Real-time rankings kept the event exciting.',pub:true},
   {pSeed:'period-CANSAT-2025-0',jSeed:'juror-CANSAT-2025-1',rating:4,comment:'Great for competition settings. Rubric sheet was very helpful.',pub:true},
+  {pSeed:'period-CANSAT-2025-0',jSeed:'juror-CANSAT-2025-3',rating:3,comment:'Worked fine but would prefer larger text on the scoring interface.',pub:true},
   {pSeed:'period-CANSAT-2025-1',jSeed:'juror-CANSAT-2025-0',rating:4,comment:null,pub:false},
   {pSeed:'period-CANSAT-2025-1',jSeed:'juror-CANSAT-2025-1',rating:5,comment:'Even better than last year.',pub:true},
   {pSeed:'period-CANSAT-2025-1',jSeed:'juror-CANSAT-2025-2',rating:4,comment:'Straightforward and efficient. No training needed.',pub:true},
-  {pSeed:'period-TUBITAK-2204A-0',jSeed:'juror-TUBITAK-2204A-0',rating:5,comment:'Araştırma projeleri için çok uygun bir değerlendirme aracı.',pub:true},
-  {pSeed:'period-TUBITAK-2204A-0',jSeed:'juror-TUBITAK-2204A-1',rating:4,comment:'Kriter bazlı puanlama çok iyi kurgulanmış.',pub:true},
-  {pSeed:'period-TUBITAK-2204A-1',jSeed:'juror-TUBITAK-2204A-0',rating:4,comment:null,pub:false},
-  {pSeed:'period-TUBITAK-2204A-1',jSeed:'juror-TUBITAK-2204A-2',rating:5,comment:'İkinci kez kullanıyoruz, memnuniyetimiz artıyor.',pub:true},
   {pSeed:'period-CANSAT-2025-2',jSeed:'juror-CANSAT-2025-1',rating:3,comment:null,pub:false},
   {pSeed:'period-CANSAT-2025-2',jSeed:'juror-CANSAT-2025-2',rating:5,comment:null,pub:false},
+  // TUBITAK-2204A — more entries
+  {pSeed:'period-TUBITAK-2204A-0',jSeed:'juror-TUBITAK-2204A-0',rating:5,comment:'Araştırma projeleri için çok uygun bir değerlendirme aracı.',pub:true},
+  {pSeed:'period-TUBITAK-2204A-0',jSeed:'juror-TUBITAK-2204A-1',rating:4,comment:'Kriter bazlı puanlama çok iyi kurgulanmış.',pub:true},
+  {pSeed:'period-TUBITAK-2204A-0',jSeed:'juror-TUBITAK-2204A-3',rating:5,comment:'Bilimsel değerlendirme sürecini çok kolaylaştırdı.',pub:true},
+  {pSeed:'period-TUBITAK-2204A-1',jSeed:'juror-TUBITAK-2204A-0',rating:4,comment:null,pub:false},
+  {pSeed:'period-TUBITAK-2204A-1',jSeed:'juror-TUBITAK-2204A-2',rating:5,comment:'İkinci kez kullanıyoruz, memnuniyetimiz artıyor.',pub:true},
+  {pSeed:'period-TUBITAK-2204A-1',jSeed:'juror-TUBITAK-2204A-4',rating:2,comment:'Bazı jüri arkadaşlarım PIN sistemini karmaşık buldu.',pub:false},
 ];
+
+// Resolve feedback timestamps from period eval windows
+const feedbackTimestamps = {};
+periodData.forEach(pd => {
+  feedbackTimestamps[`period-${pd.org}-${pd.histIdx}`] = { evalDay: pd.evalDay, evalDays: pd.evalDays, isCur: pd.isCur };
+});
 
 const feedbackRows = juryFeedbackData.map(f => {
   const comment = f.comment ? `'${escapeSql(f.comment)}'` : 'NULL';
-  return `('${uuid(f.pSeed)}', '${uuid(f.jSeed)}', ${f.rating}, ${comment}, ${f.pub})`;
+  const pdInfo = feedbackTimestamps[f.pSeed] || null;
+  let createdAtSql = 'now()';
+  if (pdInfo) {
+    const minH = pdInfo.isCur ? pdInfo.evalDays * 4 : pdInfo.evalDays * 2;
+    const maxH = pdInfo.isCur ? pdInfo.evalDays * 16 : pdInfo.evalDays * 24;
+    createdAtSql = randSqlTs(pdInfo.evalDay, minH, maxH);
+  }
+  return `('${uuid(f.pSeed)}', '${uuid(f.jSeed)}', ${f.rating}, ${comment}, ${f.pub}, ${createdAtSql})`;
 });
-out.push(`INSERT INTO jury_feedback (period_id, juror_id, rating, comment, is_public) VALUES\n${feedbackRows.join(',\n')}\nON CONFLICT (period_id, juror_id) DO NOTHING;`);
+out.push(`INSERT INTO jury_feedback (period_id, juror_id, rating, comment, is_public, created_at) VALUES\n${feedbackRows.join(',\n')}\nON CONFLICT (period_id, juror_id) DO NOTHING;`);
 out.push('');
 
 // ═══════════════════════════════════════════════════════════════

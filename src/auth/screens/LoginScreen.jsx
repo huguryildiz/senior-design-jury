@@ -73,7 +73,10 @@ export default function LoginScreen({
   const authUser = auth?.user || null;
   const authStateLoading = !!auth?.loading;
 
-  const [email, setEmail] = useState(initialEmail);
+  const [email, setEmail] = useState(() => {
+    if (initialEmail) return initialEmail;
+    try { return localStorage.getItem(KEYS.ADMIN_REMEMBERED_EMAIL) || ""; } catch { return ""; }
+  });
   const [password, setPassword] = useState(initialPassword);
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
@@ -140,8 +143,18 @@ export default function LoginScreen({
     if (requiresCaptcha && !captchaToken) { setError("Please complete the captcha challenge."); return; }
     setError("");
     setLoading(true);
-    try { await doLogin(email.trim(), password, rememberMe, captchaToken); }
+    try {
+      console.log("[LoginScreen] signIn attempt…");
+      await doLogin(email.trim(), password, rememberMe, captchaToken);
+      console.log("[LoginScreen] signIn succeeded — waiting for auth redirect");
+      // Save email for "Remember me" pre-fill
+      try {
+        if (rememberMe) localStorage.setItem(KEYS.ADMIN_REMEMBERED_EMAIL, email.trim());
+        else localStorage.removeItem(KEYS.ADMIN_REMEMBERED_EMAIL);
+      } catch {}
+    }
     catch (err) {
+      console.error("[LoginScreen] signIn failed:", err);
       setError(normalizeError(extractErrorText(err) || "Login failed. Please try again."));
       resetCaptcha();
     }

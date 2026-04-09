@@ -151,6 +151,7 @@ export default function JurorsPage() {
     onDirtyChange,
     onCurrentSemesterChange,
     onViewReviews,
+    onNavigate,
   } = useAdminContext();
   const _toast = useToast();
   const { activeOrganization } = useAuth();
@@ -712,8 +713,25 @@ export default function JurorsPage() {
               </tr>
             ) : filteredList.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
-                  No jurors found.
+                <td colSpan={6} style={{ textAlign: "center", padding: "48px 24px" }}>
+                  {!periods.viewPeriodId ? (
+                    <div>
+                      <div style={{ color: "var(--text-tertiary)", marginBottom: 12 }}>
+                        Create an evaluation period first, then add jurors to it.
+                      </div>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ width: "auto", padding: "8px 20px" }}
+                        onClick={() => onNavigate?.("periods")}
+                      >
+                        Go to Evaluation Periods
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--text-tertiary)" }}>
+                      No jurors found. Click "+ Add Juror" to get started.
+                    </div>
+                  )}
                 </td>
               </tr>
             ) : sortedFilteredList.map((juror) => {

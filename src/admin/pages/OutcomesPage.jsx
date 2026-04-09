@@ -6,10 +6,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useFrameworkOutcomes } from "../hooks/useFrameworkOutcomes";
 import { useToast } from "@/shared/hooks/useToast";
+import { createFramework } from "@/shared/api";
 import AddOutcomeDrawer from "../drawers/AddOutcomeDrawer";
 import OutcomeDetailDrawer from "../drawers/OutcomeDetailDrawer";
+import Modal from "@/shared/ui/Modal";
 import ConfirmDialog from "@/shared/ui/ConfirmDialog";
 import FbAlert from "@/shared/ui/FbAlert";
+import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import "../../styles/pages/outcomes.css";
 
 // ── Coverage helpers ─────────────────────────────────────────
@@ -300,6 +303,34 @@ export default function OutcomesPage() {
 
   const fw = useFrameworkOutcomes({ frameworkId });
 
+  // ── Create-framework modal state ─────────────────────────
+
+  const [createFwOpen, setCreateFwOpen] = useState(false);
+  const [createFwName, setCreateFwName] = useState("");
+  const [createFwDesc, setCreateFwDesc] = useState("");
+  const [createFwSubmitting, setCreateFwSubmitting] = useState(false);
+
+  const handleCreateFramework = async () => {
+    if (!createFwName.trim() || !organizationId) return;
+    setCreateFwSubmitting(true);
+    try {
+      await createFramework({
+        organization_id: organizationId,
+        name: createFwName.trim(),
+        description: createFwDesc.trim() || null,
+      });
+      toast.success("Framework created");
+      setCreateFwOpen(false);
+      setCreateFwName("");
+      setCreateFwDesc("");
+      onFrameworksChange?.();
+    } catch (e) {
+      toast.error(e?.message || "Failed to create framework");
+    } finally {
+      setCreateFwSubmitting(false);
+    }
+  };
+
   // ── Local UI state ────────────────────────────────────────
 
   const [sortOrder, setSortOrder] = useState("asc");
@@ -484,16 +515,64 @@ export default function OutcomesPage() {
       </div>
 
       {noFramework ? (
-        <div className="acc-empty-state">
-          <div className="acc-empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-              <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-            </svg>
+        <>
+          <div className="acc-empty-state">
+            <div className="acc-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
+              </svg>
+            </div>
+            <div className="acc-empty-title">No framework defined</div>
+            <div className="acc-empty-desc">Create an accreditation framework to manage programme outcomes.</div>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ marginTop: 16, width: "auto", padding: "8px 20px" }}
+              onClick={() => setCreateFwOpen(true)}
+            >
+              + Create Framework
+            </button>
           </div>
-          <div className="acc-empty-title">No framework defined</div>
-          <div className="acc-empty-desc">Create an accreditation framework to manage programme outcomes.</div>
-        </div>
+
+          {/* Create Framework Modal */}
+          <Modal open={createFwOpen} onClose={() => setCreateFwOpen(false)} title="Create Framework">
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label className="form-label" style={{ marginBottom: 4, display: "block" }}>Framework Name</label>
+                <input
+                  className="form-input"
+                  placeholder="e.g. MÜDEK, ABET, Custom"
+                  value={createFwName}
+                  onChange={(e) => setCreateFwName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ marginBottom: 4, display: "block" }}>Description (optional)</label>
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  placeholder="Brief description of the accreditation framework"
+                  value={createFwDesc}
+                  onChange={(e) => setCreateFwDesc(e.target.value)}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setCreateFwOpen(false)} disabled={createFwSubmitting}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ width: "auto", padding: "8px 20px" }}
+                  onClick={handleCreateFramework}
+                  disabled={!createFwName.trim() || createFwSubmitting}
+                >
+                  <AsyncButtonContent loading={createFwSubmitting}>Create</AsyncButtonContent>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        </>
       ) : (
         <>
           {/* Framework selector bar */}

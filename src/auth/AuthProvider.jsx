@@ -257,9 +257,10 @@ export default function AuthProvider({ children }) {
 
     setLoading(false);
 
-    // If "Remember me" was not checked, clear persisted session
+    // Only clear persisted session when preference is explicitly false.
+    // Missing key (legacy sessions) should not force logout.
     try {
-      if (localStorage.getItem(KEYS.ADMIN_REMEMBER_ME) !== "true") {
+      if (localStorage.getItem(KEYS.ADMIN_REMEMBER_ME) === "false") {
         clearPersistedSession();
       }
     } catch {}
