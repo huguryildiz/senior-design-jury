@@ -2748,3 +2748,223 @@ body:not(.dark-mode) .premium-tooltip-box.tip-bottom::after{border-color:rgba(14
 [data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);padding:5px 10px;background:#0f172a;color:#e2e8f0;font-size:11px;font-weight:500;border-radius:6px;white-space:nowrap;z-index:200;pointer-events:none;animation:data-tooltip-in .12s ease-out;box-shadow:0 4px 12px rgba(0,0,0,0.15)}
 body:not(.dark-mode) [data-tooltip]:hover::after{background:#1e293b;color:#f1f5f9}
 @keyframes data-tooltip-in{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── Security Signal Pill ───────────────────────────────────── */
+
+.sec-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+.sec-pill:hover:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.sec-pill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--btn-focus-ring-brand, rgba(59, 130, 246, 0.35));
+}
+.sec-pill:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.sec-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sec-pill-chev {
+  width: 10px;
+  height: 10px;
+  opacity: 0.55;
+  margin-left: 1px;
+}
+
+.sec-pill--success {
+  background: rgba(22, 163, 74, 0.10);
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.25);
+}
+.sec-pill--warning {
+  background: rgba(234, 179, 8, 0.12);
+  color: #a16207;
+  border-color: rgba(234, 179, 8, 0.30);
+}
+.sec-pill--danger {
+  background: rgba(225, 29, 72, 0.10);
+  color: #be123c;
+  border-color: rgba(225, 29, 72, 0.25);
+}
+.sec-pill--neutral {
+  background: var(--surface-1);
+  color: var(--text-tertiary);
+  border-color: var(--border);
+}
+
+body.dark-mode .sec-pill--success { color: #4ade80; }
+body.dark-mode .sec-pill--warning { color: #fbbf24; }
+body.dark-mode .sec-pill--danger  { color: #fb7185; }
+
+/* ── Popover ── */
+.sec-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 300px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow:
+    0 10px 30px -10px rgba(15, 23, 42, 0.25),
+    0 2px 6px rgba(15, 23, 42, 0.05);
+  z-index: 20;
+  overflow: hidden;
+  font-family: inherit;
+}
+.sec-popover::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 18px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+body.dark-mode .sec-popover {
+  background: var(--surface-2, #1f2937);
+  border-color: var(--border);
+}
+
+.sec-popover-banner {
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-popover--warning .sec-popover-banner {
+  background: rgba(234, 179, 8, 0.10);
+  border-bottom-color: rgba(234, 179, 8, 0.25);
+}
+.sec-popover--danger .sec-popover-banner {
+  background: rgba(225, 29, 72, 0.08);
+  border-bottom-color: rgba(225, 29, 72, 0.22);
+}
+.sec-popover--warning::before { background: rgba(234, 179, 8, 0.10); }
+.sec-popover--danger::before  { background: rgba(225, 29, 72, 0.08); }
+
+.sec-popover-verdict {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+body:not(.dark-mode) .sec-popover--warning .sec-popover-verdict { color: #854d0e; }
+body:not(.dark-mode) .sec-popover--danger  .sec-popover-verdict { color: #9f1239; }
+.sec-popover-reason {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+}
+body:not(.dark-mode) .sec-popover--warning .sec-popover-reason { color: #a16207; }
+body:not(.dark-mode) .sec-popover--danger  .sec-popover-reason { color: #be123c; }
+
+.sec-popover-clear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+}
+.sec-popover-clear-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+body.dark-mode .sec-popover-clear-icon { color: #4ade80; }
+.sec-popover-clear-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sec-popover-body {
+  padding: 8px 13px;
+}
+.sec-factor-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.sec-factor-row:last-child { border-bottom: none; }
+.sec-factor-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.sec-factor-value {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.2px;
+}
+.sec-factor-value--ok   { background: rgba(22, 163, 74, 0.10); color: #15803d; }
+.sec-factor-value--warn { background: rgba(234, 179, 8, 0.15); color: #a16207; }
+.sec-factor-value--bad  { background: rgba(225, 29, 72, 0.10); color: #be123c; }
+
+body.dark-mode .sec-factor-value--ok   { color: #4ade80; }
+body.dark-mode .sec-factor-value--warn { color: #fbbf24; }
+body.dark-mode .sec-factor-value--bad  { color: #fb7185; }
+
+.sec-popover-footer {
+  padding: 9px 13px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2, var(--surface-1));
+}
+.sec-popover-action {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent, #3b82f6);
+  cursor: pointer;
+  font-family: inherit;
+}
+.sec-popover-action:hover { text-decoration: underline; }
+.sec-popover-action:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  box-shadow: 0 0 0 2px var(--btn-focus-ring-brand, rgba(59, 130, 246, 0.35));
+  border-radius: 2px;
+}
+
+/* Narrow viewport: anchor popover to card edge instead of pill */
+@media (max-width: 420px) {
+  .sec-popover {
+    right: -8px;
+    width: calc(100vw - 28px);
+    max-width: 340px;
+  }
+}
