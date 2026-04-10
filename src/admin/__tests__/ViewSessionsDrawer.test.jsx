@@ -5,7 +5,7 @@ import ViewSessionsDrawer from "../drawers/ViewSessionsDrawer";
 vi.mock("../../shared/lib/supabaseClient", () => ({ supabase: {} }));
 
 describe("ViewSessionsDrawer", () => {
-  it("marks current session, uses signed-in fallback, and renders Unknown country", () => {
+  it("marks current session, uses signed-in fallback, and renders country inline in sub-line", () => {
     const { container } = render(
       <ViewSessionsDrawer
         open
@@ -45,8 +45,13 @@ describe("ViewSessionsDrawer", () => {
     expect(screen.getByText("Current Session")).toBeInTheDocument();
     expect(screen.getByLabelText("signed-in-fallback-info")).toBeInTheDocument();
     expect(screen.getByText("(first seen)")).toBeInTheDocument();
-    expect(screen.getAllByText(/Country:/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Unknown").length).toBeGreaterThan(0);
+
+    // Country is now shown inline in card-sub, hidden if "Unknown"
+    const cardSubs = Array.from(container.querySelectorAll(".fs-session-card-sub")).map((node) => node.textContent);
+    expect(cardSubs.some((sub) => sub.includes("TR"))).toBe(true);
+    // Sessions are sorted by last_activity descending; first one is the newer (dev_current) with TR country
+    expect(cardSubs[0]).toContain("203.0.113"); // masked IP
+    expect(cardSubs[0]).toContain("TR"); // country code visible
 
     const cardNames = Array.from(container.querySelectorAll(".fs-session-card-name")).map((node) => node.textContent);
     expect(cardNames[0]).toContain("Chrome / macOS");

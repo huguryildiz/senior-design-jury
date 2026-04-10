@@ -7,6 +7,7 @@
 //   sessions        — admin_user_sessions rows
 //   loading         — boolean
 //   currentDeviceId — current browser device_id
+//   onRevoke        — (id: string) => Promise<void>  (optional)
 
 import Drawer from "@/shared/ui/Drawer";
 import { maskIpAddress, normalizeCountryCode } from "@/shared/lib/adminSession";
@@ -16,11 +17,8 @@ function formatAbsoluteDate(ts) {
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return "Unknown";
   return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
   });
 }
 
@@ -45,15 +43,52 @@ function describeDevice(session) {
   return `${browser} / ${os}`;
 }
 
-export default function ViewSessionsDrawer({ open, onClose, sessions = [], loading = false, currentDeviceId = "" }) {
+function isExpiringWithinHours(ts, hours) {
+  if (!ts) return false;
+  const remaining = new Date(ts).getTime() - Date.now();
+  return remaining > 0 && remaining < hours * 3600000;
+}
+
+function DeviceIcon({ os }) {
+  const lower = (os || "").toLowerCase();
+  if (lower === "ios" || lower === "android") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2" />
+        <circle cx="12" cy="18" r="1" />
+      </svg>
+    );
+  }
+  if (lower === "macos" || lower === "windows" || lower === "linux") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="13" rx="2" />
+        <path d="M8 21h8M12 17v4" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </svg>
+  );
+}
+
+export default function ViewSessionsDrawer({
+  open,
+  onClose,
+  sessions = [],
+  loading = false,
+  currentDeviceId = "",
+  onRevoke,
+}) {
   const sortedSessions = Array.isArray(sessions)
     ? [...sessions].sort((a, b) => {
-      const aMs = Date.parse(a?.last_activity_at || "");
-      const bMs = Date.parse(b?.last_activity_at || "");
-      const safeA = Number.isNaN(aMs) ? 0 : aMs;
-      const safeB = Number.isNaN(bMs) ? 0 : bMs;
-      return safeB - safeA;
-    })
+        const aMs = Date.parse(a?.last_activity_at || "");
+        const bMs = Date.parse(b?.last_activity_at || "");
+        return (Number.isNaN(bMs) ? 0 : bMs) - (Number.isNaN(aMs) ? 0 : aMs);
+      })
     : [];
   const totalSessions = sortedSessions.length;
 
@@ -62,13 +97,8 @@ export default function ViewSessionsDrawer({ open, onClose, sessions = [], loadi
       <div className="fs-drawer-header">
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 36, height: 36, borderRadius: 9, display: "grid", placeItems: "center",
-                background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.12)",
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2" style={{ width: 17, height: 17 }}>
+            <div className="fs-icon identity">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
                 <path d="M8 21h8M12 17v4" />
               </svg>
@@ -88,7 +118,7 @@ export default function ViewSessionsDrawer({ open, onClose, sessions = [], loadi
         </div>
       </div>
 
-      <div className="fs-drawer-body" style={{ gap: 10 }}>
+      <div className="fs-drawer-body" style={{ gap: 0 }}>
         {loading && (
           <div style={{ padding: "20px 0", textAlign: "center", color: "var(--text-quaternary)", fontSize: 12 }}>
             Loading sessions...
@@ -103,44 +133,69 @@ export default function ViewSessionsDrawer({ open, onClose, sessions = [], loadi
           const isCurrent = session?.device_id === currentDeviceId;
           const usedSignedInFallback = !session?.signed_in_at && !!session?.first_seen_at;
           const signedInAt = session?.signed_in_at || session?.first_seen_at || null;
+          const expiringSoon = isExpiringWithinHours(session?.expires_at, 2);
+          const maskedIp = maskIpAddress(session?.ip_address);
+          const country = normalizeCountryCode(session?.country_code);
 
           return (
-          <div
-            key={session.id}
-            className={`fs-session-card${isCurrent ? " current" : ""}`}
-          >
-            <div className="fs-session-card-header">
-              <div className="fs-session-card-name">
-                {describeDevice(session)}
+            <div key={session.id} className={`fs-session-card${isCurrent ? " current" : ""}`}>
+              <div className="fs-session-card-icon">
+                <DeviceIcon os={session?.os} />
               </div>
-              {isCurrent && (
-                <span className="badge badge-success" style={{ fontSize: 9 }}>
-                  Current Session
-                </span>
+
+              <div className="fs-session-card-body">
+                <div className="fs-session-card-name">
+                  {isCurrent && <span className="fs-session-card-dot" />}
+                  {describeDevice(session)}
+                </div>
+
+                <div className="fs-session-card-sub">
+                  {maskedIp}
+                  {country !== "Unknown" ? ` · ${country}` : ""}
+                </div>
+
+                <div className="fs-session-card-pills">
+                  {isCurrent && (
+                    <span className="fs-session-pill success">Current Session</span>
+                  )}
+                  {session?.auth_method && (
+                    <span className="fs-session-pill accent">{session.auth_method}</span>
+                  )}
+                  {session?.expires_at && (
+                    <span className={`fs-session-pill${expiringSoon ? " warning" : ""}`}>
+                      Exp: {formatAbsoluteDate(session.expires_at)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="fs-session-card-meta">
+                  Signed in {formatAbsoluteDate(signedInAt)}
+                  {usedSignedInFallback && (
+                    <span
+                      style={{ marginLeft: 5, cursor: "help" }}
+                      title="Exact sign-in timestamp unavailable. Showing first seen timestamp."
+                      aria-label="signed-in-fallback-info"
+                    >
+                      {" "}(first seen)
+                    </span>
+                  )}
+                  {" · "}Last active {formatRelative(session?.last_activity_at)}
+                </div>
+              </div>
+
+              {!isCurrent && onRevoke && (
+                <div className="fs-session-card-actions">
+                  <button
+                    type="button"
+                    className="fs-session-revoke-btn"
+                    onClick={() => onRevoke(session.id)}
+                  >
+                    Revoke
+                  </button>
+                </div>
               )}
             </div>
-            <div className="fs-session-card-meta">
-              <div><strong>Device/Browser/OS:</strong> {describeDevice(session)}</div>
-              <div><strong>IP:</strong> {maskIpAddress(session?.ip_address)}</div>
-              <div><strong>Country:</strong> {normalizeCountryCode(session?.country_code)}</div>
-              <div>
-                <strong>Signed in at:</strong> {formatAbsoluteDate(signedInAt)}
-                {usedSignedInFallback && (
-                  <span
-                    style={{ marginLeft: 6, color: "var(--text-quaternary)", cursor: "help" }}
-                    title="Exact sign-in timestamp unavailable. Showing first seen timestamp."
-                    aria-label="signed-in-fallback-info"
-                  >
-                    (first seen)
-                  </span>
-                )}
-              </div>
-              <div><strong>Last activity:</strong> {formatRelative(session?.last_activity_at)}</div>
-              <div><strong>Auth method:</strong> {session?.auth_method || "Unknown"}</div>
-              <div><strong>Expires at:</strong> {formatAbsoluteDate(session?.expires_at)}</div>
-            </div>
-          </div>
-        );
+          );
         })}
       </div>
 
