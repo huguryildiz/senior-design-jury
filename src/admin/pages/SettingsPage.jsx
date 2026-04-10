@@ -2,7 +2,7 @@
 // Simplified: profile + security for both roles.
 // Organization management moved to OrganizationsPage.jsx.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/auth";
 import { useUpdatePolicy } from "@/auth/SecurityPolicyContext";
 import { useToast } from "@/shared/hooks/useToast";
@@ -10,8 +10,10 @@ import SecurityPolicyDrawer from "../drawers/SecurityPolicyDrawer";
 import EditProfileDrawer from "../drawers/EditProfileDrawer";
 import ChangePasswordDrawer from "../drawers/ChangePasswordDrawer";
 import ViewSessionsDrawer from "../drawers/ViewSessionsDrawer";
+import SecuritySignalPill from "../components/SecuritySignalPill.jsx";
+import { computeSecuritySignal } from "../utils/computeSecuritySignal.js";
 import Avatar from "@/shared/ui/Avatar";
-import { upsertProfile, getSecurityPolicy, setSecurityPolicy, listAdminSessions } from "@/shared/api";
+import { upsertProfile, getSecurityPolicy, setSecurityPolicy, listAdminSessions, deleteAdminSession } from "@/shared/api";
 import { getAdminDeviceId, getAuthMethodLabelFromSession } from "@/shared/lib/adminSession";
 import { supabase } from "@/shared/lib/supabaseClient";
 
@@ -116,6 +118,14 @@ export default function SettingsPage() {
   const [adminSessionsLoading, setAdminSessionsLoading] = useState(false);
   const knownSessionCount = adminSessions.length > 0 ? adminSessions.length : (session ? 1 : 0);
   const sessionCount = `${knownSessionCount} Active`;
+  const securitySignal = useMemo(
+    () => computeSecuritySignal({
+      adminSessions,
+      lastLoginAt,
+      loading: loading || adminSessionsLoading,
+    }),
+    [adminSessions, lastLoginAt, loading, adminSessionsLoading],
+  );
 
   const loadAdminSessions = useCallback(async ({ silent = false } = {}) => {
     if (!user?.id) {
@@ -148,6 +158,17 @@ export default function SettingsPage() {
     if (!viewSessionsOpen) return;
     loadAdminSessions();
   }, [viewSessionsOpen, loadAdminSessions]);
+
+  const handleRevokeSession = useCallback(async (id) => {
+    try {
+      await deleteAdminSession(id);
+      const rows = await listAdminSessions();
+      setAdminSessions(rows);
+      _toast.success("Session revoked");
+    } catch (e) {
+      _toast.error(e?.message || "Failed to revoke session.");
+    }
+  }, [_toast]);
 
   const handleOpenSecurityPolicy = useCallback(async () => {
     setSecurityPolicyError(null);
@@ -236,6 +257,7 @@ export default function SettingsPage() {
           email: user?.email || "",
           role: isSuper ? "Super Admin" : "Organization Admin",
           organization: activeOrganization?.name || "",
+          subtitle: activeOrganization?.subtitle || "",
           avatarUrl: avatarUrl || null,
         }}
         onSave={handleSaveProfile}
@@ -265,6 +287,7 @@ export default function SettingsPage() {
         sessions={adminSessions}
         loading={adminSessionsLoading}
         currentDeviceId={currentDeviceId}
+        onRevoke={handleRevokeSession}
       />
 
       <div className="page">
@@ -332,10 +355,10 @@ export default function SettingsPage() {
             <div className="card settings-role-card" style={{ padding: 14 }}>
               <div className="card-header" style={{ marginBottom: 8 }}>
                 <div className="card-title">Security &amp; Sessions</div>
-                <span className="badge badge-success">
-                  <span className="status-dot dot-success" />
-                  Secure
-                </span>
+                <SecuritySignalPill
+                  signal={securitySignal}
+                  onReviewSessions={() => setViewSessionsOpen(true)}
+                />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
                 {[
