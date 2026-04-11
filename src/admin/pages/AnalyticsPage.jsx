@@ -4,6 +4,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
+import { useAnalyticsData } from "../hooks/useAnalyticsData";
 import { outcomeValues } from "@/shared/stats";
 import { writeAuditLog } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
@@ -267,16 +268,25 @@ export default function AnalyticsPage() {
     periodName,
     selectedPeriodId,
     semesterOptions,
-    trendSemesterIds,
-    onTrendSelectionChange,
+    criteriaConfig,
+    outcomeConfig,
+    threshold = 70,
+    organizationId,
+  } = useAdminContext();
+
+  const {
     trendData,
     outcomeTrendData,
     outcomeTrendLoading,
     outcomeTrendError,
-    criteriaConfig,
-    outcomeConfig,
-    threshold = 70,
-  } = useAdminContext();
+    trendPeriodIds: trendSemesterIds,
+    setTrendPeriodIds: onTrendSelectionChange,
+  } = useAnalyticsData({
+    organizationId,
+    periodList: semesterOptions || [],
+    sortedPeriods: semesterOptions || [],
+    lastRefresh,
+  });
   const criteria = criteriaConfig || [];
   const [exportOpen, setExportOpen] = useState(false);
   const [deltaRows, setDeltaRows] = useState([]);

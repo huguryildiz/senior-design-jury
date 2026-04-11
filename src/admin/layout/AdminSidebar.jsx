@@ -240,7 +240,7 @@ export default function AdminSidebar({ currentPage, basePath, mobileOpen, onClos
         </button>
         {isSuper && (
           <>
-            <div className="sb-section" style={{ color: 'var(--accent)', opacity: 0.8 }}>Platform</div>
+            <div className="sb-section">Platform</div>
             <button
               className={`sb-item${currentPage === "organizations" ? " active" : ""}`}
               onClick={() => navTo("organizations")}

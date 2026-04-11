@@ -22,7 +22,6 @@ import {
 } from "../../shared/api";
 import { sortPeriodsByStartDateDesc } from "../../shared/periodSort";
 import { useAdminRealtime } from "./useAdminRealtime";
-import { useAnalyticsData } from "./useAnalyticsData";
 
 // ── Hook ──────────────────────────────────────────────────────
 
@@ -305,32 +304,12 @@ export function useAdminData({
     return () => { cancelled = true; };
   }, [scoresView, detailsKey, sortedPeriods, detailsScores.length, rawScores]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Trend / analytics (delegated) ─────────────────────────
-  const {
-    trendData,
-    trendLoading,
-    trendError,
-    outcomeTrendData,
-    outcomeTrendLoading,
-    outcomeTrendError,
-    trendPeriodIds,
-    setTrendPeriodIds,
-  } = useAnalyticsData({ organizationId, periodList, sortedPeriods, lastRefresh });
-
   return {
     rawScores,
     summaryData,
     allJurors,
     periodList,
     sortedPeriods,
-    trendData,
-    trendLoading,
-    trendError,
-    outcomeTrendData,
-    outcomeTrendLoading,
-    outcomeTrendError,
-    trendPeriodIds,
-    setTrendPeriodIds,
     detailsScores,
     detailsSummary,
     detailsLoading,

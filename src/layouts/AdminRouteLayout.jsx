@@ -148,12 +148,6 @@ export default function AdminRouteLayout() {
     loading,
     loadError,
     lastRefresh,
-    trendData,
-    outcomeTrendData,
-    outcomeTrendLoading,
-    outcomeTrendError,
-    trendPeriodIds,
-    setTrendPeriodIds,
     fetchData,
   } = useAdminData({
     organizationId: activeOrganization?.id,
@@ -263,6 +257,48 @@ export default function AdminRouteLayout() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [allJurors, rawScores]);
 
+  // Build context to pass to child routes via Outlet.
+  // Must be declared before any conditional returns (Rules of Hooks).
+  // Memoized so sidebar/header interactions don't re-render all child pages.
+  const adminContext = useMemo(() => ({
+    rawScores,
+    summaryData,
+    allJurors,
+    sortedPeriods,
+    loading,
+    loadError,
+    lastRefresh,
+    fetchData,
+    selectedPeriod,
+    selectedPeriodId,
+    setSelectedPeriodId,
+    criteriaConfig,
+    outcomeConfig,
+    frameworks,
+    reloadFrameworks,
+    frameworkThreshold,
+    groups,
+    matrixJurors,
+    activeOrganization,
+    settingsDirtyRef,
+    onDirtyChange,
+    onCurrentSemesterChange,
+    navigateTo,
+    basePath,
+    isDemo,
+    isDemoMode,
+    scoresView,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [
+    rawScores, summaryData, allJurors, sortedPeriods,
+    loading, loadError, lastRefresh, fetchData,
+    selectedPeriod, selectedPeriodId, setSelectedPeriodId,
+    criteriaConfig, outcomeConfig, frameworks, reloadFrameworks,
+    frameworkThreshold, groups, matrixJurors, activeOrganization,
+    onDirtyChange, onCurrentSemesterChange, navigateTo,
+    basePath, isDemo, isDemoMode, scoresView,
+  ]);
+
   // ── Auth gate ─────────────────────────────────────────────
   if (authLoading) return null;
 
@@ -345,43 +381,6 @@ export default function AdminRouteLayout() {
       </AuthFormErrorBoundary>
     );
   }
-
-  // Build context to pass to child routes via Outlet
-  const adminContext = {
-    rawScores,
-    summaryData,
-    allJurors,
-    sortedPeriods,
-    loading,
-    loadError,
-    lastRefresh,
-    trendData,
-    outcomeTrendData,
-    outcomeTrendLoading,
-    outcomeTrendError,
-    trendPeriodIds,
-    setTrendPeriodIds,
-    fetchData,
-    selectedPeriod,
-    selectedPeriodId,
-    setSelectedPeriodId,
-    criteriaConfig,
-    outcomeConfig,
-    frameworks,
-    reloadFrameworks,
-    frameworkThreshold,
-    groups,
-    matrixJurors,
-    activeOrganization,
-    settingsDirtyRef,
-    onDirtyChange,
-    onCurrentSemesterChange,
-    navigateTo,
-    basePath,
-    isDemo,
-    isDemoMode,
-    scoresView,
-  };
 
   return (
     <div className="admin-shell">

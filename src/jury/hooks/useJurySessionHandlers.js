@@ -134,40 +134,34 @@ export function useJurySessionHandlers({ identity, session, scoring, loading, wo
         }
       }
 
-      // Load DB criteria rows (period_criteria table).
-      // If empty or on error, criteriaConfigForState is null → getActiveCriteria returns [] → no scoring.
-      let periodCriteriaRows = [];
-      try {
-        periodCriteriaRows = await listPeriodCriteria(period.id);
-      } catch (e) {
-        if (e?.name === "AbortError") throw e;
-        // Non-fatal: period has no criteria — jury form will render empty.
-      }
-      const criteriaConfigForState = periodCriteriaRows.length > 0 ? periodCriteriaRows : null;
-
       // sessionToken: prefer the explicitly-passed token (fresh local var in handlePinSubmit)
       // over stateRef, because React state may not have flushed yet at this point.
       const sessionToken = optSessionToken || stateRef.current.jurorSessionToken || null;
-      const projectList = await listProjects(period.id, jid, signal, sessionToken);
-      let editStateResult = null;
-      try {
-        editStateResult = await getJurorEditState(period.id, jid, sessionToken, signal);
-      } catch (e) {
-        if (e?.name === "AbortError") throw e; // propagate abort
-      }
+
+      // All four fetches are independent — run them in parallel.
+      // AbortErrors propagate; other errors degrade gracefully.
+      const [periodCriteriaRows, projectList, editStateResult, outcomeRows] = await Promise.all([
+        listPeriodCriteria(period.id).catch((e) => {
+          if (e?.name === "AbortError") throw e;
+          return []; // Non-fatal: period has no criteria — jury form will render empty.
+        }),
+        listProjects(period.id, jid, signal, sessionToken),
+        getJurorEditState(period.id, jid, sessionToken, signal).catch((e) => {
+          if (e?.name === "AbortError") throw e;
+          return null;
+        }),
+        listPeriodOutcomes(period.id).catch((e) => {
+          if (e?.name === "AbortError") throw e;
+          return []; // Non-fatal: fall back to static OUTCOME_DEFINITIONS via buildOutcomeLookup([]).
+        }),
+      ]);
+
+      const criteriaConfigForState = periodCriteriaRows.length > 0 ? periodCriteriaRows : null;
 
       loading.setPeriodId(period.id);
       loading.setPeriodName(period.name);
       loading.setTenantAdminEmail(period.organizations?.contact_email || "");
       loading.setOrgName(period.organizations?.name || "");
-
-      let outcomeRows = [];
-      try {
-        outcomeRows = await listPeriodOutcomes(period.id);
-      } catch (e) {
-        if (e?.name === "AbortError") throw e;
-        // Non-fatal: fall back to static OUTCOME_DEFINITIONS via buildOutcomeLookup([]).
-      }
       // Map period_outcomes rows to the shape buildOutcomeLookup expects.
       // DB stores a single `description` field; we surface it as desc_en.
       const outcomeConfig = outcomeRows.map((o) => ({

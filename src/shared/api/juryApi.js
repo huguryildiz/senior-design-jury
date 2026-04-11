@@ -111,7 +111,7 @@ export async function listProjects(periodId, jurorId = null, signal, sessionToke
   return withRetry(async () => {
     let query = supabase
       .from("projects")
-      .select("*")
+      .select("id, title, members, advisor_name")
       .eq("period_id", periodId)
       .order("title");
 
@@ -156,7 +156,7 @@ export async function listProjects(periodId, jurorId = null, signal, sessionToke
           project_id: p.id,
           title: p.title,
           members: formatMembers(p.members),
-          advisor: p.advisor || "",
+          advisor: p.advisor_name || "",
           scores: entry?.scores || null,
           comment: entry?.comment ?? "",
           total: entry?.total ?? null,

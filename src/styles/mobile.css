@@ -178,11 +178,11 @@ html, body {
 }
 
 /* ── 12. Admin list tables — landscape compact mode ───────────
-   Sidebar hides at ≤900px landscape, so the full viewport width
-   is available. Shared spacing & sizing; per-page column
-   visibility lives in each page's own CSS file.
+   Threshold 768px: modern iPhones in landscape (~852–874px) fall
+   above this and get the full desktop table layout instead.
+   Per-page column visibility lives in each page's own CSS file.
    ──────────────────────────────────────────────────────────── */
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 768px) and (orientation: landscape) {
   /* Shared compact header */
   #jurors-main-table thead th,
   #projects-main-table thead th,

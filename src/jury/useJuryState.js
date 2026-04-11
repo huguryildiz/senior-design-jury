@@ -197,7 +197,7 @@ export default function useJuryState() {
   useEffect(() => {
     if (!autosave.sessionExpired || workflow.step !== "eval") return;
     session.setJurorSessionToken("");
-    session.setPinError("Oturumunuz sona erdi veya başka bir cihazdan açıldı. Devam etmek için PIN'inizi tekrar girin.");
+    session.setPinError("Your session has expired or was opened on another device. Please enter your PIN again to continue.");
     session.setPinErrorCode("session_expired");
     workflow.setStep("pin");
     autosave.setSessionExpired(false);
