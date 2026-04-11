@@ -15,3 +15,21 @@
 /* ─── Manage team members modal list ─────────────────────── */
 .manage-student-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px }
 .manage-student-row .modal-input { flex: 1 }
+
+/* ─── Landscape compact ───────────────────────────────────────
+   Hides Team Members and Last Updated columns so No, Title,
+   Score and Actions fit cleanly at ~844px.
+   Shared cell spacing lives in mobile.css.
+   ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) and (orientation: landscape) {
+  #page-projects .table-wrap { overflow-x: auto; }
+
+  /* Hide low-priority columns */
+  #projects-main-table td.col-members,
+  #projects-main-table th.col-members { display: none; }
+  #projects-main-table td.col-updated,
+  #projects-main-table th.col-updated { display: none; }
+
+  /* Title — tighten text slightly */
+  #projects-main-table td:nth-child(2) > div:first-child { font-size: 12px; }
+}

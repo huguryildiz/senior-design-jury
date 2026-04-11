@@ -73,3 +73,12 @@
 .sem-action-menu.open { display: block }
 .sem-action-menu-label { padding: 6px 11px 4px; font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.6px }
 .sem-action-item-disabled { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--text-tertiary); opacity: 0.58; cursor: default; pointer-events: none }
+
+/* ─── Landscape compact ───────────────────────────────────────
+   4 columns (Name, Status, Updated, Actions) fit at ~844px.
+   Shared cell spacing lives in mobile.css; only page overrides here.
+   ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) and (orientation: landscape) {
+  .sem-table-wrap { overflow-x: auto; }
+  .sem-name      { font-size: 13px; }
+}

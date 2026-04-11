@@ -305,9 +305,24 @@
 /* col-mobile-card is only shown inside the ≤768px media query */
 .col-mobile-card { display: none; }
 
-/* ─── Portrait / mobile card layout ───────────────────────── */
+/* ─── Both orientations ≤768px: toolbar ───────────────────── */
 @media (max-width: 768px) {
-  .jurors-page .table-wrap {
+  /* Toolbar: let search shrink and buttons wrap */
+  .jurors-search-wrap { width: auto; flex: 1; flex-shrink: 1; min-width: 0; }
+}
+
+/* ─── Portrait ≤768px: toolbar buttons fill full row (= card width) ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  .jurors-toolbar .btn {
+    flex: 1 0 100%;
+    justify-content: center;
+  }
+}
+
+/* ─── Portrait mobile: card layout ────────────────────────── */
+@media (max-width: 768px) and (orientation: portrait) {
+  /* Strip the table-wrap card shell — mobile cards are the visual surface */
+  #page-jurors .table-wrap {
     overflow: visible;
     border: none;
     background: none;
@@ -320,11 +335,10 @@
   /* Clip any overflowing content at the page level */
   #page-jurors { overflow-x: hidden; max-width: 100%; }
 
-  /* Toolbar: let search shrink and buttons wrap */
-  .jurors-search-wrap { width: auto; flex: 1; flex-shrink: 1; min-width: 0; }
-
-  /* display:contents on <table> breaks td { display:none } in Safari — use block instead */
-  #jurors-main-table { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }
+  /* display:contents on <table> breaks td { display:none } in Safari — use block instead.
+     min-width: 0 overrides layout.css .table-wrap table { min-width: 480px } which
+     would otherwise force the table wider than the viewport. */
+  #jurors-main-table { display: block; width: 100%; max-width: 100%; min-width: 0 !important; box-sizing: border-box; }
   #jurors-main-table thead { display: none !important; }
   #jurors-main-table tbody {
     display: block;
@@ -353,10 +367,17 @@
   #jurors-main-table .col-status,
   #jurors-main-table .col-active,
   #jurors-main-table .col-actions { display: none !important; }
-  #jurors-main-table .col-mobile-card { display: block; padding: 0; }
+  #jurors-main-table .col-mobile-card { display: block; padding: 0; width: 100%; box-sizing: border-box; }
+
+  /* Desktop <tr> hover / selected states bleed through in mobile as a full-row background wash
+     behind the .jc card — neutralise them here; .jc handles all interaction feedback itself */
+  #jurors-main-table tbody tr:hover { background: none; }
+  #jurors-main-table tbody tr.row-menu-open { background: none; box-shadow: none; }
 
   /* ── Card shell ── */
   .jc {
+    width: 100%;
+    box-sizing: border-box;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -370,13 +391,10 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(59, 130, 246, 0);
   }
 
-  /* Hover — pointer devices; shadow glow makes the border-color change legible */
   .jc:hover {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 4px 12px rgba(59, 130, 246, 0.06);
   }
-
-  /* Pressed — all devices; primary feedback on touch (hover won't fire) */
   .jc:active {
     transform: scale(0.985);
     border-color: var(--accent);
@@ -384,14 +402,10 @@
     background: rgba(59, 130, 246, 0.03);
     opacity: 1;
   }
-
-  /* Selected — action menu is open for this card */
   .jc.menu-open {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14), 0 4px 16px rgba(59, 130, 246, 0.08);
   }
-
-  /* Keyboard focus ring */
   .jc:focus-visible {
     outline: none;
     border-color: var(--accent);
@@ -411,12 +425,10 @@
     padding: 10px 12px 8px;
   }
 
-  /* Override JurorBadge inline styles for compact mobile sizes */
   .jc-main .jb-badge { flex: 1; min-width: 0; }
   .jc-main .jb-name { font-size: 12.5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .jc-main .jb-affiliation { font-size: 10.5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Right cluster: status pill + kebab in a single row */
   .jc-right { display: flex; flex-direction: row; align-items: center; gap: 6px; flex-shrink: 0; }
 
   /* Kebab button + dropdown wrapper */
@@ -433,7 +445,6 @@
   }
   .jc-kebab:active { background: rgba(96,165,250,0.14); border-color: rgba(96,165,250,0.28); }
 
-  /* Action dropdown anchored to kebab-wrap */
   .jc-action-menu {
     position: absolute;
     top: calc(100% + 4px); right: 0;
@@ -459,17 +470,14 @@
   .jc-action-item.danger:hover { background: rgba(248,113,113,0.07); }
   .jc-action-sep { height: 1px; background: var(--border); margin: 2px 0; }
 
-  /* ── Hairline divider between main row and progress strip ── */
   .jc-divider { height: 1px; background: var(--border); margin: 0 12px; }
 
-  /* ── Progress strip ── */
   .jc-progress { display: flex; align-items: center; gap: 8px; padding: 7px 12px 9px; }
   .jc-bar-wrap { flex: 1; height: 4px; background: var(--surface-1, rgba(148,163,184,0.10)); border-radius: 3px; overflow: hidden; }
   .jc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
   .jc-proj-count { font-size: 10px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .jc-proj-count span { color: var(--text-secondary); }
 
-  /* ── Last active footer — sits below the progress strip ── */
   .jc-footer {
     display: flex;
     align-items: center;
@@ -481,5 +489,25 @@
     letter-spacing: 0.015em;
     opacity: 0.75;
   }
+}
 
+/* ─── Landscape ≤900px: compact desktop table ────────────────
+   Sidebar hides at this breakpoint so full viewport width is
+   usable. Shared spacing is in mobile.css; this block handles
+   column visibility and jurors-specific overrides.
+   ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) and (orientation: landscape) {
+  /* Table fills available width — no horizontal scroll needed */
+  #page-jurors .table-wrap { overflow-x: visible; }
+  #jurors-main-table { min-width: unset; width: 100%; }
+
+  /* Mobile card column hidden — desktop columns take over */
+  #jurors-main-table .col-mobile-card { display: none !important; }
+
+  /* Hide low-priority column (Last Active) */
+  #jurors-main-table .col-active         { display: none; }
+  #jurors-main-table thead th:nth-child(5) { display: none; }
+
+  /* Tighten name text */
+  #jurors-main-table .jt-name { font-size: 12px; }
 }

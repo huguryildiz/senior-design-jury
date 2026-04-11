@@ -25,9 +25,9 @@ import "../../styles/pages/projects.css";
 const COLUMNS = [
   { key: "group_no",   label: "No",            colWidth: 52,   exportWidth: 8  },
   { key: "title",      label: "Project Title",  colWidth: null, exportWidth: 36 },
-  { key: "members",    label: "Team Members",   colWidth: null, exportWidth: 42 },
+  { key: "members",    label: "Team Members",   colWidth: null, exportWidth: 42, colClass: "col-members" },
   { key: "avg_score",  label: "Avg Score",      colWidth: 90,   exportWidth: 10 },
-  { key: "updated_at", label: "Last Updated",   colWidth: 130,  exportWidth: 18 },
+  { key: "updated_at", label: "Last Updated",   colWidth: 130,  exportWidth: 18, colClass: "col-updated" },
 ];
 
 function getProjectCell(p, key, avgMap) {
@@ -482,7 +482,7 @@ export default function ProjectsPage() {
               {COLUMNS.map((c) => (
                 <th
                   key={c.key}
-                  className={`${c.key === "group_no" || c.key === "avg_score" ? "text-center " : ""}sortable${sortKey === c.key ? " sorted" : ""}`}
+                  className={`${c.key === "group_no" || c.key === "avg_score" ? "text-center " : ""}sortable${sortKey === c.key ? " sorted" : ""}${c.colClass ? ` ${c.colClass}` : ""}`}
                   style={c.colWidth ? { width: c.colWidth } : {}}
                   onClick={() => handleSort(c.key)}
                 >
@@ -548,7 +548,7 @@ export default function ProjectsPage() {
                     );
                   })()}
                 </td>
-                <td>
+                <td className="col-members">
                   <StudentNames names={project.members} />
                 </td>
                 <td className="text-center avg-score-cell">
@@ -559,7 +559,7 @@ export default function ProjectsPage() {
                       </>
                     : <span className="avg-score-empty">—</span>}
                 </td>
-                <td>
+                <td className="col-updated">
                   <PremiumTooltip text={formatFull(project.updated_at)}>
                     <span className="vera-datetime-text">{formatRelative(project.updated_at)}</span>
                   </PremiumTooltip>

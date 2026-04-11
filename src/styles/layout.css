@@ -2769,7 +2769,8 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
   #sub-rankings .ranking-table th,
   #sub-rankings .ranking-table td {
     display: table-cell !important;
-    padding: 10px 12px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
     white-space: nowrap;
     vertical-align: middle;
   }

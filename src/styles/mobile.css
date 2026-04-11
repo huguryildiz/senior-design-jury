@@ -176,3 +176,40 @@ html, body {
     margin-bottom: 8px;
   }
 }
+
+/* ── 12. Admin list tables — landscape compact mode ───────────
+   Sidebar hides at ≤900px landscape, so the full viewport width
+   is available. Shared spacing & sizing; per-page column
+   visibility lives in each page's own CSS file.
+   ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) and (orientation: landscape) {
+  /* Shared compact header */
+  #jurors-main-table thead th,
+  #projects-main-table thead th,
+  .sem-table thead th {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  /* Shared compact body */
+  #jurors-main-table tbody td,
+  #projects-main-table tbody td,
+  .sem-table tbody td {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Jurors — compact avatar */
+  #jurors-main-table .j-av { width: 24px; height: 24px; font-size: 9px; }
+  #jurors-main-table .j-row { gap: 7px; }
+
+  /* Jurors — compact progress bar */
+  #jurors-main-table .jurors-group-bar { width: 38px; }
+  #jurors-main-table .jurors-table-groups { font-size: 11px; gap: 5px; }
+
+  /* Periods — compact status pills */
+  .sem-table .sem-status { padding: 2px 7px; font-size: 10.5px; }
+
+  /* Projects — compact number badge */
+  #projects-main-table .project-no-badge { font-size: 10px; padding: 2px 5px; }
+}
