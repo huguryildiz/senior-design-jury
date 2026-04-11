@@ -1021,6 +1021,7 @@ body:not(.dark-mode) .admin-sidebar .sb-account-item.danger:focus-visible{
     background: linear-gradient(180deg, rgba(15,23,42,0.03), rgba(15,23,42,0.01));
     border-radius: 12px;
     border: 1px solid var(--border);
+    cursor: pointer;
   }
   .sem-table tbody tr.sem-row-current {
     border-color: rgba(59,130,246,0.2);
