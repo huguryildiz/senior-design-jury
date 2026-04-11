@@ -44,6 +44,24 @@
   --field-success-ring:0 0 0 3px var(--success-ring);
   --font:'Plus Jakarta Sans',-apple-system,sans-serif;
   --mono:'JetBrains Mono',monospace;
+  /* ── Floating UI Z-Index Scale ── */
+  --z-base:              1;   /* chart tooltips, base content */
+  --z-sticky:           50;   /* sidebar, demo banner, sticky headers */
+  --z-sidebar-menu:     70;   /* sidebar tenant/account popup menus */
+  --z-dropdown:        200;   /* dropdown, popover, select panel, filter menu */
+  --z-tooltip:         250;   /* tooltip — always above dropdowns */
+  --z-modal-overlay:   300;   /* drawer/modal backdrop */
+  --z-modal:           310;   /* drawer/modal content */
+  --z-modal-dropdown:  350;   /* dropdown opened inside a modal/drawer */
+  --z-toast:           400;   /* toast notifications, critical alerts */
+  /* ── Interactive card interaction tokens ── */
+  --card-i-shadow-base:   0 1px 3px rgba(0,0,0,.04), 0 0 0 0 rgba(59,130,246,0);
+  --card-i-shadow-hover:  0 0 0 3px rgba(59,130,246,.12), 0 4px 12px rgba(59,130,246,.06);
+  --card-i-shadow-active: 0 0 0 2px rgba(59,130,246,.22), 0 2px 6px rgba(59,130,246,.08);
+  --card-i-shadow-open:   0 0 0 3px rgba(59,130,246,.14), 0 4px 16px rgba(59,130,246,.08);
+  --card-i-shadow-focus:  0 0 0 3px rgba(59,130,246,.28);
+  --card-i-bg-active:     rgba(59,130,246,.03);
+  --card-i-transition:    border-color .15s, box-shadow .2s, background .1s, transform .1s;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -217,4 +235,5 @@ body:not(.dark-mode) .outcome-trend-table tr:hover td{background:rgba(59,130,246
   --glass-table-blur:blur(22px) saturate(1.2);
   --glass-overlay-bg:rgba(4,7,15,0.65);
   --glass-overlay-blur:blur(6px);
+  --card-i-shadow-base:   0 1px 4px rgba(0,0,0,.25), 0 0 0 0 rgba(59,130,246,0);
 }
