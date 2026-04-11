@@ -2962,30 +2962,27 @@ body:not(.dark-mode) .tab-btn.active {
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--bg-card);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 0 0 0 rgba(59, 130, 246, 0);
-    transition: border-color 0.15s, box-shadow 0.2s, background 0.1s, transform 0.1s;
-  }
-  .dark-mode #page-organizations .organizations-table tbody tr {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(59, 130, 246, 0);
+    box-shadow: var(--card-i-shadow-base);
+    transition: var(--card-i-transition);
   }
   #page-organizations .organizations-table tbody tr:hover {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 4px 12px rgba(59, 130, 246, 0.06);
+    box-shadow: var(--card-i-shadow-hover);
   }
   #page-organizations .organizations-table tbody tr:active {
-    transform: scale(0.99);
+    transform: scale(0.985);
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22), 0 2px 6px rgba(59, 130, 246, 0.08);
-    background: rgba(59, 130, 246, 0.03);
+    box-shadow: var(--card-i-shadow-active);
+    background: var(--card-i-bg-active);
   }
   #page-organizations .organizations-table tbody tr.menu-open {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14), 0 4px 16px rgba(59, 130, 246, 0.08);
+    box-shadow: var(--card-i-shadow-open);
   }
   #page-organizations .organizations-table tbody tr:focus-visible {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.28);
+    box-shadow: var(--card-i-shadow-focus);
   }
   #page-organizations .organizations-table tbody td {
     padding: 0;
