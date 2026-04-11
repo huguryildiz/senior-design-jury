@@ -9,6 +9,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "../../shared/lib/supabaseClient";
 import {
   listOrganizations,
   createOrganization,
@@ -28,7 +29,6 @@ const EMPTY_CREATE = {
   name: "",
   code: "",
   shortLabel: "",
-  subtitle: "",
   university: "",
   department: "",
   contact_email: "",
@@ -39,7 +39,6 @@ const EMPTY_EDIT = {
   name: "",
   code: "",
   shortLabel: "",
-  subtitle: "",
   university: "",
   department: "",
   contact_email: "",
@@ -146,6 +145,29 @@ export function useManageOrganizations({
     loadOrgs();
   }, [enabled, loadOrgs]);
 
+  // ── Realtime: auto-refresh on org/application/membership changes ──
+  useEffect(() => {
+    if (!enabled) return;
+    const timerRef = { current: null };
+    const schedule = () => {
+      if (timerRef.current) return;
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        loadOrgs();
+      }, 600);
+    };
+    const channel = supabase
+      .channel("orgs-admin-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "organizations" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "org_applications" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "memberships" }, schedule)
+      .subscribe();
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, loadOrgs]);
+
   // ── Dirty state tracking ──────────────────────────────────
   const createDirty = useMemo(() => {
     if (!showCreate) return false;
@@ -154,7 +176,6 @@ export function useManageOrganizations({
       createForm.name !== orig.name ||
       createForm.code !== orig.code ||
       createForm.shortLabel !== orig.shortLabel ||
-      createForm.institution !== orig.institution ||
       createForm.university !== orig.university ||
       createForm.department !== orig.department ||
       createForm.contact_email !== orig.contact_email ||
@@ -168,7 +189,6 @@ export function useManageOrganizations({
     return (
       editForm.name !== orig.name ||
       editForm.shortLabel !== orig.shortLabel ||
-      editForm.institution !== orig.institution ||
       editForm.university !== orig.university ||
       editForm.department !== orig.department ||
       editForm.contact_email !== orig.contact_email ||
@@ -369,7 +389,22 @@ export function useManageOrganizations({
         .flatMap((o) => (o.pendingApplications || []).map((a) => ({ ...a, orgId: o.id, orgName: o.name })))
         .find((a) => a.applicationId === applicationId);
 
-      await approveApplication(applicationId);
+      const result = await approveApplication(applicationId);
+
+      // If the applicant has no Supabase Auth account yet, send an invite so
+      // they can set a password and gain access. The invite-org-admin Edge
+      // Function creates the auth user + an invited membership row.
+      if (result?.membership_created === false && appData?.email && appData?.orgId) {
+        try {
+          // Pass approvalFlow=true so the Edge Function creates an 'active'
+          // membership directly. The invite email is still sent so the user
+          // can set their password, but the admin panel shows them as active
+          // immediately rather than stuck in the 'Invited' state.
+          await inviteOrgAdmin(appData.orgId, appData.email, true);
+        } catch (inviteErr) {
+          console.warn("Auto-invite after approval failed:", inviteErr?.message);
+        }
+      }
 
       // Fire-and-forget notification (never blocks approve flow)
       if (appData?.email) {

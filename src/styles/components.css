@@ -2017,9 +2017,26 @@ body:not(.dark-mode) .apply-footer {
     inset 0 1px 0 rgba(255,255,255,0.2) !important;
 }
 
-body:not(.dark-mode) .btn:not(.btn-primary):not(.btn-ghost) {
+body:not(.dark-mode) .btn:not(.btn-primary):not(.btn-ghost):not(.btn-success) {
   border-color: #dde3ed !important;
   background: #ffffff !important;
+}
+
+/* ── btn-success: filled green button (light + dark) ── */
+.btn.btn-success {
+  background: #16a34a !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 1px 4px rgba(22, 163, 74, 0.28) !important;
+}
+.btn.btn-success:hover:not(:disabled) {
+  background: #15803d !important;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.36) !important;
+}
+.btn.btn-success:disabled { opacity: 0.55 !important; }
+body.dark-mode .btn.btn-success {
+  background: #16a34a !important;
+  box-shadow: 0 1px 6px rgba(22, 163, 74, 0.32) !important;
 }
 
 /* ── 11. Light mode: settings rows & cards ── */
@@ -2534,6 +2551,320 @@ body:not(.dark-mode) .tab-btn.active {
   }
 }
 
+/* ── Organizations page (super-admin) — mobile portrait ─────── */
+@media (max-width: 768px) and (orientation: portrait) {
+  #page-organizations .page-desc {
+    margin-bottom: 10px !important;
+    line-height: 1.45;
+  }
+
+  /* KPI strip — 3×2 dense grid */
+  #page-organizations .scores-kpi-strip {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin-bottom: 12px !important;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  #page-organizations .scores-kpi-item {
+    min-height: 62px;
+    padding: 10px 8px 11px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  #page-organizations .scores-kpi-item:nth-child(3n) {
+    border-right: 0;
+  }
+  #page-organizations .scores-kpi-item:nth-child(n+4) {
+    border-bottom: 0;
+  }
+  #page-organizations .scores-kpi-item-value {
+    font-size: 17px;
+    letter-spacing: -0.3px;
+  }
+  #page-organizations .scores-kpi-item-label {
+    font-size: 8.5px;
+    letter-spacing: 0.55px;
+    line-height: 1.2;
+  }
+  #page-organizations .scores-kpi-item-sub {
+    font-size: 8.5px;
+    margin-top: 1px;
+  }
+
+  /* Card header: title block above, toolbar below full-width */
+  #page-organizations .card {
+    padding: 12px !important;
+  }
+  #page-organizations .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  #page-organizations .organizations-toolbar {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 8px !important;
+    width: 100%;
+  }
+  #page-organizations .organizations-toolbar .custom-select,
+  #page-organizations .organizations-toolbar-search {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: none !important;
+    height: 38px !important;
+    font-size: 13px !important;
+  }
+  #page-organizations .organizations-toolbar-create {
+    width: 100% !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  /* Table → card stack */
+  #page-organizations .table-wrap {
+    overflow: visible;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+  }
+  #page-organizations .organizations-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    border-collapse: separate;
+  }
+  #page-organizations .organizations-table thead {
+    display: none;
+  }
+  #page-organizations .organizations-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+  }
+  #page-organizations .organizations-table tbody tr {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "org actions"
+      "program program"
+      "code status"
+      "admins period"
+      "created created";
+    gap: 8px 10px;
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .dark-mode #page-organizations .organizations-table tbody tr {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  }
+  #page-organizations .organizations-table tbody tr:hover {
+    border-color: var(--accent);
+  }
+  #page-organizations .organizations-table tbody td {
+    padding: 0;
+    border: none;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* td[data-label="Organization"] — main title row */
+  #page-organizations .organizations-table tbody td[data-label="Organization"] {
+    grid-area: org;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: var(--text-primary);
+    line-height: 1.3;
+    letter-spacing: -0.1px;
+    align-self: center;
+  }
+  /* Program — subtitle row */
+  #page-organizations .organizations-table tbody td[data-label="Program"] {
+    grid-area: program;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    line-height: 1.35;
+    padding-bottom: 2px;
+  }
+  /* Actions stays top-right */
+  #page-organizations .organizations-table tbody td[data-label="Actions"] {
+    grid-area: actions;
+    justify-self: end;
+    align-self: start;
+  }
+
+  #page-organizations .organizations-table tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.55px;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+    line-height: 1.2;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Organization"]::before,
+  #page-organizations .organizations-table tbody td[data-label="Program"]::before,
+  #page-organizations .organizations-table tbody td[data-label="Actions"]::before {
+    display: none;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Code"] {
+    display: block;
+    grid-area: code;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  #page-organizations .organizations-table tbody td[data-label="Status"] {
+    display: block;
+    grid-area: status;
+    text-align: right;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  #page-organizations .organizations-table tbody td[data-label="Status"]::before {
+    text-align: right;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Admins"] {
+    display: block;
+    grid-area: admins;
+    text-align: left !important;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Admins"] .org-admin-count-label {
+    display: none;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Active Period"] {
+    display: block;
+    grid-area: period;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Active Period"]::before {
+    text-align: right;
+  }
+  #page-organizations .organizations-table tbody td[data-label="Created"] {
+    display: block;
+    grid-area: created;
+  }
+
+  /* .grid-2 → 1 col */
+  #page-organizations .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Pending approvals item — stacked layout */
+  #page-organizations .org-pending-item {
+    display: grid !important;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "avatar body"
+      "actions actions";
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+  #page-organizations .org-pending-item-avatar {
+    grid-area: avatar;
+  }
+  #page-organizations .org-pending-item-body {
+    grid-area: body;
+    align-self: center;
+  }
+  #page-organizations .org-pending-item-actions {
+    grid-area: actions;
+    display: grid !important;
+    grid-template-columns: 2fr 1fr;
+    gap: 8px !important;
+    margin-top: 4px;
+  }
+  #page-organizations .org-pending-item-actions .btn {
+    width: 100%;
+    min-height: 36px !important;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    justify-content: center;
+  }
+
+  /* Platform Governance tiles — slightly taller for touch */
+  #page-organizations .grid-2 .card:last-child > div[style*="grid-template-columns: 1fr 1fr"],
+  #page-organizations .grid-2 .card:last-child > div[style*="gridTemplateColumns: 1fr 1fr"] {
+    gap: 8px !important;
+  }
+  #page-organizations .grid-2 .card:last-child .btn-outline {
+    min-height: 44px;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+}
+/* end Organizations mobile */
+
+/* ── Organizations page — landscape containment ─────────────── */
+@media (max-width: 900px) and (orientation: landscape) {
+  #page-organizations .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ── Settings page — mobile portrait ────────────────────────── */
+@media (max-width: 768px) and (orientation: portrait) {
+  /* Collapse 2-col grid to single column */
+  #page-settings .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Header: wrap badges below title on narrow screens */
+  #page-settings .page > div:first-child {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Security & Sessions: collapse 3-col stat grid to 1 col */
+  #page-settings .settings-role-card [style*="grid-template-columns: 1fr 1fr 1fr"],
+  #page-settings .settings-role-card [style*="gridTemplateColumns: 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Org Access table: free the fixed 140px label column */
+  #page-settings .settings-role-card [style*="grid-template-columns: 140px 1fr"],
+  #page-settings .settings-role-card [style*="gridTemplateColumns: 140px 1fr"] {
+    grid-template-columns: minmax(90px, auto) 1fr !important;
+  }
+
+  /* Touch-friendly buttons */
+  #page-settings .btn-sm {
+    min-height: 40px;
+  }
+}
+
+/* ── Settings page — landscape phones ───────────────────────── */
+@media (max-width: 900px) and (orientation: landscape) {
+  /* Keep 2-col layout but tighten gap */
+  #page-settings .grid-2 {
+    gap: 8px !important;
+  }
+}
+
 /* end VERA PREMIUM POLISH PASS */
 
       #fb-demo-menu .fb-dm-btn:hover{background:rgba(59,130,246,0.1)!important;color:#e2e8f0!important}
@@ -2973,5 +3304,90 @@ body.dark-mode .sec-factor-value--bad  { color: #fb7185; }
     right: -8px;
     width: calc(100vw - 28px);
     max-width: 340px;
+  }
+}
+
+/* ── Maintenance gate banners ────────────────────────────────
+   Shown at the very top of the app when maintenance is active
+   (super-admin only) or when a scheduled maintenance is upcoming
+   (everyone). Reuses the fb-warning color tokens for consistency.
+*/
+/* ── maintenance-super-banner: lives inside .admin-main (same column as
+   .demo-banner), so it never covers the sidebar/logo.
+   Shares sticky + height conventions with .demo-banner. ── */
+.maintenance-super-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #fca5a5;
+  background: linear-gradient(
+    90deg,
+    rgba(127, 29, 29, 0.55) 0%,
+    rgba(153, 27, 27, 0.55) 50%,
+    rgba(127, 29, 29, 0.55) 100%
+  );
+  border-bottom: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: 0 1px 8px rgba(239, 68, 68, 0.18);
+}
+.maintenance-super-banner svg { color: currentColor; flex-shrink: 0; }
+.maintenance-super-banner strong { color: #fff; font-weight: 700; }
+
+body:not(.dark-mode) .maintenance-super-banner {
+  color: #be123c;
+  background: linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 0.10) 0%,
+    rgba(220, 38, 38, 0.14) 50%,
+    rgba(239, 68, 68, 0.10) 100%
+  );
+  border-bottom-color: rgba(190, 18, 60, 0.25);
+  box-shadow: 0 1px 6px rgba(190, 18, 60, 0.10);
+}
+body:not(.dark-mode) .maintenance-super-banner strong { color: #9f1239; }
+
+/* When both banners are present, push admin-header down by 2× banner height */
+.has-maintenance-banner.has-demo-banner .admin-header { top: 66px; }
+.has-maintenance-banner:not(.has-demo-banner) .admin-header { top: 33px; }
+
+/* ── maintenance-upcoming-banner: full-width top stripe for all users ── */
+.maintenance-upcoming-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--fb-warning-text);
+  background: var(--fb-warning-bg);
+  border-bottom: 1px solid var(--fb-warning-border);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.maintenance-upcoming-banner svg { color: currentColor; }
+.maintenance-upcoming-banner strong { color: currentColor; font-weight: 700; }
+
+body:not(.dark-mode) .maintenance-upcoming-banner {
+  color: #b45309;
+  background: rgba(217, 119, 6, 0.08);
+  border-bottom-color: rgba(217, 119, 6, 0.22);
+}
+
+@media (max-width: 640px) {
+  .maintenance-super-banner,
+  .maintenance-upcoming-banner {
+    font-size: 11.5px;
+    padding: 8px 12px;
+    text-align: center;
   }
 }

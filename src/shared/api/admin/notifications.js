@@ -1,7 +1,7 @@
 // src/shared/api/admin/notifications.js
 // Wrappers for transactional email Edge Functions (Resend via Supabase).
 
-import { supabase } from "../core/client";
+import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
 
 /**
  * Sends the evaluation access link (QR token URL) to a recipient.
@@ -14,7 +14,7 @@ import { supabase } from "../core/client";
  * @returns {Promise<{ ok: boolean, sent: boolean, error?: string }>}
  */
 export async function sendEntryTokenEmail({ recipientEmail, tokenUrl, expiresIn, periodName, organizationName }) {
-  const { data, error } = await supabase.functions.invoke("send-entry-token-email", {
+  const { data, error } = await invokeEdgeFunction("send-entry-token-email", {
     body: { recipientEmail, tokenUrl, expiresIn, periodName, organizationName },
   });
   if (error) throw error;
@@ -34,7 +34,7 @@ export async function sendEntryTokenEmail({ recipientEmail, tokenUrl, expiresIn,
  * @returns {Promise<{ ok: boolean, sent: boolean, error?: string }>}
  */
 export async function sendJurorPinEmail({ recipientEmail, jurorName, pin, jurorAffiliation, tokenUrl, periodName, organizationName }) {
-  const { data, error } = await supabase.functions.invoke("send-juror-pin-email", {
+  const { data, error } = await invokeEdgeFunction("send-juror-pin-email", {
     body: { recipientEmail, jurorName, pin, jurorAffiliation, tokenUrl, periodName, organizationName },
   });
   if (error) throw error;
@@ -62,7 +62,7 @@ export async function sendExportReport({
   reportTitle, periodName, organization, department, message,
   senderName, ccSenderEmail,
 }) {
-  const { data, error } = await supabase.functions.invoke("send-export-report", {
+  const { data, error } = await invokeEdgeFunction("send-export-report", {
     body: {
       recipients, fileName, fileBase64, mimeType,
       reportTitle, periodName, organization, department, message,

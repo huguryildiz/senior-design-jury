@@ -4,6 +4,7 @@
 import { supabase } from "./core/client";
 import { withRetry } from "./core/retry";
 import { formatMembers } from "./fieldMapping";
+import { invokeEdgeFunction } from "./core/invokeEdgeFunction";
 
 // ── Juror auth (RPCs) ────────────────────────────────────────
 
@@ -284,7 +285,7 @@ export async function getCurrentSemester(signal, semesterId) {
 // ── PIN reset request (Edge Function) ───────────────────────
 
 export async function requestPinReset({ periodId, jurorName, affiliation, message }) {
-  const { data, error } = await supabase.functions.invoke("request-pin-reset", {
+  const { data, error } = await invokeEdgeFunction("request-pin-reset", {
     body: {
       periodId,
       jurorName: String(jurorName || "").trim(),
@@ -316,7 +317,7 @@ export async function getProjectRankings(periodId, sessionToken) {
 // ── Score Edit Request (Edge Function) ──────────────────────
 
 export async function requestScoreEdit({ periodId, jurorName, affiliation, sessionToken }) {
-  const { data, error } = await supabase.functions.invoke("request-score-edit", {
+  const { data, error } = await invokeEdgeFunction("request-score-edit", {
     body: {
       periodId,
       jurorName: String(jurorName || "").trim(),

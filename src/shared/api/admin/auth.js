@@ -2,6 +2,7 @@
 // Admin authentication and application management (PostgREST).
 
 import { supabase } from "../core/client";
+import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
 
 /**
  * Returns current user's memberships with organization info.
@@ -161,7 +162,7 @@ export async function listPendingApplications(organizationId) {
  */
 export async function notifyApplication({ type, applicationId, recipientEmail, applicantName, organizationId, organizationName }) {
   try {
-    await supabase.functions.invoke("notify-application", {
+    await invokeEdgeFunction("notify-application", {
       body: {
         type,
         application_id: applicationId,

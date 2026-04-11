@@ -1,0 +1,368 @@
+/* ── Maintenance Page ─────────────────────────────────────────
+   Full-viewport brand screen shown by MaintenanceGate to
+   non-super-admin users when maintenance is active.
+   Visual language mirrors the landing-page hero.
+   Light/dark mode variants both included.
+──────────────────────────────────────────────────────────── */
+
+@property --maint-acr-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+/* ── Full-screen container ─────────────────────────────────── */
+.maintenance-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 48px 24px;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 44%, rgba(26,44,82,0.40) 0%, rgba(18,32,62,0.22) 40%, transparent 68%),
+    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(124,58,237,0.06) 0%, transparent 55%),
+    linear-gradient(155deg, #050912 0%, #0c1528 30%, #111e38 55%, #0a1020 80%, #050912 100%);
+  color: #fff;
+}
+
+/* ── Cinematic bloom (depth layer) ────────────────────────── */
+.maintenance-bloom {
+  position: absolute;
+  top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1400px, 100vw);
+  height: 900px;
+  background:
+    radial-gradient(ellipse 48% 38% at 50% 44%, rgba(44,80,158,0.18) 0%, rgba(30,55,120,0.09) 40%, transparent 68%),
+    radial-gradient(ellipse 28% 24% at 38% 52%, rgba(80,110,190,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 24% 20% at 66% 46%, rgba(90,80,175,0.07) 0%, transparent 55%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Corner vignette ───────────────────────────────────────── */
+.maintenance-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 50% at 4% 96%, rgba(3,6,16,0.50) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 46% at 96% 4%, rgba(3,6,16,0.44) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 40% at 96% 96%, rgba(3,6,16,0.30) 0%, transparent 45%),
+    radial-gradient(ellipse 38% 38% at 4% 4%, rgba(3,6,16,0.28) 0%, transparent 44%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Centered content column ───────────────────────────────── */
+.maintenance-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  width: 100%;
+}
+
+/* ── Logo ───────────────────────────────────────────────────── */
+.maintenance-logo {
+  margin-bottom: 24px;
+  filter:
+    drop-shadow(0 16px 40px rgba(0,0,0,0.35))
+    drop-shadow(0 0 64px rgba(96,165,250,0.14));
+  animation: maint-logo-glow 4s ease-in-out infinite;
+}
+.maintenance-logo img {
+  height: 52px;
+  width: auto;
+  display: block;
+}
+@keyframes maint-logo-glow {
+  0%,100% {
+    filter: drop-shadow(0 16px 40px rgba(0,0,0,0.35)) drop-shadow(0 0 64px rgba(96,165,250,0.14));
+  }
+  50% {
+    filter: drop-shadow(0 16px 40px rgba(0,0,0,0.35)) drop-shadow(0 0 90px rgba(96,165,250,0.26));
+  }
+}
+
+/* ── Status pill (aurora rotating border) ──────────────────── */
+.maintenance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #c4d5f0;
+  margin-bottom: 28px;
+  border: 1px solid transparent;
+  position: relative;
+  isolation: isolate;
+}
+.maintenance-pill::before {
+  content: '';
+  position: absolute; inset: -1px;
+  border-radius: 999px;
+  z-index: -1;
+  background: conic-gradient(
+    from var(--maint-acr-angle),
+    #22d3ee, #6366f1, #a855f7, #ec4899, #22d3ee
+  );
+  animation: maint-acr-rotate 6s linear infinite;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+.maintenance-pill:hover::before { opacity: 0.85; }
+.maintenance-pill::after {
+  content: '';
+  position: absolute; inset: 1px;
+  border-radius: 999px;
+  z-index: -1;
+  background: rgba(8,13,28,0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+@keyframes maint-acr-rotate { to { --maint-acr-angle: 360deg; } }
+
+.maintenance-pill-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+.maintenance-pill.is-live .maintenance-pill-dot {
+  background: #f97316;
+  box-shadow: 0 0 0 0 rgba(249,115,22,0.5);
+  animation: maint-pulse-dot 1.4s ease-in-out infinite;
+}
+.maintenance-pill.is-upcoming .maintenance-pill-dot {
+  background: #60a5fa;
+}
+@keyframes maint-pulse-dot {
+  0%   { box-shadow: 0 0 0 0   rgba(249,115,22,0.50); }
+  70%  { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
+  100% { box-shadow: 0 0 0 0   rgba(249,115,22,0); }
+}
+
+/* ── Heading ────────────────────────────────────────────────── */
+.maintenance-heading {
+  font-size: clamp(40px, 6vw, 60px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.06;
+  margin-bottom: 20px;
+  text-shadow: 0 12px 32px rgba(2,6,23,0.6);
+  color: #f8fafc;
+  text-wrap: balance;
+}
+.maintenance-heading em {
+  font-style: normal;
+  background: linear-gradient(135deg, #e2e8f0 0%, #aeb8ec 45%, #8ba0e8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 4px 16px rgba(174,184,236,0.12));
+}
+
+/* ── Description ────────────────────────────────────────────── */
+.maintenance-desc {
+  color: #94a3b8;
+  font-size: 17px;
+  font-weight: 400;
+  max-width: 500px;
+  line-height: 1.65;
+  margin-bottom: 40px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ── Info cards ─────────────────────────────────────────────── */
+.maintenance-cards {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 48px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+.maintenance-card {
+  flex: 1;
+  min-width: 140px;
+  max-width: 200px;
+  background: rgba(14,20,40,0.65);
+  border: 1px solid rgba(148,163,184,0.08);
+  border-radius: 16px;
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.maintenance-card:hover {
+  border-color: rgba(148,163,184,0.14);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.maintenance-card-highlight {
+  border-color: rgba(99,102,241,0.22);
+  background: rgba(28,24,58,0.65);
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.2),
+    inset 0 0 0 1px rgba(99,102,241,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.maintenance-card-highlight:hover {
+  border-color: rgba(99,102,241,0.38);
+}
+.maintenance-card-icon {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  color: #818cf8;
+  flex-shrink: 0;
+}
+.maintenance-card-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.maintenance-card-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  text-align: center;
+  line-height: 1.4;
+}
+.maintenance-card-mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: #a5b4fc;
+  letter-spacing: 0.03em;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.maintenance-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.maintenance-wordmark {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,0.40);
+}
+.maintenance-support {
+  font-size: 12.5px;
+  color: #475569;
+}
+.maintenance-support a {
+  color: #60a5fa;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.maintenance-support a:hover { color: #93c5fd; }
+
+/* ── Light mode overrides ───────────────────────────────────── */
+body:not(.dark-mode) .maintenance-screen {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 44%, rgba(219,234,254,0.60) 0%, rgba(191,219,254,0.30) 40%, transparent 68%),
+    linear-gradient(155deg, #f0f6ff 0%, #e8f0fe 30%, #eff2ff 55%, #f4f8ff 80%, #f8faff 100%);
+  color: #0f172a;
+}
+body:not(.dark-mode) .maintenance-bloom {
+  background:
+    radial-gradient(ellipse 48% 38% at 50% 44%, rgba(59,130,246,0.10) 0%, rgba(29,78,216,0.04) 40%, transparent 68%),
+    radial-gradient(ellipse 28% 24% at 38% 52%, rgba(99,102,241,0.06) 0%, transparent 60%);
+  filter: blur(80px);
+}
+body:not(.dark-mode) .maintenance-vignette {
+  background:
+    radial-gradient(ellipse 55% 50% at 4% 96%, rgba(219,234,254,0.40) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 46% at 96% 4%, rgba(224,231,255,0.30) 0%, transparent 50%);
+}
+body:not(.dark-mode) .maintenance-pill {
+  color: #1e40af;
+}
+body:not(.dark-mode) .maintenance-pill::after {
+  background: rgba(240,246,255,0.92);
+}
+body:not(.dark-mode) .maintenance-heading {
+  color: #0f172a;
+  text-shadow: none;
+}
+body:not(.dark-mode) .maintenance-heading em {
+  background: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 50%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: none;
+}
+body:not(.dark-mode) .maintenance-desc {
+  color: #475569;
+  text-shadow: none;
+}
+body:not(.dark-mode) .maintenance-card {
+  background: rgba(255,255,255,0.70);
+  border-color: rgba(15,23,42,0.08);
+  box-shadow: 0 2px 16px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
+}
+body:not(.dark-mode) .maintenance-card:hover {
+  border-color: rgba(59,130,246,0.20);
+  box-shadow: 0 4px 24px rgba(59,130,246,0.08);
+}
+body:not(.dark-mode) .maintenance-card-highlight {
+  background: rgba(238,242,255,0.80);
+  border-color: rgba(99,102,241,0.18);
+  box-shadow: 0 2px 16px rgba(99,102,241,0.08);
+}
+body:not(.dark-mode) .maintenance-card-icon {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.15);
+  color: #4f46e5;
+}
+body:not(.dark-mode) .maintenance-card-label { color: #94a3b8; }
+body:not(.dark-mode) .maintenance-card-value { color: #1e293b; }
+body:not(.dark-mode) .maintenance-card-mono  { color: #4338ca; }
+body:not(.dark-mode) .maintenance-wordmark   { color: rgba(15,23,42,0.30); }
+body:not(.dark-mode) .maintenance-support    { color: #94a3b8; }
+body:not(.dark-mode) .maintenance-support a  { color: #2563eb; }
+body:not(.dark-mode) .maintenance-support a:hover { color: #1d4ed8; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .maintenance-screen { padding: 32px 16px; }
+  .maintenance-logo img { height: 44px; }
+  .maintenance-heading { margin-bottom: 16px; }
+  .maintenance-desc { font-size: 15px; margin-bottom: 32px; }
+  .maintenance-cards { gap: 8px; margin-bottom: 36px; }
+  .maintenance-card {
+    min-width: 120px;
+    padding: 14px 12px 12px;
+    border-radius: 12px;
+  }
+  .maintenance-card-value { font-size: 12.5px; }
+  .maintenance-card-mono  { font-size: 13.5px; }
+}
+@media (max-width: 400px) {
+  .maintenance-cards { flex-direction: column; align-items: center; }
+  .maintenance-card { width: 100%; max-width: 280px; }
+}

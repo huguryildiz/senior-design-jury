@@ -11,6 +11,7 @@
 
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, clearPersistedSession } from "@/shared/lib/supabaseClient";
+import { invokeEdgeFunction } from "@/shared/api/core/invokeEdgeFunction";
 import { getActiveOrganizationId, setActiveOrganizationId } from "@/shared/storage/adminStorage";
 import { getProfile, upsertProfile } from "@/shared/api/admin/profiles";
 import { getSession, listOrganizationsPublic, getSecurityPolicy, getPublicAuthFlags, touchAdminSession } from "@/shared/api";
@@ -442,7 +443,7 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const resetPassword = useCallback(async (email) => {
-    const { data, error } = await supabase.functions.invoke("password-reset-email", {
+    const { data, error } = await invokeEdgeFunction("password-reset-email", {
       body: { email },
     });
     if (error) throw error;
@@ -460,9 +461,7 @@ export default function AuthProvider({ children }) {
     if (error) throw error;
     // Best-effort security notification; never block successful password update.
     try {
-      await supabase.functions.invoke("password-changed-notify", {
-        body: {},
-      });
+      await invokeEdgeFunction("password-changed-notify", { body: {} });
     } catch {}
     return data;
   }, []);

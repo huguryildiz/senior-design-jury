@@ -130,11 +130,28 @@ export async function updateMemberAdmin(payload) {
  * Calls the invite-org-admin Edge Function.
  * Returns { status: 'invited' | 'reinvited' | 'added', user_id, email? }.
  */
-export async function inviteOrgAdmin(orgId, email) {
-  const { data, error } = await supabase.functions.invoke("invite-org-admin", {
-    body: { org_id: orgId, email },
+export async function inviteOrgAdmin(orgId, email, approvalFlow = false) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Not authenticated");
+
+  // Use raw fetch so the Authorization header is guaranteed to reach the
+  // Edge Function. supabase.functions.invoke() through the Proxy was not
+  // reliably attaching the user JWT — the header arrived absent at the function.
+  const supabaseUrl = supabase.supabaseUrl; // Proxy → active env client URL
+  const anonKey = supabase.supabaseKey;    // required by Supabase API gateway (Kong)
+  const res = await fetch(`${supabaseUrl}/functions/v1/invite-org-admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ org_id: orgId, email, approval_flow: approvalFlow }),
   });
-  if (error) throw error;
+
+  let data;
+  try { data = await res.json(); } catch { data = null; }
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
   if (data?.error) throw new Error(data.error);
   return data;
 }

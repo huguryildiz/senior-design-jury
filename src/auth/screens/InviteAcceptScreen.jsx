@@ -15,7 +15,9 @@ import veraLogoDark from "@/assets/vera_logo_dark.png";
 import veraLogoWhite from "@/assets/vera_logo_white.png";
 import {
   isStrongPassword,
-  PASSWORD_POLICY_ERROR_TEXT,
+  evaluatePassword,
+  getStrengthMeta,
+  PASSWORD_REQUIREMENTS,
   PASSWORD_POLICY_PLACEHOLDER,
 } from "@/shared/passwordPolicy";
 
@@ -53,6 +55,8 @@ export default function InviteAcceptScreen() {
   const [session, setSession] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [programName, setProgramName] = useState("");
 
   // Form state
   const [displayName, setDisplayName] = useState("");
@@ -71,12 +75,30 @@ export default function InviteAcceptScreen() {
   useEffect(() => {
     let resolved = false;
 
+    async function resolveOrgName(userId) {
+      try {
+        const { data } = await supabase
+          .from("memberships")
+          .select("organizations(name, institution)")
+          .eq("user_id", userId)
+          .in("status", ["invited", "active"])
+          .limit(1)
+          .maybeSingle();
+        const org = data?.organizations;
+        if (org?.name) setProgramName(org.name);
+        if (org?.institution) setOrganization(org.institution);
+      } catch {
+        // non-fatal — display-only
+      }
+    }
+
     function resolve(s) {
       if (resolved) return;
       resolved = true;
       if (s) {
         setSession(s);
         setDisplayName(buildDisplayName(s.user?.email));
+        if (s.user?.id) resolveOrgName(s.user.id);
       }
       setSessionLoading(false);
     }
@@ -137,6 +159,12 @@ export default function InviteAcceptScreen() {
             .update({ display_name: displayName.trim() })
             .eq("id", userId);
         }
+
+        // Promote any 'invited' memberships to 'active' now that the user
+        // has completed account setup. Uses a SECURITY DEFINER RPC because
+        // the memberships UPDATE policy is super-admin-only.
+        // Memberships from approval_flow are already 'active' — this is a no-op for those.
+        await supabase.rpc("rpc_accept_invite");
 
         setDone(true);
       } catch (err) {
@@ -240,9 +268,59 @@ export default function InviteAcceptScreen() {
             </div>
             <div className="login-title">Complete Your Account</div>
             <div className="login-sub">
-              Set a password to finish joining as{" "}
-              <strong>{session.user?.email}</strong>
+              Set a password to finish joining as <strong>{session.user?.email}</strong>
             </div>
+            {(organization || programName) && (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  background: "rgba(108,71,255,0.08)",
+                  border: "1px solid rgba(108,71,255,0.25)",
+                  textAlign: "left",
+                }}
+              >
+                {organization && (
+                  <div style={{ marginBottom: programName ? 8 : 0 }}>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.8px",
+                        color: "var(--accent, #6c47ff)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Organization
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {organization}
+                    </div>
+                  </div>
+                )}
+                {programName && (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.8px",
+                        color: "var(--accent, #6c47ff)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Program
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {programName}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
@@ -303,11 +381,58 @@ export default function InviteAcceptScreen() {
                   {showPass ? EYE_OFF_ICON : EYE_ICON}
                 </button>
               </div>
-              {password && !passwordValid && (
-                <div style={{ fontSize: "11px", color: "var(--danger)", marginTop: "4px" }}>
-                  {PASSWORD_POLICY_ERROR_TEXT}
-                </div>
-              )}
+              {password && (() => {
+                const { checks, score } = evaluatePassword(password);
+                const { label, color, pct } = getStrengthMeta(score);
+                return (
+                  <div style={{ marginTop: "10px" }}>
+                    {/* Strength bar */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                      <div style={{
+                        flex: 1, height: "5px", borderRadius: "999px",
+                        background: "var(--border-subtle, rgba(255,255,255,0.08))",
+                        overflow: "hidden",
+                      }}>
+                        <div style={{
+                          height: "100%", width: `${pct}%`,
+                          background: color,
+                          borderRadius: "999px",
+                          transition: "width 0.25s ease, background 0.25s ease",
+                        }} />
+                      </div>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color, whiteSpace: "nowrap", minWidth: "70px", textAlign: "right" }}>
+                        {label}
+                      </span>
+                    </div>
+                    {/* Checklist */}
+                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "5px" }}>
+                      {PASSWORD_REQUIREMENTS.map((req) => {
+                        const ok = checks[req.key];
+                        return (
+                          <li key={req.key} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{
+                              width: "16px", height: "16px", borderRadius: "50%", flexShrink: 0,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              border: ok ? "none" : "1.5px solid var(--text-tertiary, #718096)",
+                              background: ok ? "#16a34a" : "transparent",
+                              transition: "background 0.2s, border 0.2s",
+                            }}>
+                              {ok && (
+                                <svg viewBox="0 0 12 12" width="9" height="9" fill="none">
+                                  <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                            </span>
+                            <span style={{ fontSize: "12px", color: ok ? "#16a34a" : "var(--text-tertiary, #718096)", transition: "color 0.2s" }}>
+                              {req.label}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Confirm Password */}

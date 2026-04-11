@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>VERA — Audit Log Redesign Mockup</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --bg-elev: #111114;
+    --bg-card: #14141a;
+    --bg-hover: #1a1a22;
+    --border: #26262e;
+    --border-strong: #33333c;
+    --text: #e7e7ea;
+    --text-2: #a3a3ab;
+    --text-3: #6b6b74;
+    --accent: #8b5cf6;
+    --accent-soft: rgba(139, 92, 246, 0.12);
+    --accent-border: rgba(139, 92, 246, 0.35);
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+  }
+  .mockup-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-3);
+    margin: 48px 0 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mockup-label::before {
+    content: "";
+    width: 28px; height: 1px;
+    background: var(--border-strong);
+  }
+  .mockup-label:first-child { margin-top: 0; }
+
+  /* ── Page scaffold ───────────────────────────── */
+  .page {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 26px 28px;
+    position: relative;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .page-desc {
+    color: var(--text-2);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  /* ── Anomaly banner ──────────────────────────── */
+  .anomaly-banner {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 13px 15px;
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03));
+    border: 1px solid rgba(245, 158, 11, 0.22);
+  }
+  .anomaly-banner svg {
+    flex-shrink: 0;
+    color: var(--warn);
+    margin-top: 1px;
+  }
+  .anomaly-banner-text { flex: 1; }
+  .anomaly-banner-title {
+    font-weight: 600;
+    color: #fbbf24;
+    font-size: 12.5px;
+    margin-bottom: 1px;
+  }
+  .anomaly-banner-desc {
+    color: #fde68a;
+    opacity: 0.82;
+    font-size: 12px;
+  }
+  .anomaly-banner-action {
+    background: transparent;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+    border-radius: 7px;
+    padding: 5px 11px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* ── KPI strip ───────────────────────────────── */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .kpi-item {
+    background: var(--bg-card);
+    padding: 14px 16px;
+  }
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
+  }
+  .kpi-value.accent { color: var(--accent); }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .kpi-delta {
+    font-size: 10.5px;
+    color: var(--ok);
+    margin-top: 3px;
+  }
+  .kpi-delta.down { color: var(--danger); }
+
+  /* ── Toolbar ─────────────────────────────────── */
+  .toolbar {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 260px;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px 9px 34px;
+    color: var(--text);
+    font-size: 12.5px;
+    outline: none;
+  }
+  .search-wrap input:focus {
+    border-color: var(--accent-border);
+  }
+  .search-wrap svg {
+    position: absolute;
+    top: 50%;
+    left: 11px;
+    transform: translateY(-50%);
+    color: var(--text-3);
+  }
+  .search-hint {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10.5px;
+    color: var(--text-3);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+  .btn:hover { background: var(--bg-hover); }
+  .btn.btn-accent {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    color: #c4b5fd;
+  }
+  .btn.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-count {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+  .view-toggle {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .view-toggle button {
+    background: transparent;
+    border: 0;
+    color: var(--text-2);
+    padding: 6px 11px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+  }
+  .view-toggle button.active {
+    background: var(--bg-hover);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+  }
+
+  /* ── Saved views row ─────────────────────────── */
+  .saved-views {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .saved-views-label {
+    font-size: 10.5px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 3px;
+    font-weight: 600;
+  }
+  .view-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 11.5px;
+    cursor: pointer;
+    color: var(--text-2);
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .view-chip:hover { border-color: var(--border-strong); color: var(--text); }
+  .view-chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    color: #c4b5fd;
+  }
+  .view-chip-count {
+    background: rgba(255,255,255,0.06);
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 10px;
+  }
+
+  /* ── Main two-col layout ─────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 16px;
+  }
+  @media (max-width: 1100px) { .main { grid-template-columns: 1fr; } }
+
+  /* ── Timeline feed ───────────────────────────── */
+  .feed {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .day-group {
+    border-bottom: 1px solid var(--border);
+  }
+  .day-group:last-child { border-bottom: 0; }
+  .day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    background: rgba(255,255,255,0.015);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    backdrop-filter: blur(8px);
+  }
+  .day-header-title {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .day-header-count {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .event {
+    display: grid;
+    grid-template-columns: 54px 1fr auto;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    position: relative;
+  }
+  .event:last-child { border-bottom: 0; }
+  .event:hover { background: rgba(255,255,255,0.02); }
+  .event.selected {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .event-time {
+    font-size: 11px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    padding-top: 3px;
+  }
+  .event-body { min-width: 0; }
+
+  .event-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 3px;
+  }
+  .avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .avatar.juror { background: linear-gradient(135deg, #10b981, #14b8a6); }
+  .avatar.system {
+    background: var(--bg-hover);
+    color: var(--text-3);
+    border: 1px solid var(--border-strong);
+  }
+  .actor-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 12.5px;
+  }
+  .actor-role {
+    color: var(--text-3);
+    font-size: 11px;
+  }
+  .verb {
+    color: var(--text-2);
+    font-size: 12.5px;
+  }
+  .resource-link {
+    color: #a78bfa;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 12.5px;
+    border-bottom: 1px dashed rgba(167, 139, 250, 0.4);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .chip-period    { background: rgba(139, 92, 246, 0.12); color: #c4b5fd; }
+  .chip-project   { background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
+  .chip-juror     { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; }
+  .chip-eval      { background: rgba(236, 72, 153, 0.12); color: #f9a8d4; }
+  .chip-security  { background: rgba(239, 68, 68, 0.12); color: #fca5a5; }
+  .chip-token     { background: rgba(245, 158, 11, 0.12); color: #fbbf24; }
+  .chip-framework { background: rgba(14, 165, 233, 0.12); color: #7dd3fc; }
+  .chip-export    { background: rgba(168, 85, 247, 0.12); color: #d8b4fe; }
+
+  /* diff chip */
+  .diff {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: "SF Mono", ui-monospace, monospace;
+    margin-top: 4px;
+    margin-right: 5px;
+  }
+  .diff-key { color: var(--text-3); }
+  .diff-from {
+    color: #fca5a5;
+    text-decoration: line-through;
+    text-decoration-color: rgba(252, 165, 165, 0.5);
+  }
+  .diff-arrow { color: var(--text-3); }
+  .diff-to { color: #86efac; }
+
+  .event-meta {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 3px;
+  }
+  .event-detail {
+    font-size: 11.5px;
+    color: var(--text-3);
+    margin-top: 3px;
+  }
+
+  /* bulk group */
+  .event.bulk .bulk-badge {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-strong);
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    color: var(--text-2);
+    font-weight: 600;
+  }
+  .event.bulk .expand-hint {
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-top: 3px;
+  }
+  .event .event-action-icon {
+    color: var(--text-3);
+    align-self: center;
+  }
+
+  /* ── Drill-down drawer ───────────────────────── */
+  .drawer {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: sticky;
+    top: 20px;
+    align-self: start;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+  .drawer-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .drawer-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .drawer-sub {
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+  .drawer-close {
+    background: transparent;
+    border: 0;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 2px;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .drawer-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 12px;
+  }
+  .drawer-row-key {
+    color: var(--text-3);
+    font-weight: 500;
+  }
+  .drawer-row-value {
+    color: var(--text);
+  }
+  .drawer-section-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    font-weight: 600;
+    margin: 16px 0 8px;
+  }
+  .drawer-code {
+    background: #06060a;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 11px 12px;
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-x: auto;
+    color: #c4b5fd;
+    white-space: pre;
+  }
+  .drawer-code .k { color: #93c5fd; }
+  .drawer-code .s { color: #86efac; }
+  .drawer-code .n { color: #fbbf24; }
+  .drawer-code .b { color: #fca5a5; }
+
+  .drawer-history {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .drawer-history-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 9px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.015);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .drawer-history-item:hover { background: rgba(255,255,255,0.04); }
+  .drawer-history-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .drawer-history-text {
+    color: var(--text-2);
+    flex: 1;
+  }
+  .drawer-history-time {
+    color: var(--text-3);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .drawer-actions {
+    display: flex;
+    gap: 7px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Drawer (mockup 2: Backups drawer) ───────── */
+  .drawer-stage {
+    position: relative;
+    height: 780px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    padding: 0;
+  }
+  /* Dimmed settings page behind */
+  .stage-backdrop {
+    position: absolute; inset: 0;
+    background: var(--bg-elev);
+    padding: 26px 28px;
+    opacity: 0.45;
+    filter: blur(0.5px);
+    pointer-events: none;
+  }
+  .stage-backdrop .mini-title {
+    font-size: 17px; font-weight: 600;
+    margin-bottom: 4px; color: var(--text-2);
+  }
+  .stage-backdrop .mini-desc {
+    font-size: 12px; color: var(--text-3); margin-bottom: 14px;
+  }
+  .stage-backdrop .mini-row {
+    height: 44px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .stage-overlay {
+    position: absolute; inset: 0;
+    background: rgba(10, 10, 11, 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Drawer proper */
+  .fs-drawer {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 460px;
+    background: var(--bg-card);
+    box-shadow: -20px 0 40px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+  }
+
+  .fs-drawer-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .fs-drawer-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .fs-icon-wrap {
+    display: flex; align-items: center; gap: 11px;
+  }
+  .fs-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    background: linear-gradient(180deg, rgba(139,92,246,0.14), rgba(139,92,246,0.06));
+    border: 1px solid rgba(139,92,246,0.3);
+    color: #c4b5fd;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .fs-title {
+    font-size: 15px; font-weight: 700;
+    color: var(--text);
+  }
+  .fs-sub {
+    font-size: 11.5px; color: var(--text-3);
+    margin-top: 2px;
+  }
+  .fs-close {
+    width: 28px; height: 28px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    border-radius: 7px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .fs-close:hover { background: var(--bg-hover); color: var(--text); }
+
+  .fs-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 24px;
+  }
+
+  .fs-section { margin-bottom: 18px; }
+  .fs-section:last-child { margin-bottom: 0; }
+  .fs-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .fs-section-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+  }
+  .fs-section-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-3);
+    margin-left: auto;
+  }
+
+  /* Status card */
+  .fs-status-card {
+    background: rgba(34, 197, 94, 0.06);
+    border: 1px solid rgba(34, 197, 94, 0.22);
+    border-radius: 9px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+  }
+  .fs-status-card svg { color: #86efac; flex-shrink: 0; margin-top: 1px; }
+  .fs-status-title {
+    font-size: 12.5px; font-weight: 600;
+    color: #86efac;
+  }
+  .fs-status-desc {
+    font-size: 11px; color: #bbf7d0;
+    opacity: 0.78;
+    margin-top: 2px;
+  }
+  .fs-status-edit {
+    background: transparent;
+    border: 1px solid rgba(34,197,94,0.28);
+    color: #86efac;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    cursor: pointer;
+    font-weight: 500;
+    margin-top: 6px;
+  }
+
+  /* Inline stats row */
+  .fs-inline-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .fs-inline-stat {
+    background: var(--bg-card);
+    padding: 9px 11px;
+  }
+  .fs-inline-stat-value {
+    font-size: 15px; font-weight: 600;
+    color: var(--text);
+  }
+  .fs-inline-stat-label {
+    font-size: 9.5px; color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-top: 1px;
+  }
+
+  /* Backup item card (drawer list item) */
+  .fs-backup-card {
+    display: flex;
+    gap: 11px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(255,255,255,0.012);
+    margin-bottom: 8px;
+    align-items: flex-start;
+    position: relative;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .fs-backup-card:hover {
+    background: rgba(255,255,255,0.03);
+    border-color: var(--border-strong);
+  }
+  .fs-backup-card:last-child { margin-bottom: 0; }
+  .fs-backup-card.pinned {
+    border-left: 2px solid #93c5fd;
+  }
+  .fs-backup-icon {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    color: var(--text-2);
+    flex-shrink: 0;
+  }
+  .fs-backup-card.origin-auto .fs-backup-icon {
+    background: rgba(34,197,94,0.08);
+    border-color: rgba(34,197,94,0.22);
+    color: #86efac;
+  }
+  .fs-backup-card.origin-manual .fs-backup-icon {
+    background: rgba(139,92,246,0.08);
+    border-color: rgba(139,92,246,0.22);
+    color: #c4b5fd;
+  }
+  .fs-backup-card.origin-snapshot .fs-backup-icon {
+    background: rgba(59,130,246,0.08);
+    border-color: rgba(59,130,246,0.22);
+    color: #93c5fd;
+  }
+  .fs-backup-body { flex: 1; min-width: 0; }
+  .fs-backup-title {
+    font-size: 12.5px; font-weight: 700;
+    color: var(--text);
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .fs-backup-sub {
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .fs-backup-pills {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .fs-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+  }
+  .fs-pill-auto     { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.22); color: #86efac; }
+  .fs-pill-manual   { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.22); color: #c4b5fd; }
+  .fs-pill-snapshot { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.22); color: #93c5fd; }
+  .fs-pill-muted    { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text-3); }
+  .fs-pill-warning  { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.22); color: #fbbf24; }
+
+  .fs-backup-meta {
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .fs-backup-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .fs-backup-card:hover .fs-backup-actions { opacity: 1; }
+  .fs-backup-card.featured .fs-backup-actions { opacity: 1; }
+  .fs-icon-btn {
+    width: 28px; height: 28px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    border-radius: 6px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .fs-icon-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .fs-icon-btn.danger:hover { color: var(--danger); border-color: rgba(239,68,68,0.4); }
+
+  /* Storage meter */
+  .fs-meter-wrap {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.015);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .fs-meter-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-2);
+    margin-bottom: 5px;
+  }
+  .fs-meter-row strong { color: var(--text); }
+  .fs-meter-track {
+    height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .fs-meter-fill {
+    height: 100%;
+    width: 9.6%;
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    border-radius: 99px;
+  }
+
+  .fs-drawer-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    flex-shrink: 0;
+    background: var(--bg-card);
+  }
+  .fs-footer-info {
+    flex: 1;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+  .fs-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .fs-btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .fs-btn-primary:hover { background: #7c3aed; }
+  .fs-btn-secondary {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-2);
+  }
+  .fs-btn-secondary:hover { background: var(--bg-hover); color: var(--text); }
+
+  /* ── Annotation callouts (for explaining parts) ─ */
+  .annotation {
+    font-size: 11.5px;
+    color: var(--text-2);
+    background: rgba(139, 92, 246, 0.05);
+    border-left: 2px solid var(--accent);
+    padding: 10px 14px;
+    margin: 12px 0 18px;
+    border-radius: 0 7px 7px 0;
+  }
+  .annotation strong { color: #c4b5fd; }
+  .size-warn {
+    color: var(--warn);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- MOCKUP 1: Activity Feed (default view)              -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="mockup-label">Mockup 1 · Audit Log → Activity Feed view</div>
+
+  <div class="page">
+    <div class="page-title">Audit Log</div>
+    <div class="page-desc">Track admin actions, score changes, and access events for compliance and accountability.</div>
+
+    <!-- Anomaly banner -->
+    <div class="anomaly-banner">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div class="anomaly-banner-text">
+        <div class="anomaly-banner-title">Unusual activity detected · 1 hour ago</div>
+        <div class="anomaly-banner-desc">Juror <strong>Elif Kaya</strong> triggered 4 failed PIN attempts within 3 minutes — now locked until 15:30.</div>
+      </div>
+      <button class="anomaly-banner-action">View events →</button>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="kpi-strip">
+      <div class="kpi-item">
+        <div class="kpi-value">1,284</div>
+        <div class="kpi-label">Total Events</div>
+        <div class="kpi-delta">+12% vs last week</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-value accent">47</div>
+        <div class="kpi-label">Today</div>
+        <div class="kpi-delta">3 exports</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-value">31</div>
+        <div class="kpi-label">Admin Actions</div>
+        <div class="kpi-delta">2 admins active</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-value">14</div>
+        <div class="kpi-label">Juror Events</div>
+        <div class="kpi-delta down">2 PIN locks</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input value="actor:elif action:pin after:today" />
+        <span class="search-hint">⌘K</span>
+      </div>
+      <div class="view-toggle">
+        <button class="active">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Feed
+        </button>
+        <button>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+          Table
+        </button>
+      </div>
+      <button class="btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Filter <span class="btn-count">3</span>
+      </button>
+      <button class="btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+
+    <!-- Saved views -->
+    <div class="saved-views">
+      <span class="saved-views-label">Views</span>
+      <span class="view-chip active">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+        All activity <span class="view-chip-count">1,284</span>
+      </span>
+      <span class="view-chip">Failed PIN attempts <span class="view-chip-count">4</span></span>
+      <span class="view-chip">Score edit windows <span class="view-chip-count">12</span></span>
+      <span class="view-chip">Exports this month <span class="view-chip-count">47</span></span>
+      <span class="view-chip">Cross-org changes <span class="view-chip-count">2</span></span>
+      <span class="view-chip">+ Save current filter</span>
+    </div>
+
+    <!-- Main two-col layout: feed + drawer -->
+    <div class="main">
+
+      <!-- Feed -->
+      <div class="feed">
+
+        <!-- ── Today group ── -->
+        <div class="day-group">
+          <div class="day-header">
+            <div class="day-header-title">Today · April 11</div>
+            <div class="day-header-count">18 events</div>
+          </div>
+
+          <!-- Event: PIN lock (anomaly) -->
+          <div class="event">
+            <div class="event-time">14:12:03</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar juror">EK</div>
+                <span class="actor-name">Elif Kaya</span>
+                <span class="actor-role">· Juror</span>
+                <span class="verb">was</span>
+                <strong style="color:#fca5a5">locked out</strong>
+                <span class="verb">after 4 failed PIN attempts on</span>
+                <a class="resource-link">Spring 2026 · TEDU-EE</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-juror">Juror</span>
+                <span class="chip chip-security">Security</span>
+              </div>
+              <div class="event-detail">Locked until 15:30 · IP 192.168.1.42</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+          <!-- Event: Period updated with diff (SELECTED) -->
+          <div class="event selected">
+            <div class="event-time">13:45:21</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar">HY</div>
+                <span class="actor-name">Hugur Yıldız</span>
+                <span class="actor-role">· Organization Admin</span>
+                <span class="verb">updated period</span>
+                <a class="resource-link">Spring 2026</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-period">Period</span>
+              </div>
+              <div>
+                <span class="diff"><span class="diff-key">is_locked:</span> <span class="diff-from">false</span> <span class="diff-arrow">→</span> <span class="diff-to">true</span></span>
+                <span class="diff"><span class="diff-key">lock_reason:</span> <span class="diff-to">"Poster day complete"</span></span>
+              </div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+          <!-- Event: Bulk grouping -->
+          <div class="event bulk">
+            <div class="event-time">12:08:41</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar juror">MD</div>
+                <span class="actor-name">Merve Demir</span>
+                <span class="actor-role">· Juror</span>
+                <span class="verb">updated</span>
+                <span class="bulk-badge">12 score sheets</span>
+                <span class="verb">across</span>
+                <a class="resource-link">Group B projects</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-eval">Evaluation</span>
+              </div>
+              <div class="expand-hint">Collapsed bulk action · Click to expand 12 individual events ↓</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <!-- Event: Export -->
+          <div class="event">
+            <div class="event-time">11:24:17</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar">HY</div>
+                <span class="actor-name">Hugur Yıldız</span>
+                <span class="verb">exported</span>
+                <strong>Rankings</strong>
+                <span class="verb">for</span>
+                <a class="resource-link">Spring 2026</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-export">Export</span>
+              </div>
+              <div class="event-detail">XLSX · 48 rows · 2.1 MB</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+          <!-- Event: Entry token -->
+          <div class="event">
+            <div class="event-time">10:02:59</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar">HY</div>
+                <span class="actor-name">Hugur Yıldız</span>
+                <span class="verb">generated a new</span>
+                <strong>QR access code</strong>
+                <span class="verb">for</span>
+                <a class="resource-link">Spring 2026</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-token">QR Access</span>
+              </div>
+              <div class="event-detail">Valid 24h · sent to 3 email addresses</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+          <!-- Event: System (framework snapshot) -->
+          <div class="event">
+            <div class="event-time">08:00:12</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar system">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <span class="actor-name" style="color:var(--text-2)">System</span>
+                <span class="actor-role">· Automated</span>
+                <span class="verb">froze framework snapshot for</span>
+                <a class="resource-link">Spring 2026</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-framework">Framework</span>
+              </div>
+              <div class="event-detail">MÜDEK 2.1 · 5 criteria · 12 outcome mappings</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+        <!-- ── Yesterday group ── -->
+        <div class="day-group">
+          <div class="day-header">
+            <div class="day-header-title">Yesterday · April 10</div>
+            <div class="day-header-count">29 events</div>
+          </div>
+
+          <!-- Event: application approved -->
+          <div class="event">
+            <div class="event-time">16:44:02</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar">HY</div>
+                <span class="actor-name">Hugur Yıldız</span>
+                <span class="verb">approved application from</span>
+                <a class="resource-link">john@iee-apssdc.org</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-security">Application</span>
+              </div>
+              <div class="event-detail">IEEE-APSSDC · John Doe · 2 admins invited</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+          <!-- Event: criteria saved -->
+          <div class="event">
+            <div class="event-time">14:18:55</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar">HY</div>
+                <span class="actor-name">Hugur Yıldız</span>
+                <span class="verb">saved criteria configuration for</span>
+                <a class="resource-link">Spring 2026</a>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-period">Criteria</span>
+              </div>
+              <div>
+                <span class="diff"><span class="diff-key">technical:</span> <span class="diff-from">25</span> <span class="diff-arrow">→</span> <span class="diff-to">30</span></span>
+                <span class="diff"><span class="diff-key">teamwork:</span> <span class="diff-from">15</span> <span class="diff-arrow">→</span> <span class="diff-to">10</span></span>
+                <span class="diff"><span class="diff-key">+</span> <span class="diff-to">4 new outcome mappings</span></span>
+              </div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+          <!-- Event: admin login google -->
+          <div class="event">
+            <div class="event-time">09:01:30</div>
+            <div class="event-body">
+              <div class="event-head">
+                <div class="avatar">HY</div>
+                <span class="actor-name">Hugur Yıldız</span>
+                <span class="verb">signed in via</span>
+                <strong>Google OAuth</strong>
+              </div>
+              <div class="event-meta">
+                <span class="chip chip-security">Auth</span>
+              </div>
+              <div class="event-detail">Safari on macOS · İstanbul, TR</div>
+            </div>
+            <svg class="event-action-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Drill-down drawer -->
+      <aside class="drawer">
+        <div class="drawer-head">
+          <div>
+            <div class="drawer-title">Period updated</div>
+            <div class="drawer-sub">April 11, 13:45:21 · 3 minutes ago</div>
+          </div>
+          <button class="drawer-close">×</button>
+        </div>
+
+        <div class="drawer-row">
+          <div class="drawer-row-key">Actor</div>
+          <div class="drawer-row-value">Hugur Yıldız <span style="color:var(--text-3)">· Organization Admin</span></div>
+        </div>
+        <div class="drawer-row">
+          <div class="drawer-row-key">Action</div>
+          <div class="drawer-row-value">periods.update</div>
+        </div>
+        <div class="drawer-row">
+          <div class="drawer-row-key">Resource</div>
+          <div class="drawer-row-value"><a class="resource-link">Spring 2026</a> <span style="color:var(--text-3)">(periods)</span></div>
+        </div>
+        <div class="drawer-row">
+          <div class="drawer-row-key">Organization</div>
+          <div class="drawer-row-value">TEDU-EE</div>
+        </div>
+        <div class="drawer-row">
+          <div class="drawer-row-key">IP Address</div>
+          <div class="drawer-row-value">78.180.12.44</div>
+        </div>
+
+        <div class="drawer-section-label">Changes</div>
+        <div class="drawer-code"><span class="k">"is_locked"</span>: <span class="b">false</span> → <span class="s">true</span>
+<span class="k">"lock_reason"</span>: <span class="s">"Poster day complete"</span>
+<span class="k">"updated_at"</span>: <span class="s">"2026-04-11T13:45:21Z"</span></div>
+
+        <div class="drawer-section-label">Raw details</div>
+        <div class="drawer-code"><span class="k">"action"</span>: <span class="s">"periods.update"</span>,
+<span class="k">"resource_id"</span>: <span class="s">"c82f…4d1a"</span>,
+<span class="k">"details"</span>: {
+  <span class="k">"operation"</span>: <span class="s">"UPDATE"</span>,
+  <span class="k">"periodName"</span>: <span class="s">"Spring 2026"</span>,
+  <span class="k">"changedFields"</span>: [<span class="s">"is_locked"</span>, <span class="s">"lock_reason"</span>]
+}</div>
+
+        <div class="drawer-section-label">Resource history · 7 events</div>
+        <div class="drawer-history">
+          <div class="drawer-history-item">
+            <div class="drawer-history-dot"></div>
+            <div class="drawer-history-text">Period updated (this event)</div>
+            <div class="drawer-history-time">now</div>
+          </div>
+          <div class="drawer-history-item">
+            <div class="drawer-history-dot" style="background:var(--text-3)"></div>
+            <div class="drawer-history-text">Snapshot frozen</div>
+            <div class="drawer-history-time">8:00</div>
+          </div>
+          <div class="drawer-history-item">
+            <div class="drawer-history-dot" style="background:var(--text-3)"></div>
+            <div class="drawer-history-text">Criteria saved</div>
+            <div class="drawer-history-time">yesterday</div>
+          </div>
+          <div class="drawer-history-item">
+            <div class="drawer-history-dot" style="background:var(--text-3)"></div>
+            <div class="drawer-history-text">Period created</div>
+            <div class="drawer-history-time">Mar 1</div>
+          </div>
+        </div>
+
+        <div class="drawer-actions">
+          <button class="btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+            Copy JSON
+          </button>
+          <button class="btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Add to report
+          </button>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Feed view highlights:</strong> (1) Anomaly banner top — dynamic, rule-based.
+    (2) Timeline grouped by day with sticky headers. (3) Each event reads as a sentence — actor, verb, resource (clickable).
+    (4) Diff chips for update events — shows "before → after" inline. (5) Bulk grouping collapses 12 related actions into one row.
+    (6) Clicking a row opens the right-side drawer with full JSONB, resource history, and "Add to report" / "Copy JSON" actions.
+    (7) Saved views as pills — "Failed PIN attempts", "Exports this month", etc.
+    (8) Search bar supports operators: <code>actor:elif action:pin after:today</code>.
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- MOCKUP 2: Backups as Drawer                         -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="mockup-label">Mockup 2 · Settings → Backups drawer (fs-drawer pattern)</div>
+
+  <div class="drawer-stage">
+    <!-- Dimmed Settings page behind -->
+    <div class="stage-backdrop">
+      <div class="mini-title">Settings</div>
+      <div class="mini-desc">Organization preferences, security, data &amp; backups</div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+      <div class="mini-row"></div>
+    </div>
+    <div class="stage-overlay"></div>
+
+    <!-- Drawer proper -->
+    <div class="fs-drawer">
+      <!-- Header -->
+      <div class="fs-drawer-header">
+        <div class="fs-drawer-header-row">
+          <div class="fs-icon-wrap">
+            <div class="fs-icon">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M3 5v14a9 3 0 0 0 18 0V5"/>
+                <path d="M3 12a9 3 0 0 0 18 0"/>
+              </svg>
+            </div>
+            <div>
+              <div class="fs-title">Database Backups</div>
+              <div class="fs-sub">Snapshots stored securely · 90-day retention</div>
+            </div>
+          </div>
+          <button class="fs-close" type="button" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="fs-drawer-body">
+
+        <!-- Schedule status -->
+        <div class="fs-section">
+          <div class="fs-section-header">
+            <span class="fs-section-title">Schedule</span>
+          </div>
+          <div class="fs-status-card">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+            <div style="flex:1">
+              <div class="fs-status-title">Auto-backup enabled</div>
+              <div class="fs-status-desc">Every Monday at 03:00 UTC &middot; Next in 3 days</div>
+              <button class="fs-status-edit">Edit schedule</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline stats + meter -->
+        <div class="fs-section">
+          <div class="fs-section-header">
+            <span class="fs-section-title">Storage</span>
+          </div>
+          <div class="fs-inline-stats">
+            <div class="fs-inline-stat">
+              <div class="fs-inline-stat-value">14</div>
+              <div class="fs-inline-stat-label">Total</div>
+            </div>
+            <div class="fs-inline-stat">
+              <div class="fs-inline-stat-value">48.2<span style="font-size:10px;color:var(--text-3);font-weight:500"> MB</span></div>
+              <div class="fs-inline-stat-label">Used</div>
+            </div>
+            <div class="fs-inline-stat">
+              <div class="fs-inline-stat-value">3<span style="font-size:10px;color:var(--text-3);font-weight:500">d</span></div>
+              <div class="fs-inline-stat-label">Next Auto</div>
+            </div>
+          </div>
+          <div class="fs-meter-wrap">
+            <div class="fs-meter-row">
+              <span>Storage quota</span>
+              <span><strong>48.2 MB</strong> / 500 MB</span>
+            </div>
+            <div class="fs-meter-track">
+              <div class="fs-meter-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Backups list -->
+        <div class="fs-section">
+          <div class="fs-section-header">
+            <span class="fs-section-title">Recent Backups</span>
+            <span class="fs-section-badge">14 total</span>
+          </div>
+
+          <!-- Manual (newest) -->
+          <div class="fs-backup-card origin-manual featured">
+            <div class="fs-backup-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>
+              </svg>
+            </div>
+            <div class="fs-backup-body">
+              <div class="fs-backup-title">
+                Apr 11, 14:02
+                <span class="fs-pill fs-pill-manual">Manual</span>
+              </div>
+              <div class="fs-backup-sub">1 active period &middot; 1,284 rows &middot; 4.2 MB</div>
+              <div class="fs-backup-meta">
+                By Hugur Y&#305;ld&#305;z &middot; Expires Jul 10 <span style="color:#fbbf24">(90d)</span>
+              </div>
+            </div>
+            <div class="fs-backup-actions">
+              <button class="fs-icon-btn" title="Download">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
+              <button class="fs-icon-btn danger" title="Delete">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Auto -->
+          <div class="fs-backup-card origin-auto">
+            <div class="fs-backup-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.2-8.5"/>
+                <path d="M21 3v6h-6"/>
+              </svg>
+            </div>
+            <div class="fs-backup-body">
+              <div class="fs-backup-title">
+                Apr 8, 03:00
+                <span class="fs-pill fs-pill-auto">Auto</span>
+              </div>
+              <div class="fs-backup-sub">1 active period &middot; 1,240 rows &middot; 4.0 MB</div>
+              <div class="fs-backup-meta">By System &middot; Expires Jul 7</div>
+            </div>
+            <div class="fs-backup-actions">
+              <button class="fs-icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+              <button class="fs-icon-btn danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            </div>
+          </div>
+
+          <!-- Snapshot (pinned) -->
+          <div class="fs-backup-card origin-snapshot pinned">
+            <div class="fs-backup-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/>
+                <circle cx="12" cy="18" r="1"/>
+              </svg>
+            </div>
+            <div class="fs-backup-body">
+              <div class="fs-backup-title">
+                Apr 1, 03:00
+                <span class="fs-pill fs-pill-snapshot">Snapshot</span>
+                <span class="fs-pill fs-pill-muted">Pinned</span>
+              </div>
+              <div class="fs-backup-sub">Spring 2026 &middot; 1,180 rows &middot; 3.8 MB</div>
+              <div class="fs-backup-meta">Period freeze &middot; Never expires</div>
+            </div>
+            <div class="fs-backup-actions">
+              <button class="fs-icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+            </div>
+          </div>
+
+          <!-- Manual older -->
+          <div class="fs-backup-card origin-manual">
+            <div class="fs-backup-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>
+              </svg>
+            </div>
+            <div class="fs-backup-body">
+              <div class="fs-backup-title">
+                Mar 30, 11:24
+                <span class="fs-pill fs-pill-manual">Manual</span>
+              </div>
+              <div class="fs-backup-sub">All periods &middot; 2,140 rows &middot; 6.8 MB</div>
+              <div class="fs-backup-meta">By Hugur Y&#305;ld&#305;z &middot; Expires Jun 28</div>
+            </div>
+            <div class="fs-backup-actions">
+              <button class="fs-icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+              <button class="fs-icon-btn danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            </div>
+          </div>
+
+          <!-- Auto older with expiring soon -->
+          <div class="fs-backup-card origin-auto">
+            <div class="fs-backup-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-6.2-8.5"/><path d="M21 3v6h-6"/>
+              </svg>
+            </div>
+            <div class="fs-backup-body">
+              <div class="fs-backup-title">
+                Mar 25, 03:00
+                <span class="fs-pill fs-pill-auto">Auto</span>
+                <span class="fs-pill fs-pill-warning">Expires soon</span>
+              </div>
+              <div class="fs-backup-sub">1 active period &middot; 1,050 rows &middot; 3.5 MB</div>
+              <div class="fs-backup-meta">By System &middot; Expires in 6 days</div>
+            </div>
+            <div class="fs-backup-actions">
+              <button class="fs-icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+              <button class="fs-icon-btn danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="fs-drawer-footer">
+        <div class="fs-footer-info">14 backups &middot; 48.2 MB used</div>
+        <button class="fs-btn fs-btn-secondary">Close</button>
+        <button class="fs-btn fs-btn-primary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Create backup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OLD page layout (will be removed) -->
+  <div style="display:none">
+  <div class="page">
+    <div class="backups-card">
+      <div class="backups-head">
+        <div>
+          <div class="backups-title">Database Backups</div>
+          <div class="backups-sub">Full snapshots of your organization data. Stored securely for 90 days.</div>
+          <span class="schedule-pill">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Auto-backup enabled · every Monday at 03:00 UTC
+          </span>
+        </div>
+        <div class="backups-actions">
+          <button class="btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            Schedule
+          </button>
+          <button class="btn btn-primary">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create backup now
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="backups-stats">
+        <div class="backups-stat">
+          <div class="backups-stat-label">Total Backups</div>
+          <div class="backups-stat-value">14</div>
+          <div class="backups-stat-sub">11 auto · 3 manual</div>
+        </div>
+        <div class="backups-stat">
+          <div class="backups-stat-label">Storage Used</div>
+          <div class="backups-stat-value">48.2 MB</div>
+          <div class="backups-stat-sub">of 500 MB quota</div>
+        </div>
+        <div class="backups-stat">
+          <div class="backups-stat-label">Next Scheduled</div>
+          <div class="backups-stat-value">In 3 days</div>
+          <div class="backups-stat-sub">Monday · 03:00 UTC</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <table class="backups-table">
+        <thead>
+          <tr>
+            <th>Created</th>
+            <th>Origin</th>
+            <th>Periods</th>
+            <th>Rows</th>
+            <th>Size</th>
+            <th>Triggered by</th>
+            <th>Expires</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Apr 11, 14:02</strong><div style="color:var(--text-3);font-size:10.5px">3 minutes ago</div></td>
+            <td><span class="origin-chip origin-manual">Manual</span></td>
+            <td>1 active</td>
+            <td>1,284</td>
+            <td>4.2 MB</td>
+            <td>Hugur Yıldız</td>
+            <td>Jul 10</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn" title="Download">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Delete">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Apr 8, 03:00</strong><div style="color:var(--text-3);font-size:10.5px">3 days ago</div></td>
+            <td><span class="origin-chip origin-auto">Auto</span></td>
+            <td>1 active</td>
+            <td>1,240</td>
+            <td>4.0 MB</td>
+            <td>System</td>
+            <td>Jul 7</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                <button class="icon-btn danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Apr 1, 03:00</strong><div style="color:var(--text-3);font-size:10.5px">10 days ago</div></td>
+            <td><span class="origin-chip origin-snapshot">Snapshot</span></td>
+            <td>Spring 2026</td>
+            <td>1,180</td>
+            <td>3.8 MB</td>
+            <td>System · frozen</td>
+            <td>Never</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Mar 30, 11:24</strong><div style="color:var(--text-3);font-size:10.5px">12 days ago</div></td>
+            <td><span class="origin-chip origin-manual">Manual</span></td>
+            <td>All (2)</td>
+            <td>2,140</td>
+            <td>6.8 MB</td>
+            <td>Hugur Yıldız</td>
+            <td>Jun 28</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                <button class="icon-btn danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Mar 25, 03:00</strong><div style="color:var(--text-3);font-size:10.5px">17 days ago</div></td>
+            <td><span class="origin-chip origin-auto">Auto</span></td>
+            <td>1 active</td>
+            <td>1,050</td>
+            <td>3.5 MB</td>
+            <td>System</td>
+            <td>Jun 23</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                <button class="icon-btn danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+  <!-- /OLD page layout -->
+
+  <div class="annotation">
+    <strong>Drawer highlights:</strong> (1) <code>fs-drawer-header</code>: icon + title + subtitle + close &mdash;
+    <code>ViewSessionsDrawer</code> ile birebir ayn&#305; pattern. (2) Schedule status kart&#305; &mdash; tek bak&#305;&#351;ta
+    &ldquo;auto a&ccedil;&#305;k m&#305;?&rdquo; sorusunu cevaplar, inline "Edit schedule" butonu. (3) 3'l&uuml; inline stat +
+    storage meter bar. (4) Her backup bir <code>fs-backup-card</code> &mdash; origin'e g&ouml;re renkli ikon
+    (Manual mor / Auto ye&#351;il / Snapshot mavi), ba&#351;l&#305;k + pill'ler, sub bilgisi, meta sat&#305;r&#305;,
+    hover'da action butonlar&#305;. (5) Snapshot tipi sola mavi border + <strong>Pinned</strong> pill &mdash;
+    silinemez, sadece indirilebilir. (6) <strong>Expires soon</strong> amber pill retention uyar&#305;s&#305; i&ccedil;in.
+    (7) Footer'da <em>Create backup</em> primary + info sat&#305;r&#305;.
+    <br/><br/>
+    <strong>Avantajlar:</strong> Settings sayfas&#305;ndan a&ccedil;&#305;l&#305;r (&ouml;rn. "Data &amp; Privacy" kart&#305;ndan "Manage backups" butonuyla),
+    kendi route'u yok, <code>ViewSessionsDrawer</code> ile ayn&#305; zihinsel model. Mevcut drawer CSS'ini
+    (<code>fs-drawer</code>, <code>fs-section</code>, <code>fs-btn</code>) olduk&ccedil;a aynen kullan&#305;r &mdash; s&#305;f&#305;rdan stil yazmaya gerek yok.
+  </div>
+
+</div>
+</body>
+</html>

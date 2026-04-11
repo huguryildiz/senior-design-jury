@@ -15,6 +15,8 @@
 import { lazy, Suspense, useRef, useMemo, useState, useEffect, useCallback, Component } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth";
+import { useMaintenanceStatus } from "@/components/MaintenanceGate";
+import { AlertTriangle } from "lucide-react";
 import { useAdminNav, getPageLabel } from "@/admin/hooks/useAdminNav";
 import { useAdminData } from "@/admin/hooks/useAdminData";
 import { useGlobalTableSort } from "@/admin/hooks/useGlobalTableSort";
@@ -104,6 +106,7 @@ export default function AdminRouteLayout() {
     activeOrganization,
     isPending,
     profileIncomplete,
+    isSuper,
     signIn,
     signInWithGoogle,
     signUp,
@@ -112,6 +115,8 @@ export default function AdminRouteLayout() {
     updatePassword,
     completeProfile,
   } = useAuth();
+
+  const { isActiveNow: maintenanceActive } = useMaintenanceStatus();
 
   const [authPage, setAuthPage] = useState(() => {
     // Check if coming from reset-password route
@@ -393,7 +398,13 @@ export default function AdminRouteLayout() {
         onClose={() => setMobileOpen(false)}
       />
 
-      <div className={`admin-main${isDemoMode ? " has-demo-banner" : ""}`}>
+      <div className={`admin-main${isDemoMode ? " has-demo-banner" : ""}${maintenanceActive && isSuper ? " has-maintenance-banner" : ""}`}>
+        {maintenanceActive && isSuper && (
+          <div className="maintenance-super-banner">
+            <AlertTriangle size={13} strokeWidth={2.5} aria-hidden />
+            <span><strong>Maintenance is active.</strong> Regular users are locked out — only super admins retain access.</span>
+          </div>
+        )}
         {isDemoMode && (
           <div className="demo-banner">
             <div className="demo-banner-inner">

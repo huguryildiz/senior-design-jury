@@ -300,7 +300,7 @@ export default function SettingsPage() {
             <div className="page-desc">Manage your profile, security, and account preferences.</div>
           </div>
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            <span className="badge badge-neutral">{isSuper ? "Super Admin" : "Organization Admin"}</span>
+            <span className="badge badge-neutral" style={{ whiteSpace: "nowrap" }}>{isSuper ? "Super Admin" : "Organization Admin"}</span>
             {!isSuper && activeOrganization?.code && (
               <span className="badge" style={{ background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid rgba(59,130,246,0.18)" }}>
                 {activeOrganization.code}
@@ -328,7 +328,7 @@ export default function SettingsPage() {
                     {user?.email}
                   </div>
                   <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
-                    <span className="badge badge-neutral" style={{ fontSize: 9, padding: "1px 7px" }}>{isSuper ? "Super Admin" : "Organization Admin"}</span>
+                    <span className="badge badge-neutral" style={{ fontSize: 9, padding: "1px 7px", whiteSpace: "nowrap" }}>{isSuper ? "Super Admin" : "Organization Admin"}</span>
                     {isSuper ? (
                       <span className="badge badge-success" style={{ fontSize: 9, padding: "1px 7px" }}>Cross-Organization Access</span>
                     ) : activeOrganization?.name ? (

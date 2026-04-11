@@ -11,6 +11,7 @@ import { AuthContext } from "@/auth/AuthProvider";
 import ToastContainer from "@/shared/ui/ToastContainer";
 import ErrorBoundary from "@/shared/ui/ErrorBoundary";
 import DraggableThemeToggle from "@/jury/components/DraggableThemeToggle";
+import MaintenanceGate from "@/components/MaintenanceGate";
 
 function RootLayoutInner() {
   const { pathname } = useLocation();
@@ -29,7 +30,9 @@ function RootLayoutInner() {
   return (
     <>
       <ErrorBoundary>
-        <Outlet />
+        <MaintenanceGate>
+          <Outlet />
+        </MaintenanceGate>
       </ErrorBoundary>
       <ToastContainer />
       {showToggle && <DraggableThemeToggle />}

@@ -1,4 +1,5 @@
 import { supabase } from "../core/client";
+import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
 import { resolveEnvironment } from "../../lib/environment";
 
 function toIsoOrNull(value) {
@@ -32,14 +33,10 @@ export async function touchAdminSession({
     expiresAt: toIsoOrNull(expiresAt),
   };
 
-  const invokeOptions = {
-    body: payload,
-  };
-
   try {
-    const { data, error } = await supabase.functions.invoke("admin-session-touch", invokeOptions);
+    const { data, error } = await invokeEdgeFunction("admin-session-touch", { body: payload });
     if (error) {
-      console.error("401/500 from admin-session-touch Edge Function! Error details:", error.message, error.context);
+      console.error("admin-session-touch failed:", error.message);
       throw error;
     }
     if (data?.ok !== true) {

@@ -21,6 +21,8 @@ interface MaintenancePayload {
   endTime?: string | null;     // ISO datetime
   mode?: "scheduled" | "immediate";
   affectedOrgIds?: string[] | null;
+  /** When set: skip org_admin lookup and send a single test email to this address (must match caller). */
+  testRecipient?: string;
 }
 
 const corsHeaders = {
@@ -235,9 +237,36 @@ Deno.serve(async (req: Request) => {
     const caller = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
-    const { data: isSuperAdmin, error: authErr } = await caller.rpc("rpc_current_user_is_super_admin");
+    const { data: isSuperAdmin, error: authErr } = await caller.rpc("current_user_is_super_admin");
     if (authErr || !isSuperAdmin) {
       return json(403, { error: "super_admin required" });
+    }
+
+    // ── Test mode: send a single email to the caller, no DB changes ──────────
+    if (payload.testRecipient) {
+      const { data: callerData } = await caller.auth.getUser();
+      const callerEmail = callerData?.user?.email || "";
+      if (!callerEmail || callerEmail !== payload.testRecipient) {
+        return json(400, { error: "testRecipient must match the authenticated caller's email" });
+      }
+
+      const resendKey = Deno.env.get("RESEND_API_KEY");
+      const fromAddr = Deno.env.get("NOTIFICATION_FROM") || "VERA <noreply@vera-eval.app>";
+      const logoUrl = Deno.env.get("NOTIFICATION_LOGO_URL") || "";
+      const testMessage = payload.message || "VERA is undergoing scheduled maintenance. We'll be back shortly.";
+      const testStart = payload.startTime ?? null;
+      const testEnd = payload.endTime ?? null;
+      const testMode = payload.mode || "scheduled";
+
+      if (!resendKey) {
+        console.log(`[notify-maintenance] Test mode: would send to ${callerEmail} (RESEND_API_KEY not set)`);
+        return json(200, { ok: true, sent: 1, test: true });
+      }
+      const html = buildMaintenanceEmail({ message: testMessage, startTime: testStart, endTime: testEnd, mode: testMode, logoUrl });
+      const plainText = buildPlainText({ message: testMessage, startTime: testStart, endTime: testEnd, mode: testMode });
+      const result = await sendViaResend(resendKey, callerEmail, "[TEST] VERA Maintenance Notice", plainText, html, fromAddr);
+      if (result.ok) return json(200, { ok: true, sent: 1, test: true });
+      return json(500, { error: result.error });
     }
 
     // Use service client to get org_admin memberships + emails

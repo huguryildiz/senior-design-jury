@@ -29,6 +29,7 @@
 /* Domain styles */
 @import './jury.css';
 @import './landing.css';
+@import './maintenance.css';
 @import './auth.css';
 @import './drawers.css';
 @import './modals.css';

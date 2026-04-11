@@ -1,7 +1,7 @@
 // src/components/DemoAdminLoader.jsx
 // Auto-login overlay for demo "Explore Admin Panel" flow.
 // Runs real Supabase signIn in parallel with a 3-step animation.
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/auth";
 import { supabase } from "../api/core/client";
 
@@ -64,10 +64,12 @@ export default function DemoAdminLoader({ onComplete }) {
   const descRefs = useRef([]);
   const barRef = useRef(null);
   const didRun = useRef(false);
+  const [authFailed, setAuthFailed] = useState(false);
 
-  useEffect(() => {
+  const run = useCallback(async () => {
     if (didRun.current) return;
     didRun.current = true;
+    setAuthFailed(false);
 
     const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -92,41 +94,50 @@ export default function DemoAdminLoader({ onComplete }) {
 
     const PAUSE_AFTER_DATA = 500; // ms to show the data before turning green
 
-    const run = async () => {
-      // Step 0: active → auth resolves → green
-      setStep(0, "active"); setBar(15);
-      const authOk = await signIn(DEMO_EMAIL, DEMO_PASSWORD, true).then(() => true, () => false);
-      await delay(PAUSE_AFTER_DATA);
-      setStep(0, "done"); setBar(35);
+    // Step 0: active → auth resolves → green
+    setStep(0, "active"); setBar(15);
+    const authOk = await signIn(DEMO_EMAIL, DEMO_PASSWORD, true).then(() => true, () => false);
+    await delay(PAUSE_AFTER_DATA);
+    setStep(0, authOk ? "done" : "error"); setBar(authOk ? 35 : 15);
 
-      // Step 1: active → stats arrive (auth is ready now) → desc written → green
-      setStep(1, "active"); setBar(50);
-      const stats = await fetchDemoStats().catch(() => null);
-      if (stats?.orgs > 0) setDesc(1, `${stats.orgs} organization${stats.orgs !== 1 ? "s" : ""}`);
-      await delay(PAUSE_AFTER_DATA);
-      setStep(1, "done"); setBar(70);
+    if (!authOk) {
+      setAuthFailed(true);
+      return;
+    }
 
-      // Step 2: active → desc written (stats already ready) → green
-      setStep(2, "active"); setBar(85);
-      if (stats) {
-        const parts = [];
-        if (stats.projects > 0) parts.push(`${stats.projects} projects`);
-        if (stats.jurors > 0) parts.push(`${stats.jurors} jurors`);
-        if (stats.periods > 0) parts.push(`${stats.periods} period${stats.periods !== 1 ? "s" : ""}`);
-        if (parts.length > 0) setDesc(2, parts.join(" · "));
-      }
-      await delay(PAUSE_AFTER_DATA);
-      setStep(2, "done"); setBar(100);
+    // Step 1: active → stats arrive (auth is ready now) → desc written → green
+    setStep(1, "active"); setBar(50);
+    const stats = await fetchDemoStats().catch(() => null);
+    if (stats?.orgs > 0) setDesc(1, `${stats.orgs} organization${stats.orgs !== 1 ? "s" : ""}`);
+    await delay(PAUSE_AFTER_DATA);
+    setStep(1, "done"); setBar(70);
 
-      await delay(350);
-      if (authOk) {
-        if (onComplete) onComplete();
-        else window.location.replace("/demo/admin");
-      }
-    };
+    // Step 2: active → desc written (stats already ready) → green
+    setStep(2, "active"); setBar(85);
+    if (stats) {
+      const parts = [];
+      if (stats.projects > 0) parts.push(`${stats.projects} projects`);
+      if (stats.jurors > 0) parts.push(`${stats.jurors} jurors`);
+      if (stats.periods > 0) parts.push(`${stats.periods} period${stats.periods !== 1 ? "s" : ""}`);
+      if (parts.length > 0) setDesc(2, parts.join(" · "));
+    }
+    await delay(PAUSE_AFTER_DATA);
+    setStep(2, "done"); setBar(100);
 
+    await delay(350);
+    if (onComplete) onComplete();
+    else window.location.replace("/demo/admin");
+  }, [signIn, onComplete]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { run(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRetry = useCallback(() => {
+    // Reset steps visually
+    stepsRef.current.forEach((el) => { if (el) el.className = "dao-step"; });
+    if (barRef.current) barRef.current.style.width = "0%";
+    didRun.current = false;
     run();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [run]);
 
   return (
     <div className="demo-admin-overlay active">
@@ -163,6 +174,39 @@ export default function DemoAdminLoader({ onComplete }) {
         <div className="dao-progress">
           <div className="dao-progress-bar" ref={barRef} />
         </div>
+        {authFailed && (
+          <div style={{
+            marginTop: "20px",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            background: "rgba(239,68,68,0.1)",
+            border: "1px solid rgba(239,68,68,0.25)",
+            color: "var(--danger, #ef4444)",
+            fontSize: "13px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: "8px" }}>Could not connect to demo</div>
+            <div style={{ opacity: 0.8, marginBottom: "12px" }}>
+              Authentication failed. This may be a temporary issue.
+            </div>
+            <button
+              type="button"
+              onClick={handleRetry}
+              style={{
+                padding: "6px 18px",
+                borderRadius: "6px",
+                border: "1px solid rgba(239,68,68,0.4)",
+                background: "rgba(239,68,68,0.15)",
+                color: "var(--danger, #ef4444)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

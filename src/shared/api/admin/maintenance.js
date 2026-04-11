@@ -2,6 +2,7 @@
 // Maintenance mode API — get status, set, cancel.
 
 import { supabase } from "../core/client";
+import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
 
 /**
  * Public (no auth) — check if maintenance is currently active.
@@ -33,6 +34,7 @@ export async function getMaintenanceConfig() {
  * @param {string} params.message
  * @param {string[]|null} params.affectedOrgIds - null = all orgs
  * @param {boolean} params.notifyAdmins
+ * @returns {{ ok: boolean, start_time: string|null, end_time: string|null, mailResult: { sent: number, total: number, errors?: string[] }|null }}
  */
 export async function setMaintenance({ mode, startTime, durationMin, message, affectedOrgIds, notifyAdmins }) {
   const { data, error } = await supabase.rpc("rpc_admin_set_maintenance", {
@@ -45,19 +47,68 @@ export async function setMaintenance({ mode, startTime, durationMin, message, af
   });
   if (error) throw error;
 
-  // Fire-and-forget email notification — failure never blocks the RPC result.
+  let mailResult = null;
   if (notifyAdmins) {
-    const endTime = data?.end_time ?? null;
-    supabase.functions
-      .invoke("notify-maintenance", {
-        body: { message, startTime, endTime, mode, affectedOrgIds: affectedOrgIds ?? null },
-      })
-      .catch((err) => {
-        console.warn("[maintenance] notify-maintenance invoke failed:", err?.message);
+    try {
+      const { data: mailData, error: fnErr } = await invokeEdgeFunction("notify-maintenance", {
+        body: { message, startTime, endTime: data?.end_time ?? null, mode, affectedOrgIds: affectedOrgIds ?? null },
       });
+      if (!fnErr) mailResult = mailData;
+    } catch (err) {
+      console.warn("[maintenance] notify-maintenance invoke failed:", err?.message);
+    }
   }
 
+  return { ...data, mailResult };
+}
+
+/**
+ * Super admin — send a test maintenance email to the currently authenticated user.
+ * No DB state changes; useful for verifying email template + env vars.
+ * @param {object} params - same fields passed to setMaintenance
+ * @returns {{ ok: boolean, sent: number, test: boolean }}
+ */
+export async function sendTestMaintenanceEmail({ mode, startTime, message }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) throw new Error("Could not determine your email address");
+
+  const { data, error } = await invokeEdgeFunction("notify-maintenance", {
+    body: {
+      message,
+      startTime: startTime ?? null,
+      endTime: null,
+      mode,
+      affectedOrgIds: null,
+      testRecipient: user.email,
+    },
+  });
+  if (error) throw error;
   return data;
+}
+
+/**
+ * Returns the total number of jurors currently scoring across all active periods.
+ * Used by MaintenanceDrawer to warn when activating maintenance mid-session.
+ * @returns {number}
+ */
+export async function getActiveJurorCount() {
+  const nowIso = new Date().toISOString();
+  const [withExpiryRes, noExpiryRes] = await Promise.all([
+    supabase
+      .from("juror_period_auth")
+      .select("juror_id", { count: "exact", head: true })
+      .not("session_token_hash", "is", null)
+      .gt("session_expires_at", nowIso),
+    supabase
+      .from("juror_period_auth")
+      .select("juror_id", { count: "exact", head: true })
+      .not("session_token_hash", "is", null)
+      .is("session_expires_at", null),
+  ]);
+  if (withExpiryRes.error) throw withExpiryRes.error;
+  if (noExpiryRes.error) throw noExpiryRes.error;
+  return (typeof withExpiryRes.count === "number" ? withExpiryRes.count : 0) +
+         (typeof noExpiryRes.count === "number" ? noExpiryRes.count : 0);
 }
 
 /**

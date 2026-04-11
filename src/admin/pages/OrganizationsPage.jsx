@@ -21,8 +21,9 @@ import {
   MaintenanceDrawer,
   SystemHealthDrawer,
 } from "../drawers/GovernanceDrawers";
-import { jurorInitials, jurorAvatarBg } from "../utils/jurorIdentity";
-import { Archive, CheckCircle2, Lock, Mail, Trash2, TriangleAlert, UserPlus, X } from "lucide-react";
+import { jurorInitials, jurorAvatarBg, jurorAvatarFg } from "../utils/jurorIdentity";
+import { Archive, CheckCircle2, Clock, Filter, Lock, Mail, Trash2, TriangleAlert, UserPlus, X } from "lucide-react";
+import { FilterButton } from "@/shared/ui/FilterButton";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -45,24 +46,6 @@ function OrgStatusBadge({ status }) {
       Active
     </span>
   );
-  if (status === "disabled") return (
-    <span className="badge badge-neutral">
-      <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" /><path d="M4.93 4.93l14.14 14.14" />
-      </svg>
-      Disabled
-    </span>
-  );
-  if (status === "limited") return (
-    <span className="badge badge-warning">
-      <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-      Limited
-    </span>
-  );
   if (status === "archived") return <span className="badge badge-neutral"><Archive size={11} strokeWidth={2.2} />Archived</span>;
   return <span className="badge badge-warning">{status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : "—"}</span>;
 }
@@ -73,6 +56,21 @@ function formatShortDate(dateStr) {
   if (Number.isNaN(d.getTime())) return "—";
   const pad = (v) => String(v).padStart(2, "0");
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `${diffD}d ago`;
+  return formatShortDate(dateStr);
 }
 
 function SortIcon({ colKey, sortKey, sortDir }) {
@@ -158,6 +156,8 @@ export default function OrganizationsPage() {
 
   // ── Local state ──────────────────────────────────────────────
   const [orgStatusFilter, setOrgStatusFilter] = useState("all");
+  const [orgStaffingFilter, setOrgStaffingFilter] = useState("all");
+  const [orgFilterOpen, setOrgFilterOpen] = useState(false);
   const [openOrgActionMenuId, setOpenOrgActionMenuId] = useState(null);
   const [viewOrg, setViewOrg] = useState(null);
   const [reviewApp, setReviewApp] = useState(null);
@@ -209,8 +209,8 @@ export default function OrganizationsPage() {
     const total = orgList.length;
     const active = orgList.filter((o) => o.status === "active").length;
     const archived = orgList.filter((o) => o.status === "archived").length;
-    const orgAdmins = orgList.reduce((sum, o) => sum + (o.tenantAdmins?.length ?? 0), 0);
-    const unstaffedOrgs = orgList.filter((o) => (o.tenantAdmins?.length ?? 0) === 0).length;
+    const orgAdmins = orgList.reduce((sum, o) => sum + (o.tenantAdmins?.filter((a) => a.status === "active").length ?? 0), 0);
+    const unstaffedOrgs = orgList.filter((o) => (o.tenantAdmins?.filter((a) => a.status === "active").length ?? 0) === 0).length;
     const pending = orgList.reduce((sum, o) => sum + (o.pendingApplications?.length ?? 0), 0);
 
     // Oldest pending application age (days), across all orgs
@@ -264,14 +264,24 @@ export default function OrganizationsPage() {
     [orgList]
   );
 
-  const statusFilteredOrgs = useMemo(() => (
-    orgStatusFilter === "all"
+  const orgActiveFilterCount =
+    (orgStatusFilter !== "all" ? 1 : 0) +
+    (orgStaffingFilter !== "all" ? 1 : 0);
+
+  const statusFilteredOrgs = useMemo(() => {
+    let rows = orgStatusFilter === "all"
       ? filteredOrgs
-      : filteredOrgs.filter((org) => String(org.status || "").toLowerCase() === orgStatusFilter)
-  ), [filteredOrgs, orgStatusFilter]);
+      : filteredOrgs.filter((org) => String(org.status || "").toLowerCase() === orgStatusFilter);
+    if (orgStaffingFilter === "unstaffed") {
+      rows = rows.filter((org) => (org.tenantAdmins?.filter((a) => a.status === "active").length ?? 0) === 0);
+    } else if (orgStaffingFilter === "staffed") {
+      rows = rows.filter((org) => (org.tenantAdmins?.filter((a) => a.status === "active").length ?? 0) > 0);
+    }
+    return rows;
+  }, [filteredOrgs, orgStatusFilter, orgStaffingFilter]);
 
   const sortedFilteredOrgs = useMemo(() => {
-    const statusRank = { active: 1, limited: 2, disabled: 3, archived: 4 };
+    const statusRank = { active: 1, archived: 2 };
     const rows = [...statusFilteredOrgs];
     rows.sort((a, b) => {
       const direction = orgSortDir === "asc" ? 1 : -1;
@@ -287,7 +297,7 @@ export default function OrganizationsPage() {
       } else if (orgSortKey === "status") {
         cmp = (statusRank[a.status] || 99) - (statusRank[b.status] || 99);
       } else if (orgSortKey === "admins") {
-        cmp = (a.tenantAdmins?.length || 0) - (b.tenantAdmins?.length || 0);
+        cmp = (a.tenantAdmins?.filter((x) => x.status === "active").length || 0) - (b.tenantAdmins?.filter((x) => x.status === "active").length || 0);
       } else if (orgSortKey === "created_at") {
         const aTs = Date.parse(a.created_at || "");
         const bTs = Date.parse(b.created_at || "");
@@ -615,13 +625,13 @@ export default function OrganizationsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <div style={{ padding: "10px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
               <div className="text-xs text-muted">Status</div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2, color: viewOrgMeta?.status === "active" ? "var(--success)" : viewOrgMeta?.status === "limited" ? "var(--warning)" : "var(--text-secondary)" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2, color: viewOrgMeta?.status === "active" ? "var(--success)" : "var(--text-secondary)" }}>
                 {viewOrgMeta?.status ? viewOrgMeta.status.charAt(0).toUpperCase() + viewOrgMeta.status.slice(1) : "—"}
               </div>
             </div>
             <div style={{ padding: "10px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
-              <div className="text-xs text-muted">Admins</div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{viewOrg?.tenantAdmins?.length ?? 0}</div>
+              <div className="text-xs text-muted">Active Admins</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{viewOrg?.tenantAdmins?.filter((a) => a.status === "active").length ?? 0}</div>
             </div>
           </div>
           <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
@@ -677,9 +687,7 @@ export default function OrganizationsPage() {
                   <div style={{ fontSize: 12.5, fontWeight: isInvited ? 500 : 600, color: isInvited ? "var(--text-secondary)" : undefined }}>{admin.name || admin.email || "—"}</div>
                   <div className="text-xs text-muted">{admin.email || "—"}</div>
                 </div>
-                {idx === 0 && !isInvited ? (
-                  <span className="badge badge-success" style={{ fontSize: 9 }}>Owner</span>
-                ) : isInvited ? (
+                {isInvited ? (
                   <>
                     <span className="badge badge-warning" style={{ fontSize: 9 }}>Invited</span>
                     <button
@@ -721,9 +729,14 @@ export default function OrganizationsPage() {
                 <div className="text-xs text-muted">{app.email || "—"}</div>
               </div>
               <span className="badge badge-warning" style={{ fontSize: 9 }}>Pending</span>
-              <button type="button" title="Reject application" disabled={applicationActionLoading.id === app.applicationId} onClick={() => handleRejectApplication(app.applicationId)} style={{ width: 30, height: 30, borderRadius: "var(--radius-sm)", border: "1px solid color-mix(in srgb, var(--danger) 25%, transparent)", background: "color-mix(in srgb, var(--danger) 8%, transparent)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, opacity: applicationActionLoading.id === app.applicationId ? 0.5 : 1 }}>
-                <Trash2 size={13} strokeWidth={2} />
-              </button>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button type="button" title="Approve application" disabled={applicationActionLoading.id === app.applicationId} onClick={() => handleApproveApplication(app.applicationId)} style={{ width: 30, height: 30, borderRadius: "var(--radius-sm)", border: "1px solid color-mix(in srgb, var(--success) 35%, transparent)", background: "color-mix(in srgb, var(--success) 12%, transparent)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, opacity: applicationActionLoading.id === app.applicationId ? 0.5 : 1 }}>
+                  <CheckCircle2 size={13} strokeWidth={2} />
+                </button>
+                <button type="button" title="Reject application" disabled={applicationActionLoading.id === app.applicationId} onClick={() => handleRejectApplication(app.applicationId)} style={{ width: 30, height: 30, borderRadius: "var(--radius-sm)", border: "1px solid color-mix(in srgb, var(--danger) 25%, transparent)", background: "color-mix(in srgb, var(--danger) 8%, transparent)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, opacity: applicationActionLoading.id === app.applicationId ? 0.5 : 1 }}>
+                  <Trash2 size={13} strokeWidth={2} />
+                </button>
+              </div>
             </div>
           ))}
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 6 }}>
@@ -807,12 +820,30 @@ export default function OrganizationsPage() {
         <div className="fs-drawer-body" style={{ gap: 8 }}>
           {allPending.map((app) => (
             <div key={app.applicationId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
-              <div className="fs-avatar" style={{ width: 34, height: 34, fontSize: 11 }}>{getInitials(app.name, app.email)}</div>
+              <div className="fs-avatar" style={{ width: 34, height: 34, fontSize: 11, background: jurorAvatarBg(app.name || app.email), color: jurorAvatarFg(app.name || app.email) }}>{getInitials(app.name, app.email)}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600 }}>{app.name}</div>
-                <div className="text-xs text-muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.email} · {String(app.orgCode || "").toUpperCase()}</div>
+                <div className="text-xs text-muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.email} · <span style={{ fontWeight: 600, color: "var(--accent)" }}>{String(app.orgCode || "").toUpperCase()}</span></div>
               </div>
-              <button className="btn btn-outline btn-sm" style={{ padding: "4px 10px", fontSize: 10 }} onClick={() => setReviewApp(app)}>Review</button>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button
+                  className="btn btn-outline btn-sm"
+                  style={{ padding: "4px 8px", fontSize: 10, borderColor: "rgba(225,29,72,0.25)", color: "var(--danger)" }}
+                  disabled={applicationActionLoading.id === app.applicationId}
+                  onClick={async () => { await handleRejectApplication(app.applicationId); }}
+                  title="Reject"
+                >
+                  ✕
+                </button>
+                <button
+                  className="btn btn-success btn-sm"
+                  style={{ padding: "4px 10px", fontSize: 10 }}
+                  disabled={applicationActionLoading.id === app.applicationId}
+                  onClick={async () => { await handleApproveApplication(app.applicationId); }}
+                >
+                  Approve
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -929,7 +960,7 @@ export default function OrganizationsPage() {
       </Modal>
 
       {/* ── Page Content ────────────────────────────────────────── */}
-      <div className="page">
+      <div className="page" id="page-organizations">
         <div className="page-title">Organizations</div>
         <div className="page-desc" style={{ marginBottom: 12 }}>
           Platform-wide organization management, admin memberships, and governance controls.
@@ -1030,26 +1061,21 @@ export default function OrganizationsPage() {
                 Organization identity, health, admin capacity, and operational actions.
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <CustomSelect
-                value={orgStatusFilter}
-                onChange={(val) => setOrgStatusFilter(val)}
-                options={[
-                  { value: "all", label: "All Statuses" },
-                  { value: "active", label: "Active" },
-                  { value: "archived", label: "Archived" },
-                ]}
-                compact
-              />
+            <div className="organizations-toolbar" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input
-                className="form-input"
+                className="form-input organizations-toolbar-search"
                 style={{ width: 180, height: 30, fontSize: 12, flex: "1 1 180px", minWidth: 160 }}
                 placeholder="Search organizations…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              <FilterButton
+                activeCount={orgActiveFilterCount}
+                isOpen={orgFilterOpen}
+                onClick={() => setOrgFilterOpen((v) => !v)}
+              />
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm organizations-toolbar-create"
                 style={{ width: "auto", padding: "6px 14px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, whiteSpace: "nowrap" }}
                 onClick={openCreate}
               >
@@ -1060,8 +1086,64 @@ export default function OrganizationsPage() {
               </button>
             </div>
           </div>
+
+          {/* Filter panel */}
+          {orgFilterOpen && (
+            <div className="filter-panel show">
+              <div className="filter-panel-header">
+                <div>
+                  <h4>
+                    <Filter size={14} style={{ display: "inline", marginRight: 4, opacity: 0.5, verticalAlign: "-1px" }} />
+                    Filter Organizations
+                  </h4>
+                  <div className="filter-panel-sub">Narrow organizations by status and admin staffing.</div>
+                </div>
+                <button className="filter-panel-close" onClick={() => setOrgFilterOpen(false)}>&#215;</button>
+              </div>
+              <div className="filter-row">
+                <div className="filter-group">
+                  <label>Status</label>
+                  <CustomSelect
+                    compact
+                    value={orgStatusFilter}
+                    onChange={(v) => setOrgStatusFilter(v)}
+                    options={[
+                      { value: "all", label: "All statuses" },
+                      { value: "active", label: "Active" },
+                      { value: "archived", label: "Archived" },
+                    ]}
+                    ariaLabel="Status"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label>Staffing</label>
+                  <CustomSelect
+                    compact
+                    value={orgStaffingFilter}
+                    onChange={(v) => setOrgStaffingFilter(v)}
+                    options={[
+                      { value: "all", label: "All orgs" },
+                      { value: "staffed", label: "Has admin" },
+                      { value: "unstaffed", label: "Unstaffed" },
+                    ]}
+                    ariaLabel="Staffing"
+                  />
+                </div>
+                <button
+                  className="btn btn-outline btn-sm filter-clear-btn"
+                  onClick={() => { setOrgStatusFilter("all"); setOrgStaffingFilter("all"); }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                    <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                  </svg>
+                  {" "}Clear all
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="table-wrap" style={{ overflow: "visible" }}>
-            <table>
+            <table className="organizations-table">
               <thead>
                 <tr>
                   <th className={`sortable${orgSortKey === "institution" ? " sorted" : ""}`} onClick={() => handleOrgSort("institution")}>Organization <SortIcon colKey="institution" sortKey={orgSortKey} sortDir={orgSortDir} /></th>
@@ -1087,17 +1169,17 @@ export default function OrganizationsPage() {
                     const code = String(org.code || "").toUpperCase();
                     return (
                       <tr key={org.id}>
-                        <td style={{ fontWeight: 600 }}>{org.institution || "—"}</td>
-                        <td>{org.name}</td>
-                        <td className="mono">{code || "—"}</td>
-                        <td><OrgStatusBadge status={org.status} /></td>
-                        <td>{meta.period || "—"}</td>
-                        <td className="text-center mono org-admin-count-cell">
+                        <td data-label="Organization" style={{ fontWeight: 600 }}>{org.institution || "—"}</td>
+                        <td data-label="Program">{org.name}</td>
+                        <td data-label="Code" className="mono">{code || "—"}</td>
+                        <td data-label="Status"><OrgStatusBadge status={org.status} /></td>
+                        <td data-label="Active Period">{meta.period || "—"}</td>
+                        <td data-label="Admins" className="text-center mono org-admin-count-cell">
                           <span className="org-admin-count-label">Admins:</span>{" "}
-                          {org.tenantAdmins?.length ?? 0}
+                          {org.tenantAdmins?.filter((a) => a.status === "active").length ?? 0}
                         </td>
-                        <td><span className="vera-datetime-text">{formatShortDate(org.created_at)}</span></td>
-                        <td className="text-right">
+                        <td data-label="Created"><span className="vera-datetime-text">{formatShortDate(org.created_at)}</span></td>
+                        <td data-label="Actions" className="text-right">
                           <div className="juror-action-wrap sa-org-action-wrap menu-up" style={{ display: "inline-flex" }}>
                             <button className="juror-action-btn" title="Actions" onClick={(e) => { e.stopPropagation(); setOpenOrgActionMenuId((prev) => (prev === org.id ? null : org.id)); }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
@@ -1111,7 +1193,7 @@ export default function OrganizationsPage() {
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                 Edit Organization
                               </button>
-                              <button type="button" className="juror-action-item" style={{ width: "100%", border: "none", background: "transparent", textAlign: "left" }} onClick={(event) => runOrgMenuAction(event, () => { setManageAdminsOrg(org); loadInvites(org.id); })}>
+                              <button type="button" className="juror-action-item" style={{ width: "100%", border: "none", background: "transparent", textAlign: "left" }} onClick={(event) => runOrgMenuAction(event, () => { setManageAdminsOrg(org); loadOrgs(); })}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
                                 Manage Admins
                               </button>
@@ -1149,41 +1231,127 @@ export default function OrganizationsPage() {
                 <span className="badge badge-warning">{allPending.length} Pending</span>
               )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {allPending.length === 0 ? (
-                <div className="text-sm text-muted" style={{ textAlign: "center", padding: "12px 0" }}>
+                <div className="text-sm text-muted" style={{ textAlign: "center", padding: "16px 0" }}>
                   No pending applications.
                 </div>
               ) : (
-                allPending.slice(0, 2).map((app) => (
-                  <div key={app.applicationId} style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{app.name}</div>
-                        <div className="text-sm text-muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {app.email} · {app.orgCode}
+                allPending.slice(0, 2).map((app) => {
+                  const initials = getInitials(app.name, app.email);
+                  const bgColor = jurorAvatarBg(app.name || app.email || "?");
+                  const fgColor = "#f0f4ff";
+                  const isLoading = applicationActionLoading.id === app.applicationId;
+                  return (
+                    <div
+                      key={app.applicationId}
+                      className="org-pending-item"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "11px 14px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                        transition: "border-color 0.15s, box-shadow 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--accent)";
+                        e.currentTarget.style.boxShadow = "0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div className="org-pending-item-avatar" style={{
+                        flexShrink: 0,
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        background: bgColor,
+                        color: fgColor,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        letterSpacing: "0.02em",
+                      }}>
+                        {initials}
+                      </div>
+
+                      {/* Info */}
+                      <div className="org-pending-item-body" style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{app.name}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span className="text-xs text-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                            {app.email}
+                          </span>
+                          {app.orgCode && (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              letterSpacing: "0.04em",
+                              padding: "1px 7px",
+                              borderRadius: 99,
+                              background: "color-mix(in srgb, var(--accent) 10%, transparent)",
+                              color: "var(--accent)",
+                              border: "1px solid color-mix(in srgb, var(--accent) 20%, transparent)",
+                              whiteSpace: "nowrap",
+                            }}>
+                              {String(app.orgCode).toUpperCase()}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-muted" style={{ marginTop: 2 }}>
-                          Submitted {formatShortDate(app.createdAt)}
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
+                          <Clock size={10} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                            {formatRelativeTime(app.createdAt)}
+                          </span>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                        <button className="btn btn-sm" style={{ padding: "5px 14px", fontSize: 11, background: "var(--accent)", color: "#fff", boxShadow: "none" }} onClick={() => setReviewApp(app)}>Review</button>
-                        <button className="btn btn-outline btn-sm" style={{ padding: "5px 10px", fontSize: 11, borderColor: "rgba(22,163,74,0.25)", color: "var(--success)" }} onClick={() => handleApproveApplication(app.applicationId)} disabled={applicationActionLoading.id === app.applicationId}>
-                          {applicationActionLoading.id === app.applicationId && applicationActionLoading.action === "approve" ? "…" : "Approve"}
+
+                      {/* Actions */}
+                      <div className="org-pending-item-actions" style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                        <button
+                          className="btn btn-sm btn-success"
+                          style={{ padding: "5px 14px", fontSize: 11 }}
+                          onClick={() => handleApproveApplication(app.applicationId)}
+                          disabled={isLoading}
+                        >
+                          {isLoading && applicationActionLoading.action === "approve" ? "…" : "Approve"}
                         </button>
-                        <button className="btn btn-outline btn-sm" style={{ padding: "5px 10px", fontSize: 11, borderColor: "rgba(225,29,72,0.2)", color: "var(--text-tertiary)" }} onClick={() => handleRejectApplication(app.applicationId)} disabled={applicationActionLoading.id === app.applicationId}>
-                          {applicationActionLoading.id === app.applicationId && applicationActionLoading.action === "reject" ? "…" : "Reject"}
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            padding: "5px 12px",
+                            fontSize: 11,
+                            fontWeight: 500,
+                            background: "transparent",
+                            color: "var(--text-tertiary)",
+                            border: "1px solid var(--border)",
+                            opacity: isLoading ? 0.6 : 1,
+                          }}
+                          onClick={() => handleRejectApplication(app.applicationId)}
+                          disabled={isLoading}
+                        >
+                          {isLoading && applicationActionLoading.action === "reject" ? "…" : "Reject"}
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
-              {allPending.length > 2 && (
-                <div style={{ textAlign: "center", padding: "6px 0 2px" }}>
-                  <button className="text-xs text-muted" style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setAllApplicationsOpen(true)}>
-                    View all {allPending.length} applications
+              {allPending.length > 0 && (
+                <div style={{ textAlign: "center", padding: "4px 0 2px" }}>
+                  <button
+                    className="text-xs"
+                    style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--accent)", fontWeight: 500 }}
+                    onClick={() => setAllApplicationsOpen(true)}
+                  >
+                    View all {allPending.length} applications →
                   </button>
                 </div>
               )}

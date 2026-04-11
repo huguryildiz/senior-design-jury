@@ -5,11 +5,17 @@
 // Prototype: vera-premium-prototype.html lines 25671–26130
 
 import { useState, useEffect, useCallback } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AlertTriangle, AlertCircle, Settings, Download, Wrench, Activity } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
+import FbAlert from "@/shared/ui/FbAlert";
 import { useToast } from "@/shared/hooks/useToast";
+import useShakeOnError from "@/shared/hooks/useShakeOnError";
 import { supabase } from "@/shared/lib/supabaseClient";
-import { getMaintenanceConfig, setMaintenance, cancelMaintenance } from "@/shared/api/admin/maintenance";
+import { invokeEdgeFunction } from "@/shared/api/core/invokeEdgeFunction";
+import { getMaintenanceConfig, setMaintenance, cancelMaintenance, getActiveJurorCount, sendTestMaintenanceEmail } from "@/shared/api/admin/maintenance";
+import { getPlatformSettings, setPlatformSettings } from "@/shared/api/admin/platform";
+import { listOrganizationsPublic } from "@/shared/api/admin/organizations";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
 
@@ -102,56 +108,225 @@ function DrawerHeader({ icon, iconStroke, title, subtitle, onClose }) {
 
 // ── 1. Global Settings ─────────────────────────────────────────
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+const DEFAULT_PLATFORM_SETTINGS = {
+  platform_name: "VERA Evaluation Platform",
+  support_email: "support@vera-eval.app",
+  auto_approve_new_orgs: false,
+};
+
+function formatRelativeUpdatedAt(iso) {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return null;
+  const diff = Date.now() - then;
+  if (diff < 60_000) return "just now";
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export function GlobalSettingsDrawer({ open, onClose }) {
   const toast = useToast();
-  const [form, setForm] = useState({
-    platformName: "VERA Evaluation Platform",
-    supportEmail: "support@vera-eval.app",
-    autoApproveOrgs: false,
-  });
+  const [form, setForm] = useState(DEFAULT_PLATFORM_SETTINGS);
+  const [initial, setInitial] = useState(DEFAULT_PLATFORM_SETTINGS);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState(null);
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Load current settings whenever the drawer opens.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError("");
+    setSaveError("");
+    getPlatformSettings()
+      .then((data) => {
+        if (cancelled) return;
+        const next = {
+          platform_name: data?.platform_name ?? DEFAULT_PLATFORM_SETTINGS.platform_name,
+          support_email: data?.support_email ?? DEFAULT_PLATFORM_SETTINGS.support_email,
+          auto_approve_new_orgs: Boolean(data?.auto_approve_new_orgs),
+        };
+        setForm(next);
+        setInitial(next);
+        setUpdatedAt(data?.updated_at ?? null);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setLoadError(e?.message || "Failed to load platform settings.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const nameError =
+    form.platform_name.trim().length === 0
+      ? "Platform name is required."
+      : form.platform_name.length > 100
+      ? "Platform name must be 100 characters or fewer."
+      : "";
+  const emailError =
+    form.support_email.trim().length === 0
+      ? "Support email is required."
+      : !EMAIL_RE.test(form.support_email.trim())
+      ? "Enter a valid email address."
+      : "";
+
+  const isDirty =
+    form.platform_name !== initial.platform_name ||
+    form.support_email !== initial.support_email ||
+    form.auto_approve_new_orgs !== initial.auto_approve_new_orgs;
+
+  const canSave = !loading && !saving && !nameError && !emailError && isDirty;
+
+  const saveBtnRef = useShakeOnError(saveError);
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setSaveError("");
+    setSaving(true);
+    try {
+      await setPlatformSettings({
+        platform_name: form.platform_name.trim(),
+        support_email: form.support_email.trim(),
+        auto_approve_new_orgs: form.auto_approve_new_orgs,
+      });
+      toast.success("Global settings saved");
+      onClose();
+    } catch (e) {
+      setSaveError(e?.message || "Failed to save platform settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCloseAttempt = () => {
+    if (isDirty && !saving) {
+      const discard = window.confirm("You have unsaved changes. Discard them?");
+      if (!discard) return;
+    }
+    onClose();
+  };
+
+  const lastUpdatedLabel = formatRelativeUpdatedAt(updatedAt);
+
   return (
-    <Drawer open={open} onClose={onClose}>
+    <Drawer open={open} onClose={handleCloseAttempt}>
       <DrawerHeader
-        icon={(stroke) => (
-          <svg viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" style={{ width: 17, height: 17 }}>
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        )}
+        icon={(stroke) => <Settings size={17} stroke={stroke} strokeWidth={2} />}
         iconStroke="var(--accent)"
         title="Global Settings"
         subtitle="Platform-wide defaults and configuration"
-        onClose={onClose}
+        onClose={handleCloseAttempt}
       />
       <div className="fs-drawer-body" style={{ gap: 16 }}>
+        {loadError && <FbAlert variant="danger">{loadError}</FbAlert>}
+        {saveError && <FbAlert variant="danger">{saveError}</FbAlert>}
+
         <SectionLabel>Platform Identity</SectionLabel>
         <div className="fs-field">
           <label className="fs-field-label">Platform Name</label>
-          <input className="fs-input" type="text" value={form.platformName} onChange={(e) => set("platformName", e.target.value)} />
+          <input
+            className={`fs-input${nameError && form.platform_name !== initial.platform_name ? " fs-input-error" : ""}`}
+            type="text"
+            maxLength={100}
+            value={form.platform_name}
+            onChange={(e) => set("platform_name", e.target.value)}
+            disabled={loading || saving}
+            placeholder="VERA Evaluation Platform"
+          />
+          <div className="fs-field-helper hint">Shown in email templates and future login/landing surfaces.</div>
         </div>
         <div className="fs-field">
           <label className="fs-field-label">Support Email</label>
-          <input className="fs-input" type="email" value={form.supportEmail} onChange={(e) => set("supportEmail", e.target.value)} />
+          <input
+            className={`fs-input${emailError && form.support_email !== initial.support_email ? " fs-input-error" : ""}`}
+            type="email"
+            value={form.support_email}
+            onChange={(e) => set("support_email", e.target.value)}
+            disabled={loading || saving}
+            placeholder="support@vera-eval.app"
+          />
+          <div className="fs-field-helper hint">Contact address included in notification email footers.</div>
         </div>
 
-        <SectionLabel style={{ marginTop: 4 }}>Default Evaluation Settings</SectionLabel>
+        <SectionLabel style={{ marginTop: 4 }}>Organization Settings</SectionLabel>
         <ToggleRow
           title="Auto-approve New Organizations"
           desc="Skip manual review for new org applications"
-          checked={form.autoApproveOrgs}
-          onChange={(v) => set("autoApproveOrgs", v)}
+          checked={form.auto_approve_new_orgs}
+          onChange={() => {}}
+          disabled
         />
+        <div className="fs-field-helper hint" style={{ marginTop: -8 }}>
+          <AlertCircle size={11} style={{ verticalAlign: "-1px", marginRight: 4 }} />
+          Automatic approval wiring coming in v2.
+        </div>
+
+        <SectionLabel style={{ marginTop: 4 }}>Localization</SectionLabel>
+        <div className="fs-field">
+          <label className="fs-field-label">Platform Language</label>
+          <CustomSelect
+            value="en"
+            onChange={() => {}}
+            disabled
+            options={[{ value: "en", label: "English" }]}
+            ariaLabel="Platform language"
+          />
+          <div className="fs-field-helper hint">
+            <AlertCircle size={11} style={{ verticalAlign: "-1px", marginRight: 4 }} />
+            Turkish and multi-language support coming in v2.
+          </div>
+        </div>
+
+        {lastUpdatedLabel && (
+          <div
+            className="text-xs text-muted"
+            style={{
+              marginTop: 4,
+              paddingTop: 10,
+              borderTop: "1px dashed var(--border)",
+              textAlign: "right",
+            }}
+          >
+            Last updated {lastUpdatedLabel}
+          </div>
+        )}
       </div>
       <div className="fs-drawer-footer">
-        <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose}>Cancel</button>
         <button
+          className="fs-btn fs-btn-secondary"
+          type="button"
+          onClick={handleCloseAttempt}
+          disabled={saving}
+        >
+          Cancel
+        </button>
+        <button
+          ref={saveBtnRef}
           className="fs-btn fs-btn-primary"
           type="button"
-          onClick={() => { toast.success("Global settings saved"); onClose(); }}
+          onClick={handleSave}
+          disabled={!canSave}
         >
-          Save Settings
+          <AsyncButtonContent loading={saving} loadingText="Saving…">
+            Save Settings
+          </AsyncButtonContent>
         </button>
       </div>
     </Drawer>
@@ -174,13 +349,7 @@ export function ExportBackupDrawer({ open, onClose }) {
   return (
     <Drawer open={open} onClose={onClose}>
       <DrawerHeader
-        icon={(stroke) => (
-          <svg viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" style={{ width: 17, height: 17 }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-        )}
+        icon={(stroke) => <Download size={17} stroke={stroke} strokeWidth={2} />}
         iconStroke="var(--accent)"
         title="Export & Backup"
         subtitle="Platform-wide data export and backup controls"
@@ -313,8 +482,13 @@ export function MaintenanceDrawer({ open, onClose }) {
   const [currentStatus, setCurrentStatus] = useState(null); // loaded from DB
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [activeJurorCount, setActiveJurorCount] = useState(null);
+  const [orgs, setOrgs] = useState([]);
+  const [orgScope, setOrgScope] = useState("all"); // "all" | "specific"
+  const [affectedOrgIds, setAffectedOrgIds] = useState([]);
+  const [sendingTest, setSendingTest] = useState(false);
 
-  // Load current config when drawer opens
+  // Load current config, active juror count, and org list when drawer opens
   useEffect(() => {
     if (!open) return;
     getMaintenanceConfig()
@@ -327,28 +501,67 @@ export function MaintenanceDrawer({ open, onClose }) {
           if (cfg.start_time) {
             setStartTime(new Date(cfg.start_time).toISOString().slice(0, 16));
           }
+          if (cfg.affected_org_ids?.length) {
+            setOrgScope("specific");
+            setAffectedOrgIds(cfg.affected_org_ids);
+          } else {
+            setOrgScope("all");
+            setAffectedOrgIds([]);
+          }
         }
       })
       .catch(() => {}); // non-critical — drawer still works without pre-fill
+    getActiveJurorCount()
+      .then(setActiveJurorCount)
+      .catch(() => setActiveJurorCount(null));
+    listOrganizationsPublic()
+      .then(setOrgs)
+      .catch(() => setOrgs([]));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSchedule() {
     setSaving(true);
     try {
-      await setMaintenance({
+      const result = await setMaintenance({
         mode,
         startTime: mode === "scheduled" ? new Date(startTime).toISOString() : null,
         durationMin,
         message,
-        affectedOrgIds: null,
+        affectedOrgIds: orgScope === "specific" && affectedOrgIds.length > 0 ? affectedOrgIds : null,
         notifyAdmins,
       });
-      toast.success(mode === "immediate" ? "Maintenance activated" : "Maintenance scheduled");
+      const label = mode === "immediate" ? "Maintenance activated" : "Maintenance scheduled";
+      if (notifyAdmins && result?.mailResult) {
+        const { sent, total, errors } = result.mailResult;
+        if (!errors?.length) {
+          toast.success(`${label} — email sent to ${sent}/${total} org admins`);
+        } else {
+          toast.warning(`${label} — email sent to ${sent}/${total} org admins (${errors.length} failed)`);
+        }
+      } else {
+        toast.success(label);
+      }
       onClose();
     } catch (err) {
       toast.error(err?.message || "Failed to set maintenance mode");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSendTest() {
+    setSendingTest(true);
+    try {
+      await sendTestMaintenanceEmail({
+        mode,
+        startTime: mode === "scheduled" ? new Date(startTime).toISOString() : null,
+        message,
+      });
+      toast.success("Test email sent to your inbox");
+    } catch (err) {
+      toast.error(err?.message || "Failed to send test email");
+    } finally {
+      setSendingTest(false);
     }
   }
 
@@ -370,11 +583,7 @@ export function MaintenanceDrawer({ open, onClose }) {
   return (
     <Drawer open={open} onClose={onClose}>
       <DrawerHeader
-        icon={(stroke) => (
-          <svg viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" style={{ width: 17, height: 17 }}>
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-          </svg>
-        )}
+        icon={(stroke) => <Wrench size={17} stroke={stroke} strokeWidth={2} />}
         iconStroke="var(--warning)"
         title="Maintenance Mode"
         subtitle="Schedule or activate platform maintenance"
@@ -383,26 +592,21 @@ export function MaintenanceDrawer({ open, onClose }) {
       <div className="fs-drawer-body" style={{ gap: 16 }}>
         {/* Active status banner */}
         {isCurrentlyActive && (
-          <div className="fs-alert" style={{ margin: 0, background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.25)" }}>
-            <div className="fs-alert-icon" style={{ color: "var(--danger)" }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
-              </svg>
-            </div>
-            <div className="fs-alert-body">
-              <div className="fs-alert-title" style={{ color: "var(--danger)" }}>Maintenance is currently active</div>
-              <div className="fs-alert-desc">Users cannot access the platform right now.</div>
-            </div>
-          </div>
+          <FbAlert variant="danger" title="Maintenance is currently active" style={{ margin: 0 }}>
+            Users cannot access the platform right now.
+          </FbAlert>
         )}
 
-        <div className="fs-alert warning" style={{ margin: 0 }}>
-          <div className="fs-alert-icon"><AlertTriangle size={15} /></div>
-          <div className="fs-alert-body">
-            <div className="fs-alert-title">Maintenance blocks all user access</div>
-            <div className="fs-alert-desc">Jurors and org admins will see a maintenance page. Only super admins retain access.</div>
-          </div>
-        </div>
+        {/* Active juror safety warning */}
+        {activeJurorCount > 0 && !isCurrentlyActive && (
+          <FbAlert variant="warning" title={`${activeJurorCount} juror${activeJurorCount === 1 ? "" : "s"} currently scoring`} style={{ margin: 0 }}>
+            Activating maintenance will interrupt their active sessions.
+          </FbAlert>
+        )}
+
+        <FbAlert variant="warning" title="Maintenance blocks all user access" style={{ margin: 0 }}>
+          Jurors and org admins will see a maintenance page. Only super admins retain access.
+        </FbAlert>
 
         <div className="fs-field">
           <label className="fs-field-label">Mode</label>
@@ -478,6 +682,71 @@ export function MaintenanceDrawer({ open, onClose }) {
           />
         </div>
 
+        {/* Affected organizations */}
+        <div className="fs-field">
+          <label className="fs-field-label">Affected Organizations</label>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            {[["all", "All organizations"], ["specific", "Specific organizations"]].map(([val, label]) => (
+              <label
+                key={val}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, fontSize: 12.5,
+                  cursor: "pointer", padding: "7px 12px", flex: 1,
+                  border: orgScope === val ? "1px solid var(--accent)" : "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  background: orgScope === val ? "rgba(99,102,241,0.06)" : undefined,
+                }}
+              >
+                <input
+                  type="radio"
+                  name="maint-org-scope"
+                  value={val}
+                  checked={orgScope === val}
+                  onChange={() => { setOrgScope(val); if (val === "all") setAffectedOrgIds([]); }}
+                  style={{ accentColor: "var(--accent)" }}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {orgScope === "specific" && (
+            <div style={{
+              maxHeight: 160, overflowY: "auto", border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)", padding: "4px 0",
+            }}>
+              {orgs.length === 0 ? (
+                <div style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--text-tertiary)" }}>
+                  No active organizations found
+                </div>
+              ) : orgs.map((org) => (
+                <label
+                  key={org.id}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 14px", cursor: "pointer", fontSize: 13,
+                    background: affectedOrgIds.includes(org.id) ? "rgba(99,102,241,0.06)" : undefined,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={affectedOrgIds.includes(org.id)}
+                    onChange={(e) => setAffectedOrgIds(
+                      e.target.checked
+                        ? [...affectedOrgIds, org.id]
+                        : affectedOrgIds.filter((id) => id !== org.id)
+                    )}
+                    style={{ accentColor: "var(--accent)", flexShrink: 0 }}
+                  />
+                  <span style={{ fontWeight: 500 }}>{org.name}</span>
+                  {org.code && (
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: "auto" }}>{org.code}</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
         <ToggleRow
           title="Notify Org Admins"
           desc="Send email notification before maintenance starts"
@@ -506,6 +775,15 @@ export function MaintenanceDrawer({ open, onClose }) {
           <>
             <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose}>Cancel</button>
             <button
+              className="fs-btn fs-btn-secondary"
+              type="button"
+              disabled={sendingTest}
+              onClick={handleSendTest}
+              title="Send a test email to your inbox without changing any DB state"
+            >
+              <AsyncButtonContent loading={sendingTest} loadingText="Sending…">Test Email</AsyncButtonContent>
+            </button>
+            <button
               className="fs-btn"
               type="button"
               style={{ background: mode === "immediate" ? "var(--danger)" : "var(--warning)", color: "white", border: "none" }}
@@ -526,6 +804,15 @@ export function MaintenanceDrawer({ open, onClose }) {
 }
 
 // ── 6. System Health ───────────────────────────────────────────
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem("vera_health_history") || "[]"); }
+  catch { return []; }
+}
+
+function saveHistory(h) {
+  localStorage.setItem("vera_health_history", JSON.stringify(h.slice(-20)));
+}
 
 function statusColor(ok) {
   return ok ? "var(--success)" : "var(--danger)";
@@ -554,7 +841,7 @@ async function pingAuth() {
 async function pingMetrics() {
   const t0 = performance.now();
   try {
-    const { data, error } = await supabase.functions.invoke("platform-metrics", { method: "GET" });
+    const { data, error } = await invokeEdgeFunction("platform-metrics", {});
     const latency = Math.round(performance.now() - t0);
     if (error) return { ok: false, latency, data: null, errorMsg: error.message || "Edge Function failed" };
     return { ok: true, latency, data, errorMsg: null };
@@ -574,6 +861,7 @@ export function SystemHealthDrawer({ open, onClose }) {
     edge:        { ok: null, latency: null, errorMsg: null },
     metricsData: null,
   });
+  const [history, setHistory] = useState(loadHistory);
 
   const runChecks = useCallback(async () => {
     setChecking(true);
@@ -584,6 +872,11 @@ export function SystemHealthDrawer({ open, onClose }) {
       auth:        { ok: auth.ok, latency: auth.latency, errorMsg: auth.errorMsg ? `Auth: ${auth.errorMsg}` : null },
       edge:        { ok: metrics.ok, latency: metrics.latency, errorMsg: metrics.errorMsg ? `Edge Functions: ${metrics.errorMsg}` : null },
       metricsData: metrics.data,
+    });
+    setHistory((prev) => {
+      const next = [...prev, { ts: Date.now(), dbMs: db.latency, authMs: auth.latency, edgeMs: metrics.latency }];
+      saveHistory(next);
+      return next;
     });
     setCheckedAt(new Date());
     setChecking(false);
@@ -653,11 +946,7 @@ export function SystemHealthDrawer({ open, onClose }) {
   return (
     <Drawer open={open} onClose={onClose}>
       <DrawerHeader
-        icon={(stroke) => (
-          <svg viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" style={{ width: 17, height: 17 }}>
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-          </svg>
-        )}
+        icon={(stroke) => <Activity size={17} stroke={stroke} strokeWidth={2} />}
         iconStroke="var(--success)"
         title="System Health"
         subtitle="Real-time platform status and performance metrics"
@@ -693,7 +982,7 @@ export function SystemHealthDrawer({ open, onClose }) {
         </div>
 
         <SectionLabel style={{ marginTop: 4 }}>Performance (Live Measurements)</SectionLabel>
-        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden", maxHeight: "50vh", overflowY: "auto" }}>
           {PERF.map((row, i) => (
             <div
               key={row.label}
@@ -710,6 +999,57 @@ export function SystemHealthDrawer({ open, onClose }) {
             </div>
           ))}
         </div>
+
+        {history.length >= 2 && (
+          <>
+            <SectionLabel style={{ marginTop: 4 }}>
+              Latency Trend — Last {history.length} Check{history.length !== 1 ? "s" : ""}
+            </SectionLabel>
+            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "12px 14px" }}>
+              <div style={{ display: "flex", gap: 14, marginBottom: 8, flexWrap: "wrap" }}>
+                {[
+                  { color: "#22c55e", label: "DB" },
+                  { color: "#60a5fa", label: "Auth" },
+                  { color: "#f97316", label: "Edge" },
+                ].map(({ color, label }) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: "var(--text-tertiary)" }}>
+                    <div style={{ width: 10, height: 2, borderRadius: 1, background: color }} />
+                    {label}
+                  </div>
+                ))}
+              </div>
+              <ResponsiveContainer width="100%" height={90}>
+                <AreaChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="shDB" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="shEdge" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="ts"
+                    tickFormatter={(ts) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    tick={{ fontSize: 8, fill: "var(--text-tertiary)" }}
+                    height={18}
+                  />
+                  <YAxis tick={{ fontSize: 9, fill: "var(--text-tertiary)" }} width={32} unit="ms" />
+                  <Tooltip
+                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
+                    formatter={(v, name) => [`${v}ms`, name]}
+                    labelFormatter={() => ""}
+                  />
+                  <Area type="monotone" dataKey="dbMs" name="DB" stroke="#22c55e" strokeWidth={1.8} fill="url(#shDB)" dot={false} />
+                  <Area type="monotone" dataKey="authMs" name="Auth" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="4 2" fill="none" dot={false} />
+                  <Area type="monotone" dataKey="edgeMs" name="Edge" stroke="#f97316" strokeWidth={1.8} fill="url(#shEdge)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
 
         <SectionLabel style={{ marginTop: 4 }}>Overall Status</SectionLabel>
         <div style={{ padding: "12px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", textAlign: "center" }}>
@@ -738,9 +1078,7 @@ export function SystemHealthDrawer({ open, onClose }) {
                         borderRadius: "var(--radius-sm)",
                       }}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" style={{ width: 13, height: 13, flexShrink: 0, marginTop: 1 }}>
-                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
+                      <AlertCircle size={13} stroke="var(--danger)" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
                       <span style={{ fontSize: 11.5, color: "var(--danger)", fontFamily: "var(--mono)", lineHeight: 1.4 }}>{msg}</span>
                     </div>
                   ))}

@@ -50,7 +50,6 @@ export {
   listOrganizations,
   createOrganization,
   updateOrganization,
-  listOrganizationsPublic as listOrganizationsPublicDirect,
   updateMemberAdmin,
   deleteMemberHard,
   inviteOrgAdmin,
@@ -105,5 +104,7 @@ export { sendEntryTokenEmail, sendJurorPinEmail, sendExportReport } from "./noti
 export { getMaintenanceStatus, getMaintenanceConfig, setMaintenance, cancelMaintenance } from "./maintenance";
 
 export { getSecurityPolicy, setSecurityPolicy, getPublicAuthFlags } from "./security";
+
+export { getPlatformSettings, setPlatformSettings } from "./platform";
 
 export { touchAdminSession, listAdminSessions, deleteAdminSession } from "./sessions";
