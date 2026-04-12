@@ -260,10 +260,10 @@ function OutcomeRow({
 
 // ── Coverage help popover ────────────────────────────────────
 
-function CoverageHelpPopover({ open, onToggle, anchorRef }) {
+function CoverageHelpPopover({ open }) {
   if (!open) return null;
   return (
-    <div className="col-info-popover" ref={anchorRef}>
+    <div className="col-info-popover">
       <div className="col-info-popover-title">Coverage Levels</div>
       <div className="col-info-popover-row">
         <span className="acc-cov-dot" style={{ background: "var(--success)", width: 6, height: 6, borderRadius: "50%", display: "inline-block" }} />
@@ -343,7 +343,6 @@ export default function OutcomesPage() {
 
   // Coverage help popover
   const [coverageHelpOpen, setCoverageHelpOpen] = useState(false);
-  const coverageHelpRef = useRef(null);
 
   // Indirect overrides (for outcomes with no DB mappings)
   const [indirectOverrides, setIndirectOverrides] = useState(new Set());
@@ -355,7 +354,8 @@ export default function OutcomesPage() {
   useEffect(() => {
     if (!coverageHelpOpen) return;
     const handler = (e) => {
-      if (coverageHelpRef.current && !coverageHelpRef.current.contains(e.target)) setCoverageHelpOpen(false);
+      if (!(e.target instanceof Element)) return;
+      if (!e.target.closest(".coverage-help-wrap")) setCoverageHelpOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -689,18 +689,18 @@ export default function OutcomesPage() {
                       <th>Mapped Criteria</th>
                       <th style={{ width: 110, position: "relative" }} className="text-center">
                         Coverage
-                        <span
-                          className="col-info-icon"
-                          onClick={(e) => { e.stopPropagation(); setCoverageHelpOpen((v) => !v); }}
-                          style={{ cursor: "pointer", marginLeft: 3 }}
-                        >
-                          ?
+                        <span className="coverage-help-wrap">
+                          <span
+                            className="col-info-icon"
+                            onClick={(e) => { e.stopPropagation(); setCoverageHelpOpen((v) => !v); }}
+                            style={{ cursor: "pointer", marginLeft: 3 }}
+                          >
+                            ?
+                          </span>
+                          <CoverageHelpPopover
+                            open={coverageHelpOpen}
+                          />
                         </span>
-                        <CoverageHelpPopover
-                          open={coverageHelpOpen}
-                          onToggle={() => setCoverageHelpOpen((v) => !v)}
-                          anchorRef={coverageHelpRef}
-                        />
                       </th>
                       <th style={{ width: 40 }} className="text-center">Actions</th>
                     </tr>

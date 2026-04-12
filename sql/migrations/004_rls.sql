@@ -766,15 +766,6 @@ CREATE POLICY "security_policy_super_admin_all" ON security_policy
   WITH CHECK (current_user_is_super_admin());
 
 -- =============================================================================
--- RECEIVED_EMAILS (super_admin read-only)
--- =============================================================================
-
-ALTER TABLE received_emails ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "super_admin_read_received_emails" ON received_emails
-  FOR SELECT USING (current_user_is_super_admin());
-
--- =============================================================================
 -- JURY_FEEDBACK (all access via SECURITY DEFINER RPCs)
 -- =============================================================================
 
