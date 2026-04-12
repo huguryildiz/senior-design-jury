@@ -71,13 +71,13 @@ where the operation happens — see [Write Mechanisms](#write-mechanisms) below.
 | ------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **DB trigger** (`trigger_audit_log`) | Postgres, on every CRUD via `AFTER INSERT/UPDATE/DELETE`         | Anything that changes row state in a tracked table. 14 tables: `organizations`, `periods`, `period_criteria`, `period_outcomes`, `period_criterion_outcome_maps`, `projects`, `jurors`, `score_sheets`, `score_sheet_items`, `memberships`, `entry_tokens`, `juror_period_auth`, `security_policy`, `audit_logs` (meta).   |
 | **SECURITY DEFINER RPC**             | The RPC itself, in the same transaction as the DB change         | Operations where we want richer semantic context than raw CRUD: score submission, period lock/unlock, criteria save, organization status change, outcome CRUD, token revoke, juror force-close, admin profile update, application approve/reject.                                                                          |
-| **Edge Function (service role)**     | The Edge Function, after the primary work (send email etc.) succeeds | Email notifications (entry token, juror PIN, export report, admin invite, application state, password change, password reset). The audit write happens server-side in the same request as the email send — no client crash can drop it.                                                                                  |
-| **Blocking client write**            | The React app, via `writeAuditLog()` / `logExportInitiated()` with `await` + `try/catch` | Narrow fallback cases where no DB change and no server-side call exists: file exports (before generation), admin login/logout (Supabase Auth emits no DB row), self-service password change safety net, anomaly detection from the audit log viewer.                                                                      |
+| **Edge Function (service role)**     | The Edge Function, after the primary work succeeds               | Email notifications (entry token, juror PIN, export report, admin invite, application state, password change, password reset); admin login/logout (via Database Webhook on `auth.sessions`); file exports (via `log-export-event`); hourly anomaly sweep (via `audit-anomaly-sweep` cron). The audit write happens server-side — no client crash can drop it. |
+| **Blocking client write**            | The React app, via `writeAuditLog()` with `await` + `try/catch` | Narrow fallback: anomaly detection from the audit log viewer (provides instant UI feedback; cron covers server-side detection independently). Self-service password change safety net.                                                                                                                                    |
 
 **Rule of thumb:** if the operation touches the database, it is audited by a
-trigger or an RPC. If it sends an email, it is audited by the Edge Function
-that sent the email. Only exports, login, logout, and anomaly detection use
-the client-blocking path — and even those `await` and surface failures.
+trigger or an RPC. If it sends an email or is triggered server-side, it is
+audited by the Edge Function. Only anomaly detection in the live UI uses the
+client-blocking path — and even that `await`s and surfaces failures.
 
 **What migrations 050/051 removed:** every `writeAuditLog(...).catch(...)`
 fire-and-forget call from the API layer, the notification layer, and export
@@ -145,9 +145,9 @@ the database — there is no silent third path.
 
 | Action                                  | Mechanism                                   | Severity | Written by                                                                                                                                                                                                                                                                                                            |
 | --------------------------------------- | ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth.admin.login.success`              | Blocking client write                       | info     | [src/auth/AuthProvider.jsx](src/auth/AuthProvider.jsx) after `supabase.auth.signInWithPassword`                                                                                                                                                                                                                       |
+| `auth.admin.login.success`              | Edge Function (Database Webhook)            | info     | [supabase/functions/on-auth-event/index.ts](supabase/functions/on-auth-event/index.ts) — triggered by `auth.sessions` INSERT; captures `ip_address` + `user_agent` from session record                                                                                                                                |
 | `auth.admin.login.failure`              | RPC (`rpc_write_auth_failure_event`)        | medium   | Called by [src/auth/AuthProvider.jsx](src/auth/AuthProvider.jsx) on failed login                                                                                                                                                                                                                                      |
-| `admin.logout`                          | Blocking client write                       | info     | [src/auth/AuthProvider.jsx](src/auth/AuthProvider.jsx) before `signOut()`                                                                                                                                                                                                                                             |
+| `admin.logout`                          | Edge Function (Database Webhook)            | info     | [supabase/functions/on-auth-event/index.ts](supabase/functions/on-auth-event/index.ts) — triggered by `auth.sessions` DELETE                                                                                                                                                                                          |
 | `auth.admin.password.changed`           | Edge Function + blocking fallback           | medium   | [supabase/functions/password-changed-notify/index.ts](supabase/functions/password-changed-notify/index.ts) (primary) + [src/auth/AuthProvider.jsx](src/auth/AuthProvider.jsx) safety net                                                                                                                              |
 | `auth.admin.password.reset.requested`   | Edge Function                               | low      | [supabase/functions/password-reset-email/index.ts](supabase/functions/password-reset-email/index.ts)                                                                                                                                                                                                                  |
 | `admin.updated`                         | RPC (`rpc_admin_update_member_profile`)     | info     | [src/shared/api/admin/organizations.js](src/shared/api/admin/organizations.js)                                                                                                                                                                                                                                        |
@@ -185,7 +185,7 @@ the database — there is no silent third path.
 | `security.entry_token.revoked`  | RPC (`rpc_admin_revoke_entry_token`)       | high     | [src/shared/api/admin/tokens.js](src/shared/api/admin/tokens.js)                                                                   |
 | `token.generate`                | RPC                                        | info     | Entry token generation                                                                                                              |
 | `security.pin_reset.requested`  | Edge Function (service role)               | medium   | [supabase/functions/request-pin-reset/index.ts](supabase/functions/request-pin-reset/index.ts) — locked juror requests PIN reset; `actor_type='juror'` |
-| `security.anomaly.detected`     | Blocking client write (UI-side detection)  | high     | [src/admin/pages/AuditLogPage.jsx](src/admin/pages/AuditLogPage.jsx) (see [Conscious Exclusions](#what-is-not-audited-conscious-exclusions) for cron replacement) |
+| `security.anomaly.detected`     | Edge Function (cron) + blocking client write | high   | Primary: [supabase/functions/audit-anomaly-sweep/index.ts](supabase/functions/audit-anomaly-sweep/index.ts) — runs hourly via Supabase scheduler, `actor_type='system'`. Secondary: [src/admin/pages/AuditLogPage.jsx](src/admin/pages/AuditLogPage.jsx) — instant UI feedback for the currently-loaded log window. |
 | `snapshot.freeze`               | RPC                                        | info     | Period freeze                                                                                                                       |
 | `backup.*`                      | RPC (`rpc_platform_backups_*`)             | info     | Platform backup flows ([sql/migrations/036_platform_backups_rpcs.sql](sql/migrations/036_platform_backups_rpcs.sql))                |
 
@@ -206,18 +206,19 @@ and any Resend error in `details`, so a single audit query tells you both
 
 ### Exports
 
-All export events are written **before** the file is generated via
-`logExportInitiated()`. If the audit write fails, the export aborts — there is
-no "export happened but we don't know" state.
+All export events are written server-side via the `log-export-event` Edge
+Function. The client calls the Edge Function before generating the file; if
+the audit write fails, the export aborts. `ip_address` and `user_agent` are
+captured server-side.
 
 | Action              | Written by                                                                                                                                                    | Severity |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `export.scores`     | [src/admin/pages/ReviewsPage.jsx](src/admin/pages/ReviewsPage.jsx)                                                                                             | info     |
-| `export.rankings`   | [src/admin/pages/RankingsPage.jsx](src/admin/pages/RankingsPage.jsx)                                                                                           | info     |
-| `export.heatmap`    | [src/admin/hooks/useGridExport.js](src/admin/hooks/useGridExport.js)                                                                                           | info     |
-| `export.analytics`  | [src/admin/pages/AnalyticsPage.jsx](src/admin/pages/AnalyticsPage.jsx)                                                                                         | info     |
-| `export.audit`      | [src/admin/hooks/useAuditLogFilters.js](src/admin/hooks/useAuditLogFilters.js)                                                                                 | info     |
-| `export.backup`     | [src/admin/pages/ExportPage.jsx](src/admin/pages/ExportPage.jsx) + [src/admin/drawers/GovernanceDrawers.jsx](src/admin/drawers/GovernanceDrawers.jsx)          | info     |
+| `export.scores`     | [supabase/functions/log-export-event/index.ts](supabase/functions/log-export-event/index.ts) — called from [src/shared/api/admin/export.js](src/shared/api/admin/export.js) | info |
+| `export.rankings`   | Same Edge Function                                                                                                                                             | info     |
+| `export.heatmap`    | Same Edge Function                                                                                                                                             | info     |
+| `export.analytics`  | Same Edge Function                                                                                                                                             | info     |
+| `export.audit`      | Same Edge Function                                                                                                                                             | info     |
+| `export.backup`     | Same Edge Function                                                                                                                                             | info     |
 
 ---
 
@@ -419,7 +420,7 @@ These gaps are deliberate and tracked here so they don't silently persist:
 | Gap                                        | Reason                                                                                                                                             | Path to fix                                                        |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Score sheet item-level trigger diff        | Would emit a row per blur/save during normal evaluation — noise. The semantic `data.score.submitted` event already carries a per-criterion diff.   | No action; covered by RPC-level diff (migration 051).              |
-| Anomaly detection as a cron job            | Current implementation runs client-side in the audit viewer via a blocking write. Works when admins open the page but isn't a scheduled sweep.    | Future Edge Function + `pg_cron` hourly detection.                 |
+| ~~Anomaly detection as a cron job~~        | **Resolved.** `audit-anomaly-sweep` Edge Function runs hourly via Supabase scheduler. Client-side detection in `AuditLogPage.jsx` kept for instant UI feedback only. | —                                                         |
 | Historical rows pre-migration 048/049      | Early rows have `actor_name`, `ip_address`, `user_agent` = NULL.                                                                                    | Backfill script not planned; UI renders "(unknown)" gracefully.    |
 | `access.admin.impersonate.*`               | Impersonation feature does not exist yet.                                                                                                          | Will be added alongside the feature.                               |
 | `auth.admin.session.expired`               | Supabase Auth does not expose a session-expiry event.                                                                                               | Would require polling or custom session monitor; low priority.     |
@@ -442,6 +443,11 @@ both `vera-prod` and `vera-demo`.
 | [049_audit_ip_ua_self_extract.sql](sql/migrations/049_audit_ip_ua_self_extract.sql)                         | 2026-04 | IP + user-agent extracted from `request.headers` GUC in RPCs and triggers                                                |
 | [050_audit_premium_rpcs.sql](sql/migrations/050_audit_premium_rpcs.sql)                                     | 2026-04 | **Premium SaaS overhaul** — 10 new SECURITY DEFINER RPCs replace every fire-and-forget client audit write                |
 | [051_audit_score_criterion_diff.sql](sql/migrations/051_audit_score_criterion_diff.sql)                     | 2026-04 | Per-criterion `{before, after}` diff in `rpc_jury_finalize_submission`, computed by self-comparison of audit history     |
+| [052_audit_taxonomy_sync.sql](sql/migrations/052_audit_taxonomy_sync.sql)                                   | 2026-04 | `rpc_admin_write_audit_event` category/severity/actor_type taxonomy sync across all actions                              |
+| [053_audit_no_delete.sql](sql/migrations/053_audit_no_delete.sql)                                           | 2026-04 | Hard-delete RLS: `FOR DELETE USING (false)` on `audit_logs` — even superadmin cannot delete rows                         |
+| [054_audit_hash_chain.sql](sql/migrations/054_audit_hash_chain.sql)                                         | 2026-04 | `row_hash TEXT` column + BEFORE INSERT trigger computing `sha256(id \|\| action \|\| org_id \|\| created_at \|\| prev_hash)`; `rpc_admin_verify_audit_chain` RPC |
+| [055_audit_anomaly_cron.sql](sql/migrations/055_audit_anomaly_cron.sql)                                     | 2026-04 | `pg_cron` schedule template for `audit-anomaly-sweep` Edge Function (hourly)                                             |
+| [056_audit_actor_type_fix.sql](sql/migrations/056_audit_actor_type_fix.sql)                                 | 2026-04 | Fix: `security.anomaly.detected` added to 'system' actor_type CASE and 'high' severity CASE in `rpc_admin_write_audit_event` |
 
 ### What migration 050 actually did
 
@@ -533,9 +539,7 @@ For a recent row, verify:
 These are the ONLY allowed call sites for `writeAuditLog(`:
 
 - `src/shared/api/admin/audit.js` (definition)
-- `src/shared/api/admin/export.js` (blocking `logExportInitiated`)
-- `src/auth/AuthProvider.jsx` (blocking login/logout)
-- `src/admin/pages/AuditLogPage.jsx` (blocking anomaly detection)
+- `src/admin/pages/AuditLogPage.jsx` (blocking anomaly detection — instant UI feedback)
 
 ```bash
 grep -rn "writeAuditLog(" src/
@@ -546,4 +550,4 @@ merging.
 
 ---
 
-Last updated: 2026-04-12 (migrations 050 + 051 — Premium SaaS audit overhaul; Edge Function audit writes added to `notify-maintenance`, `request-pin-reset`, `request-score-edit`).
+Last updated: 2026-04-12 (migrations 052–056 — taxonomy sync, hard-delete RLS, hash chain tamper evidence, anomaly cron, actor_type fix; auth events moved to `on-auth-event` Database Webhook; exports moved to `log-export-event` Edge Function; `audit-anomaly-sweep` cron deployed).
