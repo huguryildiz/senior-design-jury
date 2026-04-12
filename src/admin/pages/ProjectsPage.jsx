@@ -9,7 +9,7 @@ import { useAuth } from "@/auth";
 import FbAlert from "@/shared/ui/FbAlert";
 import DeleteProjectModal from "../modals/DeleteProjectModal";
 import { FilterButton } from "@/shared/ui/FilterButton";
-import { getPeriodMaxScore } from "@/shared/api";
+import { getPeriodMaxScore, logExportInitiated } from "@/shared/api";
 import { useManagePeriods } from "../hooks/useManagePeriods";
 import { useManageProjects } from "../hooks/useManageProjects";
 import ImportCsvModal from "../modals/ImportCsvModal";
@@ -461,6 +461,21 @@ export default function ProjectsPage() {
             try {
               const header = COLUMNS.map((c) => c.label);
               const rows = sortedFilteredList.map((p) => COLUMNS.map((c) => getProjectCell(p, c.key, projectAvgMap)));
+              await logExportInitiated({
+                action: "export.projects",
+                organizationId: activeOrganization?.id || null,
+                resourceType: "projects",
+                details: {
+                  format: fmt,
+                  row_count: rows.length,
+                  period_name: periods.viewPeriodLabel || null,
+                  project_count: rows.length,
+                  juror_count: null,
+                  filters: {
+                    search: search || null,
+                  },
+                },
+              });
               await downloadTable(fmt, {
                 filenameType: "Projects", sheetName: "Projects",
                 periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",

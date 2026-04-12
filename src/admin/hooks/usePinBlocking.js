@@ -19,6 +19,7 @@ export function usePinBlocking({ periodId }) {
   const [todayLockEvents, setTodayLockEvents] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [unlockModal, setUnlockModal] = useState(null); // { pin, jurorId, jurorName, affiliation, email }
 
   const loadLockedJurors = useCallback(async ({ silent = false } = {}) => {
     if (!periodId) {
@@ -65,13 +66,20 @@ export function usePinBlocking({ periodId }) {
   const handleUnlock = useCallback(async (jurorId) => {
     if (!jurorId || !periodId) return;
     try {
-      await unlockJurorPin({ jurorId, periodId });
+      const juror = lockedJurors.find((j) => j.jurorId === jurorId);
+      const result = await unlockJurorPin({ jurorId, periodId });
       setLockedJurors((prev) => prev.filter((j) => j.jurorId !== jurorId));
-      _toast.success("Juror unlocked");
+      setUnlockModal({
+        pin: result?.pin_plain_once || "",
+        jurorId,
+        jurorName: juror?.jurorName || "",
+        affiliation: juror?.affiliation || "",
+        email: juror?.email || "",
+      });
     } catch (e) {
       _toast.error(e?.message || "Could not unlock juror.");
     }
-  }, [periodId, _toast]);
+  }, [periodId, lockedJurors, _toast]);
 
   const handleUnlockAll = useCallback(async () => {
     if (!periodId || lockedJurors.length === 0) return;
@@ -100,5 +108,7 @@ export function usePinBlocking({ periodId }) {
     loadLockedJurors,
     handleUnlock,
     handleUnlockAll,
+    unlockModal,
+    closeUnlockModal: () => setUnlockModal(null),
   };
 }

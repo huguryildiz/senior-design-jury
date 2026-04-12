@@ -1663,7 +1663,7 @@ function deriveAuditMeta(action) {
     'auth.admin.password.reset.requested',
     'notification.admin_invite', 'notification.application',
     'notification.entry_token', 'notification.juror_pin', 'notification.export_report',
-    'data.period.created', 'data.period.updated', 'period.set_current',
+    'periods.insert', 'periods.update', 'period.set_current',
     'data.project.created', 'data.project.updated', 'data.project.deleted',
     'data.juror.created', 'data.juror.updated', 'data.juror.imported',
     'data.score.edit_requested'].includes(action)) {
@@ -2125,7 +2125,8 @@ orgs.filter((_, i) => i % 2 === 0).forEach(o => {
   });
 });
 
-// data.period.created / .updated — for every period
+// periods.insert / .update — trigger-style events for every period
+// (trigger_audit_log fires periods.insert/update, not data.period.created/updated)
 periodData.forEach((pd, pdIdx) => {
   const adminId = adminFor(pd.org);
   const adminNm = (orgAdminNames[pd.org] || [])[0] || '';
@@ -2135,7 +2136,7 @@ periodData.forEach((pd, pdIdx) => {
   const sid = randSessionId(`period-lifecycle-${pd.id}`);
   const createdTs = bizTs(pd.start, -90 - pdIdx * 2);
   auditObjList.push({
-    action: 'data.period.created',
+    action: 'periods.insert',
     resType: 'periods', resId: pd.id, orgId: o.id,
     userId: adminId, actorName: adminNm, ip, ua, sessionId: sid,
     category: 'data', severity: 'info', actorType: 'admin',
@@ -2143,7 +2144,7 @@ periodData.forEach((pd, pdIdx) => {
     timeStr: createdTs, _salt: `pc-${pd.id}`,
   });
   auditObjList.push({
-    action: 'data.period.updated',
+    action: 'periods.update',
     resType: 'periods', resId: pd.id, orgId: o.id,
     userId: adminId, actorName: adminNm, ip, ua, sessionId: sid,
     category: 'data', severity: 'info', actorType: 'admin',
@@ -2340,11 +2341,48 @@ orgs.forEach((o, oi) => {
   });
 });
 
-// security.anomaly.detected — 3 critical events across different orgs
+// security_policy.update — platform admin adjusting security settings (migration 057 trigger)
 [
-  { orgCode: 'TEDU-EE', summary: '5 failed sign-ins from new IP 195.88.54.17 for koray.yilmazer@vera-eval.app', day: 45 },
-  { orgCode: 'CMU-CS', summary: 'Unusual export volume: 3 full score exports in 10 minutes', day: 62 },
-  { orgCode: 'TEKNOFEST', summary: 'Admin login from unrecognized country (DE) for cemil.bozkurt@vera-eval.app', day: 77 },
+  { day: 5,  details: '{"changedFields":["maxPinAttempts","pinLockCooldown"],"diff":{"before":{"maxPinAttempts":5,"pinLockCooldown":"10m"},"after":{"maxPinAttempts":3,"pinLockCooldown":"5m"}}}' },
+  { day: 30, details: '{"changedFields":["qrTtl"],"diff":{"before":{"qrTtl":"12h"},"after":{"qrTtl":"24h"}}}' },
+].forEach((item, si) => {
+  auditObjList.push({
+    action: 'security_policy.update',
+    resType: 'security_policy', resId: uuid('security-policy-singleton'), orgId: null,
+    userId: demoAdminId, actorName: 'Vera Platform Admin',
+    ip: randIp(), ua: randUserAgent(), sessionId: randSessionId(`sec-policy-${si}`),
+    category: 'config', severity: 'high', actorType: 'admin',
+    details: item.details,
+    timeStr: bizTs(AUTH_SPREAD_START, item.day), _salt: `sp-${si}`,
+  });
+});
+
+// security.anomaly.detected — 6 events covering all 6 sweep rules
+[
+  // ip_multi_org: same IP across 2 orgs
+  { orgCode: 'TEDU-EE', anomalyType: 'login_failure_burst', day: 45,
+    summary: '5 failed sign-ins from new IP 195.88.54.17 for koray.yilmazer@vera-eval.app',
+    extra: '"event_count":5' },
+  // export_burst: 5+ exports in 60 min window
+  { orgCode: 'CMU-CS', anomalyType: 'export_burst', day: 62,
+    summary: 'Unusual export volume: 6 exports in 45 minutes',
+    extra: '"event_count":6' },
+  // pin_flood: 10+ juror.pin_locked events
+  { orgCode: 'TEKNOFEST', anomalyType: 'pin_flood', day: 77,
+    summary: '12 PIN lockout events in 60-minute window',
+    extra: '"event_count":12' },
+  // org_suspended: organization suspended
+  { orgCode: 'TUBITAK-2204A', anomalyType: 'org_suspended', day: 88,
+    summary: 'Organization TUBITAK-2204A suspended by platform admin',
+    extra: '"event_count":1' },
+  // token_revoke_burst: 3 tokens revoked rapidly
+  { orgCode: 'IEEE-APSSDC', anomalyType: 'token_revoke_burst', day: 91,
+    summary: '3 entry tokens revoked in rapid succession',
+    extra: '"event_count":3' },
+  // ip_multi_org: same IP across 2 orgs
+  { orgCode: 'CANSAT', anomalyType: 'ip_multi_org', day: 105,
+    summary: 'IP 88.222.147.93 accessed 2 distinct organizations within 60 minutes',
+    extra: '"org_count":2,"ip_address":"88.222.147.93"' },
 ].forEach((item, ai) => {
   const o = orgs.find(x => x.code === item.orgCode);
   if (!o) return;
@@ -2352,8 +2390,8 @@ orgs.forEach((o, oi) => {
     action: 'security.anomaly.detected',
     resType: 'audit_logs', resId: o.id, orgId: o.id,
     userId: null, actorName: 'System', ip: null, ua: null, sessionId: null,
-    category: 'security', severity: 'critical', actorType: 'system',
-    details: `{"summary":"${escapeSql(item.summary)}","organization_id":"${o.id}"}`,
+    category: 'security', severity: 'high', actorType: 'system',
+    details: `{"anomaly_type":"${item.anomalyType}","summary":"${escapeSql(item.summary)}","organization_id":"${o.id}",${item.extra}}`,
     timeStr: bizTs(AUTH_SPREAD_START, item.day), _salt: `anom-${ai}`,
   });
 });

@@ -1,48 +1,27 @@
 # VERA Audit Log
 
 Every security-relevant action in VERA is recorded in a single append-only
-`audit_logs` table. This document is the authoritative reference for **what
-gets logged**, **how it gets there**, and **what you can query**.
-
-If you ever wonder "did X get audited?" — read [Event Catalog](#event-catalog).
-
----
-
-## Table of Contents
-
-1. [Design Goals](#design-goals)
-2. [Architecture at a Glance](#architecture-at-a-glance)
-3. [Write Mechanisms](#write-mechanisms)
-4. [Row Anatomy](#row-anatomy)
-5. [Event Catalog](#event-catalog)
-6. [Category, Severity & Actor Taxonomy](#category-severity--actor-taxonomy)
-7. [Diff Format](#diff-format)
-8. [IP, User Agent & Actor Name](#ip-user-agent--actor-name)
-9. [Querying the Audit Log](#querying-the-audit-log)
-10. [Adding a New Audited Event](#adding-a-new-audited-event)
-11. [What is Not Audited (Conscious Exclusions)](#what-is-not-audited-conscious-exclusions)
-12. [Migration Timeline](#migration-timeline)
-13. [Verification Checklist](#verification-checklist)
+`audit_logs` table. This document is the authoritative reference for what gets
+logged, how it gets there, and how to verify it.
 
 ---
 
 ## Design Goals
 
-1. **No critical event can be silently dropped.** A client crash, a dropped
-   network request, or a forgotten `.catch()` must not make a high-severity
-   action disappear from history.
-2. **Every row is interpretable on its own.** `actor_name`, `action`,
-   `resource_type`, `diff`, `ip_address`, `user_agent` are populated at write
-   time, so a row read a year later still tells you the full story.
-3. **One taxonomy, everywhere.** Action strings are dotted (`noun.verb`), and
-   the UI's labels, narratives, and icons live in a single EVENT_META map —
-   not scattered across pages.
-4. **Append-only.** Nothing ever updates or deletes audit rows. Drift becomes
-   history, not a rewrite.
+1. **No silent drops.** A client crash, dropped request, or forgotten `.catch()`
+   must not erase a high-severity action from history.
+2. **Self-contained rows.** `actor_name`, `action`, `resource_type`, `diff`,
+   `ip_address`, `user_agent` are populated at write time so a row read years
+   later still tells the full story.
+3. **Single taxonomy.** Action strings are dotted (`noun.verb`). The UI's
+   labels, narratives, and icons live in one `EVENT_META` map in
+   `src/admin/utils/auditUtils.js`.
+4. **Append-only.** Nothing updates or deletes audit rows. Hard-delete RLS
+   (`FOR DELETE USING (false)`) blocks even superadmin.
 
 ---
 
-## Architecture at a Glance
+## Architecture
 
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
@@ -54,512 +33,359 @@ If you ever wonder "did X get audited?" — read [Event Catalog](#event-catalog)
    ┌──────────┴───┐ ┌──────┴──────┐ ┌────────┴───────┐ ┌────┴─────┐
    │ DB trigger   │ │ SECURITY    │ │ Edge Function  │ │ Blocking │
    │ on CRUD      │ │ DEFINER RPC │ │ (service role) │ │ client   │
-   │ (14 tables)  │ │ (atomic tx) │ │ after email    │ │ write    │
+   │ (15 tables)  │ │ (atomic tx) │ │ server-side    │ │ write    │
    └──────────────┘ └─────────────┘ └────────────────┘ └──────────┘
-        automatic        atomic         server-side       narrow
-        for every op    with the op    with the email     fallback
+        automatic        atomic         server-side       available
+        for every op    with the op    (email, cron)      but unused
 ```
 
-Every row is written by **one** of these four mechanisms. Which one depends on
-where the operation happens — see [Write Mechanisms](#write-mechanisms) below.
+Every row is written by exactly one of these four mechanisms.
 
 ---
 
 ## Write Mechanisms
 
-| Mechanism                            | Who writes it                                                    | When to use                                                                                                                                                                                                                                                                                                                 |
-| ------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **DB trigger** (`trigger_audit_log`) | Postgres, on every CRUD via `AFTER INSERT/UPDATE/DELETE`         | Anything that changes row state in a tracked table. 14 tables: `organizations`, `periods`, `period_criteria`, `period_outcomes`, `period_criterion_outcome_maps`, `projects`, `jurors`, `score_sheets`, `score_sheet_items`, `memberships`, `entry_tokens`, `juror_period_auth`, `security_policy`, `audit_logs` (meta).   |
-| **SECURITY DEFINER RPC**             | The RPC itself, in the same transaction as the DB change         | Operations where we want richer semantic context than raw CRUD: score submission, period lock/unlock, criteria save, organization status change, outcome CRUD, token revoke, juror force-close, admin profile update, application approve/reject.                                                                          |
-| **Edge Function (service role)**     | The Edge Function, after the primary work succeeds               | Email notifications (entry token, juror PIN, export report, admin invite, application state, password change, password reset); admin login/logout (via Database Webhook on `auth.sessions`); file exports (via `log-export-event`); hourly anomaly sweep (via `audit-anomaly-sweep` cron). The audit write happens server-side — no client crash can drop it. |
-| **Blocking client write**            | The React app, via `writeAuditLog()` with `await` + `try/catch` | Narrow fallback: self-service password change safety net only.                                                                                                                                    |
+| Mechanism | Who writes | When to use |
+| --- | --- | --- |
+| **DB trigger** (`trigger_audit_log`) | Postgres, `AFTER INSERT/UPDATE/DELETE` | Any CRUD on a tracked table. Automatic, no client code needed. |
+| **SECURITY DEFINER RPC** | The RPC itself, same transaction as the DB change | Richer semantic context than raw CRUD (score submission, period lock, criteria save, etc.). |
+| **Edge Function** (service role) | The Edge Function, after primary work succeeds | Email sends, auth events (Database Webhook), file exports, hourly anomaly sweep. |
+| **Blocking client write** | React app via `writeAuditLog()` with `await` | Infrastructure for future client-side needs. Currently unused. |
 
-**Rule of thumb:** if the operation touches the database, it is audited by a
-trigger or an RPC. If it sends an email or is triggered server-side, it is
-audited by the Edge Function. The only remaining client-blocking write is the
-password-change safety net in `AuthProvider.jsx`.
-
-**What migrations 050/051 removed:** every `writeAuditLog(...).catch(...)`
-fire-and-forget call from the API layer, the notification layer, and export
-call sites. Those are now either transactional RPCs or Edge Function writes.
+**Banned pattern:** `writeAuditLog(...).catch(...)` fire-and-forget calls. All audit
+writes are either transactional (RPC), trigger-automatic, or Edge Function server-side.
 
 ---
 
-## Row Anatomy
+## Row Schema
 
 ```sql
 CREATE TABLE audit_logs (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at      timestamptz      DEFAULT now(),
-
-  -- Who
   organization_id uuid REFERENCES organizations(id),
   user_id         uuid REFERENCES auth.users(id),
-  actor_type      text CHECK (actor_type IN ('admin','juror','system','anonymous')),
-  actor_name      text,                 -- snapshot: profile display name or juror name
-
-  -- What
-  action          text NOT NULL,        -- dotted taxonomy: noun.verb
-  resource_type   text,                 -- table or logical resource name
+  actor_type      text,     -- 'admin' | 'juror' | 'system' | 'anonymous'
+  actor_name      text,     -- snapshot of display name at write time
+  action          text NOT NULL,
+  resource_type   text,
   resource_id     uuid,
-
-  -- Classification
-  category        text CHECK (category IN ('auth','access','data','config','security')),
-  severity        text CHECK (severity IN ('info','low','medium','high','critical')),
-
-  -- Payload
-  details         jsonb DEFAULT '{}',   -- action-specific context, fully denormalized
-  diff            jsonb,                -- { before: {...}, after: {...} } for update events
-
-  -- Forensics
+  category        text,     -- 'auth' | 'access' | 'data' | 'config' | 'security'
+  severity        text,     -- 'info' | 'low' | 'medium' | 'high' | 'critical'
+  details         jsonb DEFAULT '{}',
+  diff            jsonb,    -- { before: {...}, after: {...} } for updates
   ip_address      inet,
-  user_agent      text
+  user_agent      text,
+  row_hash        text,     -- sha256 chain for tamper evidence
+  correlation_id  uuid      -- groups related events from the same operation
 );
 ```
 
-### Notable columns
+**Notable columns:**
 
-- **`actor_name`** — snapshot at write time. Even if the profile display name
-  changes later, the audit row still says who *was* responsible when the
-  action happened. Added in migration 048.
-- **`ip_address` / `user_agent`** — extracted from `request.headers` GUC set
-  by the PostgREST proxy on every RPC call, or from `x-forwarded-for` and
-  `user-agent` request headers inside Edge Functions. Added in migration 049.
-- **`diff`** — for update events, `{ before: {...}, after: {...} }` where
-  each side contains only the keys that actually changed. Trigger-level diffs
-  added in migration 045; RPC-level diffs (criteria.save,
-  organization.status_changed, data.score.submitted) computed inside the RPC.
-- **`details`** — action-specific JSON, denormalized on purpose. Resource
-  names, applicant emails, period names, recipient lists are embedded so the
-  audit feed is readable even after the underlying rows are renamed or deleted.
+- **`actor_name`** -- snapshot at write time. Profile renames don't affect
+  historical rows.
+- **`actor_type`** -- `'admin'` when `auth.uid()` is present (triggers and RPCs),
+  `'system'` for cron/backend, `'juror'` for jury-side RPCs, `'anonymous'` for
+  unauthenticated callers.
+- **`diff`** -- `{ before, after }` with only changed keys for RPC-level diffs.
+  Trigger-level diffs include full row snapshots. `score_sheets` excluded to
+  avoid bloat.
+- **`ip_address` / `user_agent`** -- extracted from `request.headers` GUC
+  (PostgREST path) or request headers (Edge Function path). No manual passing.
+- **`correlation_id`** -- groups related events from a single logical operation.
+  `rpc_jury_finalize_submission` generates one UUID per call and stamps it on
+  all three rows it writes (`evaluation.complete`, `data.score.submitted` × N,
+  `juror.edit_mode_closed_on_resubmit`), making it possible to reconstruct a
+  complete submission from audit logs.
+
+---
+
+## Tracked Tables (DB Trigger)
+
+15 tables have `trigger_audit_log` attached. Every INSERT, UPDATE, and DELETE
+on these tables produces an audit row automatically.
+
+| Table | Org resolution | Category |
+| --- | --- | --- |
+| `organizations` | self | data |
+| `periods` | `organization_id` column | data |
+| `projects` | via `periods.organization_id` | data |
+| `jurors` | `organization_id` column | data |
+| `score_sheets` | via `periods.organization_id` | data |
+| `memberships` | `organization_id` column | data |
+| `entry_tokens` | via `periods.organization_id` | data |
+| `period_criteria` | via `periods.organization_id` | data |
+| `period_criterion_outcome_maps` | via `periods.organization_id` | data |
+| `org_applications` | `organization_id` column | data |
+| `framework_outcomes` | via `frameworks.organization_id` | data |
+| `admin_invites` | `org_id` column | data |
+| `frameworks` | `organization_id` column | data |
+| `profiles` | NULL (global) | data |
+| `security_policy` | NULL (global) | config |
+
+Trigger actions follow the pattern `<table_name>.<operation>`, e.g.,
+`periods.insert`, `jurors.update`, `projects.delete`.
 
 ---
 
 ## Event Catalog
 
-This table is the complete list of action strings VERA writes. It is grouped
-by category. Under "Mechanism" you will find exactly *how* the row reaches
-the database — there is no silent third path.
+### Auth and Access
 
-### Auth & Access
-
-| Action                                  | Mechanism                                   | Severity | Written by                                                                                                                                                                                                                                                                                                            |
-| --------------------------------------- | ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth.admin.login.success`              | Edge Function (Database Webhook)            | info     | [supabase/functions/on-auth-event/index.ts](supabase/functions/on-auth-event/index.ts) — triggered by `auth.sessions` INSERT; captures `ip_address` + `user_agent` from session record                                                                                                                                |
-| `auth.admin.login.failure`              | RPC (`rpc_write_auth_failure_event`)        | medium   | Called by [src/auth/AuthProvider.jsx](src/auth/AuthProvider.jsx) on failed login                                                                                                                                                                                                                                      |
-| `admin.logout`                          | Edge Function (Database Webhook)            | info     | [supabase/functions/on-auth-event/index.ts](supabase/functions/on-auth-event/index.ts) — triggered by `auth.sessions` DELETE                                                                                                                                                                                          |
-| `auth.admin.password.changed`           | Edge Function + blocking fallback           | medium   | [supabase/functions/password-changed-notify/index.ts](supabase/functions/password-changed-notify/index.ts) (primary) + [src/auth/AuthProvider.jsx](src/auth/AuthProvider.jsx) safety net                                                                                                                              |
-| `auth.admin.password.reset.requested`   | Edge Function                               | low      | [supabase/functions/password-reset-email/index.ts](supabase/functions/password-reset-email/index.ts)                                                                                                                                                                                                                  |
-| `admin.updated`                         | RPC (`rpc_admin_update_member_profile`)     | info     | [src/shared/api/admin/organizations.js](src/shared/api/admin/organizations.js)                                                                                                                                                                                                                                        |
-| `access.admin.invited` / `access.admin.accepted` | RPC (`rpc_accept_invite`)                   | low      | [sql/migrations/032_rpc_accept_invite.sql](sql/migrations/032_rpc_accept_invite.sql)                                                                                                                                                                                                                                  |
+| Action | Mechanism | Severity |
+| --- | --- | --- |
+| `auth.admin.login.success` | Edge Function (Database Webhook on `auth.sessions` INSERT) | info |
+| `auth.admin.login.failure` | RPC (`rpc_write_auth_failure_event`) | medium |
+| `admin.logout` | Edge Function (Database Webhook on `auth.sessions` DELETE) | info |
+| `auth.admin.password.changed` | Edge Function (`password-changed-notify`) | medium |
+| `auth.admin.password.reset.requested` | Edge Function (`password-reset-email`) | low |
+| `admin.updated` | RPC (`rpc_admin_update_member_profile`) | info |
+| `access.admin.invited` / `.accepted` | RPC (`rpc_accept_invite`) | low |
 
 ### Configuration
 
-| Action                                                    | Mechanism                                                        | Severity | Written by                                                                                                                             |
-| --------------------------------------------------------- | ---------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `organization.status_changed`                             | RPC (`rpc_admin_update_organization`)                            | high     | [src/shared/api/admin/organizations.js](src/shared/api/admin/organizations.js)                                                         |
-| `period.set_current`                                      | RPC (`rpc_admin_set_current_period`)                             | info     | [src/shared/api/admin/periods.js](src/shared/api/admin/periods.js)                                                                     |
-| `period.lock` / `period.unlock`                           | RPC (`rpc_admin_set_period_lock`)                                | high     | [src/shared/api/admin/periods.js](src/shared/api/admin/periods.js)                                                                     |
-| `criteria.save`                                           | RPC (`rpc_admin_save_period_criteria`)                           | medium   | [src/shared/api/admin/periods.js](src/shared/api/admin/periods.js) — diff contains full before/after criteria tree                     |
-| `outcome.created` / `outcome.updated` / `outcome.deleted` | RPC trio (`rpc_admin_{create,update,delete}_period_outcome`)     | info     | [src/shared/api/admin/frameworks.js](src/shared/api/admin/frameworks.js)                                                               |
-| `config.security_policy.*`                                | DB trigger                                                       | medium   | `security_policy` table updates via Security drawers                                                                                   |
-| `application.approved` / `application.rejected`          | RPC (`rpc_admin_review_tenant_application`)                      | medium   | Admin application workflow                                                                                                             |
+Canonical taxonomy is `config.outcome.*`; legacy `outcome.*` aliases are still
+accepted for historical rows and mapped to the same UI labels.
+
+| Action | Mechanism | Severity |
+| --- | --- | --- |
+| `organization.status_changed` | RPC (`rpc_admin_update_organization`) with diff | high |
+| `period.set_current` | RPC (`rpc_admin_set_current_period`) | info |
+| `period.lock` / `period.unlock` | RPC (`rpc_admin_set_period_lock`) | high |
+| `criteria.save` | RPC (`rpc_admin_save_period_criteria`) with diff | medium |
+| `config.outcome.created` / `.updated` / `.deleted` | RPC trio | info |
+| `config.platform_settings.updated` | RPC (`rpc_admin_set_platform_settings`) with diff | medium |
+| `config.backup_schedule.updated` | RPC (`rpc_admin_set_backup_schedule`) with diff | high |
+| `application.approved` / `.rejected` | RPC (`rpc_admin_approve_application` / `rpc_admin_reject_application`) | medium |
+| `security_policy.*` | DB trigger | high |
 
 ### Data
 
-| Action                                                     | Mechanism                                    | Severity | Written by                                                                                                                     |
-| ---------------------------------------------------------- | -------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `data.score.submitted`                                     | RPC (`rpc_jury_finalize_submission`)         | info     | Emitted per project on finalize, with per-criterion `diff` computed by comparing to the previous audit row (migration 051)    |
-| `data.juror.pin.locked` / `.unlocked` / `.reset`           | RPC (juror auth)                             | medium   | [sql/migrations/009_juror_period_auth.sql](sql/migrations/009_juror_period_auth.sql) and successors                            |
-| `data.juror.edit_mode.granted`                             | RPC                                          | info     | [src/shared/api/admin/jurors.js](src/shared/api/admin/jurors.js) via admin grant edit                                          |
-| `data.juror.edit_mode.force_closed`                        | RPC (`rpc_admin_force_close_juror_edit_mode`) | medium   | [src/shared/api/admin/jurors.js](src/shared/api/admin/jurors.js)                                                               |
-| `data.juror.edit_mode.closed` (self)                       | RPC                                          | info     | Juror session close                                                                                                            |
-| `data.score.edit_requested`                                | Edge Function (service role)                 | low      | [supabase/functions/request-score-edit/index.ts](supabase/functions/request-score-edit/index.ts) — juror requests edit mode after submitting scores; `actor_type='juror'` |
-| `evaluation.complete`                                      | RPC (`rpc_jury_finalize_submission`)         | info     | Once per session across all projects                                                                                           |
-| CRUD on tracked tables (`*.insert/update/delete`)          | DB trigger                                   | info     | 14 tables via `trigger_audit_log`                                                                                              |
+Canonical PIN taxonomy is `juror.pin_locked` / `juror.pin_unlocked` /
+`pin.reset`; legacy `data.juror.pin.*` aliases are supported in UI mapping.
+
+| Action | Mechanism | Severity |
+| --- | --- | --- |
+| `data.juror.auth.created` | RPC (`rpc_jury_authenticate`) — first auth per (juror, period) pair | info |
+| `data.score.submitted` | RPC (`rpc_jury_finalize_submission`) with per-criterion diff | info |
+| `data.score.edit_requested` | Edge Function (`request-score-edit`) | low |
+| `juror.pin_locked` / `juror.pin_unlocked` / `pin.reset` | RPC (juror auth) | medium |
+| `data.juror.edit_mode.granted` / `.force_closed` / `.closed` | RPC | info-medium |
+| `evaluation.complete` | RPC (`rpc_jury_finalize_submission`) | info |
+| CRUD on tracked tables (`<table>.insert/update/delete`) | DB trigger | info-medium |
 
 ### Security
 
-| Action                          | Mechanism                                  | Severity | Written by                                                                                                                         |
-| ------------------------------- | ------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `security.entry_token.revoked`  | RPC (`rpc_admin_revoke_entry_token`)       | high     | [src/shared/api/admin/tokens.js](src/shared/api/admin/tokens.js)                                                                   |
-| `token.generate`                | RPC                                        | info     | Entry token generation                                                                                                              |
-| `security.pin_reset.requested`  | Edge Function (service role)               | medium   | [supabase/functions/request-pin-reset/index.ts](supabase/functions/request-pin-reset/index.ts) — locked juror requests PIN reset; `actor_type='juror'` |
-| `security.anomaly.detected`     | Edge Function (cron)                       | high   | [supabase/functions/audit-anomaly-sweep/index.ts](supabase/functions/audit-anomaly-sweep/index.ts) — runs hourly via Supabase scheduler; rules: `ip_multi_org` (≥2 distinct orgs from same IP), `pin_flood` (≥10 pin_locked/org/hour), `login_failure_burst` (≥5 failures/org/hour). `actor_type='system'`, `user_id=null`. UI anomaly banner in `AuditLogPage.jsx` provides instant local feedback but no longer writes to DB. |
-| `snapshot.freeze`               | RPC                                        | info     | Period freeze                                                                                                                       |
-| `backup.*`                      | RPC (`rpc_platform_backups_*`)             | info     | Platform backup flows ([sql/migrations/036_platform_backups_rpcs.sql](sql/migrations/036_platform_backups_rpcs.sql))                |
+| Action | Mechanism | Severity |
+| --- | --- | --- |
+| `security.entry_token.revoked` | RPC (`rpc_admin_revoke_entry_token`) | high |
+| `token.generate` | RPC | info |
+| `security.pin_reset.requested` | Edge Function (`request-pin-reset`) | medium |
+| `security.anomaly.detected` | Edge Function cron (`audit-anomaly-sweep`) | high |
+| `security.chain.broken` | Edge Function cron (auto chain verify) | critical |
+| `backup.*` | RPC (`rpc_platform_backups_*`) | info |
+| `maintenance.set` / `maintenance.cancelled` | RPC (`rpc_admin_set_maintenance` / `rpc_admin_cancel_maintenance`) | high / medium |
+| `access.admin.session.revoked` | RPC (`rpc_admin_revoke_admin_session`) | high |
 
-### Notifications (all Edge Function–written)
+### Notifications (all Edge Function server-side)
 
-| Action                      | Edge Function                                                                | Severity | Recipient                                                   |
-| --------------------------- | ---------------------------------------------------------------------------- | -------- | ----------------------------------------------------------- |
-| `notification.entry_token`  | [send-entry-token-email](supabase/functions/send-entry-token-email/index.ts) | low      | Juror (entry token email)                                   |
-| `notification.juror_pin`    | [send-juror-pin-email](supabase/functions/send-juror-pin-email/index.ts)     | low      | Juror (PIN email)                                           |
-| `notification.export_report` | [send-export-report](supabase/functions/send-export-report/index.ts)         | low      | Admin-specified list (exported report attachment)           |
-| `notification.admin_invite` | [invite-org-admin](supabase/functions/invite-org-admin/index.ts)             | low      | Invited admin                                               |
-| `notification.application`  | [notify-application](supabase/functions/notify-application/index.ts)         | info     | Applicant (approval/rejection) or tenant admins (submitted) |
-| `notification.maintenance`  | [notify-maintenance](supabase/functions/notify-maintenance/index.ts)         | medium   | All active jurors in a period (maintenance / scheduled downtime notice) |
+| Action | Edge Function |
+| --- | --- |
+| `notification.entry_token` | `send-entry-token-email` |
+| `notification.juror_pin` | `send-juror-pin-email` |
+| `notification.export_report` | `send-export-report` |
+| `notification.admin_invite` | `invite-org-admin` |
+| `notification.application` | `notify-application` |
+| `notification.maintenance` | `notify-maintenance` |
 
-Every notification row carries the actual recipients, CC count, send result,
-and any Resend error in `details`, so a single audit query tells you both
-*what email was attempted* and *whether it landed*.
+Every notification row carries recipients, send result, and any error in
+`details`.
 
-### Exports
+### Exports (all server-side via `log-export-event` Edge Function)
 
-All export events are written server-side via the `log-export-event` Edge
-Function. The client calls the Edge Function before generating the file; if
-the audit write fails, the export aborts. `ip_address` and `user_agent` are
-captured server-side.
+| Action | Severity |
+| --- | --- |
+| `export.scores` / `export.rankings` / `export.heatmap` | info |
+| `export.analytics` / `export.audit` / `export.projects` / `export.jurors` / `export.backup` | info |
 
-| Action              | Written by                                                                                                                                                    | Severity |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `export.scores`     | [supabase/functions/log-export-event/index.ts](supabase/functions/log-export-event/index.ts) — called from [src/shared/api/admin/export.js](src/shared/api/admin/export.js) | info |
-| `export.rankings`   | Same Edge Function                                                                                                                                             | info     |
-| `export.heatmap`    | Same Edge Function                                                                                                                                             | info     |
-| `export.analytics`  | Same Edge Function                                                                                                                                             | info     |
-| `export.audit`      | Same Edge Function                                                                                                                                             | info     |
-| `export.backup`     | Same Edge Function                                                                                                                                             | info     |
+Export audit write happens before file generation. If the audit write fails,
+the export aborts (no file without a log).
+Export details use one schema across all export types:
+`format`, `row_count`, `period_name`, `project_count`, `juror_count`, `filters`.
 
 ---
 
-## Category, Severity & Actor Taxonomy
+## Anomaly Detection
 
-```text
-category   ∈ { auth, access, data, config, security }
-severity   ∈ { info, low, medium, high, critical }
-actor_type ∈ { admin, juror, system, anonymous }
-```
+### Server-side (persistent)
 
-- **auth** — login, logout, password events, failed logins
-- **access** — invite, accept, membership changes
-- **data** — evaluations, scores, juror sessions, CRUD on business tables
-- **config** — period state, criteria, outcomes, organization status, security policy
-- **security** — token revocation, anomaly detection, backups
+The `audit-anomaly-sweep` Edge Function runs hourly via cron. It scans the last
+60 minutes and writes `security.anomaly.detected` rows (with 2h dedup window).
 
-Severity reflects how loudly a monitoring system should react. In the UI
-[src/admin/utils/auditUtils.js](src/admin/utils/auditUtils.js) assigns a
-numeric weight (info=0, low=1, medium=2, high=3, critical=4) that drives the
-severity filter dropdown.
+| Rule | Condition | Threshold |
+| --- | --- | --- |
+| `ip_multi_org` | Same IP across distinct orgs | >= 2 orgs |
+| `pin_flood` | `juror.pin_locked` events per org | >= 10 |
+| `login_failure_burst` | `auth.admin.login.failure` per org | >= 5 |
+| `org_suspended` | `organization.status_changed` with `newStatus=suspended` | >= 1 |
+| `token_revoke_burst` | `security.entry_token.revoked` per org | >= 2 |
+| `export_burst` | `export.*` events per org | >= 5 |
 
-Actor type controls how `actor_name` is resolved:
+Each sweep also runs `_audit_verify_chain_internal(null)` (service_role-only helper,
+no auth check). Broken links write a `security.chain.broken` row (severity=critical).
 
-- **admin** — looked up from `profiles.display_name` at write time by the
-  trigger, or embedded directly by the RPC
-- **juror** — embedded in `details.actor_name` by the juror-side RPC
-- **system** — no authenticated session (cron jobs, backend triggers)
-- **anonymous** — unauthenticated callers (failed login, public password
-  reset request, public application submission)
+### Client-side (UI feedback only)
+
+`detectAnomalies()` in `src/admin/utils/auditUtils.js` runs 6 rules on loaded
+logs and shows an instant banner in the Audit Log page. These do not persist to
+the database -- they are visual alerts only. The server-side cron is the
+authoritative anomaly writer.
 
 ---
 
-## Diff Format
+## Tamper Evidence
 
-For update events, `diff` is:
+Three layers protect audit integrity:
 
-```json
-{
-  "before": { "key1": "old_value", "key2": "old_value" },
-  "after":  { "key1": "new_value", "key2": "new_value" }
-}
-```
-
-**Only changed keys appear.** If `name` stayed the same but `status` changed,
-only `status` is in both sides. This keeps diffs compact and makes the UI's
-"Changes" tab readable.
-
-**Trigger-level diffs** (14 tables) are computed by
-[sql/migrations/045_audit_trigger_diff.sql](sql/migrations/045_audit_trigger_diff.sql)
-using `jsonb_diff_map()` on OLD vs NEW.
-
-**RPC-level diffs** are computed inside the RPC itself:
-
-- `organization.status_changed` — `diff.before.status` vs `diff.after.status`
-- `criteria.save` — full before/after criteria tree (id, label, weight, rubric)
-- `data.score.submitted` — per-criterion diff computed by reading the most
-  recent `data.score.submitted` audit row for the same project/juror and
-  comparing its `details.scores` map (migration 051). On first submission,
-  `before` is null and only `after` is populated.
-
----
-
-## IP, User Agent & Actor Name
-
-**IP and user agent** are resolved automatically in three paths:
-
-1. **PostgREST RPC path.** The proxy sets the `request.headers` GUC before
-   every request. The trigger and all RPCs read it via
-   `current_setting('request.headers', true)` and extract `x-forwarded-for`
-   and `user-agent`. No API or RPC has to pass them manually. See
-   [sql/migrations/049_audit_ip_ua_self_extract.sql](sql/migrations/049_audit_ip_ua_self_extract.sql).
-2. **Edge Function path.** `writeEdgeAuditLog(req, input)` extracts them from
-   `x-forwarded-for` and `user-agent` on the incoming `Request`. See
-   [supabase/functions/_shared/audit-log.ts](supabase/functions/_shared/audit-log.ts).
-3. **Blocking client write path.** The generic
-   `rpc_admin_write_audit_event` receives the GUC-set headers transparently —
-   no extra work required.
-
-**Actor name** is a snapshot. Triggers resolve it at write time by joining
-`profiles` for `actor_type='admin'`. RPCs embed the caller's display name
-directly. Jurors get their name from `details.actor_name`, supplied by the
-juror auth RPC chain.
-
----
-
-## Querying the Audit Log
-
-All admin queries go through [src/shared/api/admin/audit.js](src/shared/api/admin/audit.js)
-and ultimately `rpc_admin_list_audit_logs(...)`. The RPC is org-scoped: a
-tenant admin only sees their own org; a super admin sees everything.
-
-### Common recipes
-
-**"Who locked this period?"**
-
-```sql
-SELECT created_at, actor_name, ip_address, details
-  FROM audit_logs
- WHERE action = 'period.lock'
-   AND resource_id = :period_id
- ORDER BY created_at DESC;
-```
-
-**"Show all score re-submissions for this juror, with the criteria they
-actually changed."**
-
-```sql
-SELECT created_at, resource_id AS project_id,
-       diff -> 'before' AS previous_scores,
-       diff -> 'after'  AS new_scores
-  FROM audit_logs
- WHERE action = 'data.score.submitted'
-   AND (details ->> 'juror_id')::uuid = :juror_id
-   AND diff -> 'before' IS NOT NULL
- ORDER BY created_at DESC;
-```
-
-**"Which notifications failed to send today?"**
-
-```sql
-SELECT action, resource_id,
-       details ->> 'error' AS error,
-       details -> 'recipients' AS recipients
-  FROM audit_logs
- WHERE category = 'security'
-   AND action LIKE 'notification.%'
-   AND (details ->> 'sent')::boolean = false
-   AND created_at > now() - interval '24 hours';
-```
-
-**"All high-severity events for an organization in the last week"**
-
-```sql
-SELECT created_at, actor_name, action, severity, resource_type
-  FROM audit_logs
- WHERE organization_id = :org_id
-   AND severity IN ('high','critical')
-   AND created_at > now() - interval '7 days'
- ORDER BY created_at DESC;
-```
-
-### UI
-
-[src/admin/pages/AuditLogPage.jsx](src/admin/pages/AuditLogPage.jsx) provides
-cursor-paginated filtering by category, severity, action, resource type,
-actor, and date range. Each row opens an
-[AuditEventDrawer](src/admin/drawers/AuditEventDrawer.jsx) with three tabs:
-
-- **Summary** — who, what, when, IP
-- **Changes** — renders `diff` side-by-side
-- **Raw** — full JSON payload
-
-All event labels, narratives, and icons come from a single EVENT_META map in
-[src/admin/utils/auditUtils.js](src/admin/utils/auditUtils.js). If you add an
-event to the catalog, that map is the only place the UI needs to learn about it.
-
----
-
-## Adding a New Audited Event
-
-There is no flowchart — just pick the mechanism that matches where the
-operation actually happens.
-
-1. **Is it a database write?** → Either:
-   - Rely on the trigger (if the table is already tracked), *and* add an
-     EVENT_META entry for the `<table>.insert|update|delete` action, OR
-   - Write a new SECURITY DEFINER RPC that does the update and calls
-     `_audit_write(...)` inside the same transaction
-     ([sql/migrations/050_audit_premium_rpcs.sql](sql/migrations/050_audit_premium_rpcs.sql)
-     is the reference).
-
-2. **Is it an email send or other server-side work?** → Add the audit write
-   inside the Edge Function, right after the primary work succeeds, using
-   `writeEdgeAuditLog(req, { action, ... })` from
-   [supabase/functions/_shared/audit-log.ts](supabase/functions/_shared/audit-log.ts).
-
-3. **Is it a pure client action (like a file export)?** → Use
-   `logExportInitiated({ action, ... })` from
-   [src/shared/api/admin/export.js](src/shared/api/admin/export.js). This
-   `await`s and throws on failure, so the export aborts if the audit fails.
-
-4. **Add the event to EVENT_META** ([src/admin/utils/auditUtils.js](src/admin/utils/auditUtils.js))
-   with `label`, `narrative`, `category`, `severity`, `actor_type`, and `icon`.
-
-5. **Write a verification query** — pick the action, perform the action in
-   the UI, then run `SELECT * FROM audit_logs WHERE action = '<new>' ORDER BY
-   created_at DESC LIMIT 1` to confirm the row exists and the payload matches.
-
-**Do not** add `writeAuditLog(...).catch(...)` anywhere. The fire-and-forget
-pattern is banned (see [Migration Timeline](#migration-timeline)).
-
----
-
-## What is Not Audited (Conscious Exclusions)
-
-These gaps are deliberate and tracked here so they don't silently persist:
-
-| Gap                                        | Reason                                                                                                                                             | Path to fix                                                        |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Score sheet item-level trigger diff        | Would emit a row per blur/save during normal evaluation — noise. The semantic `data.score.submitted` event already carries a per-criterion diff.   | No action; covered by RPC-level diff (migration 051).              |
-| ~~Anomaly detection as a cron job~~        | **Resolved.** `audit-anomaly-sweep` Edge Function runs hourly via Supabase scheduler. Client-side detection in `AuditLogPage.jsx` kept for instant UI feedback only. | —                                                         |
-| Historical rows pre-migration 048/049      | Early rows have `actor_name`, `ip_address`, `user_agent` = NULL.                                                                                    | Backfill script not planned; UI renders "(unknown)" gracefully.    |
-| `access.admin.impersonate.*`               | Impersonation feature does not exist yet.                                                                                                          | Will be added alongside the feature.                               |
-| `auth.admin.session.expired`               | Supabase Auth does not expose a session-expiry event.                                                                                               | Would require polling or custom session monitor; low priority.     |
-
----
-
-## Migration Timeline
-
-Every change to the audit system ships as a SQL migration. Apply in order to
-both `vera-prod` and `vera-demo`.
-
-| Migration                                                                                                   | Date    | Change                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
-| [008_audit_logs.sql](sql/migrations/008_audit_logs.sql)                                                     | 2026-01 | Initial `audit_logs` table + base triggers                                                                              |
-| [043_audit_taxonomy.sql](sql/migrations/043_audit_taxonomy.sql)                                             | 2026-03 | Dotted action taxonomy + category/severity columns                                                                      |
-| [045_audit_trigger_diff.sql](sql/migrations/045_audit_trigger_diff.sql)                                     | 2026-03 | Trigger-level `{before, after}` diff for 14 tables                                                                      |
-| [046_audit_rpc_hardening.sql](sql/migrations/046_audit_rpc_hardening.sql)                                   | 2026-03 | SECURITY DEFINER RPC hardening, `_assert_org_admin` guard                                                               |
-| [047_audit_anon_auth_failure.sql](sql/migrations/047_audit_anon_auth_failure.sql)                           | 2026-03 | `rpc_write_auth_failure_event` for anonymous login failures                                                             |
-| [048_audit_actor_name_and_score_submitted.sql](sql/migrations/048_audit_actor_name_and_score_submitted.sql) | 2026-04 | `actor_name` snapshot column; per-project `data.score.submitted` emission                                                |
-| [049_audit_ip_ua_self_extract.sql](sql/migrations/049_audit_ip_ua_self_extract.sql)                         | 2026-04 | IP + user-agent extracted from `request.headers` GUC in RPCs and triggers                                                |
-| [050_audit_premium_rpcs.sql](sql/migrations/050_audit_premium_rpcs.sql)                                     | 2026-04 | **Premium SaaS overhaul** — 10 new SECURITY DEFINER RPCs replace every fire-and-forget client audit write                |
-| [051_audit_score_criterion_diff.sql](sql/migrations/051_audit_score_criterion_diff.sql)                     | 2026-04 | Per-criterion `{before, after}` diff in `rpc_jury_finalize_submission`, computed by self-comparison of audit history     |
-| [052_audit_taxonomy_sync.sql](sql/migrations/052_audit_taxonomy_sync.sql)                                   | 2026-04 | `rpc_admin_write_audit_event` category/severity/actor_type taxonomy sync across all actions                              |
-| [053_audit_no_delete.sql](sql/migrations/053_audit_no_delete.sql)                                           | 2026-04 | Hard-delete RLS: `FOR DELETE USING (false)` on `audit_logs` — even superadmin cannot delete rows                         |
-| [054_audit_hash_chain.sql](sql/migrations/054_audit_hash_chain.sql)                                         | 2026-04 | `row_hash TEXT` column + BEFORE INSERT trigger computing `sha256(id \|\| action \|\| org_id \|\| created_at \|\| prev_hash)`; `rpc_admin_verify_audit_chain` RPC |
-| [055_audit_anomaly_cron.sql](sql/migrations/055_audit_anomaly_cron.sql)                                     | 2026-04 | `pg_cron` schedule template for `audit-anomaly-sweep` Edge Function (hourly)                                             |
-| [056_audit_actor_type_fix.sql](sql/migrations/056_audit_actor_type_fix.sql)                                 | 2026-04 | Fix: `security.anomaly.detected` added to 'system' actor_type CASE and 'high' severity CASE in `rpc_admin_write_audit_event` |
-
-### What migration 050 actually did
-
-Before 050, these actions existed as `writeAuditLog(...).catch(console.warn)`
-calls from the client after a separate `.update()`:
-
-- `period.set_current`, `period.lock`, `period.unlock`
-- `criteria.save`, `outcome.created`, `outcome.updated`, `outcome.deleted`
-- `organization.status_changed`, `admin.updated`
-- `security.entry_token.revoked`
-- `data.juror.edit_mode.force_closed` (audit was missing entirely)
-
-Migration 050 introduces 10 RPCs that perform the update **and** the audit
-write in one transaction. The client now calls the RPC, and if the
-transaction commits, the audit row is guaranteed to exist. No `.catch()` can
-swallow it.
-
-### What migration 051 actually did
-
-Before 051, `data.score.submitted` recorded "submission happened" with the
-current score map in `details.scores` but no diff. After 051, the RPC looks
-at the most recent previous `data.score.submitted` row for the same
-project + juror, computes a per-criterion diff of the scores, and writes it
-into the `diff` column. First submissions have `before = null, after = {...}`.
-Resubmissions carry only the actually-changed criteria on each side.
+1. **Hash chain.** Each row's `row_hash` = `sha256(id || action || org_id ||
+   created_at || prev_hash)`. Verified by `rpc_admin_verify_audit_chain` (UI
+   button for super-admins + automatic check in every anomaly sweep).
+2. **Append-only RLS.** `FOR DELETE USING (false)` prevents any deletion.
+3. **External log sink.** Every `audit_logs` INSERT is forwarded via the
+   `audit-log-sink` Edge Function (Database Webhook) to an external
+   observability platform (Axiom `vera-audit-logs` dataset). Offsite copy
+   independent of the Supabase DB.
 
 ---
 
 ## Verification Checklist
 
-Run this smoke test after any audit-related change. Every step must produce
-a new row visible in the UI and in a raw SQL query against `audit_logs`.
+After any audit-related change, verify these produce visible rows:
 
-### DB operations
+**DB operations:**
 
-- Set a period as current → `period.set_current`
-- Toggle period lock → `period.lock` / `period.unlock`
-- Save criteria from the Periods drawer → `criteria.save` (with diff)
-- Create / rename / delete an outcome → `outcome.created` / `.updated` / `.deleted`
-- Change an organization's status → `organization.status_changed` (with diff)
-- Rename an admin via Organizations → `admin.updated`
-- Revoke an entry token → `security.entry_token.revoked`
-- Force-close juror edit mode → `data.juror.edit_mode.force_closed`
-- Submit a new jury session → `data.score.submitted` with `diff.after` only
-- Re-submit one changed criterion → `data.score.submitted` with both
-  `diff.before` and `diff.after` on that one key
+- Set a period as current -> `period.set_current`
+- Toggle period lock -> `period.lock` / `period.unlock`
+- Save criteria -> `criteria.save` (with diff)
+- Create/update/delete an outcome -> `config.outcome.created` / `.updated` / `.deleted`
+- Update platform settings -> `config.platform_settings.updated`
+- Update backup schedule -> `config.backup_schedule.updated`
+- Revoke an admin session -> `access.admin.session.revoked`
+- Change organization status -> `organization.status_changed` (with diff)
+- Update admin profile -> `admin.updated`
+- Revoke entry token -> `security.entry_token.revoked`
+- Force-close juror edit mode -> `data.juror.edit_mode.force_closed`
+- Submit jury scores -> `data.score.submitted` (with diff)
+- Update security policy -> `security_policy.update` (with diff, actor_type=admin)
 
-### Email notifications
+**Auth:**
 
-- Send entry-token email → `notification.entry_token`
-- Send juror PIN email → `notification.juror_pin`
-- Send export report email → `notification.export_report`
-- Invite a new admin → `notification.admin_invite`
-- Submit a tenant application → `notification.application` (submitted)
-- Approve the application → `notification.application` (approved) + `application.approved`
-- Reject the application → `notification.application` (rejected) + `application.rejected`
-- Change password → `auth.admin.password.changed`
-- Request password reset → `auth.admin.password.reset.requested`
-- Send maintenance notice → `notification.maintenance`
-- Locked juror requests PIN reset → `security.pin_reset.requested` (`actor_type='juror'`)
-- Juror requests score edit after submission → `data.score.edit_requested` (`actor_type='juror'`)
+- Log in -> `auth.admin.login.success`
+- Fail to log in -> `auth.admin.login.failure`
+- Log out -> `admin.logout`
 
-### Auth
+**Exports:**
 
-- Log in → `auth.admin.login.success`
-- Fail to log in → `auth.admin.login.failure`
-- Log out → `admin.logout`
+- Any export type -> `export.<type>` (server-side, blocks on failure)
 
-### Exports
-
-- Rankings → `export.rankings`
-- Scores → `export.scores`
-- Heatmap → `export.heatmap`
-- Analytics → `export.analytics`
-- Audit log → `export.audit`
-- Backup → `export.backup`
-
-### Forensics
-
-For a recent row, verify:
+**Forensics (for any recent row):**
 
 - `actor_name` is populated (not NULL)
-- `ip_address` is populated (PostgREST path via GUC; Edge Function path via request headers)
+- `actor_type` is `'admin'` for user-initiated actions (not `'system'`)
+- `ip_address` is populated
 - `user_agent` is populated
-- `diff` is populated for update-type events
-
-### Grep guard
-
-The ONLY allowed call sites for `writeAuditLog(`:
-
-- `src/shared/api/admin/audit.js` (definition)
-- `src/auth/AuthProvider.jsx` (password-change safety net — one blocking write)
-
-```bash
-grep -rn "writeAuditLog(" src/
-```
-
-Anything else means a fire-and-forget leak has reappeared — fix it before merging.
-
-### Chain integrity
-
-Super-admins can verify the `row_hash` chain from the Audit Log toolbar:
-
-```sql
-SELECT rpc_admin_verify_audit_chain('<org-id>');
--- Returns { broken_links: [] } if intact, or timestamps of broken links.
-```
-
-The UI "Verify Integrity" button (visible only when `isSuper = true`) calls
-`verifyAuditChain(orgId)` from [src/shared/api/admin/audit.js](src/shared/api/admin/audit.js)
-and toasts the result.
+- `diff` is populated for update events
 
 ---
 
-Last updated: 2026-04-12 (migrations 052–056 — taxonomy sync, hard-delete RLS, hash chain tamper evidence, anomaly cron, actor_type fix; auth events moved to `on-auth-event` Database Webhook; exports moved to `log-export-event` Edge Function; `audit-anomaly-sweep` cron deployed with 3 rules; client-side anomaly DB write removed — cron is now the sole writer of `security.anomaly.detected`; `verifyAuditChain` API + Verify Integrity button added for super-admins).
+## Audit Query Reference
+
+A human-readable map from investigative questions to the exact audit events that
+answer them. All rows are in `audit_logs`; filter by `action` and optionally
+`actor_type`, `resource_id`, or `details`.
+
+### Juror Activity
+
+| Question | Action(s) to query | Key `details` fields |
+| --- | --- | --- |
+| When did a juror start their evaluation? | `data.juror.auth.created` | `juror_id`, `period_id` |
+| When did a juror finish (submit) their evaluation? | `evaluation.complete` | `juror_id`, `period_id`, `correlation_id` |
+| Did a juror lock their PIN? When? | `juror.pin_locked` | `juror_id`, `attempt_count` |
+| When was a PIN reset performed? | `pin.reset` + `security.pin_reset.requested` | `juror_id`, `reset_by` (admin actor) |
+| Did a juror request an edit after submission? | `data.score.edit_requested` | `juror_id`, `project_id`, `reason` |
+| Was a juror's edit mode granted or force-closed by an admin? | `data.juror.edit_mode.granted` / `.force_closed` / `.closed` | `juror_id`, `granted_by` |
+
+**Tip:** Use `correlation_id` to reconstruct a complete submission session —
+`evaluation.complete`, all `data.score.submitted` rows, and
+`juror.edit_mode_closed_on_resubmit` share the same `correlation_id`.
+
+---
+
+### Admin — Data Management
+
+| Question | Action(s) to query | Notes |
+| --- | --- | --- |
+| Did admin add / edit / delete a juror? | `jurors.insert` / `jurors.update` / `jurors.delete` | DB trigger; `diff` carries before/after |
+| Did admin add / edit / delete a project? | `projects.insert` / `projects.update` / `projects.delete` | DB trigger |
+| Did admin add / edit / delete an evaluation period? | `periods.insert` / `periods.update` / `periods.delete` | DB trigger |
+| Did admin lock or unlock a period? | `period.lock` / `period.unlock` | RPC; severity=high |
+| Did admin change criteria weights or rubric bands? | `criteria.save` | RPC; `diff` shows changed weights |
+
+---
+
+### Admin — Exports and Notifications
+
+| Question | Action(s) to query | Key `details` fields |
+| --- | --- | --- |
+| What did admin export and when? | `export.scores` / `export.rankings` / `export.heatmap` / `export.analytics` / `export.audit` / `export.projects` / `export.jurors` / `export.backup` | `format`, `row_count`, `period_name`, `filters` |
+| Who did admin email an export to? | `notification.export_report` | `recipients`, `send_result`, `export_type` |
+| When were juror PINs sent by email? | `notification.juror_pin` | `recipients`, `juror_id` |
+| When was an entry token emailed? | `notification.entry_token` | `recipients`, `token_id`, `period_id` |
+
+---
+
+### Admin — QR Codes / Entry Tokens
+
+| Question | Action(s) to query | Key `details` fields |
+| --- | --- | --- |
+| When did admin generate an entry token (QR code)? | `token.generate` or `entry_tokens.insert` (DB trigger) | `token_id`, `period_id`, `expires_at` |
+| When did admin revoke an entry token? | `security.entry_token.revoked` | `token_id`, `period_id`; severity=high |
+
+---
+
+### Admin — PIN Management
+
+| Question | Action(s) to query | Key `details` fields |
+| --- | --- | --- |
+| Whose PIN block did admin remove? When? | `juror.pin_unlocked` | `juror_id`, `juror_name`; `actor_type='admin'` |
+| When was a PIN reset requested by admin? | `security.pin_reset.requested` | `juror_id`, `requested_by` |
+
+---
+
+### Admin — Organization / Access Management
+
+| Question | Action(s) to query | Key `details` fields |
+| --- | --- | --- |
+| When did admin approve an organization application? | `application.approved` | `org_id`, `applicant_name` |
+| When did admin reject an organization application? | `application.rejected` | `org_id`, `reason` |
+| When did admin change an organization's status (suspend/activate)? | `organization.status_changed` | `diff` carries `before`/`after` status; severity=high |
+| When was an admin invited to an organization? | `access.admin.invited` | `invitee_email`, `org_id` |
+| When did an invited admin accept their invitation? | `access.admin.accepted` | `invitee_id`, `org_id` |
+| When did admin revoke another admin's session? | `access.admin.session.revoked` | `revoked_user_id`, `session_id` |
+
+---
+
+## Conscious Exclusions
+
+| Gap | Reason | Status |
+| --- | --- | --- |
+| `score_sheet_items` trigger | Would emit a row per blur/save during evaluation. `data.score.submitted` carries per-criterion diff on finalize. | By design |
+| `juror_period_auth` trigger | PIN auth state managed by RPCs that write semantic events (`data.juror.auth.created`, `juror.pin_locked`, etc.). | Covered by RPCs |
+| `auth.admin.session.expired` | Supabase Auth has no session-expiry event. | Would need polling |
+| `access.admin.impersonate.*` | Impersonation feature does not exist. | Will add with feature |
+| Historical rows (pre-migration 048) | `actor_name`, `ip_address`, `user_agent` are NULL. | UI shows "(unknown)" |
+
+---
+
+Last updated: 2026-04-12

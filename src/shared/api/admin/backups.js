@@ -4,7 +4,7 @@
 // are moved via the client-side Storage SDK.
 
 import { supabase } from "../../lib/supabaseClient";
-import { fullExport } from "./export.js";
+import { fullExport, logExportInitiated } from "./export.js";
 
 const BUCKET = "backups";
 
@@ -39,6 +39,21 @@ export async function listBackups(organizationId) {
  * @returns {Promise<{ id: string, path: string }>}
  */
 export async function createBackup(organizationId) {
+  await logExportInitiated({
+    action: "export.backup",
+    organizationId,
+    resourceType: "platform_backups",
+    resourceId: null,
+    details: {
+      format: "json",
+      row_count: null,
+      period_name: null,
+      project_count: null,
+      juror_count: null,
+      filters: { origin: "manual" },
+    },
+  });
+
   const payload = await fullExport(organizationId);
 
   const rowCounts = {

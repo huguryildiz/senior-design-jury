@@ -60,18 +60,17 @@ describe("ViewSessionsDrawer", () => {
 });
 
 describe("deleteAdminSession", () => {
-  it("calls supabase delete with correct id", async () => {
-    const mockEq = vi.fn().mockResolvedValue({ error: null });
-    const mockDelete = vi.fn(() => ({ eq: mockEq }));
-    const mockFrom = vi.fn(() => ({ delete: mockDelete }));
+  it("calls revoke session RPC with correct id", async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
 
     const { supabase } = await import("../../shared/lib/supabaseClient");
-    supabase.from = mockFrom;
+    supabase.rpc = mockRpc;
 
     const { deleteAdminSession } = await import("../../shared/api/admin/sessions");
     await deleteAdminSession("test-uuid-123");
 
-    expect(mockFrom).toHaveBeenCalledWith("admin_user_sessions");
-    expect(mockEq).toHaveBeenCalledWith("id", "test-uuid-123");
+    expect(mockRpc).toHaveBeenCalledWith("rpc_admin_revoke_admin_session", {
+      p_session_id: "test-uuid-123",
+    });
   });
 });

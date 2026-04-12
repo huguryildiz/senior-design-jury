@@ -14,10 +14,10 @@ import { KEYS } from "@/shared/storage";
 
 export function useJurorIdentity() {
   const [juryName, setJuryName] = useState(() => {
-    try { return localStorage.getItem(KEYS.JURY_JUROR_NAME) || sessionStorage.getItem(KEYS.JURY_JUROR_NAME) || ""; } catch { return ""; }
+    try { return localStorage.getItem(KEYS.JURY_JUROR_NAME) || ""; } catch { return ""; }
   });
   const [affiliation, setAffiliation] = useState(() => {
-    try { return localStorage.getItem(KEYS.JURY_AFFILIATION) || sessionStorage.getItem(KEYS.JURY_AFFILIATION) || ""; } catch { return ""; }
+    try { return localStorage.getItem(KEYS.JURY_AFFILIATION) || ""; } catch { return ""; }
   });
   const [jurorEmail, setJurorEmail] = useState("");
   const [authError, setAuthError] = useState("");

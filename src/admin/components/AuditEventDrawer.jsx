@@ -20,7 +20,7 @@ const TRIGGER_CRUD = /^\w+\.(insert|update|delete)$/;
 function buildDetailRows(log) {
   const d = log.details || {};
   const rows = [];
-  if (d.periodName)                          rows.push({ key: "Period",    value: d.periodName });
+  if (d.period_name || d.periodName)         rows.push({ key: "Period",    value: d.period_name || d.periodName });
   // Use actor_name column first (migration 043+), fall back to details
   const jurorName = log.actor_name || d.juror_name || (log.actor_type === "juror" ? d.actor_name : null);
   if (jurorName && log.actor_type === "juror")         rows.push({ key: "Juror",     value: jurorName });
@@ -29,9 +29,12 @@ function buildDetailRows(log) {
   if (d.recipientEmail)                      rows.push({ key: "Recipient", value: d.recipientEmail });
   if (d.format) {
     const parts = [d.format.toUpperCase()];
-    if (d.rowCount     != null) parts.push(`${d.rowCount} rows`);
-    if (d.jurorCount   != null) parts.push(`${d.jurorCount} jurors`);
-    if (d.projectCount != null) parts.push(`${d.projectCount} projects`);
+    const rowCount = d.row_count ?? d.rowCount;
+    const jurorCount = d.juror_count ?? d.jurorCount;
+    const projectCount = d.project_count ?? d.projectCount;
+    if (rowCount != null) parts.push(`${rowCount} rows`);
+    if (jurorCount != null) parts.push(`${jurorCount} jurors`);
+    if (projectCount != null) parts.push(`${projectCount} projects`);
     rows.push({ key: "Export", value: parts.join(" · ") });
   }
   if (d.fileName) {

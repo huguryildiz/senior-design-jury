@@ -448,6 +448,15 @@ export default function RankingsPage() {
           format: exportFormat,
           period_name: periodName || null,
           row_count: filteredRows.length,
+          project_count: filteredRows.length,
+          juror_count: null,
+          filters: {
+            search: searchText || null,
+            consensus: consensusFilter,
+            criterion: criterionFilter,
+            min_avg: minAvg !== "" ? Number(minAvg) : null,
+            max_avg: maxAvg !== "" ? Number(maxAvg) : null,
+          },
         },
       });
 

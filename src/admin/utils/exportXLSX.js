@@ -63,19 +63,50 @@ export function buildExportFilename(type, periodName, ext = "xlsx", tenantCode =
 export async function exportAuditLogsXLSX(rows, { filters = {}, search = "", tenantCode = "" } = {}) {
   const { getActorInfo, formatActionLabel } = await import("./auditUtils");
   const XLSX = await import("xlsx-js-style");
-  const headers = ["Timestamp", "Actor", "Role", "Action", "Resource Type"];
+  const serialize = (v) => {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    try { return JSON.stringify(v); } catch { return String(v); }
+  };
+  const headers = [
+    "Timestamp",
+    "Action",
+    "Action Label",
+    "Category",
+    "Severity",
+    "Actor Type",
+    "Actor Name",
+    "Organization ID",
+    "Resource Type",
+    "Resource ID",
+    "IP Address",
+    "User Agent",
+    "Correlation ID",
+    "Details",
+    "Diff",
+  ];
   const data = (rows || []).map((r) => {
     const actor = getActorInfo(r);
     return [
       formatExportTimestamp(r.created_at),
-      actor.name,
-      actor.role,
+      r.action || "",
       formatActionLabel(r.action),
+      r.category || "",
+      r.severity || "",
+      r.actor_type || actor.type || "",
+      actor.name || r.actor_name || "",
+      r.organization_id || "",
       r.resource_type ?? "",
+      r.resource_id ?? "",
+      r.ip_address ?? "",
+      r.user_agent ?? "",
+      r.correlation_id ?? "",
+      serialize(r.details),
+      serialize(r.diff),
     ];
   });
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  ws["!cols"] = [22, 28, 18, 36, 20].map((w) => ({ wch: w }));
+  ws["!cols"] = [22, 24, 26, 12, 10, 11, 20, 18, 16, 18, 15, 44, 20, 46, 46].map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Audit Log");
   XLSX.writeFile(wb, buildAuditExportFilename(filters, search, tenantCode));

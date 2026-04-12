@@ -178,7 +178,7 @@ export default function ProgressStep({ state, onBack }) {
 
         {isResume && (
           <div style={{ textAlign: "center", marginTop: 12 }}>
-            <a className="form-link" onClick={onBack} style={{ cursor: "pointer" }}>← Start Fresh</a>
+            <a className="form-link" onClick={() => state.resetAll?.()} style={{ cursor: "pointer" }}>← Start Fresh</a>
           </div>
         )}
       </div>

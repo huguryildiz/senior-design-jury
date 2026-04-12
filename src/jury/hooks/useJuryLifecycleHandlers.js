@@ -27,7 +27,7 @@ import {
   makeAllTouched,
 } from "../utils/scoreState";
 import { buildScoreSnapshot, isPeriodLockedError, isSessionExpiredError } from "../utils/scoreSnapshot";
-import { getJurySessionKeys, clearJurySession } from "../../shared/storage";
+import { clearJurySession } from "../../shared/storage";
 
 export function useJuryLifecycleHandlers({ identity, session, scoring, loading, workflow, editState, autosave, stateRef, effectiveCriteria, setSubmitError }) {
   // ── Group navigation with guaranteed write ─────────────────
@@ -248,11 +248,8 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
     clearJurySession();
   }, []);
 
-  // ── Clear localStorage + sessionStorage ───────────────────
+  // ── Clear all persisted jury session data ──────────────────
   const clearLocalSession = useCallback(() => {
-    try {
-      Object.values(getJurySessionKeys()).forEach((k) => localStorage.removeItem(k));
-    } catch {}
     clearJurySession();
   }, []);
 

@@ -390,6 +390,9 @@ export default function ReviewsPage() {
         r.comments ?? "",
         formatTs(r.finalSubmittedAt || r.updatedAt),
       ]);
+      const projectCount = new Set(
+        sorted.map((r) => r?.projectId || r?.project_id || r?.title || r?.projectName || null).filter(Boolean),
+      ).size;
 
       // Blocking pre-export audit — abort export if we can't record it.
       await logExportInitiated({
@@ -398,9 +401,17 @@ export default function ReviewsPage() {
         resourceType: "score_sheets",
         details: {
           format: exportFormat,
-          rowCount: sorted.length,
-          periodName: periodName ?? null,
-          uniqueJurors,
+          row_count: sorted.length,
+          period_name: periodName ?? null,
+          project_count: projectCount || null,
+          juror_count: uniqueJurors || null,
+          filters: {
+            juror: filterJuror || null,
+            project_title: filterProjectTitle || null,
+            status: filterStatus || null,
+            juror_status: filterJurorStatus || null,
+            search: multiSearchQuery || null,
+          },
         },
       });
 

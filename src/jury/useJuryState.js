@@ -157,7 +157,7 @@ export default function useJuryState() {
     const pid   = loading.periodId;
     if (!token || !jid || !pid) return;
     const savedCurrent = parseInt(
-      (() => { try { return localStorage.getItem(KEYS.JURY_CURRENT) || sessionStorage.getItem(KEYS.JURY_CURRENT); } catch { return "0"; } })() || "0",
+      (() => { try { return localStorage.getItem(KEYS.JURY_CURRENT); } catch { return "0"; } })() || "0",
       10
     ) || 0;
     handlers.handleHydrate(savedCurrent);

@@ -203,6 +203,7 @@ export async function finalizeJurorSubmission(periodId, jurorId, sessionToken) {
     p_period_id: periodId,
     p_juror_id: jurorId,
     p_session_token: sessionToken,
+    p_correlation_id: crypto.randomUUID(),
   });
   if (error) throw error;
   return data;

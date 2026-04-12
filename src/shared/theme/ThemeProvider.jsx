@@ -3,15 +3,14 @@
 // Applies "dark" class to <html> element for Tailwind dark: variants.
 
 import { createContext, useContext, useEffect, useState } from "react";
-
-const STORAGE_KEY = "vera-theme";
+import { KEYS } from "@/shared/storage/keys";
 
 const ThemeContext = createContext({ theme: "light", setTheme: () => {} });
 
 export function ThemeProvider({ children, defaultTheme = "light" }) {
   const [theme, setTheme] = useState(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(KEYS.THEME);
       if (stored === "dark" || stored === "light") return stored;
     } catch {}
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
@@ -29,7 +28,7 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       root.classList.remove("dark");
       document.body.classList.remove("dark-mode");
     }
-    try { localStorage.setItem(STORAGE_KEY, theme); } catch {}
+    try { localStorage.setItem(KEYS.THEME, theme); } catch {}
   }, [theme]);
 
   return (

@@ -57,16 +57,6 @@ export function clearJuryAccess() {
   } catch {}
 }
 
-/** Get jury session keys object (for useJuryHandlers compatibility). */
-export function getJurySessionKeys() {
-  return {
-    jurorId: KEYS.JURY_JUROR_ID,
-    periodId: KEYS.JURY_PERIOD_ID,
-    jurorName: KEYS.JURY_JUROR_NAME,
-    affiliation: KEYS.JURY_AFFILIATION,
-  };
-}
-
 /**
  * Save jury session snapshot to localStorage for persistence across browser restarts
  * (phone lock → reopen browser → continue from same step).

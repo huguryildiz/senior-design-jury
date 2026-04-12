@@ -44,10 +44,10 @@ export function useJuryLoading() {
   const [loadingState, setLoadingState] = useState(null);
   const [periods, setPeriods] = useState([]);
   const [periodId, setPeriodId] = useState(() => {
-    try { return localStorage.getItem(KEYS.JURY_PERIOD_ID) || sessionStorage.getItem(KEYS.JURY_PERIOD_ID) || ""; } catch { return ""; }
+    try { return localStorage.getItem(KEYS.JURY_PERIOD_ID) || ""; } catch { return ""; }
   });
   const [periodName, setPeriodName] = useState(() => {
-    try { return localStorage.getItem(KEYS.JURY_PERIOD_NAME) || sessionStorage.getItem(KEYS.JURY_PERIOD_NAME) || ""; } catch { return ""; }
+    try { return localStorage.getItem(KEYS.JURY_PERIOD_NAME) || ""; } catch { return ""; }
   });
   const [tenantAdminEmail, setTenantAdminEmail] = useState("");
   const [orgName, setOrgName] = useState("");

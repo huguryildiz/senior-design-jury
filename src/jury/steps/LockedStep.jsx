@@ -76,7 +76,8 @@ export default function LockedStep({ state, onBack }) {
 
   const handleStartOver = () => {
     state.resetAll?.();
-    onBack?.();
+    // resetAll sets step to "identity"; JuryFlow's URL-sync effect handles navigation.
+    // Do NOT call onBack here — that navigates to "/" and exits the jury flow entirely.
   };
 
   return (

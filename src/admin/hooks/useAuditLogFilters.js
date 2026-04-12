@@ -206,7 +206,17 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
         action: "export.audit",
         organizationId,
         resourceType: "audit_logs",
-        details: { format, filters: auditFilters, search: auditSearch || null },
+        details: {
+          format,
+          row_count: null,
+          period_name: null,
+          project_count: null,
+          juror_count: null,
+          filters: {
+            ...auditFilters,
+            search: auditSearch || null,
+          },
+        },
       });
       const pageSize = 500;
       let cursor = null;
@@ -228,7 +238,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
         return;
       }
       if (format === "xlsx") {
-        await exportAuditLogsXLSX(all, { filters: auditFilters, search: auditSearch, organizationCode });
+        await exportAuditLogsXLSX(all, { filters: auditFilters, search: auditSearch, tenantCode: organizationCode });
       } else {
         const fmtTs = (v) => {
           if (!v) return "";
@@ -237,15 +247,46 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
           const pad = (n) => String(n).padStart(2, "0");
           return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         };
-        const header = ["Timestamp", "Actor", "Role", "Action", "Resource Type"];
+        const serialize = (v) => {
+          if (v == null) return "";
+          if (typeof v === "string") return v;
+          try { return JSON.stringify(v); } catch { return String(v); }
+        };
+        const header = [
+          "Timestamp",
+          "Action",
+          "Action Label",
+          "Category",
+          "Severity",
+          "Actor Type",
+          "Actor Name",
+          "Organization ID",
+          "Resource Type",
+          "Resource ID",
+          "IP Address",
+          "User Agent",
+          "Correlation ID",
+          "Details",
+          "Diff",
+        ];
         const dataRows = all.map((r) => {
           const actor = getActorInfo(r);
           return [
             fmtTs(r.created_at),
-            actor.name,
-            actor.role,
+            r.action || "",
             formatActionLabel(r.action),
+            r.category || "",
+            r.severity || "",
+            r.actor_type || actor.type || "",
+            actor.name || r.actor_name || "",
+            r.organization_id || "",
             r.resource_type ?? "",
+            r.resource_id ?? "",
+            r.ip_address ?? "",
+            r.user_agent ?? "",
+            r.correlation_id ?? "",
+            serialize(r.details),
+            serialize(r.diff),
           ];
         });
         await downloadTable(format, {
@@ -257,7 +298,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
           pdfSubtitle: `${all.length} events · ${auditSearch ? `Search: "${auditSearch}"` : "All time"}`,
           header,
           rows: dataRows,
-          colWidths: [22, 12, 18, 16, 48],
+          colWidths: [22, 24, 26, 12, 10, 11, 20, 18, 16, 18, 15, 44, 20, 46, 46],
         });
       }
       setMessage(`${all.length} audit event${all.length !== 1 ? "s" : ""} exported`);

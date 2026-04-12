@@ -15,7 +15,7 @@ import EnableEditingModal from "../modals/EnableEditingModal";
 import JurorReviewsModal from "../modals/JurorReviewsModal";
 import AddJurorDrawer from "../drawers/AddJurorDrawer";
 import EditJurorDrawer from "../drawers/EditJurorDrawer";
-import { sendJurorPinEmail, getActiveEntryTokenPlain } from "@/shared/api";
+import { sendJurorPinEmail, getActiveEntryTokenPlain, logExportInitiated } from "@/shared/api";
 import { parseJurorsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
 import {
@@ -708,6 +708,23 @@ export default function JurorsPage() {
     try {
       const header = JUROR_COLUMNS.map((c) => c.label);
       const rows = sortedFilteredList.map((j) => JUROR_COLUMNS.map((c) => getJurorCell(j, c.key, jurorAvgMap)));
+      await logExportInitiated({
+        action: "export.jurors",
+        organizationId: activeOrganization?.id || null,
+        resourceType: "jurors",
+        details: {
+          format: fmt,
+          row_count: rows.length,
+          period_name: periods.viewPeriodLabel || null,
+          project_count: null,
+          juror_count: rows.length,
+          filters: {
+            search: search || null,
+            status: statusFilter || null,
+            affiliation: affilFilter || null,
+          },
+        },
+      });
       await downloadTable(fmt, {
         filenameType: "Jurors", sheetName: "Jurors",
         periodName: periods.viewPeriodLabel, tenantCode: activeOrganization?.code || "",

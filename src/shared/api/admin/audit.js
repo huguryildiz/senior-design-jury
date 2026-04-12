@@ -3,6 +3,11 @@
 
 import { supabase } from "../core/client";
 
+/**
+ * Blocking client-side audit write via rpc_admin_write_audit_event.
+ * Currently unused — all audit paths use DB triggers, SECURITY DEFINER RPCs,
+ * or Edge Functions. Kept as infrastructure for future client-side audit needs.
+ */
 export async function writeAuditLog(action, { resourceType, resourceId, details, organizationId, diff } = {}) {
   const { error } = await supabase.rpc("rpc_admin_write_audit_event", {
     p_event: {

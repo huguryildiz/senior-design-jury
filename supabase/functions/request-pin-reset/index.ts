@@ -296,6 +296,24 @@ Deno.serve(async (req: Request) => {
     const ccEnabled = await shouldCcSuperAdmin();
     const cc = ccEnabled ? emails.cc : [];
 
+    // Critical security action: fail-closed on audit write.
+    await writeEdgeAuditLog(req, {
+      action: "security.pin_reset.requested",
+      actor_type: "juror",
+      user_id: null,
+      organization_id: info.orgId || null,
+      resource_type: "juror_period_auth",
+      resource_id: payload.periodId,
+      category: "security",
+      severity: "medium",
+      details: {
+        jurorName: payload.jurorName,
+        affiliation: payload.affiliation || null,
+        periodName: info.periodName || null,
+        orgName: info.orgName || null,
+      },
+    });
+
     if (resendKey) {
       const result = await sendViaResend(resendKey, emails.to, subject, textBody, html, fromAddr, cc);
       sent = result.ok;
@@ -314,28 +332,6 @@ Deno.serve(async (req: Request) => {
       error: sendError || undefined,
     };
     console.log("request-pin-reset:", JSON.stringify(logEntry));
-
-    try {
-      await writeEdgeAuditLog(req, {
-        action: "security.pin_reset.requested",
-        actor_type: "juror",
-        user_id: null,
-        organization_id: info.orgId || null,
-        resource_type: "juror_period_auth",
-        resource_id: payload.periodId,
-        category: "security",
-        severity: "medium",
-        details: {
-          jurorName: payload.jurorName,
-          affiliation: payload.affiliation || null,
-          periodName: info.periodName || null,
-          orgName: info.orgName || null,
-          sent,
-        },
-      });
-    } catch (auditErr) {
-      console.error("audit write failed (security.pin_reset.requested):", (auditErr as Error)?.message);
-    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

@@ -98,10 +98,12 @@ Deno.serve(async (req: Request) => {
       sinkHeaders["Authorization"] = `Bearer ${sinkApiKey}`;
     }
 
+    // Axiom ingest API requires a JSON array; other sinks (Logtail, generic
+    // webhooks) also accept arrays, so wrapping is universally safe.
     const sinkRes = await fetch(sinkUrl, {
       method: "POST",
       headers: sinkHeaders,
-      body: JSON.stringify(record),
+      body: JSON.stringify([record]),
     });
 
     if (!sinkRes.ok) {

@@ -32,6 +32,37 @@ function readBearerToken(req: Request): string {
   return authHeader.replace(/^Bearer\s+/i, "").trim();
 }
 
+function toNullableNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeExportDetails(raw: unknown): Record<string, unknown> {
+  const input =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const filtersRaw = input.filters;
+  const filters =
+    filtersRaw && typeof filtersRaw === "object" && !Array.isArray(filtersRaw)
+      ? (filtersRaw as Record<string, unknown>)
+      : {};
+  const periodName =
+    typeof input.period_name === "string"
+      ? input.period_name
+      : (typeof input.periodName === "string" ? input.periodName : null);
+
+  return {
+    format: String(input.format || "unknown").toLowerCase(),
+    row_count: toNullableNumber(input.row_count ?? input.rowCount),
+    period_name: periodName,
+    project_count: toNullableNumber(input.project_count ?? input.projectCount),
+    juror_count: toNullableNumber(input.juror_count ?? input.jurorCount),
+    filters,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
@@ -76,6 +107,26 @@ Deno.serve(async (req: Request) => {
     return json(400, { error: "action must be a string starting with 'export.'" });
   }
 
+  // Tenant scope check for org-bound exports.
+  if (typeof organizationId === "string" && organizationId.length > 0) {
+    const { data: memberships, error: memErr } = await caller
+      .from("memberships")
+      .select("organization_id")
+      .eq("user_id", userData.user.id)
+      .limit(50);
+
+    if (memErr) {
+      return json(403, { error: "Membership check failed", details: memErr.message });
+    }
+    const allowed = (memberships || []).some((m) => {
+      const org = (m as { organization_id?: string | null }).organization_id ?? null;
+      return org === null || org === organizationId;
+    });
+    if (!allowed) {
+      return json(403, { error: "Forbidden: organization access denied" });
+    }
+  }
+
   // Write audit log server-side (captures IP + UA)
   try {
     await writeEdgeAuditLog(req, {
@@ -84,9 +135,7 @@ Deno.serve(async (req: Request) => {
       user_id: userData.user.id,
       resource_type: typeof resourceType === "string" ? resourceType : null,
       resource_id: typeof resourceId === "string" ? resourceId : null,
-      details: details && typeof details === "object" && !Array.isArray(details)
-        ? (details as Record<string, unknown>)
-        : {},
+      details: normalizeExportDetails(details),
       category: "security",
       severity: "info",
       actor_type: "admin",

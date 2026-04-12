@@ -26,10 +26,10 @@ const DEFAULT_MAX_PIN_ATTEMPTS = 5;
 
 export function useJurorSession() {
   const [jurorId, setJurorId] = useState(() => {
-    try { return localStorage.getItem(KEYS.JURY_JUROR_ID) || sessionStorage.getItem(KEYS.JURY_JUROR_ID) || ""; } catch { return ""; }
+    try { return localStorage.getItem(KEYS.JURY_JUROR_ID) || ""; } catch { return ""; }
   });
   const [jurorSessionToken, setJurorSessionToken] = useState(() => {
-    try { return localStorage.getItem(KEYS.JURY_SESSION_TOKEN) || sessionStorage.getItem(KEYS.JURY_SESSION_TOKEN) || ""; } catch { return ""; }
+    try { return localStorage.getItem(KEYS.JURY_SESSION_TOKEN) || ""; } catch { return ""; }
   });
   const [issuedPin, setIssuedPin] = useState("");
   const [pinError, setPinError] = useState("");

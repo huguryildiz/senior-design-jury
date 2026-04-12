@@ -343,12 +343,31 @@ export default function AnalyticsPage() {
 
   async function handleExport(format = "xlsx") {
     try {
+      const rowCount = Array.isArray(submittedData) ? submittedData.length : null;
+      const projectCount = Array.isArray(dashboardStats) ? dashboardStats.length : null;
+      const jurorCount = Array.isArray(submittedData)
+        ? new Set(
+            submittedData
+              .map((r) => r?.juror_id || r?.jurorId || r?.juryName || r?.juror_name || null)
+              .filter(Boolean),
+          ).size
+        : null;
       await logExportInitiated({
         action: "export.analytics",
         organizationId,
         resourceType: "score_sheets",
         resourceId: selectedPeriodId || null,
-        details: { format, period_name: periodName || null },
+        details: {
+          format,
+          row_count: rowCount,
+          period_name: periodName || null,
+          project_count: projectCount,
+          juror_count: jurorCount || null,
+          filters: {
+            selected_period_id: selectedPeriodId || null,
+            trend_period_ids: trendSemesterIds || [],
+          },
+        },
       });
 
       const exportParams = {

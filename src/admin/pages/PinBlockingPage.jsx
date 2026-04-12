@@ -15,6 +15,7 @@ import { formatTs } from "../utils/adminUtils";
 import FbAlert from "@/shared/ui/FbAlert";
 import JurorBadge from "../components/JurorBadge";
 import UnlockAllModal from "../modals/UnlockAllModal";
+import UnlockPinModal from "../modals/UnlockPinModal";
 
 function groupBarColor(scored, total) {
   if (total === 0) return "var(--text-tertiary)";
@@ -69,7 +70,7 @@ function parseCooldownMinutes(value) {
 }
 
 export default function PinBlockingPage() {
-  const { selectedPeriodId } = useAdminContext();
+  const { selectedPeriodId, organizationId, periodName } = useAdminContext();
   const policy = useSecurityPolicy();
   const navigate = useNavigate();
   const [unlockAllOpen, setUnlockAllOpen] = useState(false);
@@ -81,6 +82,8 @@ export default function PinBlockingPage() {
     loadLockedJurors,
     handleUnlock,
     handleUnlockAll,
+    unlockModal,
+    closeUnlockModal,
   } = usePinBlocking({ periodId: selectedPeriodId });
 
   useEffect(() => {
@@ -330,6 +333,19 @@ export default function PinBlockingPage() {
         onClose={() => setUnlockAllOpen(false)}
         lockedCount={totalActive}
         onConfirm={handleUnlockAll}
+      />
+
+      <UnlockPinModal
+        open={!!unlockModal}
+        onClose={closeUnlockModal}
+        pin={unlockModal?.pin || ""}
+        jurorId={unlockModal?.jurorId}
+        jurorName={unlockModal?.jurorName || ""}
+        affiliation={unlockModal?.affiliation || ""}
+        email={unlockModal?.email || ""}
+        periodId={selectedPeriodId}
+        periodName={periodName}
+        organizationId={organizationId}
       />
     </div>
   );

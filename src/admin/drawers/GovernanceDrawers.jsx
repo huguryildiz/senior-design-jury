@@ -36,6 +36,7 @@ import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
 import ManageBackupsDrawer from "./ManageBackupsDrawer";
 import { formatDate, formatTime } from "@/shared/lib/dateUtils";
+import { KEYS } from "@/shared/storage/keys";
 
 // ── Shared primitives ──────────────────────────────────────────
 
@@ -420,12 +421,6 @@ export function ExportBackupDrawer({ open, onClose }) {
     if (!organizationId) return;
     setScoresLoading(true);
     try {
-      await logExportInitiated({
-        action: "export.backup",
-        organizationId,
-        resourceType: "score_sheets",
-        details: { format: "xlsx", scope: "all_periods" },
-      });
       const sems = (await listPeriods(organizationId)) || [];
       if (!sems.length) { toast.error("No evaluation periods found."); return; }
       const ordered = sortSemesters(sems);
@@ -446,9 +441,31 @@ export function ExportBackupDrawer({ open, onClose }) {
           };
         }),
       );
-      await exportXLSX(results.flatMap((x) => x.rows), {
+      const allRows = results.flatMap((x) => x.rows);
+      const allSummary = results.flatMap((x) => x.summary);
+      const jurorCount = new Set(
+        allRows
+          .map((r) => r?.jurorId || r?.juror_id || r?.juryName || r?.juror_name || null)
+          .filter(Boolean),
+      ).size;
+
+      await logExportInitiated({
+        action: "export.scores",
+        organizationId,
+        resourceType: "score_sheets",
+        details: {
+          format: "xlsx",
+          row_count: allRows.length,
+          period_name: "all-periods",
+          project_count: allSummary.length,
+          juror_count: jurorCount || null,
+          filters: { scope: "all_periods" },
+        },
+      });
+
+      await exportXLSX(allRows, {
         periodName: "all-periods",
-        summaryData: results.flatMap((x) => x.summary),
+        summaryData: allSummary,
         tenantCode,
       });
       toast.success(`Score report downloaded · ${ordered.length} period${ordered.length !== 1 ? "s" : ""} · Excel`);
@@ -481,6 +498,21 @@ export function ExportBackupDrawer({ open, onClose }) {
       ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Groups");
+
+      await logExportInitiated({
+        action: "export.projects",
+        organizationId,
+        resourceType: "projects",
+        details: {
+          format: "xlsx",
+          row_count: data.length,
+          period_name: "all-periods",
+          project_count: data.length,
+          juror_count: null,
+          filters: { scope: "all_periods" },
+        },
+      });
+
       XLSX.writeFile(wb, buildExportFilename("Projects", "all-periods", "xlsx", tenantCode));
       toast.success(`${data.length} project${data.length !== 1 ? "s" : ""} exported · Excel`);
     } catch (e) {
@@ -526,6 +558,21 @@ export function ExportBackupDrawer({ open, onClose }) {
       ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Jurors");
+
+      await logExportInitiated({
+        action: "export.jurors",
+        organizationId,
+        resourceType: "jurors",
+        details: {
+          format: "xlsx",
+          row_count: data.length,
+          period_name: "all-periods",
+          project_count: null,
+          juror_count: data.length,
+          filters: { scope: "all_periods" },
+        },
+      });
+
       XLSX.writeFile(wb, buildExportFilename("Jurors", "all-periods", "xlsx", tenantCode));
       toast.success(`${data.length} juror${data.length !== 1 ? "s" : ""} exported · Excel`);
     } catch (e) {
@@ -958,12 +1005,12 @@ export function MaintenanceDrawer({ open, onClose }) {
 // ── 6. System Health ───────────────────────────────────────────
 
 function loadHistory() {
-  try { return JSON.parse(localStorage.getItem("vera_health_history") || "[]"); }
+  try { return JSON.parse(localStorage.getItem(KEYS.HEALTH_HISTORY) || "[]"); }
   catch { return []; }
 }
 
 function saveHistory(h) {
-  localStorage.setItem("vera_health_history", JSON.stringify(h.slice(-20)));
+  localStorage.setItem(KEYS.HEALTH_HISTORY, JSON.stringify(h.slice(-20)));
 }
 
 function statusColor(ok) {

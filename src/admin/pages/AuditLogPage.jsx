@@ -33,6 +33,7 @@ const CHIP_MAP = {
   period_criteria:    { type: "period",   label: "Criteria" },
   framework_outcomes: { type: "period",   label: "Outcome" },
   org_applications:   { type: "security", label: "Application" },
+  admin_user_sessions:{ type: "security", label: "Session" },
   platform_backups:   { type: "backup",   label: "Backup" },
   frameworks:         { type: "framework", label: "Framework" },
 };
@@ -333,7 +334,7 @@ export default function AuditLogPage() {
     setVerifying(true);
     try {
       const result = await verifyAuditChain(organizationId);
-      const broken = result?.broken_links ?? result?.broken ?? [];
+      const broken = Array.isArray(result) ? result : (result?.broken_links ?? result?.broken ?? []);
       if (!broken.length) {
         _toast.success("Hash chain intact — no tampering detected.");
       } else {

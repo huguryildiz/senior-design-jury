@@ -43,9 +43,14 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
       resourceType: "score_sheets",
       details: {
         format,
-        jurorCount: exportRows.length,
-        projectCount: groups.length,
-        periodName: periodName ?? null,
+        row_count: exportRows.length,
+        period_name: periodName ?? null,
+        project_count: groups.length,
+        juror_count: exportRows.length,
+        filters: {
+          visible_jurors: visibleJurors.length,
+          criteria_count: activeCriteria.length,
+        },
       },
     });
 

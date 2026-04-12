@@ -61,17 +61,32 @@ export default function ExportPage() {
           return { rows: mappedRows, summary: summary || [] };
         }),
       );
+      const allRows = results.flatMap((x) => x.rows);
+      const allSummary = results.flatMap((x) => x.summary);
+      const jurorCount = new Set(
+        allRows
+          .map((r) => r?.jurorId || r?.juror_id || r?.juryName || r?.juror_name || null)
+          .filter(Boolean),
+      ).size;
+
       // Blocking pre-export audit — abort if we can't record it.
       await logExportInitiated({
-        action: "export.backup",
+        action: "export.scores",
         organizationId,
         resourceType: "score_sheets",
-        details: { format: "xlsx", periodCount: orderedSemesters.length },
+        details: {
+          format: "xlsx",
+          row_count: allRows.length,
+          period_name: "all-periods",
+          project_count: allSummary.length,
+          juror_count: jurorCount || null,
+          filters: { scope: "all_periods" },
+        },
       });
 
-      await exportXLSX(results.flatMap((x) => x.rows), {
+      await exportXLSX(allRows, {
         periodName: "all-periods",
-        summaryData: results.flatMap((x) => x.summary),
+        summaryData: allSummary,
         tenantCode,
       });
       _toast.success(`Score report downloaded · ${orderedSemesters.length} period${orderedSemesters.length !== 1 ? "s" : ""} · Excel`);
@@ -112,6 +127,21 @@ export default function ExportPage() {
       ws["!cols"] = [18, 8, 36, 42].map((w) => ({ wch: w }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Groups");
+
+      await logExportInitiated({
+        action: "export.projects",
+        organizationId,
+        resourceType: "projects",
+        details: {
+          format: "xlsx",
+          row_count: data.length,
+          period_name: "all-periods",
+          project_count: data.length,
+          juror_count: null,
+          filters: { scope: "all_periods" },
+        },
+      });
+
       XLSX.writeFile(wb, buildExportFilename("Projects", "all-periods", "xlsx", tenantCode));
       _toast.success(`${data.length} project${data.length !== 1 ? "s" : ""} exported · all periods · Excel`);
     } catch (e) {
@@ -164,6 +194,21 @@ export default function ExportPage() {
       ws["!cols"] = [18, 28, 32].map((w) => ({ wch: w }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Jurors");
+
+      await logExportInitiated({
+        action: "export.jurors",
+        organizationId,
+        resourceType: "jurors",
+        details: {
+          format: "xlsx",
+          row_count: data.length,
+          period_name: "all-periods",
+          project_count: null,
+          juror_count: data.length,
+          filters: { scope: "all_periods" },
+        },
+      });
+
       XLSX.writeFile(wb, buildExportFilename("Jurors", "all-periods", "xlsx", tenantCode));
       _toast.success(`${data.length} juror${data.length !== 1 ? "s" : ""} exported · all periods · Excel`);
     } catch (e) {

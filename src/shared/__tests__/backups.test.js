@@ -9,6 +9,7 @@ vi.mock("@/shared/lib/supabaseClient", () => ({
 }));
 
 vi.mock("@/shared/api/admin/export", () => ({
+  logExportInitiated: vi.fn(async () => undefined),
   fullExport: vi.fn(async () => ({
     periods: [{ id: "p1" }],
     projects: [{ id: "pr1" }, { id: "pr2" }],
@@ -26,6 +27,7 @@ import {
   getBackupSignedUrl,
   recordBackupDownload,
 } from "@/shared/api/admin/backups.js";
+import { logExportInitiated } from "@/shared/api/admin/export";
 
 describe("backups API", () => {
   beforeEach(() => {
@@ -50,6 +52,21 @@ describe("backups API", () => {
     supabase.rpc.mockResolvedValueOnce({ data: "b1", error: null });
 
     const result = await createBackup("org-1");
+
+    expect(logExportInitiated).toHaveBeenCalledWith({
+      action: "export.backup",
+      organizationId: "org-1",
+      resourceType: "platform_backups",
+      resourceId: null,
+      details: {
+        format: "json",
+        row_count: null,
+        period_name: null,
+        project_count: null,
+        juror_count: null,
+        filters: { origin: "manual" },
+      },
+    });
 
     expect(supabase.storage.from).toHaveBeenCalledWith("backups");
     expect(mockUpload).toHaveBeenCalledTimes(1);

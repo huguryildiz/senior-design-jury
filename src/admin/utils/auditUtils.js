@@ -218,6 +218,9 @@ const JUROR_ACTIONS = new Set([
   "evaluation.complete",
   "juror.pin_locked",
   "juror.pin_unlocked",
+  "data.juror.pin.locked",
+  "data.juror.pin.unlocked",
+  "data.juror.pin.reset",
   "juror.edit_mode_closed_on_resubmit",
   "juror.edit_mode_enabled",
   "juror.edit_enabled",
@@ -352,6 +355,13 @@ const EVENT_META = {
   },
 
   // ── Evaluation flow (juror-initiated) ─────────────────────────
+  "data.juror.auth.created": {
+    label: "Juror authentication started",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "started evaluation authentication for", resource: d.affiliation || null };
+    },
+  },
   "evaluation.complete": {
     label: "Evaluation completed",
     narrative: (log) => {
@@ -394,6 +404,34 @@ const EVENT_META = {
     narrative: (log) => {
       const d = log.details || {};
       return { verb: "unlocked", resource: d.juror_name || null };
+    },
+  },
+  "juror.pin_unlocked_and_reset": {
+    label: "Juror unlocked and PIN reset by admin",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "unlocked and reset PIN for", resource: d.juror_name || null };
+    },
+  },
+  "data.juror.pin.locked": {
+    label: "Juror locked (too many PIN attempts)", // legacy alias
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "was locked out (failed PIN attempts) on", resource: d.periodName || d.period_name || null };
+    },
+  },
+  "data.juror.pin.unlocked": {
+    label: "Juror unlocked by admin", // legacy alias
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "unlocked", resource: d.juror_name || null };
+    },
+  },
+  "data.juror.pin.reset": {
+    label: "Juror PIN reset by admin", // legacy alias
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "reset PIN for", resource: d.juror_name || null };
     },
   },
   "juror.edit_mode_enabled": {
@@ -485,21 +523,9 @@ const EVENT_META = {
     },
   },
 
-  // ── Period management (manual instrumented + trigger-based) ───
-  "period.create": {
-    label: "Period created",
-    narrative: (log) => {
-      const d = log.details || {};
-      return { verb: "created period", resource: d.periodName || null };
-    },
-  },
-  "period.update": {
-    label: "Period updated",
-    narrative: (log) => {
-      const d = log.details || {};
-      return { verb: "updated period", resource: d.periodName || null };
-    },
-  },
+  // ── Period management (RPC-instrumented + trigger-based) ────
+  // period.create and period.update have no emitter — createPeriod/updatePeriod
+  // use direct table inserts; trigger fires periods.insert/update instead.
   "period.lock": {
     label: "Evaluation locked",
     narrative: (log) => {
@@ -577,6 +603,34 @@ const EVENT_META = {
     narrative: (log) => {
       const d = log.details || {};
       return { verb: "deleted outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "outcome.created": {
+    label: "Outcome created", // legacy alias
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "outcome.updated": {
+    label: "Outcome updated", // legacy alias
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "outcome.deleted": {
+    label: "Outcome deleted", // legacy alias
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "config.outcome.created": {
+    label: "Outcome created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created outcome", resource: d.outcome_code || d.outcome_label || null };
     },
   },
   "config.outcome.updated": {
@@ -801,6 +855,55 @@ const EVENT_META = {
     },
   },
 
+  // ── Security policy (trigger-based) ──────────────────────────
+  "security_policy.insert": {
+    label: "Security policy created",
+    narrative: () => ({ verb: "created security policy", resource: null }),
+  },
+  "security_policy.update": {
+    label: "Security policy updated",
+    narrative: () => ({ verb: "updated security policy", resource: null }),
+  },
+  "security_policy.delete": {
+    label: "Security policy deleted",
+    narrative: () => ({ verb: "deleted security policy", resource: null }),
+  },
+  "config.platform_settings.updated": {
+    label: "Platform settings updated",
+    narrative: () => ({ verb: "updated platform settings", resource: null }),
+  },
+  "config.backup_schedule.updated": {
+    label: "Backup schedule updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return {
+        verb: "updated backup schedule",
+        resource: d.new_cron_expr || d.cron_expr || null,
+      };
+    },
+  },
+  "access.admin.session.revoked": {
+    label: "Admin session revoked",
+    narrative: (log) => {
+      const d = log.details || {};
+      return {
+        verb: "revoked admin session",
+        resource: d.device_id || d.browser || null,
+      };
+    },
+  },
+  "maintenance.set": {
+    label: "Maintenance scheduled",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "set maintenance mode", resource: d.mode || null };
+    },
+  },
+  "maintenance.cancelled": {
+    label: "Maintenance cancelled",
+    narrative: () => ({ verb: "cancelled maintenance mode", resource: null }),
+  },
+
   // ── Score management ──────────────────────────────────────────
   "score.update": {
     label: "Score updated",
@@ -854,6 +957,8 @@ const EVENT_META = {
   "export.heatmap":   { label: "Heatmap exported" },
   "export.analytics": { label: "Analytics exported" },
   "export.audit":     { label: "Audit log exported" },
+  "export.projects":  { label: "Projects exported" },
+  "export.jurors":    { label: "Jurors exported" },
   "export.backup":    { label: "Backup exported" },
 
   // ── Notifications (label only — narrative handled by prefix matcher) ─
@@ -887,6 +992,14 @@ const EVENT_META = {
     narrative: (log) => ({
       verb: "flagged",
       resource: log.details?.anomaly_type || "anomaly",
+    }),
+  },
+
+  "security.chain.broken": {
+    label: "Hash Chain Broken",
+    narrative: (log) => ({
+      verb: "detected tampering in",
+      resource: `audit chain (${log.details?.broken_count ?? "?"} break${log.details?.broken_count === 1 ? "" : "s"})`,
     }),
   },
 };
@@ -930,8 +1043,8 @@ export function formatActionDetail(log) {
   }
 
   // Period actions — show period name / org context
-  if (d.periodName) {
-    return [d.periodName, d.organizationCode].filter(Boolean).join(" · ");
+  if (d.period_name || d.periodName) {
+    return [d.period_name || d.periodName, d.organizationCode].filter(Boolean).join(" · ");
   }
 
   // Organization status change
@@ -952,9 +1065,12 @@ export function formatActionDetail(log) {
   // Export actions — show format
   if (d.format) {
     const parts = [d.format.toUpperCase()];
-    if (d.rowCount != null) parts.push(`${d.rowCount} rows`);
-    if (d.jurorCount != null) parts.push(`${d.jurorCount} jurors`);
-    if (d.projectCount != null) parts.push(`${d.projectCount} projects`);
+    const rowCount = d.row_count ?? d.rowCount;
+    const jurorCount = d.juror_count ?? d.jurorCount;
+    const projectCount = d.project_count ?? d.projectCount;
+    if (rowCount != null) parts.push(`${rowCount} rows`);
+    if (jurorCount != null) parts.push(`${jurorCount} jurors`);
+    if (projectCount != null) parts.push(`${projectCount} projects`);
     if (d.periodCount != null) parts.push(`${d.periodCount} periods`);
     return parts.join(" · ");
   }
@@ -1056,7 +1172,7 @@ export function formatSentence(log) {
   const d = log.details || {};
   if (action.startsWith("export.")) {
     const type = action.replace("export.", "");
-    return { verb: `exported ${type}`, resource: d.periodName || null };
+    return { verb: `exported ${type}`, resource: d.period_name || d.periodName || null };
   }
   if (action.startsWith("notification.")) {
     const type = action.replace("notification.", "");
@@ -1202,7 +1318,8 @@ export function formatEventMeta(log, opts = {}) {
   // Export events: "action · FORMAT · N rows"
   if (d.format) {
     const parts = [action, d.format.toUpperCase()];
-    if (d.rowCount != null) parts.push(`${d.rowCount} rows`);
+    const rowCount = d.row_count ?? d.rowCount;
+    if (rowCount != null) parts.push(`${rowCount} rows`);
     return parts.join(" · ");
   }
 
@@ -1385,7 +1502,7 @@ export function detectAnomalies(logs) {
   // Rule 4: PIN reset burst (≥3 in 1h)
   const recentPinResets = logs.filter(
     (l) =>
-      l.action === "pin.reset" &&
+      (l.action === "pin.reset" || l.action === "data.juror.pin.reset") &&
       l.created_at &&
       now - Date.parse(l.created_at) < oneHourMs
   );
@@ -1424,7 +1541,10 @@ export function detectAnomalies(logs) {
 
   // Rule 6: Juror PIN lockout (≥1 in 24h)
   const recentLocks = logs.filter(
-    (l) => l.action === "juror.pin_locked" && l.created_at && (now - Date.parse(l.created_at)) < oneDayMs
+    (l) =>
+      (l.action === "juror.pin_locked" || l.action === "data.juror.pin.locked")
+      && l.created_at
+      && (now - Date.parse(l.created_at)) < oneDayMs
   );
   if (recentLocks.length === 0) return null;
   const latest = recentLocks[0];

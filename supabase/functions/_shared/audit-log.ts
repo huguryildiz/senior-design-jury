@@ -71,7 +71,8 @@ function defaultCategory(action: string): Category {
     action.startsWith("export.") ||
     action.startsWith("backup.") ||
     action.startsWith("token.") ||
-    action.startsWith("security.")
+    action.startsWith("security.") ||
+    action.startsWith("maintenance.")
   ) {
     return "security";
   }
@@ -87,6 +88,11 @@ function defaultSeverity(action: string): Severity {
   if (action === "notification.juror_pin") return "low";
   if (action === "notification.maintenance") return "medium";
   if (action === "security.pin_reset.requested") return "medium";
+  if (action === "config.platform_settings.updated") return "medium";
+  if (action === "config.backup_schedule.updated") return "high";
+  if (action === "access.admin.session.revoked") return "high";
+  if (action === "maintenance.set") return "high";
+  if (action === "maintenance.cancelled") return "medium";
   if (action === "data.score.edit_requested") return "low";
   return "info";
 }

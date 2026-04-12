@@ -100,7 +100,7 @@ export async function listLockedJurors({ periodId }) {
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("juror_period_auth")
-    .select("juror_id, is_blocked, failed_attempts, locked_until, locked_at, jurors(juror_name, affiliation)")
+    .select("juror_id, is_blocked, failed_attempts, locked_until, locked_at, jurors(juror_name, affiliation, email)")
     .eq("period_id", periodId)
     .or(`locked_until.gt.${now},is_blocked.eq.true`);
   if (error) throw error;
@@ -108,6 +108,7 @@ export async function listLockedJurors({ periodId }) {
     jurorId: row.juror_id,
     jurorName: row.jurors?.juror_name || "",
     affiliation: row.jurors?.affiliation || "",
+    email: row.jurors?.email || "",
     isBlocked: row.is_blocked,
     failedAttempts: row.failed_attempts,
     lockedUntil: row.locked_until,

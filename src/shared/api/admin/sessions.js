@@ -1,6 +1,5 @@
 import { supabase } from "../core/client";
 import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
-import { resolveEnvironment } from "../../lib/environment";
 
 function toIsoOrNull(value) {
   if (value == null) return null;
@@ -60,9 +59,12 @@ export async function listAdminSessions() {
 }
 
 export async function deleteAdminSession(id) {
-  const { error } = await supabase
-    .from("admin_user_sessions")
-    .delete()
-    .eq("id", id);
+  const { data, error } = await supabase.rpc("rpc_admin_revoke_admin_session", {
+    p_session_id: id,
+  });
   if (error) throw error;
+  if (data?.ok === false) {
+    throw new Error(data.error_code || "session_revoke_failed");
+  }
+  return data;
 }
