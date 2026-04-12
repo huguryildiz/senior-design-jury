@@ -647,6 +647,97 @@
 .crt-cancel-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--text-secondary);transition:all .15s}
 .crt-cancel-btn:hover{background:var(--surface-1);border-color:var(--border-strong);color:var(--text-primary)}
 
+/* ── Weight Budget Bar (Phase 1) ──────────────────────────────────────── */
+
+.crt-budget-card{padding:20px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);box-shadow:var(--shadow-sm);margin-bottom:24px;transition:all .2s}
+.crt-budget-card.crt-budget-over{border-color:rgba(225,29,72,0.25);background:rgba(225,29,72,0.02)}
+
+.crt-budget-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:20px}
+
+.crt-budget-left{display:flex;flex-direction:column;gap:8px}
+
+.crt-budget-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary)}
+
+.crt-budget-value{font-size:28px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;letter-spacing:-0.8px}
+.crt-budget-value.crt-budget-value-valid{color:var(--success)}
+.crt-budget-value.crt-budget-value-over{color:var(--danger)}
+
+.crt-budget-status{font-size:12px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+.crt-budget-status.crt-budget-status-valid{color:var(--success)}
+.crt-budget-status.crt-budget-status-under{color:var(--warning)}
+.crt-budget-status.crt-budget-status-over{color:var(--danger)}
+
+.crt-budget-actions{display:flex;gap:10px;flex-wrap:wrap}
+
+.crt-budget-pill{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-secondary);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap}
+.crt-budget-pill:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.crt-budget-pill:active{transform:scale(0.98)}
+.crt-budget-pill svg{width:13px;height:13px;stroke-width:2}
+
+.crt-budget-auto-container{position:relative}
+
+.crt-budget-dropdown{position:absolute;top:100%;right:0;margin-top:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-elevated);z-index:100;min-width:220px;overflow:hidden}
+
+.crt-budget-dropdown-item{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 14px;border:none;background:transparent;color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer;transition:all .1s;border-bottom:1px solid var(--surface-1);text-align:left}
+.crt-budget-dropdown-item:last-child{border-bottom:none}
+.crt-budget-dropdown-item:hover{background:var(--surface-1)}
+
+.crt-budget-dropdown-label{font-weight:600;flex:1}
+
+.crt-budget-dropdown-values{font-size:11px;color:var(--text-tertiary);font-family:var(--mono);margin-left:8px;white-space:nowrap}
+
+.crt-budget-bar-container{margin-bottom:16px}
+
+.crt-budget-bar{display:flex;width:100%;height:28px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface-1)}
+
+.crt-budget-segment{flex:1 1 auto;transition:all .2s;position:relative;min-width:2px}
+
+.crt-budget-segment-remaining{background:var(--surface-1);opacity:0.6}
+
+.crt-budget-legend{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+
+.crt-budget-legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary)}
+
+.crt-budget-legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+
+.crt-budget-legend-dot-remaining{background:var(--surface-1);border:1px solid var(--border)}
+
+.crt-budget-legend-label{font-weight:500;flex:1}
+
+.crt-budget-legend-weight{font-family:var(--mono);font-weight:600;color:var(--text-primary)}
+
+.dark-mode .crt-budget-card.crt-budget-over{border-color:rgba(225,29,72,0.2);background:rgba(225,29,72,0.03)}
+
+/* ── Save Bar (Phase 1) ───────────────────────────────────────────────── */
+
+.crt-save-bar{position:fixed;bottom:0;left:0;right:0;height:64px;background:var(--bg-card);border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;padding:0 32px;z-index:150;animation:slideUp .2s ease-out}
+
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+.crt-save-bar-left{display:flex;align-items:center;gap:12px}
+
+.crt-save-bar-pulse{width:10px;height:10px;border-radius:50%;background:var(--warning);animation:pulse 2s ease-in-out infinite}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.crt-save-bar-text{font-size:13px;font-weight:600;color:var(--text-primary)}
+
+.crt-save-bar-actions{display:flex;gap:12px;align-items:center}
+
+.crt-save-btn-secondary{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:all .12s}
+.crt-save-btn-secondary:hover{background:var(--surface-1);border-color:var(--border-strong);color:var(--text-primary)}
+.crt-save-btn-secondary:disabled{opacity:0.5;cursor:not-allowed}
+
+.crt-save-btn-primary{padding:8px 24px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:var(--font);font-size:13px;font-weight:650;cursor:pointer;transition:all .12s;box-shadow:0 1px 3px rgba(59,130,246,0.2)}
+.crt-save-btn-primary:hover:not(:disabled){background:var(--accent-dark);box-shadow:0 2px 8px rgba(59,130,246,0.25)}
+.crt-save-btn-primary:disabled{opacity:0.45;cursor:not-allowed}
+
+body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;box-shadow:0 -2px 12px rgba(15,23,42,0.06)}
+
+.dark-mode .crt-save-bar{background:#1e293b;border-top-color:#334155;box-shadow:0 -2px 12px rgba(0,0,0,0.2)}
+.dark-mode .crt-save-btn-secondary{border-color:#475569;color:#cbd5e1}
+.dark-mode .crt-save-btn-secondary:hover{background:#334155;border-color:#64748b;color:#e2e8f0}
+
 /* ── Drawer footer: responsive ─────────────────────────────────────── */
 @media (max-width: 768px) and (orientation: portrait) {
   #drawer-edit-criteria .fs-drawer-footer {

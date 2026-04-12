@@ -99,10 +99,16 @@ export function useManagePeriods({
   const [criteriaConfig, setCriteriaConfig] = useState([]);
   const [outcomeConfig, setOutcomeConfig] = useState([]);
 
+  // ── Draft/commit state for criteria ──
+  const [savedCriteria, setSavedCriteria] = useState([]);
+  const [draftCriteria, setDraftCriteria] = useState([]);
+
   useEffect(() => {
     if (!viewPeriodId) {
       setCriteriaConfig([]);
       setOutcomeConfig([]);
+      setSavedCriteria([]);
+      setDraftCriteria([]);
       return;
     }
     let alive = true;
@@ -113,7 +119,10 @@ export function useManagePeriods({
           listPeriodOutcomes(viewPeriodId),
         ]);
         if (!alive) return;
-        setCriteriaConfig(getActiveCriteria(criteriaRows));
+        const active = getActiveCriteria(criteriaRows);
+        setCriteriaConfig(active);
+        setSavedCriteria(active);
+        setDraftCriteria(structuredClone(active));
         setOutcomeConfig(outcomeRows.map((o) => ({
           id: o.id,
           code: o.code,
@@ -124,6 +133,8 @@ export function useManagePeriods({
         if (alive) {
           setCriteriaConfig([]);
           setOutcomeConfig([]);
+          setSavedCriteria([]);
+          setDraftCriteria([]);
         }
       }
     })();
@@ -374,6 +385,46 @@ export function useManagePeriods({
     }
   };
 
+  // ── Draft/commit functions for criteria ────────────────────────────────
+  const isDraftDirty = useMemo(
+    () => JSON.stringify(draftCriteria) !== JSON.stringify(savedCriteria),
+    [draftCriteria, savedCriteria]
+  );
+
+  const draftTotal = useMemo(
+    () => draftCriteria.reduce((s, c) => s + (c.max || 0), 0),
+    [draftCriteria]
+  );
+
+  const canSaveDraft = isDraftDirty && draftTotal === 100;
+
+  const commitDraft = useCallback(async () => {
+    if (!viewPeriodId || !canSaveDraft) return;
+    incLoading();
+    try {
+      await savePeriodCriteria(viewPeriodId, draftCriteria);
+      const rows = await listPeriodCriteria(viewPeriodId);
+      const fresh = getActiveCriteria(rows);
+      setCriteriaConfig(fresh);
+      setSavedCriteria(fresh);
+      setDraftCriteria(structuredClone(fresh));
+      setMessage("Criteria saved successfully.");
+    } catch (e) {
+      const msg = String(e?.message || "");
+      setPanelError("period", msg || "Could not save criteria. Try again or check your session.");
+    } finally {
+      decLoading();
+    }
+  }, [viewPeriodId, canSaveDraft, draftCriteria]);
+
+  const discardDraft = useCallback(() => {
+    setDraftCriteria(structuredClone(savedCriteria));
+  }, [savedCriteria]);
+
+  const updateDraft = useCallback((newDraft) => {
+    setDraftCriteria(newDraft);
+  }, []);
+
   const handleDeletePeriod = async (periodId) => {
     if (!periodId) return;
     setMessage("");
@@ -449,6 +500,14 @@ export function useManagePeriods({
     viewPeriodLabel,
     criteriaConfig,
     outcomeConfig,
+    draftCriteria,
+    savedCriteria,
+    isDraftDirty,
+    draftTotal,
+    canSaveDraft,
+    commitDraft,
+    discardDraft,
+    updateDraft,
     applyPeriodPatch,
     removePeriod,
     loadPeriods,
