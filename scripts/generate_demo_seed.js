@@ -160,6 +160,12 @@ out.push(`TRUNCATE TABLE
 CASCADE;
 `);
 
+// Security policy: demo-specific settings (bmax=3, lockout=5m, qrTtl=24h)
+out.push(`UPDATE security_policy SET policy = policy
+  || '{"maxPinAttempts":3,"pinLockCooldown":"5m","qrTtl":"24h"}'::jsonb
+  WHERE id = 1;`);
+out.push('');
+
 // ═══════════════════════════════════════════════════════════════
 // ORGANIZATIONS
 // ═══════════════════════════════════════════════════════════════
@@ -1646,7 +1652,8 @@ function deriveAuditMeta(action) {
     'backup.downloaded', 'criteria.save', 'criteria.update',
     'outcome.created', 'outcome.updated', 'outcome.deleted', 'frameworks.update',
     'auth.admin.password.changed',
-    'access.admin.role.granted', 'access.admin.role.revoked'].includes(action)) {
+    'access.admin.role.granted', 'access.admin.role.revoked',
+    'notification.maintenance', 'security.pin_reset.requested'].includes(action)) {
     severity = 'medium';
   } else if (['admin.updated', 'data.juror.edit_mode.closed', 'token.generate',
     'export.scores', 'export.rankings', 'export.heatmap', 'export.analytics', 'export.backup',
@@ -1658,13 +1665,15 @@ function deriveAuditMeta(action) {
     'notification.entry_token', 'notification.juror_pin', 'notification.export_report',
     'data.period.created', 'data.period.updated', 'period.set_current',
     'data.project.created', 'data.project.updated', 'data.project.deleted',
-    'data.juror.created', 'data.juror.updated', 'data.juror.imported'].includes(action)) {
+    'data.juror.created', 'data.juror.updated', 'data.juror.imported',
+    'data.score.edit_requested'].includes(action)) {
     severity = 'low';
   }
 
   // actorType
   if (['evaluation.complete', 'score.update', 'score_sheets.insert',
-    'score_sheets.update', 'score_sheets.delete', 'data.score.submitted'].includes(action)) {
+    'score_sheets.update', 'score_sheets.delete', 'data.score.submitted',
+    'security.pin_reset.requested', 'data.score.edit_requested'].includes(action)) {
     actorType = 'juror';
   } else if (['snapshot.freeze', 'data.juror.pin.locked', 'data.juror.edit_mode.closed',
     'projects.insert', 'projects.update', 'projects.delete',
@@ -1784,7 +1793,7 @@ periodData.forEach(pd => {
 
   // token.generate — admin creates entry token before eval day
   myTokens.forEach((tok, i) => {
-    const ttl = i === 0 ? '24h' : i === 1 ? '24h' : i === 2 ? '72h' : '1h';
+    const ttl = '24h';
     const expiresAt = new Date(new Date().getTime() + (ttl.includes('72') ? 72 : ttl.includes('24') ? 24 : 1) * 3600000).toISOString();
     auditObjList.push({ action:'token.generate', resType:'entry_tokens', resId:tok.id, orgId:o.id, userId:adminId, details:`{"period_id":"${pd.id}","expires_at":"${expiresAt}","ttl":"${ttl}"}`, timeStr:randSqlTs(ev, -336+i*24, -168+i*24) });
   });
@@ -1817,7 +1826,9 @@ periodData.forEach(pd => {
 
   // data.juror.pin.locked — juror-initiated (user_id=NULL)
   myAuths.filter(a => a.semanticState==='Locked').slice(0, 1).forEach(a => {
-    auditObjList.push({ action:'data.juror.pin.locked', resType:'juror_period_auth', resId:a.jId, orgId:o.id, userId:null, details:`{"period_id":"${pd.id}","juror_id":"${a.jId}","actor_name":"${escapeSql(a.name)}","failed_attempts":${randInt(3,5)},"locked_until":"${new Date(new Date().getTime() + 30 * 60000).toISOString()}"}`, timeStr:randSqlTs(ev, 2, evD*12) });
+    auditObjList.push({ action:'data.juror.pin.locked', resType:'juror_period_auth', resId:a.jId, orgId:o.id, userId:null, details:`{"period_id":"${pd.id}","juror_id":"${a.jId}","actor_name":"${escapeSql(a.name)}","failed_attempts":3,"locked_until":"${new Date(new Date().getTime() + 5 * 60000).toISOString()}"}`, timeStr:randSqlTs(ev, 2, evD*12) });
+    // security.pin_reset.requested — same juror requests PIN reset after being locked
+    auditObjList.push({ action:'security.pin_reset.requested', resType:'juror_period_auth', resId:a.jId, orgId:o.id, userId:null, actorType:'juror', details:`{"jurorName":"${escapeSql(a.name)}","periodName":"${escapeSql(pd.name)}","orgName":"${escapeSql(o.name)}","sent":true}`, timeStr:randSqlTs(ev, evD*12+1, evD*12+3) });
   });
 
   // data.juror.pin.unlocked — admin action
@@ -1836,6 +1847,13 @@ periodData.forEach(pd => {
   if (!pd.isCur) {
     myAuths.filter(a => a.semanticState==='Completed').slice(0, 1).forEach(a => {
       auditObjList.push({ action:'data.juror.edit_mode.closed', resType:'juror_period_auth', resId:a.jId, orgId:o.id, userId:null, details:`{"juror_id":"${a.jId}","actor_name":"${escapeSql(a.name)}","closed_at":"${new Date().toISOString()}","close_source":"resubmit"}`, timeStr:randSqlTs(ev, evD*14+2, evD*18) });
+    });
+  }
+
+  // data.score.edit_requested — completed juror requests edit mode after submitting (current + histIdx<=1)
+  if (pd.isCur || pd.histIdx <= 1) {
+    myAuths.filter(a => a.semanticState==='Completed').slice(0, 1).forEach(a => {
+      auditObjList.push({ action:'data.score.edit_requested', resType:'juror_period_auth', resId:a.jId, orgId:o.id, userId:null, actorType:'juror', details:`{"jurorName":"${escapeSql(a.name)}","periodName":"${escapeSql(pd.name)}","orgName":"${escapeSql(o.name)}","sent":true}`, timeStr:randSqlTs(ev, evD*14+1, evD*16) });
     });
   }
 
@@ -1865,6 +1883,11 @@ periodData.forEach(pd => {
     auditObjList.push({ action:'export.scores', resType:'score_sheets', resId:pd.id, orgId:o.id, userId:adminId, details:`{"period_id":"${pd.id}","format":"xlsx","row_count":${Math.min(myProjs.length * myJurors.length, 100)}}`, timeStr:randSqlTs(ev, evD*12, evD*18) });
   } else if (!pd.isCur && pd.histIdx <= 2) {
     auditObjList.push({ action:'export.scores', resType:'score_sheets', resId:pd.id, orgId:o.id, userId:adminId, details:`{"period_id":"${pd.id}","format":"xlsx","row_count":45}`, timeStr:sqlTs(ev, (evD+10)*24) });
+  }
+
+  // notification.maintenance — admin sends a scheduled maintenance notice to jurors (current periods only)
+  if (pd.isCur && myJurors.length > 0) {
+    auditObjList.push({ action:'notification.maintenance', resType:'periods', resId:pd.id, orgId:o.id, userId:adminId, details:`{"period_id":"${pd.id}","period_name":"${escapeSql(pd.name)}","juror_count":${myJurors.length},"subject":"Scheduled maintenance window","sent":true}`, timeStr:randSqlTs(ev, -24, -2) });
   }
 
   // export.rankings + export.heatmap + export.analytics + notification.export_report (current periods)

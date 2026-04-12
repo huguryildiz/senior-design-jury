@@ -492,8 +492,6 @@
 
 /* ── Day separator row ──────────────────────────────────────── */
 .audit-day-header {
-  display: block;
-  width: 100%;
   background: var(--surface-1);
   pointer-events: none;
   user-select: none;
@@ -502,9 +500,6 @@
   background: var(--surface-2);
 }
 .audit-day-header td {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
   padding: 5px 16px;
   font-size: 10px;
   font-weight: 700;
