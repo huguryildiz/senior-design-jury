@@ -880,6 +880,15 @@ const EVENT_META = {
       return { verb: "requested score edit for juror", resource: d.jurorName || null };
     },
   },
+
+  // ── System-generated security anomalies ──────────────────────
+  "security.anomaly.detected": {
+    label: "Anomaly Detected",
+    narrative: (log) => ({
+      verb: "flagged",
+      resource: log.details?.anomaly_type || "anomaly",
+    }),
+  },
 };
 
 // Derived from EVENT_META — stable export shape for consumers
@@ -1157,6 +1166,68 @@ export function groupBulkEvents(logs) {
     i = j;
   }
   return result;
+}
+
+// ── formatEventMeta ───────────────────────────────────────────
+/**
+ * Build the monospace second line shown below the action sentence in the
+ * audit table. Always starts with the raw action code, then appends
+ * contextual metadata (IP, bulk count, export format, first diff chip).
+ *
+ * @param {object} log  - Raw audit_logs row
+ * @param {{ bulkCount?: number, bulkSpanMs?: number }} [opts]
+ * @returns {string}    - Never null; always at least the action code
+ */
+export function formatEventMeta(log, opts = {}) {
+  const action = String(log?.action || "");
+  const d = log?.details || {};
+  const { bulkCount, bulkSpanMs } = opts;
+
+  // Bulk group: "action × N · within M min"
+  if (bulkCount && bulkCount > 1) {
+    const base = `${action} × ${bulkCount}`;
+    if (bulkSpanMs) {
+      const mins = Math.round(bulkSpanMs / 60_000);
+      if (mins > 0) return `${base} · within ${mins} min`;
+    }
+    return base;
+  }
+
+  // Auth failure with count in details
+  if (action.includes("login.failure") && d.count && d.count > 1) {
+    const base = `${action} × ${d.count}`;
+    return d.ip ? `${base} · ${d.ip}` : base;
+  }
+
+  // Export events: "action · FORMAT · N rows"
+  if (d.format) {
+    const parts = [action, d.format.toUpperCase()];
+    if (d.rowCount != null) parts.push(`${d.rowCount} rows`);
+    return parts.join(" · ");
+  }
+
+  // Array-style changes (config events with details.changes as array)
+  if (Array.isArray(d.changes) && d.changes.length > 0) {
+    const first = d.changes[0];
+    if (first.key != null && (first.from != null || first.to != null)) {
+      return `${action} · ${first.key} ${first.from}→${first.to}`;
+    }
+  }
+
+  // Diff-bearing events via formatDiffChips: append first chip as "key from→to"
+  const diffs = formatDiffChips(log);
+  if (diffs.length > 0) {
+    const first = diffs[0];
+    const change = first.from != null && first.to != null
+      ? `${first.key} ${first.from}→${first.to}`
+      : first.key;
+    return `${action} · ${change}`;
+  }
+
+  // Auth / generic: append IP if present
+  if (d.ip) return `${action} · ${d.ip}`;
+
+  return action;
 }
 
 // ── detectAnomalies ───────────────────────────────────────────

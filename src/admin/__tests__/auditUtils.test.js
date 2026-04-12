@@ -239,3 +239,64 @@ describe("normalizeStudentNames", () => {
     expect(result).toBe("Carol; Alice; Bob");
   });
 });
+
+// ── formatEventMeta ──────────────────────────────────────────────────────────
+
+import { formatEventMeta } from "../utils/auditUtils.js";
+
+describe("formatEventMeta", () => {
+  it("returns the action code when no extras apply", () => {
+    const log = { action: "data.period.locked", details: {} };
+    expect(formatEventMeta(log)).toBe("data.period.locked");
+  });
+
+  it("appends IP for auth events that have details.ip", () => {
+    const log = {
+      action: "auth.admin.login.success",
+      details: { ip: "93.155.48.x", method: "password" },
+    };
+    expect(formatEventMeta(log)).toBe("auth.admin.login.success · 93.155.48.x");
+  });
+
+  it("appends × count and IP for auth failure with count in details", () => {
+    const log = {
+      action: "auth.admin.login.failure",
+      details: { count: 5, ip: "77.246.182.x" },
+    };
+    expect(formatEventMeta(log)).toBe("auth.admin.login.failure × 5 · 77.246.182.x");
+  });
+
+  it("appends × bulkCount and within-N-min for bulk options", () => {
+    const log = { action: "data.score.submitted", details: {} };
+    expect(formatEventMeta(log, { bulkCount: 12, bulkSpanMs: 4 * 60 * 1000 }))
+      .toBe("data.score.submitted × 12 · within 4 min");
+  });
+
+  it("skips 'within' suffix when bulkSpanMs rounds to 0 minutes", () => {
+    const log = { action: "data.score.submitted", details: {} };
+    expect(formatEventMeta(log, { bulkCount: 5, bulkSpanMs: 25_000 }))
+      .toBe("data.score.submitted × 5");
+  });
+
+  it("appends format and rowCount for export events", () => {
+    const log = {
+      action: "security.export.scores",
+      details: { format: "xlsx", rowCount: 540 },
+    };
+    expect(formatEventMeta(log)).toBe("security.export.scores · XLSX · 540 rows");
+  });
+
+  it("appends first diff summary for config events", () => {
+    const log = {
+      action: "config.criteria.updated",
+      details: { changes: [{ key: "design", from: 30, to: 35 }] },
+    };
+    const result = formatEventMeta(log);
+    expect(result).toBe("config.criteria.updated · design 30→35");
+  });
+
+  it("returns action code only when details is null", () => {
+    const log = { action: "data.period.created", details: null };
+    expect(formatEventMeta(log)).toBe("data.period.created");
+  });
+});
