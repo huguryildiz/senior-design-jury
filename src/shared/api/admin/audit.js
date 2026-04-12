@@ -33,7 +33,15 @@ export async function writeAuthFailureEvent(email, method = "password") {
 
 function applyAuditFilters(query, filters) {
   if (filters.organizationId) {
-    query = query.eq("organization_id", filters.organizationId);
+    if (filters.includeNullOrg) {
+      query = query.or(
+        `organization_id.eq.${filters.organizationId},` +
+        `and(organization_id.is.null,category.eq.auth),` +
+        `and(organization_id.is.null,category.eq.security)`
+      );
+    } else {
+      query = query.eq("organization_id", filters.organizationId);
+    }
   }
   if (filters.actions?.length) {
     query = query.in("action", filters.actions);

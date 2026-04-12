@@ -8,10 +8,12 @@
 // client-side file generation without moving exports into an Edge Function.
 
 import { supabase } from "../core/client";
-import { writeAuditLog } from "./audit";
+import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
 
 /**
  * Blocking, pre-operation audit write for an export.
+ * Routes through the log-export-event Edge Function so the server captures
+ * IP + user-agent and future backend-triggered exports are also covered.
  * Throws if the write fails — callers should catch and abort the export.
  */
 export async function logExportInitiated({
@@ -24,12 +26,11 @@ export async function logExportInitiated({
   if (!action || !String(action).startsWith("export.")) {
     throw new Error("logExportInitiated: action must start with 'export.'");
   }
-  await writeAuditLog(action, {
-    organizationId,
-    resourceType,
-    resourceId,
-    details,
+  const { data, error } = await invokeEdgeFunction("log-export-event", {
+    body: { action, organizationId, resourceType, resourceId, details },
   });
+  if (error) throw error;
+  if (data?.error) throw new Error(`logExportInitiated: ${data.error}`);
 }
 
 export async function fullExport(organizationId) {

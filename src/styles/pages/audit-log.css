@@ -36,10 +36,10 @@
 .dark-mode .audit-filter-menu{box-shadow:0 8px 24px rgba(0,0,0,0.3),0 2px 8px rgba(0,0,0,0.15)}
 
 /* Audit table */
-.audit-table{width:100%}
+.audit-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .audit-table thead th{position:sticky;top:0;z-index:2;background:var(--surface-1);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-tertiary);padding:10px 16px;border-bottom:1px solid var(--border);white-space:nowrap}
 .audit-table tbody tr{transition:background .12s}
-.audit-table tbody tr:hover{background:var(--accent-soft)}
+.audit-table tbody tr:not(.audit-day-header):hover{background:var(--accent-soft)}
 .audit-table tbody tr.audit-row-system{background:var(--surface-1)}
 .audit-table tbody tr.audit-row-system:hover{background:color-mix(in srgb, var(--surface-1) 70%, var(--accent-soft))}
 .audit-table tbody td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -484,10 +484,28 @@
    Deeper atmosphere · richer glass · refined glow
    ═══════════════════════════════════════════════════ */
 
+/* ── Severity column cell ───────────────────────────────────── */
+.audit-sev-cell {
+  white-space: nowrap;
+  text-align: center;
+}
+
 /* ── Day separator row ──────────────────────────────────────── */
-.audit-day-header td {
-  padding: 5px 16px;
+.audit-day-header {
+  display: block;
+  width: 100%;
   background: var(--surface-1);
+  pointer-events: none;
+  user-select: none;
+}
+.dark-mode .audit-day-header {
+  background: var(--surface-2);
+}
+.audit-day-header td {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 16px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -495,11 +513,7 @@
   color: var(--text-tertiary);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  pointer-events: none;
-  user-select: none;
-}
-.dark-mode .audit-day-header td {
-  background: var(--surface-2);
+  white-space: nowrap;
 }
 
 /* ── Event code / metadata second line ──────────────────────── */

@@ -46,6 +46,7 @@ const TYPE_OPTIONS = [
   )
     .concat(["Export", "Framework"])
     .filter((label, i, arr) => arr.indexOf(label) === i)
+    .sort()
     .map((label) => ({ value: label, label })),
 ];
 
@@ -615,13 +616,20 @@ export default function AuditLogPage() {
                   <th className={`sortable${sortKey === "action" ? " sorted" : ""}`} onClick={() => handleSort("action")}>
                     Action <SortIcon colKey="action" sortKey={sortKey} sortDir={sortDir} />
                   </th>
+                  <th
+                    className={`sortable${sortKey === "severity" ? " sorted" : ""}`}
+                    style={{ width: 90 }}
+                    onClick={() => handleSort("severity")}
+                  >
+                    Severity <SortIcon colKey="severity" sortKey={sortKey} sortDir={sortDir} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {showAuditSkeleton && (
                   Array.from({ length: 5 }, (_, i) => (
                     <tr key={i}>
-                      <td colSpan={4}>
+                      <td colSpan={5}>
                         <div className="audit-skeleton-row" />
                       </td>
                     </tr>
@@ -630,7 +638,7 @@ export default function AuditLogPage() {
 
                 {!auditLoading && sortedLogs.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="text-sm text-muted" style={{ textAlign: "center", padding: "22px 0" }}>
+                    <td colSpan={5} className="text-sm text-muted" style={{ textAlign: "center", padding: "22px 0" }}>
                       {hasAuditFilters || typeFilter || actorFilter || categoryFilter || severityFilter ? "No results for the current filters." : "No audit events yet."}
                     </td>
                   </tr>
@@ -640,7 +648,7 @@ export default function AuditLogPage() {
                   if (item.type === "day") {
                     return (
                       <tr key={`day-${item.label}`} className="audit-day-header">
-                        <td colSpan={4}>
+                        <td colSpan={5}>
                           {item.label} — {item.count} event{item.count !== 1 ? "s" : ""}
                         </td>
                       </tr>
@@ -652,6 +660,7 @@ export default function AuditLogPage() {
                     const chip = getChip(log.resource_type, log.action);
                     const actor = getActorInfo(log);
                     const ts = formatAuditTimestamp(log.created_at);
+                    const showBulkSevPill = log.severity && log.severity !== "info" && log.severity !== "low" && SEVERITY_META[log.severity];
                     return (
                       <tr key={`bulk-${log.id}`} className="audit-row-bulk" style={{ cursor: "pointer" }} onClick={() => setSelectedLog(log)}>
                         <td className="audit-ts" data-label="Timestamp"><div className="audit-ts-main">{ts}</div></td>
@@ -682,6 +691,13 @@ export default function AuditLogPage() {
                               return formatEventMeta(log, { bulkCount: item.count, bulkSpanMs: spanMs });
                             })()}
                           </div>
+                        </td>
+                        <td className="audit-sev-cell" data-label="Severity">
+                          {showBulkSevPill && (
+                            <span className={`audit-sev-pill audit-sev-${log.severity}`}>
+                              {SEVERITY_META[log.severity].label}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -737,13 +753,15 @@ export default function AuditLogPage() {
                               <> <span className="audit-action-resource">{sentence.resource}</span></>
                             )}
                           </span>
-                          {showSevPill && (
-                            <span className={`audit-sev-pill audit-sev-${log.severity}`}>
-                              {SEVERITY_META[log.severity].label}
-                            </span>
-                          )}
                         </div>
                         <div className="audit-event-code">{formatEventMeta(log)}</div>
+                      </td>
+                      <td className="audit-sev-cell" data-label="Severity">
+                        {showSevPill && (
+                          <span className={`audit-sev-pill audit-sev-${log.severity}`}>
+                            {SEVERITY_META[log.severity].label}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -771,6 +789,7 @@ export default function AuditLogPage() {
             )}
 
             {pagedItems.map((item) => {
+              if (item.type === "day") return null;
               const log = item.type === "bulk" ? item.representative : item.log;
               const chip = getChip(log.resource_type, log.action);
               const actor = getActorInfo(log);

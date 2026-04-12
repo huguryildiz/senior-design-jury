@@ -37,7 +37,7 @@ const defaultAuditFilters = {
  * @param {function} params.setMessage  - Toast message setter
  */
 export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
-  const { activeOrganization } = useAuth();
+  const { activeOrganization, isSuper } = useAuth();
   const organizationCode = activeOrganization?.code || "";
   const supportsInfiniteScroll =
     typeof window !== "undefined" && "IntersectionObserver" in window;
@@ -105,7 +105,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
     }
     try {
       const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, searchTerm);
-      const { data: rawRows, totalCount } = await listAuditLogs({ ...params, organizationId });
+      const { data: rawRows, totalCount } = await listAuditLogs({ ...params, organizationId, includeNullOrg: isSuper });
       const rows = rawRows || [];
       if (mode === "append") {
         setAuditLogs((prev) => [...prev, ...rows]);
@@ -214,7 +214,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
       let loops = 0;
       while (true) {
         const params = buildAuditParams(auditFilters, pageSize, cursor, auditSearch);
-        const { data: rows } = await listAuditLogs({ ...params, organizationId });
+        const { data: rows } = await listAuditLogs({ ...params, organizationId, includeNullOrg: isSuper });
         if (!rows || rows.length === 0) break;
         all = [...all, ...rows];
         if (rows.length < pageSize) break;

@@ -391,18 +391,8 @@ export default function AuthProvider({ children }) {
       throw error;
     }
     if (!rememberMe) clearPersistedSession();
-    // Blocking audit write for admin login — authenticated via the just-created
-    // session. This is client-bound and therefore the one remaining failure
-    // mode for auth events; we surface write errors but do not break login.
-    try {
-      const { writeAuditLog } = await import("@/shared/api");
-      await writeAuditLog("auth.admin.login.success", {
-        resourceType: "profiles",
-        details: { method: "password" },
-      });
-    } catch (e) {
-      console.error("Login audit write failed:", e?.message || e);
-    }
+    // auth.admin.login.success is written server-side by the on-auth-event
+    // Database Webhook (auth.sessions INSERT) — no client-side write needed.
     return data;
   }, [policy.emailPassword]);
 
@@ -493,15 +483,8 @@ export default function AuthProvider({ children }) {
   }, [user?.email]);
 
   const signOut = useCallback(async () => {
-    // Blocking audit write BEFORE sign-out — user is still authenticated so
-    // rpc_admin_write_audit_event can resolve the actor. Failures are
-    // surfaced to console but never block sign-out (rare edge case).
-    try {
-      const { writeAuditLog } = await import("@/shared/api");
-      await writeAuditLog("admin.logout", { resourceType: "profiles" });
-    } catch (e) {
-      console.error("Logout audit write failed:", e?.message || e);
-    }
+    // admin.logout is written server-side by the on-auth-event Database Webhook
+    // (auth.sessions DELETE) — no client-side write needed.
     await supabase.auth.signOut({ scope: "local" });
     hasSessionRef.current = false;
     setUser(null);
@@ -511,16 +494,8 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const signOutAll = useCallback(async () => {
-    // Blocking audit write BEFORE global sign-out.
-    try {
-      const { writeAuditLog } = await import("@/shared/api");
-      await writeAuditLog("admin.logout", {
-        resourceType: "profiles",
-        details: { scope: "global" },
-      });
-    } catch (e) {
-      console.error("Logout audit write failed:", e?.message || e);
-    }
+    // admin.logout is written server-side by the on-auth-event Database Webhook
+    // (auth.sessions DELETE) — no client-side write needed.
     await supabase.auth.signOut({ scope: "global" });
     hasSessionRef.current = false;
     setUser(null);
