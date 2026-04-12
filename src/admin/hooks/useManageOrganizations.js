@@ -20,7 +20,6 @@ import {
   approveApplication,
   rejectApplication,
   notifyApplication,
-  writeAuditLog,
   inviteOrgAdmin,
   cancelOrgAdminInvite,
 } from "../../shared/api";
@@ -416,12 +415,6 @@ export function useManageOrganizations({
           organizationId: appData.orgId,
           organizationName: appData.orgName,
         });
-        writeAuditLog("notification.application", {
-          resourceType: "org_applications",
-          resourceId: applicationId,
-          organizationId: appData.orgId,
-          details: { type: "application_approved", recipientEmail: appData.email },
-        }).catch((e) => console.warn("Audit write failed:", e?.message));
       }
 
       await loadOrgs();
@@ -458,12 +451,6 @@ export function useManageOrganizations({
           organizationId: appData.orgId,
           organizationName: appData.orgName,
         });
-        writeAuditLog("notification.application", {
-          resourceType: "org_applications",
-          resourceId: applicationId,
-          organizationId: appData.orgId,
-          details: { type: "application_rejected", recipientEmail: appData.email },
-        }).catch((e) => console.warn("Audit write failed:", e?.message));
       }
 
       await loadOrgs();
@@ -490,12 +477,6 @@ export function useManageOrganizations({
         name: cleanName,
         email: cleanEmail,
       });
-      writeAuditLog("admin.updated", {
-        resourceType: "memberships",
-        resourceId: userId,
-        organizationId,
-        details: { adminName: cleanName, adminEmail: cleanEmail },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       await loadOrgs();
       setMessage?.("Admin updated.");
       return true;
@@ -564,13 +545,6 @@ export function useManageOrganizations({
     setInviteLoading(true);
     try {
       const result = await inviteOrgAdmin(orgId, email);
-      writeAuditLog("notification.admin_invite", {
-        resourceType: "memberships",
-        resourceId: result.user_id,
-        organizationId: orgId,
-        details: { email, status: result.status },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
-
       await loadOrgs();
       if (result.status === "added") {
         setMessage?.("Admin added — they already had an account.");

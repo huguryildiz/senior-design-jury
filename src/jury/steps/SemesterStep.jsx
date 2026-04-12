@@ -1,5 +1,5 @@
-// src/jury/steps/SemesterStep.jsx
 import "../../styles/jury.css";
+import { formatDate } from "@/shared/lib/dateUtils";
 
 export default function SemesterStep({ state, onBack }) {
   const handleSelectPeriod = (periodId) => {
@@ -46,7 +46,7 @@ export default function SemesterStep({ state, onBack }) {
               <div className="jury-semester-name">{period.name}</div>
               {period.start_date && (
                 <div className="jury-semester-date">
-                  {new Date(period.start_date).toLocaleDateString()}
+                  {formatDate(period.start_date)}
                 </div>
               )}
             </div>

@@ -18,8 +18,9 @@ import { useState, useRef, useCallback } from "react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import { sendExportReport } from "@/shared/api/admin/notifications";
-import { writeAuditLog } from "@/shared/api";
 import { arrayBufferToBase64 } from "@/admin/utils/downloadTable";
+
+import { Icon } from "lucide-react";
 
 const FORMAT_ICON = { xlsx: "XLS", csv: "CSV", pdf: "PDF" };
 
@@ -32,10 +33,19 @@ function getInitials(email) {
 
 function SendIcon({ size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Icon
+      iconNode={[]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4z" />
       <path d="m22 2-11 11" />
-    </svg>
+    </Icon>
   );
 }
 
@@ -61,7 +71,7 @@ export default function SendReportModal({
   const [error, setError] = useState("");
   const inputRef = useRef(null);
   const _toast = useToast();
-  const { profile } = useAuth();
+  const { profile, activeOrganization } = useAuth();
 
   const addRecipient = useCallback((email) => {
     const trimmed = email.trim().toLowerCase();
@@ -125,15 +135,12 @@ export default function SendReportModal({
           message: message || undefined,
           senderName: senderName || undefined,
           ccSenderEmail: ccMyself && senderEmail ? senderEmail : undefined,
+          organizationId: activeOrganization?.id || undefined,
         });
 
         if (!result.sent) {
           throw new Error(result.error || "Failed to send email");
         }
-        writeAuditLog("notification.export_report", {
-          resourceType: "score_sheets",
-          details: { recipients, reportTitle: reportTitle || "Report", periodName },
-        }).catch((e) => console.warn("Audit write failed:", e?.message));
       }
       return count;
     };

@@ -5,6 +5,8 @@ import { useState } from "react";
 import SendReportModal from "@/admin/modals/SendReportModal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
+import { Icon } from "lucide-react";
+
 const FORMATS = [
   { id: "xlsx", iconLabel: "XLS", label: "Excel (.xlsx)", desc: "Formatted tables with styling", hint: "Best for sharing" },
   { id: "csv",  iconLabel: "CSV", label: "CSV (.csv)",    desc: "Raw data for external analysis", hint: "Best for analysis" },
@@ -13,20 +15,38 @@ const FORMATS = [
 
 function DownloadIcon({ size = 14 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Icon
+      iconNode={[]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
+    </Icon>
   );
 }
 
 function SendIcon({ size = 14 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Icon
+      iconNode={[]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4z" />
       <path d="m22 2-11 11" />
-    </svg>
+    </Icon>
   );
 }
 

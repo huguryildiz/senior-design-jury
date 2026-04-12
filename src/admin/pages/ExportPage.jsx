@@ -11,7 +11,7 @@ import {
   listJurorsSummary,
   getScores,
   getProjectSummary,
-  writeAuditLog,
+  logExportInitiated,
 } from "@/shared/api";
 import { exportXLSX, buildExportFilename } from "../utils/exportXLSX";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
@@ -61,15 +61,19 @@ export default function ExportPage() {
           return { rows: mappedRows, summary: summary || [] };
         }),
       );
+      // Blocking pre-export audit — abort if we can't record it.
+      await logExportInitiated({
+        action: "export.backup",
+        organizationId,
+        resourceType: "score_sheets",
+        details: { format: "xlsx", periodCount: orderedSemesters.length },
+      });
+
       await exportXLSX(results.flatMap((x) => x.rows), {
         periodName: "all-periods",
         summaryData: results.flatMap((x) => x.summary),
         tenantCode,
       });
-      writeAuditLog("export.backup", {
-        resourceType: "score_sheets",
-        details: { format: "xlsx", periodCount: orderedSemesters.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       _toast.success(`Score report downloaded · ${orderedSemesters.length} period${orderedSemesters.length !== 1 ? "s" : ""} · Excel`);
     } catch (e) {
       _toast.error(e?.message || "Score report export failed — please try again");

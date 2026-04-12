@@ -391,13 +391,18 @@ export default function AuthProvider({ children }) {
       throw error;
     }
     if (!rememberMe) clearPersistedSession();
-    // Fire-and-forget audit log for admin login
-    import("@/shared/api").then(({ writeAuditLog }) => {
-      writeAuditLog("admin.login", {
+    // Blocking audit write for admin login — authenticated via the just-created
+    // session. This is client-bound and therefore the one remaining failure
+    // mode for auth events; we surface write errors but do not break login.
+    try {
+      const { writeAuditLog } = await import("@/shared/api");
+      await writeAuditLog("auth.admin.login.success", {
         resourceType: "profiles",
         details: { method: "password" },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
-    }).catch(() => {});
+      });
+    } catch (e) {
+      console.error("Login audit write failed:", e?.message || e);
+    }
     return data;
   }, [policy.emailPassword]);
 
@@ -449,26 +454,25 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const resetPassword = useCallback(async (email) => {
+    // password-reset-email Edge Function writes auth.admin.password.reset.requested
+    // server-side before returning — no client-side audit write needed.
     const { data, error } = await invokeEdgeFunction("password-reset-email", {
       body: { email },
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
-    import("@/shared/api").then(({ writeAuditLog }) => {
-      writeAuditLog("notification.password_reset", {
-        resourceType: "profiles",
-        details: { email },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
-    }).catch(() => {});
   }, []);
 
   const updatePassword = useCallback(async (password) => {
     const { data, error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
-    // Best-effort security notification; never block successful password update.
+    // password-changed-notify Edge Function writes auth.admin.password.changed
+    // server-side (in the same request as the email notification).
     try {
       await invokeEdgeFunction("password-changed-notify", { body: {} });
-    } catch {}
+    } catch (e) {
+      console.error("Password change notification/audit failed:", e?.message || e);
+    }
     return data;
   }, []);
 
@@ -489,10 +493,15 @@ export default function AuthProvider({ children }) {
   }, [user?.email]);
 
   const signOut = useCallback(async () => {
-    // Audit before sign-out — user is still authenticated at this point.
-    import("@/shared/api").then(({ writeAuditLog }) => {
-      writeAuditLog("admin.logout", { resourceType: "profiles" }).catch(() => {});
-    }).catch(() => {});
+    // Blocking audit write BEFORE sign-out — user is still authenticated so
+    // rpc_admin_write_audit_event can resolve the actor. Failures are
+    // surfaced to console but never block sign-out (rare edge case).
+    try {
+      const { writeAuditLog } = await import("@/shared/api");
+      await writeAuditLog("admin.logout", { resourceType: "profiles" });
+    } catch (e) {
+      console.error("Logout audit write failed:", e?.message || e);
+    }
     await supabase.auth.signOut({ scope: "local" });
     hasSessionRef.current = false;
     setUser(null);
@@ -502,10 +511,16 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const signOutAll = useCallback(async () => {
-    // Audit before sign-out — user is still authenticated at this point.
-    import("@/shared/api").then(({ writeAuditLog }) => {
-      writeAuditLog("admin.logout", { resourceType: "profiles", details: { scope: "global" } }).catch(() => {});
-    }).catch(() => {});
+    // Blocking audit write BEFORE global sign-out.
+    try {
+      const { writeAuditLog } = await import("@/shared/api");
+      await writeAuditLog("admin.logout", {
+        resourceType: "profiles",
+        details: { scope: "global" },
+      });
+    } catch (e) {
+      console.error("Logout audit write failed:", e?.message || e);
+    }
     await supabase.auth.signOut({ scope: "global" });
     hasSessionRef.current = false;
     setUser(null);

@@ -31,14 +31,7 @@ export async function writeAuthFailureEvent(email, method = "password") {
   if (error) console.warn("Auth failure audit write failed:", error?.message);
 }
 
-export async function listAuditLogs(filters = {}) {
-  let query = supabase
-    .from("audit_logs")
-    .select("*, profiles(display_name)")
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(filters.limit || 120);
-
+function applyAuditFilters(query, filters) {
   if (filters.organizationId) {
     query = query.eq("organization_id", filters.organizationId);
   }
@@ -60,21 +53,8 @@ export async function listAuditLogs(filters = {}) {
   if (filters.endAt) {
     query = query.lte("created_at", filters.endAt);
   }
-
-  // Cursor-based keyset pagination: fetch rows older than the last seen row
-  if (filters.beforeAt) {
-    if (filters.beforeId) {
-      query = query.or(
-        `created_at.lt.${filters.beforeAt},and(created_at.eq.${filters.beforeAt},id.lt.${filters.beforeId})`
-      );
-    } else {
-      query = query.lt("created_at", filters.beforeAt);
-    }
-  }
-
-  // Search across action, resource_type, actor_name and details JSONB fields
   if (filters.search) {
-    const s = filters.search.replace(/%/g, "");
+    const s = filters.search.replace(/[%,()]/g, "");
     const term = `%${s}%`;
     query = query.or(
       [
@@ -88,8 +68,39 @@ export async function listAuditLogs(filters = {}) {
       ].join(",")
     );
   }
+  return query;
+}
 
-  const { data, error } = await query;
+export async function listAuditLogs(filters = {}) {
+  let query = supabase
+    .from("audit_logs")
+    .select("*, profiles(display_name)")
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(filters.limit || 120);
+
+  query = applyAuditFilters(query, filters);
+
+  // Cursor-based keyset pagination: fetch rows older than the last seen row
+  if (filters.beforeAt) {
+    if (filters.beforeId) {
+      query = query.or(
+        `created_at.lt.${filters.beforeAt},and(created_at.eq.${filters.beforeAt},id.lt.${filters.beforeId})`
+      );
+    } else {
+      query = query.lt("created_at", filters.beforeAt);
+    }
+  }
+
+  // Run data + count queries in parallel; count excludes cursor so it reflects
+  // the full filtered result set, not just the current page.
+  let countQuery = supabase
+    .from("audit_logs")
+    .select("*", { count: "exact", head: true });
+  countQuery = applyAuditFilters(countQuery, filters);
+
+  const [{ data, error }, { count, error: countError }] = await Promise.all([query, countQuery]);
   if (error) throw error;
-  return data || [];
+  if (countError) console.warn("Audit count query failed:", countError?.message);
+  return { data: data || [], totalCount: count ?? null };
 }

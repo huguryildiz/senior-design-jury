@@ -11,7 +11,7 @@
 //   error        — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -69,11 +69,15 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body" style={{ padding: "18px 20px" }}>
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
@@ -115,17 +119,26 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
                 <span className="acc-crit-dot" style={{ background: c.color }} />
                 {c.label}
                 <span className="acc-crit-check">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></Icon>
                 </span>
               </label>
             ))}
           </div>
         )}
       </div>
-
       <div className="fs-drawer-footer">
         <div className="fs-footer-meta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></Icon>
           <span>Changes saved on confirm</span>
         </div>
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>

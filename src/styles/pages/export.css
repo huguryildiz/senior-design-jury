@@ -45,7 +45,7 @@
 .export-btn-spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:export-spin 0.7s linear infinite;flex-shrink:0}
 
 /* ─── Share Dialog ─── */
-.share-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-width:94vw;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);z-index:210;box-shadow:var(--shadow-elevated);overflow:hidden;animation:dropdown-in .15s ease-out}
+.share-modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:480px;max-width:94vw;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);z-index:var(--z-modal);box-shadow:var(--shadow-elevated);overflow:hidden;animation:dropdown-in .15s ease-out}
 .share-modal.show{display:block}
 .share-modal .crud-modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border)}
 .share-modal .crud-modal-header h3{font-size:15px;font-weight:700;margin:0}
@@ -265,4 +265,3 @@
   .landing-step,.step-arrow{opacity:1 !important;transform:none !important;filter:none !important;transition:none !important}
   .step-icon,.step-number::after,.step-arrow svg{animation:none !important}
 }
-

@@ -22,6 +22,7 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import DeleteBackupModal from "../modals/DeleteBackupModal";
 import { useToast } from "@/shared/hooks/useToast";
 import { useBackups } from "../hooks/useBackups";
+import { formatDateTime as formatDate, formatDate as fmtDateOnly } from "@/shared/lib/dateUtils";
 
 const STORAGE_QUOTA_BYTES = 500 * 1024 * 1024; // 500 MB
 
@@ -79,18 +80,6 @@ function formatBytes(bytes) {
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[idx]}`;
 }
 
-function formatDate(ts) {
-  if (!ts) return "";
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function formatExpiry(ts) {
   if (!ts) return "Never expires";
@@ -100,7 +89,7 @@ function formatExpiry(ts) {
   if (diffDays < 0) return "Expired";
   if (diffDays === 0) return "Expires today";
   if (diffDays <= 7) return `Expires in ${diffDays} day${diffDays !== 1 ? "s" : ""}`;
-  return `Expires ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+  return `Expires ${fmtDateOnly(ts)}`;
 }
 
 function BackupRow({ backup, onDownload, onDelete, isDeleting }) {

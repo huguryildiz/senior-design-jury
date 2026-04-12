@@ -16,6 +16,7 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -287,6 +288,18 @@ Deno.serve(async (req: Request) => {
       });
       if (memErr) return json(400, { error: memErr.message });
 
+      try {
+        await writeEdgeAuditLog(req, {
+          action: "notification.admin_invite",
+          organization_id: org_id,
+          resource_type: "memberships",
+          resource_id: userId,
+          details: { email: normalizedEmail, status: "added", user_id: userId },
+        });
+      } catch (auditErr) {
+        console.error("audit write failed (notification.admin_invite/added):", (auditErr as Error)?.message);
+      }
+
       return json(200, { status: "added", user_id: userId });
     }
 
@@ -340,6 +353,22 @@ Deno.serve(async (req: Request) => {
       status: initialMembershipStatus,
     });
     if (memErr) return json(400, { error: memErr.message });
+
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "notification.admin_invite",
+        organization_id: org_id,
+        resource_type: "memberships",
+        resource_id: newUserId,
+        details: {
+          email: normalizedEmail,
+          status: isReinvite ? "reinvited" : "invited",
+          user_id: newUserId,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (notification.admin_invite/invite):", (auditErr as Error)?.message);
+    }
 
     return json(200, {
       status: isReinvite ? "reinvited" : "invited",

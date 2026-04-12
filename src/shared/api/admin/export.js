@@ -1,7 +1,36 @@
 // src/shared/api/admin/export.js
 // Admin data export (PostgREST).
+//
+// Audit: every export call site must call logExportInitiated BEFORE the
+// file generation runs. The write is blocking; if it fails the export
+// should abort so there is no "user got a file but we can't prove it"
+// window. `export.*` events are the best guarantee we can give for
+// client-side file generation without moving exports into an Edge Function.
 
 import { supabase } from "../core/client";
+import { writeAuditLog } from "./audit";
+
+/**
+ * Blocking, pre-operation audit write for an export.
+ * Throws if the write fails — callers should catch and abort the export.
+ */
+export async function logExportInitiated({
+  action,
+  organizationId = null,
+  resourceType = null,
+  resourceId = null,
+  details = {},
+}) {
+  if (!action || !String(action).startsWith("export.")) {
+    throw new Error("logExportInitiated: action must start with 'export.'");
+  }
+  await writeAuditLog(action, {
+    organizationId,
+    resourceType,
+    resourceId,
+    details,
+  });
+}
 
 export async function fullExport(organizationId) {
   const [periodsRes, jurorsRes, auditRes] = await Promise.all([

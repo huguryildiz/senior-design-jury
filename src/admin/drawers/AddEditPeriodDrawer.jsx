@@ -10,21 +10,24 @@
 //   onNavigateToCriteria — () => void
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Lock, Unlock, Eye, EyeOff, Copy, BarChart2, ChevronRight } from "lucide-react";
+import {
+  AlertCircle,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  Copy,
+  BarChart2,
+  ChevronRight,
+  Icon,
+} from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
 import { getPeriodCounts } from "@/shared/api";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
+import { formatDate } from "@/shared/lib/dateUtils";
 
-function formatDate(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return "—";
-  }
-}
 
 const LOCK_OPTIONS = [
   { value: "open", label: "Open — scoring enabled" },
@@ -134,11 +137,18 @@ export default function AddEditPeriodDrawer({
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="fs-icon muted" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 {isEdit
                   ? <><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></>
                   : <><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></>}
-              </svg>
+              </Icon>
             </span>
             <div className="fs-title-group">
               <div className="fs-title">{isEdit ? `Edit Period — ${period.name}` : "Add Evaluation Period"}</div>
@@ -148,11 +158,15 @@ export default function AddEditPeriodDrawer({
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></Icon>
           </button>
         </div>
       </div>
-
       {/* ── Body ── */}
       <div className="fs-drawer-body">
         {saveError && (
@@ -188,7 +202,14 @@ export default function AddEditPeriodDrawer({
             )}
             {!nameError && formName.trim() && (
               <div className="fs-field-helper" style={{ color: "var(--success, #22c55e)" }}>
-                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  width="11"
+                  height="11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></Icon>
                 {" "}Looks good
               </div>
             )}
@@ -414,7 +435,6 @@ export default function AddEditPeriodDrawer({
           </div>
         )}
       </div>
-
       {/* ── Footer ── */}
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>

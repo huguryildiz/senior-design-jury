@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ClipboardCheck, ExternalLink, X } from "lucide-react";
+import { ClipboardCheck, ExternalLink, X, Icon } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import { formatTs } from "@/admin/utils/adminUtils";
 
@@ -16,24 +16,45 @@ function statusMeta(row) {
 function ScorePillIcon({ kind }) {
   if (kind === "scored") {
     return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round">
         <path d="m20 6-11 11-5-5" />
-      </svg>
+      </Icon>
     );
   }
   if (kind === "partial") {
     return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round">
         <circle cx="12" cy="12" r="1" />
         <circle cx="19" cy="12" r="1" />
         <circle cx="5" cy="12" r="1" />
-      </svg>
+      </Icon>
     );
   }
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <Icon
+      iconNode={[]}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
-    </svg>
+    </Icon>
   );
 }
 

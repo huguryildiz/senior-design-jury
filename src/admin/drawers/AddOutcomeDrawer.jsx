@@ -11,7 +11,7 @@
 //   error          — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -69,9 +69,16 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
               style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08))", borderColor: "rgba(16,185,129,0.18)" }}
               aria-hidden="true"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><path d="M8 12h8M12 8v8" />
-              </svg>
+              </Icon>
             </span>
             <div className="fs-title-group">
               <div className="fs-title">Add Outcome</div>
@@ -79,9 +86,14 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
               {frameworkName && (
                 <div className="fw-drawer-header-ctx">
                   <span className="fw-drawer-tag">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5">
                       <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-                    </svg>
+                    </Icon>
                     {frameworkName}
                   </span>
                 </div>
@@ -89,11 +101,15 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body" style={{ padding: "18px 20px" }}>
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
@@ -177,7 +193,12 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
                   <span className="acc-crit-dot" style={{ background: c.color }} />
                   {c.label}
                   <span className="acc-crit-check">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></Icon>
                   </span>
                 </label>
               ))}
@@ -185,7 +206,6 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
           </>
         )}
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>
         <button

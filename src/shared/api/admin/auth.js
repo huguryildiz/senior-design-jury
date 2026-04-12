@@ -153,8 +153,9 @@ export async function listPendingApplications(organizationId) {
 }
 
 /**
- * Fire-and-forget email notification for application status changes.
- * Calls the notify-application Edge Function. Never throws.
+ * Email notification for application status changes.
+ * Calls the notify-application Edge Function, which writes an audit row
+ * server-side after sending. Never throws to avoid disrupting the caller.
  *
  * @param {{ type: "application_submitted"|"application_approved"|"application_rejected",
  *            applicationId: string, recipientEmail: string,

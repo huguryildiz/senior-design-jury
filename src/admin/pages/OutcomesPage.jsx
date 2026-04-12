@@ -3,7 +3,7 @@
 // Matches vera-premium-prototype.html mockup.
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Trash2, MoreVertical } from "lucide-react";
+import { Pencil, Trash2, MoreVertical, Icon } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useFrameworkOutcomes } from "../hooks/useFrameworkOutcomes";
 import { useToast } from "@/shared/hooks/useToast";
@@ -84,10 +84,16 @@ function OutcomeDetailRow({ outcome, mappedCriteria, coverage, isOpen }) {
 
           {coverage === "indirect" && mappedCriteria.length === 0 && (
             <div className="acc-detail-indirect-note">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ width: 14, height: 14, flexShrink: 0 }}>
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4M12 8h.01" />
-              </svg>
+              </Icon>
               <span>This outcome is assessed indirectly through related criteria. To strengthen accreditation evidence, consider mapping a criterion directly.</span>
             </div>
           )}
@@ -132,15 +138,15 @@ function OutcomeRow({
             aria-expanded={isExpanded}
             title={isExpanded ? "Collapse" : "Expand"}
           >
-            <svg
+            <Icon
+              iconNode={[]}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2.2"
-              style={{ width: 12, height: 12, transition: "transform .15s", transform: isExpanded ? "rotate(90deg)" : "none" }}
-            >
+              style={{ width: 12, height: 12, transition: "transform .15s", transform: isExpanded ? "rotate(90deg)" : "none" }}>
               <path d="m9 18 6-6-6-6" />
-            </svg>
+            </Icon>
           </button>
         </td>
 
@@ -166,9 +172,14 @@ function OutcomeRow({
                   onClick={(e) => { e.stopPropagation(); onRemoveChip(c.id, outcome.id); }}
                   title="Remove mapping"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5">
                     <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
+                  </Icon>
                 </span>
               </span>
             ))}
@@ -180,9 +191,15 @@ function OutcomeRow({
               onClick={(e) => { e.stopPropagation(); onAddMapping(outcome); }}
               title="Map a criterion"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 11, height: 11 }}>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ width: 11, height: 11 }}>
                 <path d="M12 5v14M5 12h14" />
-              </svg>
+              </Icon>
               {!hasMappings && coverage !== "indirect" ? "Map criterion" : ""}
             </button>
           </div>
@@ -231,7 +248,6 @@ function OutcomeRow({
           </div>
         </td>
       </tr>
-
       <OutcomeDetailRow
         outcome={outcome}
         mappedCriteria={mappedCriteria}
@@ -476,21 +492,24 @@ export default function OutcomesPage() {
       {panelError && (
         <FbAlert variant="danger" style={{ marginBottom: 16 }}>{panelError}</FbAlert>
       )}
-
       {/* Page title */}
       <div style={{ marginBottom: 16 }}>
         <div className="page-title">Outcomes &amp; Mapping</div>
         <div className="page-desc">Map evaluation criteria to programme outcomes and track coverage.</div>
       </div>
-
       {noFramework ? (
         <>
           <div className="acc-empty-state">
             <div className="acc-empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                 <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-              </svg>
+              </Icon>
             </div>
             <div className="acc-empty-title">No framework defined</div>
             <div className="acc-empty-desc">Create an accreditation framework to manage programme outcomes.</div>
@@ -551,10 +570,16 @@ export default function OutcomesPage() {
               {frameworks.map((fwItem) => (
                 <div key={fwItem.id} className="fw-chip-wrap">
                   <button className="fw-chip active">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="fw-chip-icon">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="fw-chip-icon">
                       <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                       <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-                    </svg>
+                    </Icon>
                     {fwItem.name}
                     <span className="fw-chip-count">{fw.outcomes.length}</span>
                   </button>
@@ -606,10 +631,16 @@ export default function OutcomesPage() {
               <div className="card-title">Programme Outcomes</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span className="fw-active-badge">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 13, height: 13 }}>
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    style={{ width: 13, height: 13 }}>
                     <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                     <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-                  </svg>
+                  </Icon>
                   {frameworkName}
                 </span>
                 <span style={{ fontSize: 10.5, color: "var(--text-quaternary)", fontWeight: 500 }}>Expand rows for details</span>
@@ -630,9 +661,14 @@ export default function OutcomesPage() {
               ) : fw.outcomes.length === 0 ? (
                 <div className="acc-empty-state" style={{ padding: "32px 24px" }}>
                   <div className="acc-empty-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5">
                       <path d="M12 5v14M5 12h14" />
-                    </svg>
+                    </Icon>
                   </div>
                   <div className="acc-empty-title">No outcomes defined</div>
                   <div className="acc-empty-desc">Click "+ Add Outcome" to define your first programme outcome.</div>
@@ -694,7 +730,6 @@ export default function OutcomesPage() {
           </div>
         </>
       )}
-
       {/* Add Outcome Drawer */}
       <AddOutcomeDrawer
         open={addDrawerOpen}
@@ -703,7 +738,6 @@ export default function OutcomesPage() {
         criteria={drawerCriteria}
         onSave={handleAddOutcome}
       />
-
       {/* Edit Outcome Drawer */}
       <OutcomeDetailDrawer
         open={editDrawerOpen}
@@ -712,7 +746,6 @@ export default function OutcomesPage() {
         criteria={drawerCriteria}
         onSave={handleEditOutcome}
       />
-
       {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteTarget !== null}

@@ -3,6 +3,7 @@
 
 import { useRef, useEffect } from "react";
 import { useTheme } from "@/shared/theme/ThemeProvider";
+import { Moon, SunMedium } from "lucide-react";
 
 export default function ThemeToggleIcon({ size = 18 }) {
   const { theme, setTheme } = useTheme();
@@ -11,6 +12,17 @@ export default function ThemeToggleIcon({ size = 18 }) {
   const raysRef = useRef(null);
   const moonRef = useRef(null);
   const s = useRef({ rot: 0, drag: false, moved: false, sa: 0, sr: 0 });
+  const ease = "cubic-bezier(.4,0,.2,1)";
+
+  const applySunTransform = (scale) => {
+    if (!raysRef.current) return;
+    raysRef.current.style.transform = `rotate(${s.current.rot}deg) scale(${scale})`;
+  };
+
+  const applyMoonTransform = (scale, rotate) => {
+    if (!moonRef.current) return;
+    moonRef.current.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
+  };
 
   // Ambient slow spin — sun rays orbit
   useEffect(() => {
@@ -18,16 +30,22 @@ export default function ThemeToggleIcon({ size = 18 }) {
     const id = setInterval(() => {
       if (!s.current.drag && raysRef.current) {
         s.current.rot = (s.current.rot + 0.4) % 360;
-        raysRef.current.setAttribute("transform", `rotate(${s.current.rot} 12 12)`);
+        applySunTransform(1);
       }
     }, 50);
     return () => clearInterval(id);
+  }, [isDark]);
+
+  useEffect(() => {
+    applySunTransform(isDark ? 0.6 : 1);
+    applyMoonTransform(isDark ? 1 : 0.5, isDark ? 0 : -90);
   }, [isDark]);
 
   // Touch: drag to spin rays (sun) or wobble (moon), tap to toggle
   useEffect(() => {
     const el = btnRef.current;
     if (!el) return;
+
     const ang = (t) => {
       const b = el.getBoundingClientRect();
       return (
@@ -37,6 +55,7 @@ export default function ThemeToggleIcon({ size = 18 }) {
         ) * 57.2958
       );
     };
+
     const onStart = (e) => {
       if (e.cancelable) e.preventDefault();
       s.current.drag = true;
@@ -44,29 +63,26 @@ export default function ThemeToggleIcon({ size = 18 }) {
       s.current.sa = ang(e.touches[0]);
       s.current.sr = s.current.rot;
     };
+
     const onMove = (e) => {
       if (!s.current.drag) return;
       const d = ang(e.touches[0]) - s.current.sa;
       if (Math.abs(d) > 2) s.current.moved = true;
       if (isDark) {
         const tilt = Math.max(-20, Math.min(20, d * 0.4));
-        if (moonRef.current)
-          moonRef.current.style.transform = `scale(1) rotate(${tilt}deg)`;
+        applyMoonTransform(1, tilt);
       } else {
         s.current.rot = s.current.sr + d;
-        if (raysRef.current)
-          raysRef.current.setAttribute(
-            "transform",
-            `rotate(${s.current.rot} 12 12)`,
-          );
+        applySunTransform(1);
       }
     };
+
     const onEnd = () => {
       s.current.drag = false;
-      if (isDark && moonRef.current)
-        moonRef.current.style.transform = "scale(1) rotate(0deg)";
+      if (isDark) applyMoonTransform(1, 0);
       if (!s.current.moved) setTheme(isDark ? "light" : "dark");
     };
+
     el.addEventListener("touchstart", onStart, { passive: false });
     el.addEventListener("touchmove", onMove, { passive: true });
     el.addEventListener("touchend", onEnd);
@@ -77,8 +93,6 @@ export default function ThemeToggleIcon({ size = 18 }) {
     };
   }, [isDark, setTheme]);
 
-  const ease = "cubic-bezier(.4,0,.2,1)";
-
   return (
     <button
       ref={btnRef}
@@ -86,61 +100,36 @@ export default function ThemeToggleIcon({ size = 18 }) {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* Rays — amber, orbit slowly, fade for dark */}
-        <g
+      <span style={{ position: "relative", width: size, height: size, display: "inline-flex" }}>
+        <SunMedium
           ref={raysRef}
-          stroke="#f59e0b"
-          style={{ opacity: isDark ? 0 : 1, transition: "opacity 0.4s" }}
-        >
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </g>
-
-        {/* Sun core — amber */}
-        <circle
-          cx="12"
-          cy="12"
-          r="5"
-          stroke="#f59e0b"
+          size={size}
+          strokeWidth={2}
+          color="#f59e0b"
+          aria-hidden="true"
           style={{
             opacity: isDark ? 0 : 1,
-            transform: isDark ? "scale(0.6) rotate(90deg)" : "scale(1)",
-            transformOrigin: "12px 12px",
+            transform: `rotate(${s.current.rot}deg) scale(${isDark ? 0.6 : 1})`,
+            transformOrigin: "center",
             transition: `opacity 0.3s, transform 0.4s ${ease}`,
           }}
         />
-
-        {/* Moon crescent — soft blue */}
-        <path
+        <Moon
           ref={moonRef}
-          d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-          stroke="#93c5fd"
+          size={size}
+          strokeWidth={2}
+          color="#93c5fd"
+          aria-hidden="true"
           style={{
+            position: "absolute",
+            inset: 0,
             opacity: isDark ? 1 : 0,
-            transform: isDark
-              ? "scale(1) rotate(0deg)"
-              : "scale(0.5) rotate(-90deg)",
-            transformOrigin: "12px 12px",
+            transform: `scale(${isDark ? 1 : 0.5}) rotate(${isDark ? 0 : -90}deg)`,
+            transformOrigin: "center",
             transition: `opacity 0.3s ${isDark ? "0.1s" : "0s"}, transform 0.5s ${ease}`,
           }}
         />
-      </svg>
+      </span>
     </button>
   );
 }

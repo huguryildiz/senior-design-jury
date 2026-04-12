@@ -15,10 +15,21 @@ import EnableEditingModal from "../modals/EnableEditingModal";
 import JurorReviewsModal from "../modals/JurorReviewsModal";
 import AddJurorDrawer from "../drawers/AddJurorDrawer";
 import EditJurorDrawer from "../drawers/EditJurorDrawer";
-import { sendJurorPinEmail, getActiveEntryTokenPlain, writeAuditLog } from "@/shared/api";
+import { sendJurorPinEmail, getActiveEntryTokenPlain } from "@/shared/api";
 import { parseJurorsCsv } from "../utils/csvParser";
 import ExportPanel from "../components/ExportPanel";
-import { SquarePen, Filter, LockOpen, Lock, FileText, Trash2, Clock, MoreVertical, Pencil } from "lucide-react";
+import {
+  SquarePen,
+  Filter,
+  LockOpen,
+  Lock,
+  FileText,
+  Trash2,
+  Clock,
+  MoreVertical,
+  Pencil,
+  Icon,
+} from "lucide-react";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import { FilterButton } from "@/shared/ui/FilterButton";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
@@ -26,6 +37,7 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import FbAlert from "@/shared/ui/FbAlert";
 import Pagination from "@/shared/ui/Pagination";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
+import { formatDateTime as formatFull } from "@/shared/lib/dateUtils";
 import "../../styles/pages/jurors.css";
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -45,15 +57,6 @@ function formatRelative(ts) {
   return `${yrs % 1 === 0 ? yrs : yrs.toFixed(1)}yr ago`;
 }
 
-function formatFull(ts) {
-  if (!ts) return "";
-  try {
-    return new Date(ts).toLocaleString("en-GB", {
-      month: "short", day: "numeric", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch { return ""; }
-}
 
 function formatEditWindowLeft(ts, nowMs = Date.now()) {
   if (!ts) return "";
@@ -484,14 +487,12 @@ export default function JurorsPage() {
       jurorName: target?.juryName || target?.juror_name || info?.juror_name || "",
       jurorAffiliation: target?.affiliation || info?.affiliation || "",
       organizationName: activeOrganization?.name || "",
+      organizationId: activeOrganization?.id || undefined,
+      jurorId: target?.jurorId || target?.juror_id || undefined,
       pin: info.pin_plain_once,
       tokenUrl,
       periodName: periods.viewPeriodLabel,
     });
-    writeAuditLog("notification.juror_pin", {
-      resourceType: "jurors",
-      details: { recipientEmail: email, jurorName: target?.juryName || target?.juror_name || "" },
-    }).catch((e) => console.warn("Audit write failed:", e?.message));
   }
 
   function openRemoveModal(juror) {
@@ -528,7 +529,6 @@ export default function JurorsPage() {
           </button>
         </div>
       ))}
-
       {/* Header */}
       <div className="jurors-page-header">
         <div className="jurors-page-header-top">
@@ -538,7 +538,6 @@ export default function JurorsPage() {
           </div>
         </div>
       </div>
-
       {/* KPI strip */}
       <div className="scores-kpi-strip">
         <div className="scores-kpi-item"><div className="scores-kpi-item-value">{totalJurors}</div><div className="scores-kpi-item-label">Jurors</div></div>
@@ -548,14 +547,21 @@ export default function JurorsPage() {
         <div className="scores-kpi-item"><div className="scores-kpi-item-value"><span className="accent">{readyJurors}</span></div><div className="scores-kpi-item-label">Ready to Submit</div></div>
         <div className="scores-kpi-item"><div className="scores-kpi-item-value">{notStartedJurors}</div><div className="scores-kpi-item-label">Not Started</div></div>
       </div>
-
       {/* Toolbar */}
       <div className="jurors-toolbar mobile-toolbar-stack">
         <div className="jurors-search-wrap mobile-toolbar-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
-          </svg>
+          </Icon>
           <input
             className="search-input"
             type="text"
@@ -572,19 +578,39 @@ export default function JurorsPage() {
         />
         <div className="jurors-toolbar-spacer mobile-toolbar-spacer" />
         <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ verticalAlign: "-1px" }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
+          </Icon>
           {" "}Export
         </button>
         <button className="btn btn-outline btn-sm mobile-toolbar-secondary" onClick={() => setImportOpen(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ verticalAlign: "-1px" }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
+          </Icon>
           {" "}Import
         </button>
         <button
@@ -595,7 +621,6 @@ export default function JurorsPage() {
           + Add Juror
         </button>
       </div>
-
       {/* Filter panel */}
       {filterOpen && (
         <div className="filter-panel show">
@@ -641,15 +666,24 @@ export default function JurorsPage() {
               />
             </div>
             <button className="btn btn-outline btn-sm filter-clear-btn" onClick={() => { setStatusFilter("all"); setAffilFilter("all"); }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+              <Icon
+                iconNode={[]}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ opacity: 0.5 }}>
                 <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-              </svg>
+              </Icon>
               {" "}Clear all
             </button>
           </div>
         </div>
       )}
-
       {/* Export panel */}
       {exportOpen && (
         <ExportPanel
@@ -690,14 +724,12 @@ export default function JurorsPage() {
   }}
         />
       )}
-
       {/* Error */}
       {panelError && (
         <FbAlert variant="danger" style={{ marginBottom: "12px" }}>
           {panelError}
         </FbAlert>
       )}
-
       {/* Table */}
       <div className="table-wrap" style={{ borderRadius: "var(--radius) var(--radius) 0 0", overflow: openMenuId ? "visible" : undefined }}>
         <table id="jurors-main-table">
@@ -933,7 +965,6 @@ export default function JurorsPage() {
           </tbody>
         </table>
       </div>
-
       {/* Pagination */}
       <Pagination
         currentPage={safePage}
@@ -944,9 +975,7 @@ export default function JurorsPage() {
         onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
         itemLabel="jurors"
       />
-
       {/* ═══════ MODALS ═══════ */}
-
       {/* Add Juror Drawer */}
       <AddJurorDrawer
         open={addDrawerOpen}
@@ -954,7 +983,6 @@ export default function JurorsPage() {
         onSave={handleSaveAddJuror}
         periodName={periods.viewPeriodLabel}
       />
-
       {/* Edit Juror Drawer */}
       <EditJurorDrawer
         open={!!editDrawerJuror}
@@ -975,7 +1003,6 @@ export default function JurorsPage() {
         onResetPin={(j) => { setEditDrawerJuror(null); setPinResetJuror(editDrawerJuror); }}
         onRemove={(j) => { setEditDrawerJuror(null); setRemoveJuror(editDrawerJuror); }}
       />
-
       {/* Reset PIN Modal */}
       <ResetPinModal
         open={!!pinResetJuror && !jurorsHook.resetPinInfo}
@@ -986,7 +1013,6 @@ export default function JurorsPage() {
         } : null}
         onConfirm={handleResetPin}
       />
-
       {/* PIN Result Modal */}
       <PinResultModal
         open={!!jurorsHook.resetPinInfo}
@@ -999,7 +1025,6 @@ export default function JurorsPage() {
         newPin={jurorsHook.resetPinInfo?.pin_plain_once}
         onSendEmail={handleSendPinEmail}
       />
-
       {/* Remove Juror Modal */}
       <RemoveJurorModal
         open={!!removeJuror}
@@ -1018,7 +1043,6 @@ export default function JurorsPage() {
         periodName={periods.viewPeriodLabel}
         onRemove={handleRemoveJuror}
       />
-
       {/* Enable Editing Mode Modal */}
       <EnableEditingModal
         open={!!editModeJuror}
@@ -1029,7 +1053,6 @@ export default function JurorsPage() {
         } : null}
         onEnable={handleEnableEditMode}
       />
-
       <JurorReviewsModal
         open={!!reviewsJuror}
         onClose={() => setReviewsJuror(null)}
@@ -1041,7 +1064,6 @@ export default function JurorsPage() {
           onViewReviews?.(reviewsJuror);
         }}
       />
-
       <ImportJurorsModal
         open={importOpen}
         onClose={() => setImportOpen(false)}

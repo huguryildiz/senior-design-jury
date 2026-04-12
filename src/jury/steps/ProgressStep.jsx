@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { Loader2, Play, Rocket, LayoutGrid, Clock, ChevronDown } from "lucide-react";
 import SpotlightTour from "../components/SpotlightTour";
+import { formatDate } from "@/shared/lib/dateUtils";
 import "../../styles/jury.css";
 
 const PROGRESS_TOUR_STEPS = [
@@ -48,7 +49,7 @@ function formatLastActive(dateStr) {
   const oneDay = 86400000;
   if (diff < oneDay && d.getDate() === now.getDate()) return "Today";
   if (diff < 2 * oneDay) return "Yesterday";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDate(d);
 }
 
 export default function ProgressStep({ state, onBack }) {

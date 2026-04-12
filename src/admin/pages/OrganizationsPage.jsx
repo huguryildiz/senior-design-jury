@@ -15,7 +15,7 @@ import { useManageOrganizations } from "../hooks/useManageOrganizations";
 import Avatar from "@/shared/ui/Avatar";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
-import { listPeriods, setCurrentPeriod, updateOrganization, writeAuditLog } from "@/shared/api";
+import { listPeriods, setCurrentPeriod, updateOrganization } from "@/shared/api";
 import {
   GlobalSettingsDrawer,
   ExportBackupDrawer,
@@ -23,7 +23,24 @@ import {
   SystemHealthDrawer,
 } from "../drawers/GovernanceDrawers";
 import { jurorInitials, jurorAvatarBg, jurorAvatarFg } from "../utils/jurorIdentity";
-import { Archive, CheckCircle2, Clock, Eye, FileText, Filter, Lock, Mail, MoreVertical, Pencil, Settings, Trash2, TriangleAlert, UserPlus, X } from "lucide-react";
+import {
+  Archive,
+  CheckCircle2,
+  Clock,
+  Eye,
+  FileText,
+  Filter,
+  Lock,
+  Mail,
+  MoreVertical,
+  Pencil,
+  Settings,
+  Trash2,
+  TriangleAlert,
+  UserPlus,
+  X,
+  Icon,
+} from "lucide-react";
 import { FilterButton } from "@/shared/ui/FilterButton";
 import Pagination from "@/shared/ui/Pagination";
 
@@ -42,11 +59,18 @@ function getInitials(name, email) {
 function OrgStatusBadge({ status }) {
   if (status === "active") return (
     <span className="badge badge-success">
-      <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <Icon
+        iconNode={[]}
+        className="badge-ico"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round">
         <path d="M20 6 9 17l-5-5" />
-      </svg>
-      Active
-    </span>
+      </Icon>Active
+          </span>
   );
   if (status === "archived") return <span className="badge badge-neutral"><Archive size={11} strokeWidth={2.2} />Archived</span>;
   return <span className="badge badge-warning">{status ? String(status).charAt(0).toUpperCase() + String(status).slice(1) : "—"}</span>;
@@ -433,12 +457,6 @@ export default function OrganizationsPage() {
       if (selected?.name) {
         setOrgPeriodOverrides((prev) => ({ ...prev, [setPeriodOrg.id]: selected.name }));
       }
-      writeAuditLog("period.set_current", {
-        resourceType: "periods",
-        resourceId: periodSelection,
-        organizationId: setPeriodOrg.id,
-        details: { organizationCode: setPeriodOrg.code, periodName: selected?.name ?? null },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       setMessage(selected?.name ? `Current period set to ${selected.name}` : "Current period updated");
       setSetPeriodOrg(null);
       await loadOrgs();
@@ -454,17 +472,11 @@ export default function OrganizationsPage() {
     setToggleSaving(true);
     setToggleError("");
     try {
-      const prevStatus = toggleOrg.status;
       await updateOrganization({
         organizationId: toggleOrg.id,
         status: toggleStatus,
+        reason: toggleReason.trim() || undefined,
       });
-      writeAuditLog("organization.status_changed", {
-        resourceType: "organizations",
-        resourceId: toggleOrg.id,
-        organizationId: toggleOrg.id,
-        details: { organizationCode: toggleOrg.code, previousStatus: prevStatus, newStatus: toggleStatus, ...(toggleReason.trim() ? { reason: toggleReason.trim() } : {}) },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       setMessage(`Organization status updated to ${toggleStatus}`);
       setToggleOrg(null);
       setToggleReason("");
@@ -498,17 +510,21 @@ export default function OrganizationsPage() {
       <ExportBackupDrawer open={exportBackupOpen} onClose={() => setExportBackupOpen(false)} />
       <MaintenanceDrawer open={maintenanceOpen} onClose={() => setMaintenanceOpen(false)} />
       <SystemHealthDrawer open={systemHealthOpen} onClose={() => setSystemHealthOpen(false)} />
-
       {/* Create Organization drawer */}
       <Drawer open={showCreate} onClose={closeCreate}>
         <div className="fs-drawer-header">
           <div className="fs-drawer-header-row">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="vera-icon-surface" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 9 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
+                </Icon>
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Create Organization</div>
@@ -518,7 +534,12 @@ export default function OrganizationsPage() {
               </div>
             </div>
             <button className="fs-close" onClick={closeCreate}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -552,17 +573,21 @@ export default function OrganizationsPage() {
           </button>
         </div>
       </Drawer>
-
       {/* Edit Organization drawer */}
       <Drawer open={showEdit} onClose={closeEdit}>
         <div className="fs-drawer-header">
           <div className="fs-drawer-header-row">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="vera-icon-surface" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 9 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
+                </Icon>
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Edit Organization</div>
@@ -570,7 +595,12 @@ export default function OrganizationsPage() {
               </div>
             </div>
             <button className="fs-close" onClick={closeEdit}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -604,14 +634,18 @@ export default function OrganizationsPage() {
           </button>
         </div>
       </Drawer>
-
       {/* View Organization drawer */}
       <Drawer open={!!viewOrg} onClose={() => setViewOrg(null)}>
         <div className="fs-drawer-header">
           <div className="fs-drawer-header-row">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="vera-icon-surface" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 9 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></Icon>
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{viewOrgMeta?.university || viewOrg?.name || "Organization Profile"}</div>
@@ -619,7 +653,12 @@ export default function OrganizationsPage() {
               </div>
             </div>
             <button className="fs-close" onClick={() => setViewOrg(null)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -651,14 +690,13 @@ export default function OrganizationsPage() {
           <button className="fs-btn fs-btn-primary" onClick={() => { if (viewOrg) openEdit(viewOrg); setViewOrg(null); }}>Edit Organization</button>
         </div>
       </Drawer>
-
       {/* Manage Admins drawer */}
       <Drawer open={!!manageAdminsOrg} onClose={() => setManageAdminsOrg(null)}>
         <div className="fs-drawer-header">
           <div className="fs-drawer-header-row">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="fs-icon identity">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></Icon>
               </div>
               <div className="fs-title-group">
                 <div className="fs-title">Manage Admins</div>
@@ -666,7 +704,12 @@ export default function OrganizationsPage() {
               </div>
             </div>
             <button className="fs-close" onClick={() => setManageAdminsOrg(null)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -765,14 +808,13 @@ export default function OrganizationsPage() {
           </button>
         </div>
       </Drawer>
-
       {/* Review Application drawer */}
       <Drawer open={!!reviewApp} onClose={() => setReviewApp(null)}>
         <div className="fs-drawer-header">
           <div className="fs-drawer-header-row">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="fs-icon identity">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></Icon>
               </div>
               <div className="fs-title-group">
                 <div className="fs-title">Review Application</div>
@@ -780,7 +822,12 @@ export default function OrganizationsPage() {
               </div>
             </div>
             <button className="fs-close" onClick={() => setReviewApp(null)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -805,7 +852,6 @@ export default function OrganizationsPage() {
           <button className="fs-btn fs-btn-primary" style={{ flex: 1 }} onClick={async () => { if (!reviewApp?.applicationId) return; await handleApproveApplication(reviewApp.applicationId); setReviewApp(null); }} disabled={applicationActionLoading.id === reviewApp?.applicationId}>Approve</button>
         </div>
       </Drawer>
-
       {/* All Applications drawer */}
       <Drawer open={allApplicationsOpen} onClose={() => setAllApplicationsOpen(false)}>
         <div className="fs-drawer-header">
@@ -815,7 +861,12 @@ export default function OrganizationsPage() {
               <div className="fs-subtitle">{allPending.length} pending applications</div>
             </div>
             <button className="fs-close" onClick={() => setAllApplicationsOpen(false)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -853,14 +904,18 @@ export default function OrganizationsPage() {
           <button className="fs-btn fs-btn-secondary" onClick={() => setAllApplicationsOpen(false)}>Close</button>
         </div>
       </Drawer>
-
       {/* Set Current Period modal */}
       <Modal open={!!setPeriodOrg} onClose={() => setSetPeriodOrg(null)} size="sm">
         <div className="fs-modal-header">
           <div className="fs-modal-header-row">
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="fs-icon accent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="m8 12 2.5 2.5L16 9" /></svg>
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="m8 12 2.5 2.5L16 9" /></Icon>
               </div>
               <div className="fs-title-group">
                 <div className="fs-title">Set Current Period</div>
@@ -868,7 +923,12 @@ export default function OrganizationsPage() {
               </div>
             </div>
             <button className="fs-close" onClick={() => setSetPeriodOrg(null)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
             </button>
           </div>
         </div>
@@ -895,12 +955,16 @@ export default function OrganizationsPage() {
           </button>
         </div>
       </Modal>
-
       {/* Toggle Organization Status modal */}
       <Modal open={!!toggleOrg} onClose={() => setToggleOrg(null)} size="sm">
         <div className="fs-modal-header" style={{ textAlign: "center", borderBottom: "none", paddingBottom: 4, position: "relative" }}>
           <button className="fs-close" onClick={() => setToggleOrg(null)} style={{ position: "absolute", top: 0, right: 0 }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
           </button>
           <div className="eem-icon" style={{ margin: "0 auto 10px", display: "grid", placeItems: "center" }}>
             <Lock size={20} />
@@ -960,7 +1024,6 @@ export default function OrganizationsPage() {
           </button>
         </div>
       </Modal>
-
       {/* ── Page Content ────────────────────────────────────────── */}
       <div className="page" id="page-organizations">
         <div className="page-title">Organizations</div>
@@ -1081,9 +1144,17 @@ export default function OrganizationsPage() {
                 style={{ width: "auto", padding: "6px 14px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, whiteSpace: "nowrap" }}
                 onClick={openCreate}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <Icon
+                  iconNode={[]}
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                </Icon>
                 Create Organization
               </button>
             </div>
@@ -1135,9 +1206,19 @@ export default function OrganizationsPage() {
                   className="btn btn-outline btn-sm filter-clear-btn"
                   onClick={() => { setOrgStatusFilter("all"); setOrgStaffingFilter("all"); }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                  <Icon
+                    iconNode={[]}
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ opacity: 0.5 }}>
                     <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                  </svg>
+                  </Icon>
                   {" "}Clear all
                 </button>
               </div>
@@ -1399,22 +1480,46 @@ export default function OrganizationsPage() {
               {[
                 {
                   label: "Global Settings",
-                  icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 19.07A10 10 0 0 0 4.93 4.93" /></svg>,
+                  icon: <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ width: 14, height: 14 }}><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 19.07A10 10 0 0 0 4.93 4.93" /></Icon>,
                   onClick: () => setGlobalSettingsOpen(true),
                 },
                 {
                   label: "Export & Backup",
-                  icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
+                  icon: <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ width: 14, height: 14 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></Icon>,
                   onClick: () => setExportBackupOpen(true),
                 },
                 {
                   label: "Maintenance",
-                  icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
+                  icon: <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ width: 14, height: 14 }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></Icon>,
                   onClick: () => setMaintenanceOpen(true),
                 },
                 {
                   label: "System Health",
-                  icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>,
+                  icon: <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ width: 14, height: 14 }}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></Icon>,
                   onClick: () => setSystemHealthOpen(true),
                 },
               ].map(({ label, icon, onClick }) => (

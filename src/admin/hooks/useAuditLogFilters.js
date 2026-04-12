@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listAuditLogs, writeAuditLog } from "../../shared/api";
+import { listAuditLogs, logExportInitiated } from "../../shared/api";
 import {
   AUDIT_PAGE_SIZE,
   formatAuditTimestamp,
@@ -21,6 +21,9 @@ import { useAuth } from "@/auth";
 const defaultAuditFilters = {
   startDate: "",
   endDate: "",
+  actorTypes: [],
+  categories: [],
+  severities: [],
 };
 
 /**
@@ -48,6 +51,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
   const [auditCursor, setAuditCursor] = useState(null);
   const [auditExporting, setAuditExporting] = useState(false);
   const [showAllAuditLogs, setShowAllAuditLogs] = useState(false);
+  const [auditTotalCount, setAuditTotalCount] = useState(null);
 
   const auditSearchRef = useRef("");
   const auditTimerRef = useRef(null);
@@ -101,16 +105,17 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
     }
     try {
       const params = buildAuditParams(filters || defaultAuditFilters, AUDIT_PAGE_SIZE, cursor, searchTerm);
-      const rawRows = await listAuditLogs({ ...params, organizationId });
+      const { data: rawRows, totalCount } = await listAuditLogs({ ...params, organizationId });
       const rows = rawRows || [];
       if (mode === "append") {
-        setAuditLogs((prev) => [...prev, ...(rows || [])]);
+        setAuditLogs((prev) => [...prev, ...rows]);
       } else {
-        setAuditLogs(rows || []);
+        setAuditLogs(rows);
+        if (totalCount !== null) setAuditTotalCount(totalCount);
       }
-      setAuditHasMore((rawRows || []).length >= (params.limit || AUDIT_PAGE_SIZE));
-      if (rawRows && rawRows.length > 0) {
-        const last = rawRows[rawRows.length - 1];
+      setAuditHasMore(rows.length >= (params.limit || AUDIT_PAGE_SIZE));
+      if (rows.length > 0) {
+        const last = rows[rows.length - 1];
         setAuditCursor({ beforeAt: last.created_at, beforeId: last.id });
       }
     } catch (e) {
@@ -197,13 +202,19 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
     setAuditExporting(true);
     setAuditError("");
     try {
+      await logExportInitiated({
+        action: "export.audit",
+        organizationId,
+        resourceType: "audit_logs",
+        details: { format, filters: auditFilters, search: auditSearch || null },
+      });
       const pageSize = 500;
       let cursor = null;
       let all = [];
       let loops = 0;
       while (true) {
         const params = buildAuditParams(auditFilters, pageSize, cursor, auditSearch);
-        const rows = await listAuditLogs({ ...params, organizationId });
+        const { data: rows } = await listAuditLogs({ ...params, organizationId });
         if (!rows || rows.length === 0) break;
         all = [...all, ...rows];
         if (rows.length < pageSize) break;
@@ -249,10 +260,6 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
           colWidths: [22, 12, 18, 16, 48],
         });
       }
-      writeAuditLog("export.audit", {
-        resourceType: "audit_logs",
-        details: { format, rowCount: all.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       setMessage(`${all.length} audit event${all.length !== 1 ? "s" : ""} exported`);
     } catch (e) {
       setAuditError(e?.message || "Could not export audit logs.");
@@ -271,6 +278,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
     auditSearch,
     setAuditSearch,
     auditHasMore,
+    auditTotalCount,
     auditExporting,
     showAllAuditLogs,
     setShowAllAuditLogs,

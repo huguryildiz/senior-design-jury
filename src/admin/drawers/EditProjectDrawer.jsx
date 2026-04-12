@@ -10,16 +10,21 @@
 //   error      — string | null
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
 
 const HANDLE_SVG = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <Icon
+    iconNode={[]}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2">
     <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
     <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
-  </svg>
+  </Icon>
 );
 
 export default function EditProjectDrawer({ open, onClose, project, onSave, error }) {
@@ -108,9 +113,16 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="fs-icon muted" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-              </svg>
+              </Icon>
             </span>
             <div className="fs-title-group">
               <div className="fs-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -135,11 +147,15 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
@@ -157,9 +173,17 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
           <div className="fs-field">
             <label className="fs-field-label">
               Project No{" "}
-              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--text-quaternary)", verticalAlign: "-1px" }}>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                width="11"
+                height="11"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ color: "var(--text-quaternary)", verticalAlign: "-1px" }}>
                 <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
+              </Icon>
             </label>
             <input
               className="fs-input locked"
@@ -189,7 +213,14 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
             />
             {titleTrimmed && (
               <div className="fs-field-helper" style={{ color: "var(--success, #22c55e)" }}>
-                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  width="11"
+                  height="11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></Icon>
                 {" "}Looks good
               </div>
             )}
@@ -265,21 +296,30 @@ export default function EditProjectDrawer({ open, onClose, project, onSave, erro
                   disabled={saving}
                   aria-label="Remove member"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></Icon>
                 </button>
               )}
             </div>
           ))}
 
           <button className="fs-list-add" type="button" onClick={addMember} disabled={saving}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>
-            </svg>
+            </Icon>
             Add Member
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
           Cancel

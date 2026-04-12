@@ -50,28 +50,39 @@ export async function listOutcomes(frameworkId) {
 }
 
 export async function createOutcome(payload) {
-  const { data, error } = await supabase
-    .from("framework_outcomes")
-    .insert(payload)
-    .select()
-    .single();
+  // rpc_admin_create_framework_outcome performs INSERT + audit atomically.
+  const { data, error } = await supabase.rpc("rpc_admin_create_framework_outcome", {
+    p_framework_id: payload.framework_id,
+    p_code: payload.code,
+    p_label: payload.label,
+    p_description: payload.description ?? null,
+    p_sort_order: payload.sort_order ?? 0,
+  });
   if (error) throw error;
   return data;
 }
 
 export async function updateOutcome(id, payload) {
-  const { data, error } = await supabase
-    .from("framework_outcomes")
-    .update(payload)
-    .eq("id", id)
-    .select()
-    .single();
+  // rpc_admin_update_framework_outcome fetches before, updates, writes diff audit atomically.
+  const patch = {};
+  if (payload.code !== undefined) patch.code = payload.code;
+  if (payload.label !== undefined) patch.label = payload.label;
+  if (payload.description !== undefined) patch.description = payload.description;
+  if (payload.sort_order !== undefined) patch.sort_order = payload.sort_order;
+
+  const { data, error } = await supabase.rpc("rpc_admin_update_framework_outcome", {
+    p_outcome_id: id,
+    p_patch: patch,
+  });
   if (error) throw error;
   return data;
 }
 
 export async function deleteOutcome(id) {
-  const { error } = await supabase.from("framework_outcomes").delete().eq("id", id);
+  // rpc_admin_delete_framework_outcome performs DELETE + audit atomically.
+  const { error } = await supabase.rpc("rpc_admin_delete_framework_outcome", {
+    p_outcome_id: id,
+  });
   if (error) throw error;
 }
 

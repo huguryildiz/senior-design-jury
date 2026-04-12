@@ -10,9 +10,9 @@
 
 import { useMemo, useState } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
-import { CheckCircle2, Download, Filter, MessageSquare, Search, Send, X } from "lucide-react";
+import { CheckCircle2, Download, Filter, MessageSquare, Search, Send, X, Icon } from "lucide-react";
 import { useReviewsFilters } from "../hooks/useReviewsFilters";
-import { writeAuditLog } from "@/shared/api";
+import { logExportInitiated } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
@@ -41,30 +41,48 @@ function ScorePill({ status }) {
   if (status === "scored") {
     return (
       <span className="pill pill-scored">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <Icon
+          iconNode={[]}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <path d="m20 6-11 11-5-5" />
-        </svg>
-        Scored
-      </span>
+        </Icon>Scored
+              </span>
     );
   }
   if (status === "partial") {
     return (
       <span className="pill pill-partial">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon
+          iconNode={[]}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
-        </svg>
-        Partial
-      </span>
+        </Icon>Partial
+              </span>
     );
   }
   return (
     <span className="pill pill-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
-      </svg>
-      Empty
-    </span>
+      </Icon>Empty
+          </span>
   );
 }
 
@@ -73,9 +91,16 @@ function JurorPill({ status, submittedTs }) {
   if (status === "completed") {
     const pill = (
       <span className="pill pill-completed">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <Icon
+          iconNode={[]}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <path d="m20 6-11 11-5-5" />
-        </svg>
+        </Icon>
         Completed
       </span>
     );
@@ -86,40 +111,64 @@ function JurorPill({ status, submittedTs }) {
   if (status === "ready_to_submit") {
     return (
       <span className="pill pill-ready">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+        <Icon
+          iconNode={[]}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
-        </svg>
-        Ready to Submit
-      </span>
+        </Icon>Ready to Submit
+              </span>
     );
   }
   if (status === "in_progress") {
     return (
       <span className="pill pill-progress">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon
+          iconNode={[]}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
-        </svg>
-        In Progress
-      </span>
+        </Icon>In Progress
+              </span>
     );
   }
   if (status === "editing") {
     return (
       <span className="pill pill-editing">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <Icon
+          iconNode={[]}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round">
           <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-        </svg>
-        Editing
-      </span>
+        </Icon>Editing
+              </span>
     );
   }
   return (
     <span className="pill pill-not-started">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" />
-      </svg>
-      Not Started
-    </span>
+      </Icon>Not Started
+          </span>
   );
 }
 
@@ -342,6 +391,19 @@ export default function ReviewsPage() {
         formatTs(r.finalSubmittedAt || r.updatedAt),
       ]);
 
+      // Blocking pre-export audit — abort export if we can't record it.
+      await logExportInitiated({
+        action: "export.scores",
+        organizationId: activeOrganization?.id || null,
+        resourceType: "score_sheets",
+        details: {
+          format: exportFormat,
+          rowCount: sorted.length,
+          periodName: periodName ?? null,
+          uniqueJurors,
+        },
+      });
+
       await downloadTable(exportFormat, {
         filenameType: "Reviews",
         sheetName: "Reviews",
@@ -355,10 +417,6 @@ export default function ReviewsPage() {
         rows,
         colWidths: [24, 24, ...scoreCols.filter((c) => c.key !== "total").map(() => 10), 8, 12, 14, 32, 18],
       });
-      writeAuditLog("export.scores", {
-        resourceType: "score_sheets",
-        details: { format: exportFormat, rowCount: sorted.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       setShowExport(false);
       const fmtLabel = exportFormat === "pdf" ? "PDF" : exportFormat === "csv" ? "CSV" : "Excel";
       toast.success(`${sorted.length} review${sorted.length !== 1 ? "s" : ""} · ${uniqueJurors} juror${uniqueJurors !== 1 ? "s" : ""} exported · ${fmtLabel}`);
@@ -413,7 +471,6 @@ export default function ReviewsPage() {
           </button>
         </div>
       </div>
-
       {/* Filter status banner */}
       {activeFilterCount > 0 && (
         <div className="fb-banner fbb-success">
@@ -431,7 +488,6 @@ export default function ReviewsPage() {
           </button>
         </div>
       )}
-
       {/* KPI strip */}
       <div className="scores-kpi-strip">
         <div className="scores-kpi-item">
@@ -457,28 +513,48 @@ export default function ReviewsPage() {
           <div className="scores-kpi-item-label">Avg Score</div>
         </div>
       </div>
-
       {/* Status legend */}
       <div className="reviews-status-legend" role="note" aria-label="Status legend">
         <div className="reviews-status-legend-row-inline">
           <span className="reviews-status-legend-title">Status</span>
           <PremiumTooltip text="All criteria are scored for this row">
             <span className="status-pill status-scored">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></Icon>
               Scored
             </span>
           </PremiumTooltip>
           <PremiumTooltip text="At least one criterion is missing">
             <span className="status-pill status-partial">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.1"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <circle cx="12" cy="12" r="8" strokeDasharray="2.5 2.5" /><circle cx="12" cy="12" r="1.3" />
-              </svg>
+              </Icon>
               Partial
             </span>
           </PremiumTooltip>
           <PremiumTooltip text="No score has been entered yet">
             <span className="status-pill status-empty">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></Icon>
               Empty
             </span>
           </PremiumTooltip>
@@ -488,45 +564,79 @@ export default function ReviewsPage() {
           <span className="reviews-status-legend-title">Progress</span>
           <PremiumTooltip text="Final submission is completed">
             <span className="status-pill status-completed">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <circle cx="12" cy="12" r="9" /><path d="M9.2 12.4 11.3 14.5 15 10.8" />
-              </svg>
+              </Icon>
               Completed
             </span>
           </PremiumTooltip>
           <PremiumTooltip text="All groups scored, ready for submission">
             <span className="status-pill status-ready">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.1"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
-              </svg>
+              </Icon>
               Ready to Submit
             </span>
           </PremiumTooltip>
           <PremiumTooltip text="Scoring has started but is not complete">
             <span className="status-pill status-progress">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
-              </svg>
+              </Icon>
               In Progress
             </span>
           </PremiumTooltip>
           <PremiumTooltip text="No scoring activity yet">
             <span className="status-pill status-not-started">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"><circle cx="12" cy="12" r="9" /></Icon>
               Not Started
             </span>
           </PremiumTooltip>
           <PremiumTooltip text="Editing mode is enabled for this juror">
             <span className="status-pill status-editing">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
+              </Icon>
               Editing
             </span>
           </PremiumTooltip>
         </div>
       </div>
-
       {/* Filter panel */}
       <div className={`filter-panel${showFilter ? " show" : ""}`}>
         <div className="filter-panel-header">
@@ -610,7 +720,6 @@ export default function ReviewsPage() {
           </button>
         </div>
       </div>
-
       {/* Export panel */}
       <div className={`export-panel${showExport ? " show" : ""}`}>
         <div className="export-panel-header">
@@ -661,7 +770,6 @@ export default function ReviewsPage() {
           </div>
         </div>
       </div>
-
       <SendReportModal
         open={sendOpen}
         onClose={() => setSendOpen(false)}
@@ -692,7 +800,6 @@ export default function ReviewsPage() {
           });
         }}
       />
-
       {/* Table */}
       <div className="table-wrap" style={{ borderRadius: "var(--radius) var(--radius) 0 0" }}>
         <table className="reviews-table">
@@ -803,7 +910,6 @@ export default function ReviewsPage() {
           </tbody>
         </table>
       </div>
-
       {/* Pagination */}
       <Pagination
         currentPage={safePage}
@@ -814,7 +920,6 @@ export default function ReviewsPage() {
         onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
         itemLabel="reviews"
       />
-
       {/* Footer note */}
       {partialCount > 0 && (
         <div className="reviews-footer-note">

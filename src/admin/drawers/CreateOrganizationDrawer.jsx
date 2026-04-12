@@ -9,7 +9,7 @@
 //   error   — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -73,10 +73,16 @@ export default function CreateOrganizationDrawer({ open, onClose, onSave, error 
                 background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.12)",
               }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" style={{ width: 17, height: 17 }}>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="2"
+                style={{ width: 17, height: 17 }}>
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
+              </Icon>
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Create Organization</div>
@@ -86,13 +92,17 @@ export default function CreateOrganizationDrawer({ open, onClose, onSave, error 
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body" style={{ gap: 16 }}>
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 4 }}>
@@ -227,7 +237,6 @@ export default function CreateOrganizationDrawer({ open, onClose, onSave, error 
           />
         </div>
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
           Cancel

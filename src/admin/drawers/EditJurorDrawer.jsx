@@ -12,7 +12,7 @@
 //   error          — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -101,10 +101,15 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="fs-icon" style={{ background: "var(--surface-2)" }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-              </svg>
+              </Icon>
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Juror Profile</div>
@@ -112,13 +117,17 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
@@ -168,9 +177,16 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
               disabled={saving}
             />
             <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 5, color: "var(--text-tertiary)", fontSize: 11 }}>
-              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                width="11"
+                height="11"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-              </svg>
+              </Icon>
               Used to send PIN and evaluation QR code via email.
             </div>
           </div>
@@ -248,11 +264,16 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
         {/* ── Irreversible Actions ── */}
         <div className="fs-danger-zone">
           <div className="fs-danger-zone-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
+            </Icon>
             Irreversible Actions
           </div>
           <div className="fs-danger-zone-desc">
@@ -265,10 +286,17 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
               onClick={() => onResetPin?.(juror)}
               style={{ display: "flex", alignItems: "center", gap: 6 }}
             >
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <rect x="3" y="11" width="18" height="10" rx="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              </Icon>
               Reset PIN
             </button>
             <button
@@ -277,17 +305,23 @@ export default function EditJurorDrawer({ open, onClose, juror, onSave, onResetP
               onClick={() => onRemove?.(juror)}
               style={{ display: "flex", alignItems: "center", gap: 6 }}
             >
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                 <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              </Icon>
               Remove Juror
             </button>
           </div>
         </div>
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
           Cancel

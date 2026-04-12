@@ -80,7 +80,7 @@ export {
 
 export { listAuditLogs, writeAuditLog, writeAuthFailureEvent } from "./audit";
 
-export { fullExport } from "./export";
+export { fullExport, logExportInitiated } from "./export";
 
 export { upsertProfile, getProfile } from "./profiles";
 

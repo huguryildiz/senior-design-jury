@@ -17,6 +17,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSuperAdminEmails, shouldCcOn } from "../_shared/super-admin-cc.ts";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 interface NotificationPayload {
   type: "application_submitted" | "application_approved" | "application_rejected";
@@ -413,6 +414,28 @@ Deno.serve(async (req: Request) => {
       error: sendError || undefined,
     };
     console.log("Notification result:", JSON.stringify(logEntry));
+
+    // Server-side guaranteed audit write for the notification attempt.
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "notification.application",
+        organization_id: payload.tenant_id || null,
+        resource_type: "org_applications",
+        resource_id: payload.application_id,
+        actor_type: payload.type === "application_submitted" ? "anonymous" : "admin",
+        details: {
+          type: payload.type,
+          recipients: toArr,
+          cc_count: cc.length,
+          sent,
+          error: sendError || null,
+          applicant_name: payload.applicant_name || null,
+          tenant_name: payload.tenant_name || null,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (notification.application):", (auditErr as Error)?.message);
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

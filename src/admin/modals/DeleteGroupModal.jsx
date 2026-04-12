@@ -13,6 +13,8 @@ import { useState } from "react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
+import { Icon } from "lucide-react";
+
 export default function DeleteGroupModal({ open, onClose, groupName, impact = {}, onDelete }) {
   const [deleting, setDeleting] = useState(false);
 
@@ -30,9 +32,14 @@ export default function DeleteGroupModal({ open, onClose, groupName, impact = {}
     <Modal open={open} onClose={onClose} size="sm" centered>
       <div className="fs-modal-header">
         <div className="fs-modal-icon danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2">
             <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-          </svg>
+          </Icon>
         </div>
         <div className="fs-title" style={{ textAlign: "center" }}>
           Delete {groupName || "Project"}?
@@ -41,7 +48,6 @@ export default function DeleteGroupModal({ open, onClose, groupName, impact = {}
           This will permanently remove the project, all team member assignments, and every score recorded by jurors for this project.
         </div>
       </div>
-
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
         <div className="fs-impact">
           <div className="fs-impact-item">
@@ -58,7 +64,6 @@ export default function DeleteGroupModal({ open, onClose, groupName, impact = {}
           </div>
         </div>
       </div>
-
       <div
         className="fs-modal-footer"
         style={{ justifyContent: "center", background: "transparent", borderTop: "none", paddingTop: 0 }}

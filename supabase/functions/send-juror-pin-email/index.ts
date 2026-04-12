@@ -5,10 +5,14 @@
 // Jurors page after a PIN reset.
 //
 // Payload: { recipientEmail, jurorName, jurorAffiliation,
-//            pin, tokenUrl?, periodName? }
+//            pin, tokenUrl?, periodName?, organizationId?, jurorId? }
 //
 // Email provider: Resend (via RESEND_API_KEY env var).
+// Audit: notification.juror_pin written server-side after email send.
 // ============================================================
+
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
+import { requireAdminCaller } from "../_shared/admin-auth.ts";
 
 interface Payload {
   recipientEmail: string;
@@ -18,6 +22,8 @@ interface Payload {
   tokenUrl?: string;
   periodName?: string;
   organizationName?: string;
+  organizationId?: string;
+  jurorId?: string;
 }
 
 const corsHeaders = {
@@ -149,6 +155,12 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   try {
     const payload: Payload = await req.json();
@@ -157,6 +169,14 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Missing required fields: recipientEmail, jurorName, pin" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const auth = await requireAdminCaller(req, payload.organizationId || null);
+    if (!auth.ok) {
+      return new Response(
+        JSON.stringify({ error: auth.error }),
+        { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -197,6 +217,24 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log("send-juror-pin-email:", JSON.stringify({ to: payload.recipientEmail, jurorName: payload.jurorName, sent, error: sendError || undefined }));
+
+    if (sent) {
+      try {
+        await writeEdgeAuditLog(req, {
+          action: "notification.juror_pin",
+          organization_id: payload.organizationId || null,
+          resource_type: "jurors",
+          resource_id: payload.jurorId || null,
+          details: {
+            recipientEmail: payload.recipientEmail,
+            jurorName: payload.jurorName,
+            periodName: payload.periodName ?? null,
+          },
+        });
+      } catch (auditErr) {
+        console.error("audit write failed (notification.juror_pin):", (auditErr as Error)?.message);
+      }
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

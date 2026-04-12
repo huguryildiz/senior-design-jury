@@ -3,6 +3,8 @@
 import InlineError, { CoverageBanner } from "@/shared/ui/InlineError";
 import { clampToCriterionMax, getDescPlaceholder } from "./criteriaFormHelpers";
 
+import { Icon } from "lucide-react";
+
 const BAND_TAG_CLASSES = ["tag-exemplary", "tag-strong", "tag-adequate", "tag-needs-work"];
 
 function getBandTagClass(bi, bands) {
@@ -42,7 +44,6 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
       {coverageError && (
         <CoverageBanner>{coverageError}</CoverageBanner>
       )}
-
       {bands.map((band, bi) => {
         const rangeError = bandRangeErrors[bi];
         const levelError = bandLevelErrors[bi];
@@ -58,7 +59,6 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
             className={`crt-band-edit${isValid ? " band-valid" : ""}${hasError ? " band-error" : ""}`}
           >
             <div className="crt-band-edit-color" style={{ background: bandColor }} />
-
             <div className="crt-band-edit-header">
               <div className="crt-band-edit-header-left">
                 <span className="crt-band-edit-ordinal">{bi + 1}</span>
@@ -74,13 +74,17 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
                   aria-label={`Remove band ${bi + 1}`}
                   title="Remove band"
                 >
-                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2">
                     <path d="M2 2l8 8M10 2l-8 8" />
-                  </svg>
+                  </Icon>
                 </button>
               )}
             </div>
-
             <div className="crt-band-edit-fields">
               <div className="crt-field">
                 <div className="crt-field-label">Level label</div>
@@ -147,22 +151,33 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
                 )}
               </div>
             </div>
-
             {(isValid || hasError) && (
               <div className={`crt-band-edit-helper ${hasError ? "helper-error" : "helper-success"}`}>
                 {hasError ? (
                   <>
-                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden="true">
                       <circle cx="6" cy="6" r="5" />
                       <path d="M6 4v3M6 8.5v.5" />
-                    </svg>
+                    </Icon>
                     {rangeError || levelError || descError}
                   </>
                 ) : (
                   <>
-                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true">
                       <polyline points="2,6.5 5,9.5 10,3" />
-                    </svg>
+                    </Icon>
                     Looks good
                   </>
                 )}
@@ -171,13 +186,18 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
           </div>
         );
       })}
-
       {!disabled && (
         <button type="button" className="crt-band-add" onClick={addBand}>
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true">
             <circle cx="7" cy="7" r="6" />
             <path d="M7 4v6M4 7h6" />
-          </svg>
+          </Icon>
           Add Band
         </button>
       )}

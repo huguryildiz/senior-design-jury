@@ -16,22 +16,12 @@
 import { useEffect, useState } from "react";
 import { Wrench, Clock, Activity } from "lucide-react";
 import { useTheme } from "@/shared/theme/ThemeProvider";
+import { formatDateTime } from "@/shared/lib/dateUtils";
 import veraLogoDark from "@/assets/vera_logo_dark.png";
 import veraLogoWhite from "@/assets/vera_logo_white.png";
 
 const DEFAULT_MESSAGE = "VERA is undergoing scheduled maintenance. We'll be back shortly.";
 
-function formatDateTime(iso) {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
-}
 
 /**
  * Live countdown for a target end time.

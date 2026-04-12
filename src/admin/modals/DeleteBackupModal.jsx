@@ -12,6 +12,7 @@ import { useState } from "react";
 import { AlertCircle, Database } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import { formatDateTime as formatDate } from "@/shared/lib/dateUtils";
 
 function formatBytes(bytes) {
   if (!bytes) return "0 B";
@@ -25,18 +26,6 @@ function formatBytes(bytes) {
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[idx]}`;
 }
 
-function formatDate(ts) {
-  if (!ts) return "";
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function DeleteBackupModal({ open, onClose, backup, onDelete }) {
   const [deleting, setDeleting] = useState(false);

@@ -15,6 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSuperAdminEmails, shouldCcOn } from "../_shared/super-admin-cc.ts";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 interface Payload {
   periodId: string;
@@ -326,6 +327,28 @@ Deno.serve(async (req: Request) => {
       sent,
       error: sendError || undefined,
     }));
+
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "data.score.edit_requested",
+        actor_type: "juror",
+        user_id: null,
+        organization_id: info.orgId || null,
+        resource_type: "juror_period_auth",
+        resource_id: payload.periodId,
+        category: "data",
+        severity: "low",
+        details: {
+          jurorName: payload.jurorName,
+          affiliation: payload.affiliation || null,
+          periodName: info.periodName || null,
+          orgName: info.orgName || null,
+          sent,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (data.score.edit_requested):", (auditErr as Error)?.message);
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

@@ -11,7 +11,7 @@
 //   periodName  — string
 
 import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import { StudentNames } from "@/shared/ui/EntityMeta";
@@ -45,12 +45,19 @@ export default function DeleteProjectModal({ open, onClose, project, impact = {}
     <Modal open={open} onClose={handleClose} size="sm" centered>
       <div className="fs-modal-header">
         <div className="fs-modal-icon danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6" />
             <path d="M19 6l-1 14H6L5 6" />
             <path d="M10 11v6M14 11v6" />
             <path d="M9 6V4h6v2" />
-          </svg>
+          </Icon>
         </div>
         <div className="fs-title" style={{ textAlign: "center" }}>Delete Project?</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
@@ -58,7 +65,6 @@ export default function DeleteProjectModal({ open, onClose, project, impact = {}
           will be permanently deleted from {periodName || "this evaluation period"}.
         </div>
       </div>
-
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
         {project && (
           <div
@@ -139,7 +145,6 @@ export default function DeleteProjectModal({ open, onClose, project, impact = {}
           />
         </div>
       </div>
-
       <div
         className="fs-modal-footer"
         style={{ justifyContent: "center", background: "transparent", borderTop: "none", paddingTop: 0 }}

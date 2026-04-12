@@ -2,6 +2,8 @@
 
 import Tooltip from "@/shared/ui/Tooltip";
 
+import { Icon } from "lucide-react";
+
 function getOutcomeTooltipContent(code, outcome) {
   const descEn = String(outcome?.desc_en ?? "").trim();
   const descTr = String(outcome?.desc_tr ?? "").trim();
@@ -81,9 +83,16 @@ export default function OutcomePillSelector({ selected, outcomeConfig, onChange,
                 }}
               >
                 {isSelected && (
-                  <svg className="pill-check" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                  <Icon
+                    iconNode={[]}
+                    className="pill-check"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    aria-hidden="true">
                     <polyline points="2,6.5 5,9.5 10,3" />
-                  </svg>
+                  </Icon>
                 )}
                 <span className="pill-code">{o.code}</span>
               </span>

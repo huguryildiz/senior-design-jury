@@ -10,7 +10,7 @@
 //   error        — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
@@ -23,10 +23,15 @@ const TYPES = [
     title: "National Accreditation",
     desc: "MÜDEK, YÖK, or other national accreditation body standards",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2">
         <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
         <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-      </svg>
+      </Icon>
     ),
   },
   {
@@ -35,10 +40,15 @@ const TYPES = [
     title: "International Accreditation",
     desc: "ABET, EUR-ACE, Washington Accord aligned frameworks",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2">
         <circle cx="12" cy="12" r="10" />
         <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-      </svg>
+      </Icon>
     ),
   },
   {
@@ -47,10 +57,15 @@ const TYPES = [
     title: "Internal Outcomes",
     desc: "Institution-defined programme outcomes not tied to external bodies",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2">
         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-      </svg>
+      </Icon>
     ),
   },
   {
@@ -59,9 +74,14 @@ const TYPES = [
     title: "Custom Framework",
     desc: "Build a fully custom outcome set with your own structure",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <Icon
+        iconNode={[]}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-      </svg>
+      </Icon>
     ),
   },
 ];
@@ -142,9 +162,14 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
                 borderColor: "rgba(139,92,246,0.18)",
               }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#a78bfa"
+                strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
-              </svg>
+              </Icon>
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Add Accreditation Framework</div>
@@ -154,13 +179,17 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         {/* Step indicator */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
@@ -212,9 +241,14 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
                   <div className="fw-type-card-desc">{t.desc}</div>
                 </div>
                 <div className="fw-type-check">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3">
                     <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  </Icon>
                 </div>
               </div>
             ))}
@@ -326,16 +360,16 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
           onClick={() => setShowSeeds((v) => !v)}
           disabled={saving}
         >
-          <svg
+          <Icon
+            iconNode={[]}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2.5"
             className="fw-template-toggle-icon"
-            style={{ transform: showSeeds ? "rotate(90deg)" : "none", transition: "transform 0.18s" }}
-          >
+            style={{ transform: showSeeds ? "rotate(90deg)" : "none", transition: "transform 0.18s" }}>
             <path d="m9 18 6-6-6-6" />
-          </svg>
+          </Icon>
           <span className="fw-template-toggle-title">Starter Outcomes</span>
           <span className="fw-template-toggle-badge">Optional</span>
         </button>
@@ -379,30 +413,45 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
                     onClick={() => removeSeedRow(row.id)}
                     disabled={saving}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2">
                       <path d="M18 6 6 18M6 6l12 12" />
-                    </svg>
+                    </Icon>
                   </button>
                 </div>
               ))}
             </div>
 
             <button className="fw-seed-add" type="button" onClick={addSeedRow} disabled={saving}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
-              </svg>
+              </Icon>
               Add outcome row
             </button>
           </div>
         )}
       </div>
-
       <div className="fs-drawer-footer">
         <div className="fs-footer-meta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--text-quaternary)" }}>
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            style={{ color: "var(--text-quaternary)" }}>
             <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
             <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-          </svg>
+          </Icon>
           <span style={{ color: "var(--text-quaternary)" }}>New framework</span>
         </div>
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
@@ -421,9 +470,15 @@ export default function AddFrameworkDrawer({ open, onClose, periods = [], onSave
               loadingText="Creating…"
             >
               <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 13, height: 13 }}>
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  style={{ width: 13, height: 13 }}>
                   <path d="M12 5v14M5 12h14" />
-                </svg>
+                </Icon>
                 Create Framework
               </>
             </AsyncButtonContent>

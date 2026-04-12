@@ -15,7 +15,6 @@ import {
   getEntryTokenHistory,
   getActiveEntryTokenPlain,
   sendEntryTokenEmail,
-  writeAuditLog,
   supabase,
 } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
@@ -26,15 +25,23 @@ import {
 } from "@/shared/storage/adminStorage";
 import JuryRevokeConfirmDialog from "../settings/JuryRevokeConfirmDialog";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
+import InlineError from "@/shared/ui/InlineError";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Clock3,
+  Download,
+  Link,
+  QrCode,
+  RefreshCw,
+  Send,
+  TriangleAlert,
+  X,
+  XCircle,
+} from "lucide-react";
+import { formatDateTime as fmtDate, formatDate } from "@/shared/lib/dateUtils";
 
-function fmtDate(ts) {
-  if (!ts) return "—";
-  try {
-    return new Date(ts).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  } catch {
-    return ts;
-  }
-}
 
 function fmtExpiry(ts) {
   if (!ts) return null;
@@ -42,7 +49,7 @@ function fmtExpiry(ts) {
     const diff = Date.parse(ts) - Date.now();
     if (diff <= 0) return null;
     if (diff >= 24 * 3600000) {
-      return new Date(ts).toLocaleDateString(undefined, { dateStyle: "medium" });
+      return formatDate(ts);
     }
     const hours = Math.floor(diff / 3600000);
     const mins = Math.floor((diff % 3600000) / 60000);
@@ -76,10 +83,28 @@ function fmtExpiryCompact(ts) {
   try {
     const diff = Date.parse(ts) - Date.now();
     if (diff <= 0) return "expired";
-    const hours = Math.floor(diff / 3600000);
+    const totalDays = Math.floor(diff / (24 * 3600000));
+    const hours = Math.floor((diff % (24 * 3600000)) / 3600000);
     const mins = Math.floor((diff % 3600000) / 60000);
-    if (hours > 0) return `${hours}h left`;
-    return `${Math.max(mins, 1)}m left`;
+    
+    let durationStr = "";
+    if (totalDays >= 365) {
+      const y = Math.floor(totalDays / 365);
+      const m = Math.floor((totalDays % 365) / 30);
+      durationStr = `${y} year${y > 1 ? "s" : ""}${m > 0 ? ` ${m} month${m > 1 ? "s" : ""}` : ""}`;
+    } else if (totalDays >= 30) {
+      const m = Math.floor(totalDays / 30);
+      const d = totalDays % 30;
+      durationStr = `${m} month${m > 1 ? "s" : ""}${d > 0 ? ` ${d} day${d > 1 ? "s" : ""}` : ""}`;
+    } else if (totalDays > 0) {
+      durationStr = `${totalDays} day${totalDays > 1 ? "s" : ""}`;
+    } else if (hours > 0) {
+      durationStr = `${hours}h`;
+    } else {
+      durationStr = `${Math.max(mins, 1)}m`;
+    }
+
+    return durationStr;
   } catch {
     return null;
   }
@@ -170,7 +195,8 @@ export default function EntryControlPage() {
   const [bulkSending, setBulkSending] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [newUserModalOpen, setNewUserModalOpen] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRecipients, setNewUserRecipients] = useState([]);
+  const [newUserInputValue, setNewUserInputValue] = useState("");
   const [newUserSending, setNewUserSending] = useState(false);
   const [newUserError, setNewUserError] = useState("");
   const [lastBulkSend, setLastBulkSend] = useState(null);
@@ -178,6 +204,7 @@ export default function EntryControlPage() {
   const [currentUserEmail, setCurrentUserEmail] = useState("");
   const qrRef = useRef(null);
   const qrInstance = useRef(null);
+  const newUserInputRef = useRef(null);
   const _toast = useToast();
 
   const entryUrl = rawToken
@@ -204,11 +231,11 @@ export default function EntryControlPage() {
       width: 200,
       height: 200,
       type: "svg",
-      dotsOptions:          { type: "extra-rounded", color: "#1e3a5f" },
+      dotsOptions: { type: "extra-rounded", color: "#1e3a5f" },
       cornersSquareOptions: { type: "extra-rounded", color: "#1e3a5f" },
-      cornersDotOptions:    { type: "dot", color: "#2563eb" },
-      backgroundOptions:    { color: "#ffffff" },
-      imageOptions:         { crossOrigin: "anonymous", margin: 4, imageSize: 0.46 },
+      cornersDotOptions: { type: "dot", color: "#2563eb" },
+      backgroundOptions: { color: "#ffffff" },
+      imageOptions: { crossOrigin: "anonymous", margin: 4, imageSize: 0.46 },
     });
   }, []);
 
@@ -254,7 +281,7 @@ export default function EntryControlPage() {
     if (!saved) {
       getActiveEntryTokenPlain(periodId)
         .then((plain) => { if (plain) setRawToken(plain); })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [periodId, loadStatus]);
 
@@ -400,14 +427,13 @@ export default function EntryControlPage() {
         expiresIn: expiryLabel || undefined,
         periodName: periodName || undefined,
         organizationName: activeOrganization?.name || undefined,
+        organizationInstitution: activeOrganization?.institution || undefined,
+        organizationId: activeOrganization?.id || undefined,
+        periodId: periodId || undefined,
       });
       if (result?.sent === false || result?.ok === false) {
         throw new Error(result?.error || "send_failed");
       }
-      writeAuditLog("notification.entry_token", {
-        resourceType: "entry_tokens",
-        details: { recipientEmail: currentUserEmail, periodName, type: "test" },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       _toast.success(`Test sent to ${currentUserEmail}`);
     } catch (err) {
       _toast.error(err?.message || "Could not send test email.");
@@ -418,35 +444,56 @@ export default function EntryControlPage() {
 
   async function handleSendToNewUser() {
     if (!entryUrl) return;
-    const email = String(newUserEmail || "").trim().toLowerCase();
-    if (!email) {
-      setNewUserError("Please enter an email address.");
+    const targets = [...newUserRecipients];
+    const pendingInput = String(newUserInputValue || "").trim().toLowerCase();
+    if (pendingInput && !targets.includes(pendingInput)) {
+      targets.push(pendingInput);
+    }
+    if (!targets.length) {
+      setNewUserError("Please add at least one email address.");
       return;
     }
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email)) {
-      setNewUserError("Please enter a valid email address.");
+    const invalidEmail = targets.find((email) => !emailPattern.test(email));
+    if (invalidEmail) {
+      setNewUserError(`Invalid email: ${invalidEmail}`);
       return;
     }
     setNewUserSending(true);
     setNewUserError("");
     try {
-      const result = await sendEntryTokenEmail({
-        recipientEmail: email,
-        tokenUrl: entryUrl,
-        expiresIn: expiryLabel || undefined,
-        periodName: periodName || undefined,
-        organizationName: activeOrganization?.name || undefined,
+      const results = await Promise.allSettled(
+        targets.map((email) => sendEntryTokenEmail({
+          recipientEmail: email,
+          tokenUrl: entryUrl,
+          expiresIn: expiryLabel || undefined,
+          periodName: periodName || undefined,
+          organizationName: activeOrganization?.name || undefined,
+          organizationInstitution: activeOrganization?.institution || undefined,
+          organizationId: activeOrganization?.id || undefined,
+          periodId: periodId || undefined,
+        }))
+      );
+      let delivered = 0;
+      let failed = 0;
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const payload = result.value;
+          if (payload?.sent === false || payload?.ok === false) failed += 1;
+          else delivered += 1;
+        } else {
+          failed += 1;
+        }
       });
-      if (result?.sent === false || result?.ok === false) {
-        throw new Error(result?.error || "send_failed");
+      if (delivered === 0) {
+        throw new Error("Could not send email.");
       }
-      writeAuditLog("notification.entry_token", {
-        resourceType: "entry_tokens",
-        details: { recipientEmail: email, periodName, type: "direct" },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
-      _toast.success(`Access link sent to ${email}`);
-      setNewUserEmail("");
+      _toast.success(`Access link sent to ${delivered} recipient${delivered === 1 ? "" : "s"}`);
+      if (failed > 0) {
+        _toast.error(`${failed} email${failed === 1 ? "" : "s"} failed to send.`);
+      }
+      setNewUserRecipients([]);
+      setNewUserInputValue("");
       setNewUserModalOpen(false);
     } catch (err) {
       setNewUserError(err?.message || "Could not send email.");
@@ -469,6 +516,9 @@ export default function EntryControlPage() {
             expiresIn: expiryLabel || undefined,
             periodName: periodName || undefined,
             organizationName: activeOrganization?.name || undefined,
+            organizationInstitution: activeOrganization?.institution || undefined,
+            organizationId: activeOrganization?.id || undefined,
+            periodId: periodId || undefined,
           })
         )
       );
@@ -499,10 +549,6 @@ export default function EntryControlPage() {
       setSendModalOpen(false);
       setSendSuccessOpen(true);
       if (delivered > 0) {
-        writeAuditLog("notification.entry_token", {
-          resourceType: "entry_tokens",
-          details: { periodName, type: "bulk", delivered, failed, total: targets.length },
-        }).catch((e) => console.warn("Audit write failed:", e?.message));
         _toast.success(`Sent to ${delivered} juror${delivered === 1 ? "" : "s"}.`);
       }
       if (failed > 0) {
@@ -515,12 +561,24 @@ export default function EntryControlPage() {
     }
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!qrInstance.current) return;
-    qrInstance.current.download({
-      name: `jury-qr-${periodName || periodId || "access"}`,
-      extension: "png",
-    });
+    const fileName = `jury-qr-${periodName || periodId || "access"}`;
+    try {
+      const raw = await qrInstance.current.getRawData("png");
+      if (!raw) throw new Error("QR data unavailable.");
+      const blob = raw instanceof Blob ? raw : new Blob([raw], { type: "image/png" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileName}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (err) {
+      _toast.error(err?.message || "Could not download QR.");
+    }
   }
 
   const hasToken = status?.has_token;
@@ -551,6 +609,39 @@ export default function EntryControlPage() {
     }
   })();
   const hasTokenHistory = tokenHistory.length > 0;
+  const addNewUserRecipient = useCallback((email) => {
+    const normalized = String(email || "").trim().toLowerCase();
+    if (!normalized) return;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(normalized)) {
+      setNewUserError("Please enter a valid email address.");
+      return;
+    }
+    setNewUserRecipients((prev) => {
+      if (prev.includes(normalized)) return prev;
+      return [...prev, normalized];
+    });
+    setNewUserInputValue("");
+    setNewUserError("");
+  }, []);
+  const removeNewUserRecipient = useCallback((email) => {
+    setNewUserRecipients((prev) => prev.filter((recipient) => recipient !== email));
+  }, []);
+  const handleNewUserKeyDown = useCallback((e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addNewUserRecipient(newUserInputValue);
+    }
+    if (e.key === "Backspace" && !newUserInputValue && newUserRecipients.length > 0) {
+      setNewUserRecipients((prev) => prev.slice(0, -1));
+    }
+  }, [addNewUserRecipient, newUserInputValue, newUserRecipients.length]);
+  const handleNewUserPaste = useCallback((e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text");
+    const emails = text.split(/[,;\s]+/).filter(Boolean);
+    emails.forEach((email) => addNewUserRecipient(email));
+  }, [addNewUserRecipient]);
   const sortedTokenHistory = [...tokenHistory].sort((a, b) => {
     const dirMul = historySortDir === "asc" ? 1 : -1;
     const statusValue = (row) => {
@@ -668,7 +759,7 @@ export default function EntryControlPage() {
 
   if (!periodId) {
     return (
-      <div className="page" id="page-entry-control">
+      <div className="page entry-control-page" id="page-entry-control">
         <div className="page-title">Entry Control</div>
         <div className="page-desc">Select an evaluation period to manage QR access tokens.</div>
       </div>
@@ -676,7 +767,7 @@ export default function EntryControlPage() {
   }
 
   return (
-    <div className="page" id="page-entry-control">
+    <div className="page entry-control-page" id="page-entry-control">
       <div className="page-title">Entry Control</div>
       <div className="page-desc" style={{ marginBottom: 18 }}>
         Manage QR access tokens, monitor active jury sessions, and control entry to the evaluation.
@@ -686,10 +777,7 @@ export default function EntryControlPage() {
       {expirySoon && expiryLabel && (
         <div className="ec-expiry-banner">
           <div className="ec-expiry-banner-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              <path d="M12 9v4m0 4h.01" />
-            </svg>
+            <TriangleAlert size={18} />
           </div>
           <div className="ec-expiry-banner-content">
             <div className="ec-expiry-banner-title">Access expires in {expiryHeadline || expiryLabel}</div>
@@ -758,9 +846,7 @@ export default function EntryControlPage() {
           <div className="ec-qr-status">
             {hasToken && isActive ? (
               <span className="badge badge-success">
-                <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+                <Check className="badge-ico" />
                 Active
               </span>
             ) : latestToken?.is_expired ? (
@@ -834,39 +920,23 @@ export default function EntryControlPage() {
           <div className="ec-qr-actions">
             {rawToken && (
               <button className="btn btn-primary btn-sm ec-download-btn" onClick={handleDownload} disabled={isBusy}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
+                <Download size={12} />
                 Download QR
               </button>
             )}
             {rawToken && (
               <button className="btn btn-outline btn-sm" onClick={handleCopy} disabled={isBusy}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
+                <Link size={12} />
                 {copied ? "Copied!" : "Copy Link"}
               </button>
             )}
             <button className="btn btn-outline btn-sm" onClick={handleGenerate} disabled={isBusy}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={regenerating ? "ec-spin" : ""}>
-                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                <path d="M21 21v-5h-5" />
-              </svg>
+              <RefreshCw size={12} className={regenerating ? "ec-spin" : ""} />
               {regenerating ? "Generating…" : (hasToken ? "Regenerate" : "Generate QR")}
             </button>
             {hasToken && isActive && (
               <button className="btn btn-outline btn-sm btn-revoke" onClick={() => setRevokeModalOpen(true)} disabled={isBusy}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="m15 9-6 6" />
-                  <path d="m9 9 6 6" />
-                </svg>
+                <XCircle size={12} />
                 Revoke
               </button>
             )}
@@ -877,10 +947,7 @@ export default function EntryControlPage() {
             <div className="ec-distribute" id="ec-distribute-panel">
               <div className="ec-distribute-header">
                 <div className="ec-distribute-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 2L11 13" />
-                    <path d="M22 2L15 22l-4-9-9-4z" />
-                  </svg>
+                  <Send size={18} />
                 </div>
                 <div>
                   <div className="ec-distribute-title">Distribute to Jurors</div>
@@ -891,10 +958,7 @@ export default function EntryControlPage() {
               </div>
               <div className="ec-distribute-body">
                 <button className="ec-distribute-btn" onClick={openSendModal}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 2L11 13" />
-                    <path d="M22 2L15 22l-4-9-9-4z" />
-                  </svg>
+                  <Send size={16} />
                   Send QR to All Jurors
                 </button>
                 <div className="ec-distribute-actions">
@@ -906,9 +970,7 @@ export default function EntryControlPage() {
               </div>
               <div className="ec-distribute-meta" id="ec-last-sent">
                 <div className="ec-sent-badge">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
+                  <Check size={14} />
                   Sent
                 </div>
                 {lastBulkSend
@@ -926,9 +988,7 @@ export default function EntryControlPage() {
                 onClick={() => setShowTokenDetail((v) => !v)}
               >
                 Token details
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                <ChevronDown size={16} />
               </button>
               {showTokenDetail && (
                 <div className="ec-token-row show">
@@ -1061,26 +1121,17 @@ export default function EntryControlPage() {
                     <td data-label="Status">
                       {token.is_active ? (
                         <span className="badge badge-success" style={{ boxShadow: "0 0 0 2px var(--success-soft)" }}>
-                          <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 6 9 17l-5-5" />
-                          </svg>
+                          <Check className="badge-ico" />
                           Active
                         </span>
                       ) : token.is_expired ? (
                         <span className="badge badge-neutral">
-                          <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M12 7v5l3 1.8" />
-                          </svg>
+                          <Clock3 className="badge-ico" />
                           Expired
                         </span>
                       ) : (
                         <span className="badge badge-danger">
-                          <svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="m15 9-6 6" />
-                            <path d="m9 9 6 6" />
-                          </svg>
+                          <XCircle className="badge-ico" />
                           Revoked
                         </span>
                       )}
@@ -1092,12 +1143,7 @@ export default function EntryControlPage() {
                           style={{ padding: "4px 10px", fontSize: 10, fontWeight: 600 }}
                           onClick={handleDownload}
                         >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <rect x="3" y="3" width="7" height="7" />
-                            <rect x="14" y="3" width="7" height="7" />
-                            <rect x="3" y="14" width="7" height="7" />
-                            <rect x="14" y="14" width="7" height="7" />
-                          </svg>
+                          <QrCode size={10} />
                           QR
                         </button>
                       )}
@@ -1134,9 +1180,7 @@ export default function EntryControlPage() {
               </div>
             </div>
             <button className="fs-close" onClick={() => setSendModalOpen(false)} aria-label="Close">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <X size={14} />
             </button>
           </div>
         </div>
@@ -1175,9 +1219,7 @@ export default function EntryControlPage() {
                   onClick={recipient.hasEmail ? () => toggleRecipient(recipient) : undefined}
                 >
                   <div className="ec-send-check">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
+                    <Check size={14} strokeWidth={3} />
                   </div>
                   <div className="ec-send-recipient-avatar">{recipient.initials}</div>
                   <span className="ec-send-recipient-name">{recipient.name}</span>
@@ -1193,11 +1235,7 @@ export default function EntryControlPage() {
           {noEmailCount > 0 && (
             <div className="fs-alert warning" style={{ margin: "14px 0 0" }}>
               <div className="fs-alert-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4" />
-                  <path d="M12 8h.01" />
-                </svg>
+                <AlertCircle size={16} />
               </div>
               <div className="fs-alert-body">
                 <div className="fs-alert-title">{noEmailCount} juror{noEmailCount === 1 ? "" : "s"} without email addresses</div>
@@ -1206,7 +1244,7 @@ export default function EntryControlPage() {
             </div>
           )}
         </div>
-        <div className="fs-modal-footer">
+        <div className="fs-modal-footer ec-send-footer">
           <div className="ec-send-footer-left">
             <button
               className="ec-distribute-link"
@@ -1218,10 +1256,7 @@ export default function EntryControlPage() {
           </div>
           <button className="fs-btn fs-btn-secondary" onClick={() => setSendModalOpen(false)}>Cancel</button>
           <button className="fs-btn fs-btn-primary" id="ec-send-submit-btn" onClick={handleBulkSend} disabled={bulkSending || selectedCount === 0}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22l-4-9-9-4z" />
-            </svg>
+            <Send size={13} />
             <AsyncButtonContent loading={bulkSending} loadingText="Sending...">
               <span id="ec-send-btn-label">Send to {selectedCount} Juror{selectedCount === 1 ? "" : "s"}</span>
             </AsyncButtonContent>
@@ -1233,9 +1268,7 @@ export default function EntryControlPage() {
         <div className="fs-modal-header" style={{ borderBottom: "none", paddingBottom: 0 }}>
           <div className="ec-send-success">
             <div className="ec-send-success-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
+              <Check size={18} strokeWidth={2.5} />
             </div>
             <div className="ec-send-success-title">QR link sent to {sendSummary.delivered} jurors</div>
             <div className="ec-send-success-desc">
@@ -1268,6 +1301,8 @@ export default function EntryControlPage() {
           if (newUserSending) return;
           setNewUserModalOpen(false);
           setNewUserError("");
+          setNewUserRecipients([]);
+          setNewUserInputValue("");
         }}
         size="sm"
       >
@@ -1275,7 +1310,7 @@ export default function EntryControlPage() {
           <div className="fs-modal-header-row">
             <div style={{ flex: 1 }}>
               <div className="fs-title">Send Access Link</div>
-              <div className="fs-subtitle">Send the active QR access link to a new user email address.</div>
+              <div className="fs-subtitle">Send the active QR access link to one or more email addresses.</div>
             </div>
             <button
               className="fs-close"
@@ -1283,31 +1318,102 @@ export default function EntryControlPage() {
                 if (newUserSending) return;
                 setNewUserModalOpen(false);
                 setNewUserError("");
+                setNewUserRecipients([]);
+                setNewUserInputValue("");
               }}
               aria-label="Close"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <X size={14} />
             </button>
           </div>
         </div>
         <div className="fs-modal-body">
-          <input
-            className="modal-input"
-            type="email"
-            placeholder="new.user@university.edu"
-            value={newUserEmail}
-            onChange={(e) => {
-              setNewUserEmail(e.target.value);
-              if (newUserError) setNewUserError("");
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              padding: "8px 10px",
+              minHeight: 42,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius)",
+              background: "var(--field-bg)",
+              alignItems: "center",
+              cursor: "text",
             }}
-            disabled={newUserSending}
-            autoFocus
-          />
-          {newUserError ? (
-            <div className="text-xs" style={{ color: "var(--danger)", marginTop: 8 }}>{newUserError}</div>
-          ) : null}
+            onClick={() => newUserInputRef.current?.focus()}
+          >
+            {newUserRecipients.map((email) => (
+              <span
+                key={email}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  background: "var(--accent-soft)",
+                  border: "1px solid rgba(59,130,246,0.15)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "var(--accent)",
+                }}
+              >
+                {email}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeNewUserRecipient(email);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent)",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    lineHeight: 1,
+                    padding: "0 2px",
+                    opacity: 0.75,
+                  }}
+                >
+                  &#215;
+                </button>
+              </span>
+            ))}
+            <input
+              ref={newUserInputRef}
+              type="email"
+              value={newUserInputValue}
+              onChange={(e) => {
+                setNewUserInputValue(e.target.value);
+                if (newUserError) setNewUserError("");
+              }}
+              onKeyDown={handleNewUserKeyDown}
+              onPaste={handleNewUserPaste}
+              onBlur={() => {
+                if (newUserInputValue.trim()) addNewUserRecipient(newUserInputValue);
+              }}
+              placeholder={newUserRecipients.length === 0 ? "new.user@university.edu" : ""}
+              disabled={newUserSending}
+              autoFocus
+              style={{
+                flex: 1,
+                minWidth: 160,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontFamily: "var(--font)",
+                fontSize: 13,
+                color: "var(--text-primary)",
+                padding: "2px 0",
+              }}
+            />
+          </div>
+          <div className="text-xs text-muted" style={{ marginTop: 6 }}>
+            Press Enter to add multiple recipients
+          </div>
+          <InlineError>{newUserError}</InlineError>
         </div>
         <div className="fs-modal-footer">
           <button
@@ -1316,6 +1422,8 @@ export default function EntryControlPage() {
               if (newUserSending) return;
               setNewUserModalOpen(false);
               setNewUserError("");
+              setNewUserRecipients([]);
+              setNewUserInputValue("");
             }}
             disabled={newUserSending}
           >
@@ -1324,7 +1432,7 @@ export default function EntryControlPage() {
           <button
             className="fs-btn fs-btn-primary"
             onClick={handleSendToNewUser}
-            disabled={newUserSending || !newUserEmail.trim()}
+            disabled={newUserSending || (newUserRecipients.length === 0 && !newUserInputValue.trim())}
           >
             <AsyncButtonContent loading={newUserSending} loadingText="Sending...">Send</AsyncButtonContent>
           </button>

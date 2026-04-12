@@ -87,10 +87,11 @@ export async function setJurorEditMode({ jurorId, periodId, enabled, reason, dur
 
 export async function forceCloseJurorEditMode({ jurorId, periodId }) {
   if (!jurorId || !periodId) throw new Error("forceCloseJurorEditMode: jurorId and periodId required");
-  const { error } = await supabase
-    .from("juror_period_auth")
-    .update({ edit_enabled: false, session_token_hash: null })
-    .match({ juror_id: jurorId, period_id: periodId });
+  // rpc_admin_force_close_juror_edit_mode performs UPDATE + audit write atomically.
+  const { error } = await supabase.rpc("rpc_admin_force_close_juror_edit_mode", {
+    p_juror_id: jurorId,
+    p_period_id: periodId,
+  });
   if (error) throw error;
 }
 

@@ -1,6 +1,10 @@
 // src/shared/api/admin/periods.js
 // ============================================================
-// Admin evaluation period management (PostgREST).
+// Admin evaluation period management.
+//
+// As of migration 050, all mutating operations go through SECURITY DEFINER
+// RPCs that write the audit_logs row in the same transaction as the DB
+// change. No client-side fire-and-forget audit writes remain here.
 // ============================================================
 
 import { supabase } from "../core/client";
@@ -15,34 +19,11 @@ export async function listPeriods(organizationId) {
   return data || [];
 }
 
-export async function setCurrentPeriod(periodId, organizationId) {
-  // Unset all current flags for this org
-  const { error: clearErr } = await supabase
-    .from("periods")
-    .update({ is_current: false })
-    .eq("organization_id", organizationId)
-    .eq("is_current", true);
-  if (clearErr) throw clearErr;
-
-  // Set target as current; stamp activated_at if first activation
-  const { data: target, error: fetchErr } = await supabase
-    .from("periods")
-    .select("activated_at")
-    .eq("id", periodId)
-    .single();
-  if (fetchErr) throw fetchErr;
-
-  const updates = { is_current: true };
-  if (!target.activated_at) {
-    updates.activated_at = new Date().toISOString();
-  }
-
-  const { data, error } = await supabase
-    .from("periods")
-    .update(updates)
-    .eq("id", periodId)
-    .select()
-    .single();
+export async function setCurrentPeriod(periodId, _organizationId) {
+  // Unset-others + set-target + audit are atomic inside rpc_admin_set_current_period.
+  const { data, error } = await supabase.rpc("rpc_admin_set_current_period", {
+    p_period_id: periodId,
+  });
   if (error) throw error;
   return data;
 }
@@ -111,19 +92,12 @@ export async function deletePeriod(id) {
 }
 
 export async function setEvalLock(periodId, enabled) {
-  const { error } = await supabase
-    .from("periods")
-    .update({ is_locked: !!enabled })
-    .eq("id", periodId);
-  if (error) throw error;
-  // Fire-and-forget audit — rpc_admin_log_period_lock fetches period name + actor from DB.
-  supabase.rpc("rpc_admin_log_period_lock", {
+  // Period update + audit event are atomic inside rpc_admin_set_period_lock.
+  const { error } = await supabase.rpc("rpc_admin_set_period_lock", {
     p_period_id: periodId,
-    p_action:    enabled ? "period.lock" : "period.unlock",
-    p_ctx:       {},
-  }).then(({ error: auditErr }) => {
-    if (auditErr) console.warn("Period lock audit failed:", auditErr?.message);
+    p_locked: !!enabled,
   });
+  if (error) throw error;
 }
 
 /** @deprecated — does nothing useful; `criteria_config` column does not exist on periods. Use savePeriodCriteria instead. */
@@ -137,8 +111,9 @@ export async function updatePeriodOutcomeConfig(/* id, config */) {
 }
 
 /**
- * Save criteria to the period_criteria snapshot table.
- * Replaces all existing criteria for the period with the new set.
+ * Save criteria to the period_criteria snapshot table via the SECURITY DEFINER
+ * RPC. The RPC handles delete-maps / delete-criteria / insert-criteria /
+ * rebuild-outcome-maps / audit-write in a single transaction.
  *
  * @param {string} periodId
  * @param {Array} criteria — array from criterionToConfig():
@@ -149,110 +124,10 @@ export async function savePeriodCriteria(periodId, criteria) {
   if (!periodId) throw new Error("savePeriodCriteria: periodId required");
   if (!Array.isArray(criteria)) throw new Error("savePeriodCriteria: criteria must be an array");
 
-  const totalMax = criteria.reduce((s, c) => s + (Number(c.max) || 0), 0);
-
-  // 0. Capture existing criteria for diff (best-effort — don't block on failure)
-  let beforeRows = [];
-  try {
-    const { data: existing } = await supabase
-      .from("period_criteria")
-      .select("key, label, max_score")
-      .eq("period_id", periodId)
-      .order("sort_order");
-    beforeRows = existing || [];
-  } catch {}
-
-  // 1. Delete existing outcome maps (FK constraint requires this before criteria delete)
-  const { error: mapsDelErr } = await supabase
-    .from("period_criterion_outcome_maps")
-    .delete()
-    .eq("period_id", periodId);
-  if (mapsDelErr) throw mapsDelErr;
-
-  // 2. Delete existing criteria
-  const { error: critDelErr } = await supabase
-    .from("period_criteria")
-    .delete()
-    .eq("period_id", periodId);
-  if (critDelErr) throw critDelErr;
-
-  if (criteria.length === 0) return [];
-
-  // 3. Insert new criteria rows
-  const rows = criteria.map((c, i) => ({
-    period_id:    periodId,
-    key:          c.key,
-    label:        c.label,
-    short_label:  c.shortLabel || c.label,
-    description:  c.blurb || null,
-    max_score:    Number(c.max) || 0,
-    weight:       totalMax > 0 ? Number(c.max) / totalMax * 100 : 0,
-    color:        c.color || null,
-    rubric_bands: Array.isArray(c.rubric) ? c.rubric : null,
-    sort_order:   i,
-  }));
-
-  const { data: inserted, error: insErr } = await supabase
-    .from("period_criteria")
-    .insert(rows)
-    .select();
-  if (insErr) throw insErr;
-
-  // 4. Insert outcome mappings
-  // Build a lookup: outcome_code → period_outcome_id
-  const allOutcomeCodes = [...new Set(criteria.flatMap((c) => c.outcomes || []))];
-  if (allOutcomeCodes.length > 0 && inserted?.length) {
-    const { data: periodOutcomes } = await supabase
-      .from("period_outcomes")
-      .select("id, code")
-      .eq("period_id", periodId)
-      .in("code", allOutcomeCodes);
-
-    const outcomeCodeToId = Object.fromEntries(
-      (periodOutcomes || []).map((o) => [o.code, o.id])
-    );
-
-    // Build a lookup: criterion_key → inserted_criterion_id
-    const keyToId = Object.fromEntries(
-      (inserted || []).map((r) => [r.key, r.id])
-    );
-
-    const maps = [];
-    for (const c of criteria) {
-      const critId = keyToId[c.key];
-      if (!critId) continue;
-      for (const code of c.outcomes || []) {
-        const outcomeId = outcomeCodeToId[code];
-        if (!outcomeId) continue;
-        maps.push({
-          period_id:            periodId,
-          period_criterion_id:  critId,
-          period_outcome_id:    outcomeId,
-        });
-      }
-    }
-
-    if (maps.length > 0) {
-      const { error: mapInsErr } = await supabase
-        .from("period_criterion_outcome_maps")
-        .insert(maps);
-      if (mapInsErr) throw mapInsErr;
-    }
-  }
-
-  // Fire-and-forget criteria save audit with before/after diff.
-  // Diff keys: {key}_max_score so the drawer's Changes tab shows e.g. "design max score: 30 → 35".
-  try {
-    const beforeMap = Object.fromEntries(beforeRows.map((r) => [`${r.key}_max_score`, r.max_score]));
-    const afterMap  = Object.fromEntries(criteria.map((c) => [`${c.key}_max_score`, Number(c.max) || 0]));
-    const { writeAuditLog } = await import("./audit.js");
-    writeAuditLog("criteria.save", {
-      resourceType: "periods",
-      resourceId:   periodId,
-      details:      { criteriaCount: criteria.length },
-      diff:         { before: beforeMap, after: afterMap },
-    }).catch((e) => console.warn("Criteria save audit failed:", e?.message));
-  } catch {}
-
-  return inserted || [];
+  const { data, error } = await supabase.rpc("rpc_admin_save_period_criteria", {
+    p_period_id: periodId,
+    p_criteria: criteria,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
 }

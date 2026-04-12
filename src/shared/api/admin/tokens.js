@@ -67,12 +67,14 @@ async function countActiveSessions(periodId, nowIso) {
       .select("juror_id", { count: "exact", head: true })
       .eq("period_id", periodId)
       .not("session_token_hash", "is", null)
+      .is("final_submitted_at", null)
       .gt("session_expires_at", nowIso),
     supabase
       .from("juror_period_auth")
       .select("juror_id", { count: "exact", head: true })
       .eq("period_id", periodId)
       .not("session_token_hash", "is", null)
+      .is("final_submitted_at", null)
       .is("session_expires_at", null),
   ]);
 
@@ -90,17 +92,16 @@ export async function generateEntryToken(periodId) {
 }
 
 export async function revokeEntryToken(periodId) {
-  const { data, error } = await supabase
-    .from("entry_tokens")
-    .update({ is_revoked: true })
-    .eq("period_id", periodId)
-    .eq("is_revoked", false)
-    .select();
+  // rpc_admin_revoke_entry_token performs UPDATE + audit write atomically.
+  const { data, error } = await supabase.rpc("rpc_admin_revoke_entry_token", {
+    p_period_id: periodId,
+  });
   if (error) throw error;
-
-  const count = await countActiveSessions(periodId, new Date().toISOString());
-
-  return { success: true, active_juror_count: count || 0 };
+  return {
+    success: true,
+    active_juror_count: data?.active_juror_count ?? 0,
+    revoked_count: data?.revoked_count ?? 0,
+  };
 }
 
 export async function getEntryTokenStatus(periodId) {
@@ -131,12 +132,14 @@ export async function getEntryTokenStatus(periodId) {
       .from("juror_period_auth")
       .select("juror_id", { count: "exact", head: true })
       .eq("period_id", periodId)
-      .not("session_token_hash", "is", null),
+      .not("session_token_hash", "is", null)
+      .is("final_submitted_at", null),
     supabase
       .from("juror_period_auth")
       .select("juror_id", { count: "exact", head: true })
       .eq("period_id", periodId)
       .not("session_token_hash", "is", null)
+      .is("final_submitted_at", null)
       .not("session_expires_at", "is", null)
       .lte("session_expires_at", nowIso),
     supabase

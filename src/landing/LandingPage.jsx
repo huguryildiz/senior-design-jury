@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, KeyRound, Quote, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, KeyRound, Quote, Star, Icon, Loader2 } from "lucide-react";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import ProductShowcase from "./components/ProductShowcase";
 import { getDemoClient } from "@/shared/lib/supabaseClient";
@@ -147,13 +147,19 @@ export function LandingPage() {
           </button>
           <button className="nav-signin" onClick={() => navigate("/login")}>
             Sign In{" "}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </nav>
-
       {/* Hero */}
       <div className="landing-hero">
         <div className="landing-logo-mark">
@@ -179,23 +185,37 @@ export function LandingPage() {
               navigate(demoToken ? `/demo/eval?t=${demoToken}` : "/eval");
             }, 500);
           }}>
-            <svg className="dj-btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-              <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83" />
-            </svg>
+            <Loader2 className="dj-btn-spinner" size={16} strokeWidth={2} style={{ flexShrink: 0 }} />
             <span className="dj-normal-content" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: 0.95 }}>
+              <Icon
+                iconNode={[]}
+                width="16"
+                height="16"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                style={{ opacity: 0.95 }}>
                 <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-              </svg>
+              </Icon>
               Experience Demo
             </span>
           </button>
           <button className="btn-landing-secondary" onClick={() => navigate("/demo")}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+            <Icon
+              iconNode={[]}
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ opacity: 0.7 }}>
               <rect width="7" height="9" x="3" y="3" rx="1.5" />
               <rect width="7" height="5" x="14" y="3" rx="1.5" />
               <rect width="7" height="9" x="14" y="12" rx="1.5" />
               <rect width="7" height="5" x="3" y="16" rx="1.5" />
-            </svg>
+            </Icon>
             Explore Admin Panel
           </button>
         </div>
@@ -205,14 +225,22 @@ export function LandingPage() {
           <ProductShowcase />
         </div>
       </div>
-
       {/* Mobile Mockup — 4 Phone Flow */}
       <section className="landing-mobile reveal-section">
         <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            style={{ opacity: 0.6 }}>
             <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
             <path d="M12 18h.01" />
-          </svg>
+          </Icon>
           The juror experience
         </div>
         <p style={{ color: "#94a3b8", fontSize: "15px", maxWidth: "520px", margin: "0 auto", lineHeight: 1.6 }}>
@@ -227,22 +255,52 @@ export function LandingPage() {
               <div className="mobile-inner">
                 <div style={{ flex: 1, padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", overflow: "hidden" }}>
                   <div style={{ width: "38px", height: "38px", borderRadius: "12px", background: "linear-gradient(135deg,rgba(99,102,241,0.22),rgba(139,92,246,0.18))", border: "1px solid rgba(139,92,246,0.25)", display: "grid", placeItems: "center", marginBottom: "9px", marginTop: "6px", boxShadow: "0 4px 12px rgba(99,102,241,0.18)" }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <Icon
+                      iconNode={[]}
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#a78bfa"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
-                    </svg>
+                    </Icon>
                   </div>
                   <div style={{ fontSize: "11.5px", fontWeight: 700, color: "#f1f5f9", marginBottom: "2px" }}>Jury Information</div>
                   <div style={{ fontSize: "7.5px", color: "#64748b", marginBottom: "9px", lineHeight: 1.3 }}>Enter your details to begin the evaluation</div>
                   <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "4px", fontSize: "6.5px", color: "#64748b" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 10 3 12 0v-5" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      width="8"
+                      height="8"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 10 3 12 0v-5" /></Icon>
                     <span>TED University</span>
                     <span style={{ color: "#334155" }}>·</span>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a4 4 0 0 0-8 0v2" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      width="8"
+                      height="8"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a4 4 0 0 0-8 0v2" /></Icon>
                     <span>Electrical &amp; Electronics Eng.</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center", marginBottom: "9px", fontSize: "6.5px", color: "#64748b" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      width="8"
+                      height="8"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></Icon>
                     <span>Fall 2025</span>
                     <span style={{ color: "#334155" }}>·</span>
                     <span>20 Dec 2025</span>
@@ -250,7 +308,15 @@ export function LandingPage() {
                     <span>12 Groups</span>
                   </div>
                   <div style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "5px", padding: "5px 7px", borderRadius: "6px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.14)", marginBottom: "9px", textAlign: "left" }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" style={{ flexShrink: 0, marginTop: "1px" }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      width="9"
+                      height="9"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#60a5fa"
+                      strokeWidth="2"
+                      style={{ flexShrink: 0, marginTop: "1px" }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></Icon>
                     <span style={{ fontSize: "7px", color: "#93c5fd", lineHeight: 1.35, fontWeight: 500 }}>Name and Affiliation cannot be changed once evaluation starts.</span>
                   </div>
                   <div style={{ width: "100%", textAlign: "left", marginBottom: "5px" }}>
@@ -282,7 +348,14 @@ export function LandingPage() {
               <div className="mobile-inner">
                 <div style={{ flex: 1, padding: "16px 14px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
                   <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,rgba(99,102,241,0.3),rgba(59,130,246,0.2))", border: "1px solid rgba(147,197,253,0.15)", display: "grid", placeItems: "center", marginBottom: "10px", marginTop: "8px" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#93c5fd"
+                      strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></Icon>
                   </div>
                   <div style={{ fontSize: "12px", fontWeight: 700, color: "#f1f5f9", marginBottom: "3px" }}>Your Session PIN</div>
                   <div style={{ fontSize: "8px", color: "#64748b", marginBottom: "16px", lineHeight: 1.4 }}>Use this PIN to resume if you get disconnected.</div>
@@ -365,7 +438,14 @@ export function LandingPage() {
               <div className="mobile-inner">
                 <div style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
                   <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(135deg,rgba(34,197,94,0.3),rgba(22,163,74,0.2))", border: "1px solid rgba(74,222,128,0.2)", display: "grid", placeItems: "center", marginTop: "8px", marginBottom: "10px" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>
+                    <Icon
+                      iconNode={[]}
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#4ade80"
+                      strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></Icon>
                   </div>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#f1f5f9", marginBottom: "2px" }}>Thank You, Prof. Demir!</div>
                   <div style={{ fontFamily: "var(--mono)", fontSize: "28px", fontWeight: 800, color: "#4ade80", marginBottom: "2px" }}>81</div>
@@ -395,14 +475,23 @@ export function LandingPage() {
 
         </div>
       </section>
-
       {/* Trust Band */}
       <section className="landing-trust reveal-section">
         <div className="landing-trust-proof">
           <div className="landing-proof-eyebrow">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+            <Icon
+              iconNode={[]}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ opacity: 0.6 }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+            </Icon>
             Built for every evaluation
           </div>
           <div
@@ -421,7 +510,14 @@ export function LandingPage() {
           >
             <div className="trust-feature-card reveal-child">
               <div className="tfc-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><path d="M12 18h.01" /></Icon>
               </div>
               <div className="tfc-body">
                 <div className="tfc-title">Works on any device</div>
@@ -430,7 +526,14 @@ export function LandingPage() {
             </div>
             <div className="trust-feature-card reveal-child">
               <div className="tfc-icon tfc-icon--green">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></Icon>
               </div>
               <div className="tfc-body">
                 <div className="tfc-title">PIN-secured sessions</div>
@@ -439,7 +542,14 @@ export function LandingPage() {
             </div>
             <div className="trust-feature-card reveal-child">
               <div className="tfc-icon tfc-icon--violet">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></Icon>
               </div>
               <div className="tfc-body">
                 <div className="tfc-title">XLSX &amp; PDF export</div>
@@ -448,7 +558,14 @@ export function LandingPage() {
             </div>
             <div className="trust-feature-card reveal-child">
               <div className="tfc-icon tfc-icon--amber">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></Icon>
               </div>
               <div className="tfc-body">
                 <div className="tfc-title">Real-time analytics</div>
@@ -457,7 +574,14 @@ export function LandingPage() {
             </div>
             <div className="trust-feature-card reveal-child">
               <div className="tfc-icon tfc-icon--rose">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><path d="M14 2v6h6" /><path d="m9 15 2 2 4-4" /></svg>
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><path d="M14 2v6h6" /><path d="m9 15 2 2 4-4" /></Icon>
               </div>
               <div className="tfc-body">
                 <div className="tfc-title">Accreditation-ready</div>
@@ -466,62 +590,126 @@ export function LandingPage() {
             </div>
           </div>
           <div className="landing-proof-eyebrow landing-proof-eyebrow--usecase">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+            <Icon
+              iconNode={[]}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ opacity: 0.6 }}>
               <circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" />
-            </svg>
+            </Icon>
             Works across every context
           </div>
           <div className="trust-usecase-grid">
             <div className="trust-usecase-card">
               <div className="trust-usecase-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5" />
-                </svg>
+                </Icon>
               </div>
               <span className="trust-usecase-label">Universities</span>
               <span className="trust-usecase-hint">Capstone & thesis defenses</span>
             </div>
             <div className="trust-usecase-card">
               <div className="trust-usecase-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" /><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-                </svg>
+                </Icon>
               </div>
               <span className="trust-usecase-label">Hackathons</span>
               <span className="trust-usecase-hint">48-hour innovation sprints</span>
             </div>
             <div className="trust-usecase-card">
               <div className="trust-usecase-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-                </svg>
+                </Icon>
               </div>
               <span className="trust-usecase-label">Competitions</span>
               <span className="trust-usecase-hint">TEKNOFEST, CanSat, IEEE</span>
             </div>
             <div className="trust-usecase-card">
               <div className="trust-usecase-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16.5h10" />
-                </svg>
+                </Icon>
               </div>
               <span className="trust-usecase-label">Research Councils</span>
               <span className="trust-usecase-hint">Grant reviews & project evaluations</span>
             </div>
             <div className="trust-usecase-card">
               <div className="trust-usecase-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" /><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" /><path d="M12 4v6" /><path d="M2 20h20" /><path d="m6 10 4 4" /><path d="m14 10 4 4" />
-                </svg>
+                </Icon>
               </div>
               <span className="trust-usecase-label">Design Exhibitions</span>
               <span className="trust-usecase-hint">Poster days & showcases</span>
             </div>
             <div className="trust-usecase-card">
               <div className="trust-usecase-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><rect x="7" y="7" width="10" height="10" rx="1" />
-                </svg>
+                </Icon>
               </div>
               <span className="trust-usecase-label">Accreditation</span>
               <span className="trust-usecase-hint">ABET, MÜDEK, EUR-ACE</span>
@@ -552,112 +740,192 @@ export function LandingPage() {
           <span>All metrics sourced from live sandbox — explore real evaluation data anytime</span>
         </div>
       </section>
-
       {/* How it works */}
       <div className="landing-how" id="section-how">
         <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            style={{ opacity: 0.6 }}>
             <circle cx="12" cy="12" r="10" />
             <path d="M12 16v-4" />
             <path d="M12 8h.01" />
-          </svg>
+          </Icon>
           How it works
         </div>
         <div className="landing-steps">
           <div className="landing-step" style={{ "--step-i": 0 }}>
             <div className="step-number">1</div>
             <div className="step-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <rect x="3" y="3" width="18" height="18" rx="4" />
                 <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM13 15h4" />
-              </svg>
+              </Icon>
             </div>
             <h4>Set Up &amp; Share</h4>
             <p>Define criteria, add projects, invite jurors. Share a QR code or link — evaluators join in seconds.</p>
           </div>
           <div className="step-arrow" style={{ "--arrow-i": 0 }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <Icon
+              iconNode={[]}
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5">
               <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
+            </Icon>
           </div>
           <div className="landing-step" style={{ "--step-i": 1 }}>
             <div className="step-number">2</div>
             <div className="step-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <path d="M12 20V4M4 12l8-8 8 8" />
                 <path d="M8 16h8" />
-              </svg>
+              </Icon>
             </div>
             <h4>Score Live</h4>
             <p>Jurors evaluate on any device. Scores auto-save on every input — no paper forms, no data entry.</p>
           </div>
           <div className="step-arrow" style={{ "--arrow-i": 1 }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <Icon
+              iconNode={[]}
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5">
               <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
+            </Icon>
           </div>
           <div className="landing-step" style={{ "--step-i": 2 }}>
             <div className="step-number">3</div>
             <div className="step-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <path d="M3 3v18h18" />
                 <path d="M7 14l4-4 4 4 6-6" />
-              </svg>
+              </Icon>
             </div>
             <h4>Report &amp; Prove</h4>
             <p>Rankings, outcome attainment, analytics, and exports — accreditation-ready the moment scoring ends.</p>
           </div>
         </div>
       </div>
-
       {/* Features */}
       <div className="landing-features-section reveal-section" id="section-features">
         <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            style={{ opacity: 0.6 }}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" />
-          </svg>
+          </Icon>
           Why teams choose VERA
         </div>
         <div className="landing-features">
           <div className="landing-feature reveal-child">
             <div className="landing-feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                 <rect x="9" y="3" width="6" height="4" rx="1" />
                 <path d="M9 14l2 2 4-4" />
-              </svg>
+              </Icon>
             </div>
             <h3>Flexible Criteria</h3>
             <p>Define rubrics per evaluation period — technical, design, delivery, or any domain-specific criteria. Map each to programme outcomes.</p>
           </div>
           <div className="landing-feature reveal-child">
             <div className="landing-feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-              </svg>
+              </Icon>
             </div>
             <h3>Real-Time Scoring</h3>
             <p>Jurors score on any device during the event. Auto-save on every input, live sync, PIN-secured sessions. Zero friction.</p>
           </div>
           <div className="landing-feature reveal-child">
             <div className="landing-feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <Icon
+                iconNode={[]}
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5">
                 <path d="M3 3v18h18" />
                 <path d="M7 14l4-4 4 4 6-6" />
-              </svg>
+              </Icon>
             </div>
             <h3>Outcome-Level Reporting</h3>
             <p>Every score maps to programme outcomes. Generate accreditation-ready attainment reports — not just rankings.</p>
           </div>
         </div>
       </div>
-
       {/* Before / After */}
       <section className="landing-before-after reveal-section">
         <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            style={{ opacity: 0.6 }}>
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-          </svg>
+          </Icon>
           The difference
         </div>
         <div className="ba-grid">
@@ -680,13 +948,21 @@ export function LandingPage() {
           </div>
         </div>
       </section>
-
       {/* Comparison Table */}
       <section className="landing-compare reveal-section">
         <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            style={{ opacity: 0.6 }}>
             <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
-          </svg>
+          </Icon>
           How VERA compares
         </div>
         <table className="compare-table">
@@ -711,16 +987,24 @@ export function LandingPage() {
           </tbody>
         </table>
       </section>
-
       {/* Social Proof */}
       <section className="landing-testimonial reveal-section">
         <div className="testimonial-module">
 
           {/* Section header */}
           <div className="landing-section-label" style={{ justifyContent: "center" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+            <Icon
+              iconNode={[]}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              style={{ opacity: 0.6 }}>
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
+            </Icon>
             Trusted by evaluators
           </div>
 
@@ -821,13 +1105,21 @@ export function LandingPage() {
 
         </div>
       </section>
-
       {/* FAQ */}
       <section className="landing-faq reveal-section">
         <div className="landing-section-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6 }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            style={{ opacity: 0.6 }}>
             <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
-          </svg>
+          </Icon>
           Common questions
         </div>
         <div className="faq-list">
@@ -864,17 +1156,21 @@ export function LandingPage() {
             >
               <div className="faq-q">
                 {item.q}
-                <svg className="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <Icon
+                  iconNode={[]}
+                  className="faq-chevron"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2">
                   <path d="m6 9 6 6 6-6" />
-                </svg>
+                </Icon>
               </div>
               <div className="faq-a">{item.a}</div>
             </div>
           ))}
         </div>
       </section>
-
-
       {/* Footer */}
       <div className="landing-footer-bottom">
         © 2026 VERA · Developed by{" "}

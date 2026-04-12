@@ -16,7 +16,7 @@ import { lazy, Suspense, useRef, useMemo, useState, useEffect, useCallback, Comp
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth";
 import { useMaintenanceStatus } from "@/components/MaintenanceGate";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Icon } from "lucide-react";
 import { useAdminNav, getPageLabel } from "@/admin/hooks/useAdminNav";
 import { useAdminData } from "@/admin/hooks/useAdminData";
 import { useGlobalTableSort } from "@/admin/hooks/useGlobalTableSort";
@@ -389,14 +389,12 @@ export default function AdminRouteLayout() {
         className={`mobile-overlay${mobileOpen ? " show" : ""}`}
         onClick={() => setMobileOpen(false)}
       />
-
       <AdminSidebar
         currentPage={currentPage}
         basePath={basePath}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
       />
-
       <div className={`admin-main${isDemoMode ? " has-demo-banner" : ""}${maintenanceActive && isSuper ? " has-maintenance-banner" : ""}`}>
         {maintenanceActive && isSuper && (
           <div className="maintenance-super-banner">
@@ -407,9 +405,18 @@ export default function AdminRouteLayout() {
         {isDemoMode && (
           <div className="demo-banner">
             <div className="demo-banner-inner">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+              <Icon
+                iconNode={[]}
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                style={{ flexShrink: 0, opacity: 0.7 }}>
                 <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
+              </Icon>
               <span>You&apos;re viewing a <strong>live demo</strong> with sample data.</span>
             </div>
           </div>

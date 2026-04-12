@@ -11,6 +11,7 @@ import {
   APP_DATE_MAX_YEAR,
   isValidDateParts,
 } from "../../shared/dateBounds";
+import { formatDateTime, formatDate } from "../../shared/lib/dateUtils";
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -39,14 +40,7 @@ const AUDIT_MAX_YEAR = APP_DATE_MAX_YEAR;
 
 export const formatAuditTimestamp = (value) => {
   if (!value) return "—";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "—";
-  const day = String(dt.getDate()).padStart(2, "0");
-  const month = dt.toLocaleString("en-GB", { month: "short" });
-  const year = dt.getFullYear();
-  const hours = String(dt.getHours()).padStart(2, "0");
-  const minutes = String(dt.getMinutes()).padStart(2, "0");
-  return `${day} ${month} ${year} ${hours}:${minutes}`;
+  return formatDateTime(value);
 };
 
 // ── Date / time validation helpers ────────────────────────────
@@ -202,8 +196,10 @@ export const buildAuditParams = (filters, limit, cursor, searchText) => {
   return {
     startAt: startAt ? startAt.toISOString() : null,
     endAt: endAt ? endAt.toISOString() : null,
-    actorTypes: null,
-    actions: null,
+    actorTypes: filters.actorTypes?.length ? filters.actorTypes : null,
+    actions: filters.actions?.length ? filters.actions : null,
+    categories: filters.categories?.length ? filters.categories : null,
+    severities: filters.severities?.length ? filters.severities : null,
     limit: limit || AUDIT_PAGE_SIZE,
     beforeAt: cursor?.beforeAt || null,
     beforeId: cursor?.beforeId || null,
@@ -216,10 +212,19 @@ export const buildAuditParams = (filters, limit, cursor, searchText) => {
 
 // ── Actor resolution ──────────────────────────────────────────
 
+// Legacy fallback: events where actor_name in details refers to the juror
+// (used only when actor_type column is null on pre-migration rows).
 const JUROR_ACTIONS = new Set([
   "evaluation.complete",
   "juror.pin_locked",
+  "juror.pin_unlocked",
   "juror.edit_mode_closed_on_resubmit",
+  "juror.edit_mode_enabled",
+  "juror.edit_enabled",
+  "pin.reset",
+  "data.juror.created",
+  "data.juror.updated",
+  "data.juror.deleted",
 ]);
 
 export function getInitials(name) {
@@ -268,118 +273,619 @@ export function getActorInfo(log) {
   return { type: "system", name: "System", role: "Automated", initials: null };
 }
 
-// ── Action labels ─────────────────────────────────────────────
+// ── Event metadata ─────────────────────────────────────────────
+// Single source of truth per audit event.
+//   label     — human-readable label for UI lists and exports
+//   narrative — (log) => { verb, resource } for sentence rendering
+//
+// Prefix-matched groups (export.*, notification.*) are handled by
+// formatSentence's fallback matchers; no narrative entry needed here.
 
-export const ACTION_LABELS = {
-  // ── Auth ──
-  "admin.login": "Admin login",
+const EVENT_META = {
+  // ── Auth ──────────────────────────────────────────────────────
+  "admin.login": {
+    // Legacy action — kept so historical rows still render with the right label.
+    label: "Admin login",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: d.method ? `signed in via ${d.method}` : "signed in", resource: null };
+    },
+  },
+  "auth.admin.login.success": {
+    label: "Admin signed in",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: d.method ? `signed in via ${d.method}` : "signed in", resource: null };
+    },
+  },
+  "auth.admin.login.failure": {
+    label: "Failed sign-in attempt",
+    narrative: (log) => {
+      const d = log.details || {};
+      return {
+        verb: "failed sign-in attempt",
+        resource: d.email ? `for ${d.email}` : null,
+      };
+    },
+  },
+  "admin.logout": {
+    label: "Admin signed out",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: d.scope === "global" ? "signed out globally" : "signed out", resource: null };
+    },
+  },
+  "auth.admin.password.changed": {
+    label: "Admin changed password",
+    narrative: () => ({ verb: "changed their password", resource: null }),
+  },
+  "auth.admin.password.reset.requested": {
+    label: "Password reset requested",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "requested password reset", resource: d.email || null };
+    },
+  },
+  "data.juror.edit_mode.force_closed": {
+    label: "Juror edit mode force-closed",
+    narrative: (log) => {
+      const d = log.details || {};
+      return {
+        verb: "forced edit mode closure for",
+        resource: d.juror_name || d.jurorName || null,
+      };
+    },
+  },
+  "admin.create": {
+    label: "Admin created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created admin", resource: d.adminName || d.adminEmail || null };
+    },
+  },
+  "admin.updated": {
+    label: "Admin updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated admin", resource: d.adminName || d.adminEmail || null };
+    },
+  },
 
-  // ── Admin lifecycle ──
-  "admin.create": "Admin created",
-  "admin.updated": "Admin updated",
+  // ── Evaluation flow (juror-initiated) ─────────────────────────
+  "evaluation.complete": {
+    label: "Evaluation completed",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "completed an evaluation on", resource: d.periodName || null };
+    },
+  },
+  "data.score.submitted": {
+    label: "Score sheet submitted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "submitted scores for", resource: d.project_title || d.projectTitle || null };
+    },
+  },
+  "juror.pin_locked": {
+    label: "Juror locked (too many PIN attempts)",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "was locked out (failed PIN attempts) on", resource: d.periodName || null };
+    },
+  },
+  "juror.edit_mode_closed_on_resubmit": {
+    label: "Edit mode closed (resubmit)",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "edit window closed on resubmit for", resource: d.periodName || null };
+    },
+  },
 
-  // ── Evaluation flow (juror-initiated) ──
-  "evaluation.complete": "Evaluation completed",
-  "juror.pin_locked": "Juror locked (too many PIN attempts)",
-  "juror.edit_mode_closed_on_resubmit": "Edit mode closed (resubmit)",
+  // ── Juror admin actions ───────────────────────────────────────
+  "pin.reset": {
+    label: "Juror PIN reset by admin",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "reset PIN for", resource: d.juror_name || null };
+    },
+  },
+  "juror.pin_unlocked": {
+    label: "Juror unlocked by admin",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "unlocked", resource: d.juror_name || null };
+    },
+  },
+  "juror.edit_mode_enabled": {
+    label: "Edit mode granted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "granted edit mode to", resource: d.juror_name || null };
+    },
+  },
+  "juror.edit_enabled": {
+    label: "Edit mode granted", // legacy alias for juror.edit_mode_enabled
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "granted edit mode to", resource: d.juror_name || null };
+    },
+  },
+  "juror.blocked": {
+    label: "Juror blocked",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "blocked juror", resource: d.juror_name || null };
+    },
+  },
+  "juror.import": {
+    label: "Jurors imported",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "imported jurors", resource: d.count != null ? `${d.count} jurors` : null };
+    },
+  },
+  "juror.create": {
+    label: "Juror created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "added juror", resource: d.juror_name || null };
+    },
+  },
 
-  // ── Juror admin actions ──
-  "pin.reset": "Juror PIN reset by admin",
-  "juror.pin_unlocked": "Juror unlocked by admin",
-  "juror.edit_mode_enabled": "Edit mode granted",
-  "juror.edit_enabled": "Edit mode granted", // legacy alias → juror.edit_mode_enabled
-  "juror.blocked": "Juror blocked",
+  // ── Tokens & snapshots ────────────────────────────────────────
+  "token.generate": {
+    label: "QR access code generated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "generated QR access code for", resource: d.periodName || null };
+    },
+  },
+  "token.revoke": {
+    label: "QR access code revoked",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "revoked QR access code for", resource: d.periodName || null };
+    },
+  },
+  "security.entry_token.revoked": {
+    label: "Entry token revoked",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "revoked entry token for period", resource: d.period_id ? `${d.revoked_count || 1} token(s)` : null };
+    },
+  },
+  "snapshot.freeze": {
+    label: "Snapshot frozen",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "froze framework snapshot for", resource: d.periodName || null };
+    },
+  },
 
-  // ── Tokens & snapshots ──
-  "token.generate": "QR access code generated",
-  "token.revoke": "QR access code revoked",
-  "snapshot.freeze": "Snapshot frozen",
+  // ── Application workflow ──────────────────────────────────────
+  "application.submitted": {
+    label: "Application submitted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "submitted an application", resource: d.applicant_email || d.applicantEmail || null };
+    },
+  },
+  "application.approved": {
+    label: "Application approved",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "approved application from", resource: d.applicant_email || d.applicantEmail || null };
+    },
+  },
+  "application.rejected": {
+    label: "Application rejected",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "rejected application from", resource: d.applicant_email || d.applicantEmail || null };
+    },
+  },
 
-  // ── Application workflow ──
-  "application.submitted": "Application submitted",
-  "application.approved": "Application approved",
-  "application.rejected": "Application rejected",
+  // ── Period management (manual instrumented + trigger-based) ───
+  "period.create": {
+    label: "Period created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created period", resource: d.periodName || null };
+    },
+  },
+  "period.update": {
+    label: "Period updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated period", resource: d.periodName || null };
+    },
+  },
+  "period.lock": {
+    label: "Evaluation locked",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "locked evaluation period", resource: d.periodName || null };
+    },
+  },
+  "period.unlock": {
+    label: "Evaluation unlocked",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "unlocked evaluation period", resource: d.periodName || null };
+    },
+  },
+  "period.set_current": {
+    label: "Active period changed",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "set active period to", resource: d.periodName || null };
+    },
+  },
+  "periods.insert": {
+    label: "Period created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created period", resource: d.periodName || null };
+    },
+  },
+  "periods.update": {
+    label: "Period updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated period", resource: d.periodName || null };
+    },
+  },
+  "periods.delete": {
+    label: "Period deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted period", resource: d.periodName || null };
+    },
+  },
 
-  // ── Period management (manual instrumented) ──
-  "period.create": "Period created",
-  "period.update": "Period updated",
-  "period.lock": "Evaluation locked",
-  "period.unlock": "Evaluation unlocked",
-  "period.set_current": "Active period changed",
+  // ── Criteria, outcomes & framework ───────────────────────────
+  "criteria.save": {
+    label: "Criteria & outcomes saved",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "saved criteria configuration for", resource: d.periodName || null };
+    },
+  },
+  "criteria.update": {
+    label: "Criteria updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated criteria for", resource: d.periodName || null };
+    },
+  },
+  "outcome.create": {
+    label: "Outcome created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created outcome", resource: d.outcomeCode || d.outcome_code || d.outcomeName || null };
+    },
+  },
+  "outcome.update": {
+    label: "Outcome updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "outcome.delete": {
+    label: "Outcome deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "config.outcome.updated": {
+    label: "Outcome updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "config.outcome.deleted": {
+    label: "Outcome deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted outcome", resource: d.outcome_code || d.outcome_label || null };
+    },
+  },
+  "frameworks.insert": {
+    label: "Framework created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created accreditation framework", resource: d.after?.name || null };
+    },
+  },
+  "frameworks.update": {
+    label: "Framework updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated accreditation framework", resource: d.after?.name || null };
+    },
+  },
+  "frameworks.delete": {
+    label: "Framework deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted accreditation framework", resource: d.before?.name || null };
+    },
+  },
 
-  // ── Criteria, outcomes & framework ──
-  "criteria.save": "Criteria & outcomes saved",
-  "criteria.update": "Criteria updated",
-  "outcome.create": "Outcome created",
-  "outcome.update": "Outcome updated",
-  "outcome.delete": "Outcome deleted",
+  // ── Project management (manual instrumented + trigger-based) ─
+  "project.import": {
+    label: "Projects imported",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "imported projects", resource: d.count != null ? `${d.count} projects` : null };
+    },
+  },
+  "project.create": {
+    label: "Project created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created project", resource: d.title || d.projectTitle || d.after?.title || null };
+    },
+  },
+  "project.update": {
+    label: "Project updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated project", resource: d.title || d.projectTitle || d.after?.title || null };
+    },
+  },
+  "project.delete": {
+    label: "Project deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted project", resource: d.title || d.projectTitle || d.before?.title || null };
+    },
+  },
+  "projects.insert": {
+    label: "Project created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created project", resource: d.title || d.projectTitle || d.after?.title || null };
+    },
+  },
+  "projects.update": {
+    label: "Project updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated project", resource: d.title || d.projectTitle || d.after?.title || null };
+    },
+  },
+  "projects.delete": {
+    label: "Project deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted project", resource: d.title || d.projectTitle || d.before?.title || null };
+    },
+  },
 
-  // ── Imports & manual data ──
-  "juror.import": "Jurors imported",
-  "juror.create": "Juror created",
-  "project.import": "Projects imported",
-  "project.create": "Project created",
-  "project.update": "Project updated",
-  "project.delete": "Project deleted",
-  "score.update": "Score updated",
+  // ── Juror management (trigger-based) ─────────────────────────
+  "jurors.insert": {
+    label: "Juror created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created juror", resource: d.after?.juror_name || null };
+    },
+  },
+  "jurors.update": {
+    label: "Juror updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated juror", resource: d.after?.juror_name || d.before?.juror_name || null };
+    },
+  },
+  "jurors.delete": {
+    label: "Juror deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted juror", resource: d.before?.juror_name || null };
+    },
+  },
 
-  // ── Cross-org super-admin actions ──
-  "organization.status_changed": "Organization status changed",
+  // ── Membership (trigger-based) ────────────────────────────────
+  "memberships.insert": {
+    label: "Membership created",
+    narrative: () => ({ verb: "added member", resource: null }),
+  },
+  "memberships.update": {
+    label: "Membership updated",
+    narrative: () => ({ verb: "updated membership", resource: null }),
+  },
+  "memberships.delete": {
+    label: "Membership deleted",
+    narrative: () => ({ verb: "removed member", resource: null }),
+  },
 
-  // ── Exports ──
-  "export.scores": "Scores exported",
-  "export.rankings": "Rankings exported",
-  "export.heatmap": "Heatmap exported",
-  "export.analytics": "Analytics exported",
-  "export.audit": "Audit log exported",
-  "export.backup": "Backup exported",
+  // ── Organizations (trigger-based + status change) ─────────────
+  "organizations.insert": {
+    label: "Organization created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created organization", resource: d.after?.name || null };
+    },
+  },
+  "organizations.update": {
+    label: "Organization updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated organization", resource: d.after?.name || d.before?.name || null };
+    },
+  },
+  "organization.status_changed": {
+    label: "Organization status changed",
+    narrative: (log) => {
+      const d = log.details || {};
+      const transition = d.previousStatus && d.newStatus ? `${d.previousStatus} → ${d.newStatus}` : null;
+      const target = [d.organizationCode || d.orgCode, transition].filter(Boolean).join(" · ");
+      return { verb: "changed organization status", resource: target || null };
+    },
+  },
 
-  // ── Notifications ──
-  "notification.application": "Application notification sent",
-  "notification.admin_invite": "Admin invite email sent",
-  "notification.entry_token": "QR access link emailed",
-  "notification.juror_pin": "Juror PIN emailed",
-  "notification.export_report": "Report shared via email",
-  "notification.password_reset": "Password reset email sent",
+  // ── Org applications (trigger-based) ─────────────────────────
+  "org_applications.insert": {
+    label: "Application submitted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "submitted application", resource: d.after?.contact_email || null };
+    },
+  },
+  "org_applications.update": {
+    label: "Application status changed",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated application status", resource: d.after?.contact_email || null };
+    },
+  },
+  "org_applications.delete": {
+    label: "Application deleted",
+    narrative: () => ({ verb: "deleted application", resource: null }),
+  },
 
-  // ── Backups ──
-  "backup.created": "Backup created",
-  "backup.deleted": "Backup deleted",
-  "backup.downloaded": "Backup downloaded",
+  // ── Admin invites (trigger-based) ─────────────────────────────
+  "admin_invites.insert": {
+    label: "Admin invite created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created admin invite", resource: d.after?.email || null };
+    },
+  },
+  "admin_invites.update": {
+    label: "Admin invite updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated admin invite", resource: d.after?.email || null };
+    },
+  },
+  "admin_invites.delete": {
+    label: "Admin invite deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted admin invite", resource: d.before?.email || null };
+    },
+  },
 
-  // ── Trigger-based CRUD (table.operation) ──
-  "score_sheets.insert": "Score sheet created",
-  "score_sheets.update": "Score sheet updated",
-  "score_sheets.delete": "Score sheet deleted",
-  "projects.insert": "Project created",
-  "projects.update": "Project updated",
-  "projects.delete": "Project deleted",
-  "jurors.insert": "Juror created",
-  "jurors.update": "Juror updated",
-  "jurors.delete": "Juror deleted",
-  "periods.insert": "Period created",
-  "periods.update": "Period updated",
-  "periods.delete": "Period deleted",
-  "entry_tokens.insert": "QR access code created",
-  "entry_tokens.update": "QR access code updated",
-  "entry_tokens.delete": "QR access code deleted",
-  "memberships.insert": "Membership created",
-  "memberships.update": "Membership updated",
-  "memberships.delete": "Membership deleted",
-  "organizations.insert": "Organization created",
-  "organizations.update": "Organization updated",
-  "org_applications.insert": "Application submitted",
-  "org_applications.update": "Application status changed",
-  "org_applications.delete": "Application deleted",
-  "admin_invites.insert": "Admin invite created",
-  "admin_invites.update": "Admin invite updated",
-  "admin_invites.delete": "Admin invite deleted",
-  "frameworks.insert": "Framework created",
-  "frameworks.update": "Framework updated",
-  "frameworks.delete": "Framework deleted",
-  "profiles.insert": "Profile created",
-  "profiles.update": "Profile updated",
+  // ── Entry tokens (trigger-based) ──────────────────────────────
+  "entry_tokens.insert": {
+    label: "QR access code created",
+    narrative: () => ({ verb: "created QR access code", resource: null }),
+  },
+  "entry_tokens.update": {
+    label: "QR access code updated",
+    narrative: () => ({ verb: "updated QR access code", resource: null }),
+  },
+  "entry_tokens.delete": {
+    label: "QR access code deleted",
+    narrative: () => ({ verb: "deleted QR access code", resource: null }),
+  },
+
+  // ── Profiles (trigger-based) ──────────────────────────────────
+  "profiles.insert": {
+    label: "Profile created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created profile", resource: d.after?.display_name || null };
+    },
+  },
+  "profiles.update": {
+    label: "Profile updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated profile", resource: d.after?.display_name || null };
+    },
+  },
+
+  // ── Score management ──────────────────────────────────────────
+  "score.update": {
+    label: "Score updated",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "updated scores for", resource: d.projectTitle || d.title || null };
+    },
+  },
+  "score_sheets.insert": {
+    label: "Score sheet created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created score sheet for", resource: d.after?.project_id ? "project" : null };
+    },
+  },
+  "score_sheets.update": {
+    label: "Score sheet updated",
+    narrative: () => ({ verb: "updated score sheet for", resource: null }),
+  },
+  "score_sheets.delete": {
+    label: "Score sheet deleted",
+    narrative: () => ({ verb: "deleted score sheet", resource: null }),
+  },
+
+  // ── Backups ───────────────────────────────────────────────────
+  "backup.created": {
+    label: "Backup created",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "created a backup", resource: d.fileName || null };
+    },
+  },
+  "backup.deleted": {
+    label: "Backup deleted",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "deleted backup", resource: d.fileName || null };
+    },
+  },
+  "backup.downloaded": {
+    label: "Backup downloaded",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "downloaded backup", resource: d.fileName || null };
+    },
+  },
+
+  // ── Exports (label only — narrative handled by prefix matcher) ─
+  "export.scores":    { label: "Scores exported" },
+  "export.rankings":  { label: "Rankings exported" },
+  "export.heatmap":   { label: "Heatmap exported" },
+  "export.analytics": { label: "Analytics exported" },
+  "export.audit":     { label: "Audit log exported" },
+  "export.backup":    { label: "Backup exported" },
+
+  // ── Notifications (label only — narrative handled by prefix matcher) ─
+  "notification.application":    { label: "Application notification sent" },
+  "notification.admin_invite":   { label: "Admin invite email sent" },
+  "notification.entry_token":    { label: "QR access link emailed" },
+  "notification.juror_pin":      { label: "Juror PIN emailed" },
+  "notification.export_report":  { label: "Report shared via email" },
+  "notification.password_reset": { label: "Password reset email sent" },
+  "notification.maintenance":    { label: "Maintenance notice sent" },
+
+  // ── Juror-initiated security / data requests ─────────────────
+  "security.pin_reset.requested": {
+    label: "PIN reset requested",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "requested PIN reset for juror", resource: d.jurorName || null };
+    },
+  },
+  "data.score.edit_requested": {
+    label: "Score edit requested",
+    narrative: (log) => {
+      const d = log.details || {};
+      return { verb: "requested score edit for juror", resource: d.jurorName || null };
+    },
+  },
 };
+
+// Derived from EVENT_META — stable export shape for consumers
+export const ACTION_LABELS = Object.fromEntries(
+  Object.entries(EVENT_META).map(([k, v]) => [k, v.label])
+);
 
 /**
  * Return a human-readable label for an audit action.
@@ -499,10 +1005,10 @@ function formatDayHeader(d) {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const label = d.toLocaleString("en-GB", { month: "long", day: "numeric" });
+  const label = formatDate(d);
   if (d.toDateString() === today.toDateString()) return `Today · ${label}`;
   if (d.toDateString() === yesterday.toDateString()) return `Yesterday · ${label}`;
-  return d.toLocaleString("en-GB", { weekday: "long", month: "long", day: "numeric" });
+  return label;
 }
 
 /**
@@ -532,83 +1038,23 @@ export function groupByDay(logs) {
  */
 export function formatSentence(log) {
   const action = log.action || "";
+
+  // Resolve via EVENT_META narrative first
+  const meta = EVENT_META[action];
+  if (meta?.narrative) return meta.narrative(log);
+
+  // ── Prefix matchers for open-ended event families ─────────────
   const d = log.details || {};
-
-  // ── Auth ──
-  if (action === "admin.login")                 return { verb: d.method ? `signed in via ${d.method}` : "signed in", resource: null };
-  if (action === "admin.create")                return { verb: "created admin",                     resource: d.adminName || d.adminEmail || null };
-  if (action === "admin.updated")               return { verb: "updated admin",                     resource: d.adminName || d.adminEmail || null };
-
-  // ── Evaluation flow (juror-initiated) ──
-  if (action === "evaluation.complete")         return { verb: "completed an evaluation on",       resource: d.periodName || null };
-  if (action === "juror.pin_locked")            return { verb: "was locked out (failed PIN attempts) on", resource: d.periodName || null };
-  if (action === "juror.edit_mode_closed_on_resubmit") return { verb: "edit window closed on resubmit for", resource: d.periodName || null };
-
-  // ── Juror admin actions ──
-  if (action === "pin.reset")                   return { verb: "reset PIN for",                     resource: d.juror_name || null };
-  if (action === "juror.pin_unlocked")          return { verb: "unlocked",                          resource: d.juror_name || null };
-  if (action === "juror.edit_mode_enabled" ||
-      action === "juror.edit_enabled")          return { verb: "granted edit mode to",              resource: d.juror_name || null };
-  if (action === "juror.blocked")               return { verb: "blocked juror",                     resource: d.juror_name || null };
-  if (action === "juror.import")                return { verb: "imported jurors",                   resource: d.count != null ? `${d.count} jurors` : null };
-  if (action === "juror.create")                return { verb: "added juror",                       resource: d.juror_name || null };
-
-  // ── Tokens & snapshots ──
-  if (action === "token.generate")              return { verb: "generated QR access code for",      resource: d.periodName || null };
-  if (action === "token.revoke")                return { verb: "revoked QR access code for",        resource: d.periodName || null };
-  if (action === "snapshot.freeze")             return { verb: "froze framework snapshot for",      resource: d.periodName || null };
-
-  // ── Application workflow ──
-  if (action === "application.submitted")       return { verb: "submitted an application",          resource: d.applicant_email || d.applicantEmail || null };
-  if (action === "application.approved")        return { verb: "approved application from",        resource: d.applicant_email || d.applicantEmail || null };
-  if (action === "application.rejected")        return { verb: "rejected application from",        resource: d.applicant_email || d.applicantEmail || null };
-
-  // ── Period management ──
-  if (action === "period.create"   ||
-      action === "periods.insert")              return { verb: "created period",                    resource: d.periodName || null };
-  if (action === "period.update"   ||
-      action === "periods.update")              return { verb: "updated period",                    resource: d.periodName || null };
-  if (action === "periods.delete")              return { verb: "deleted period",                    resource: d.periodName || null };
-  if (action === "period.lock")                 return { verb: "locked evaluation period",          resource: d.periodName || null };
-  if (action === "period.unlock")               return { verb: "unlocked evaluation period",        resource: d.periodName || null };
-  if (action === "period.set_current")          return { verb: "set active period to",              resource: d.periodName || null };
-
-  // ── Criteria, outcomes, framework ──
-  if (action === "criteria.save")               return { verb: "saved criteria configuration for",  resource: d.periodName || null };
-  if (action === "criteria.update")             return { verb: "updated criteria for",              resource: d.periodName || null };
-  if (action === "outcome.create")              return { verb: "created outcome",                   resource: d.outcomeCode || d.outcome_code || d.outcomeName || null };
-  if (action === "outcome.update")              return { verb: "updated outcome",                   resource: d.outcomeCode || d.outcome_code || d.outcomeName || null };
-  if (action === "outcome.delete")              return { verb: "deleted outcome",                   resource: d.outcomeCode || d.outcome_code || d.outcomeName || null };
-
-  // ── Project management (manual instrumented) ──
-  if (action === "project.import")              return { verb: "imported projects",                 resource: d.count != null ? `${d.count} projects` : null };
-  if (action === "project.create")              return { verb: "created project",                   resource: d.title || d.projectTitle || null };
-  if (action === "project.update")              return { verb: "updated project",                   resource: d.title || d.projectTitle || null };
-  if (action === "project.delete")              return { verb: "deleted project",                   resource: d.title || d.projectTitle || null };
-
-  // ── Score management ──
-  if (action === "score.update")                return { verb: "updated scores for",                resource: d.projectTitle || d.title || null };
-
-  // ── Cross-org super-admin ──
-  if (action === "organization.status_changed") {
-    const transition = d.previousStatus && d.newStatus ? `${d.previousStatus} → ${d.newStatus}` : null;
-    const target = [d.organizationCode || d.orgCode, transition].filter(Boolean).join(" · ");
-    return { verb: "changed organization status",                                                  resource: target || null };
-  }
-
-  // ── Backups ──
-  if (action === "backup.created")              return { verb: "created a backup",                  resource: d.fileName || null };
-  if (action === "backup.deleted")              return { verb: "deleted backup",                    resource: d.fileName || null };
-  if (action === "backup.downloaded")           return { verb: "downloaded backup",                 resource: d.fileName || null };
-
-  // ── Exports & notifications (prefix matchers) ──
   if (action.startsWith("export.")) {
     const type = action.replace("export.", "");
-    return { verb: `exported ${type}`,                                                              resource: d.periodName || null };
+    return { verb: `exported ${type}`, resource: d.periodName || null };
   }
   if (action.startsWith("notification.")) {
     const type = action.replace("notification.", "");
-    return { verb: `sent ${type.replace(/_/g, " ")} to`,                                           resource: d.recipientEmail || (Array.isArray(d.recipients) ? d.recipients.join(", ") : null) };
+    return {
+      verb: `sent ${type.replace(/_/g, " ")} to`,
+      resource: d.recipientEmail || (Array.isArray(d.recipients) ? d.recipients.join(", ") : null),
+    };
   }
 
   // ── Trigger-based CRUD fallback (table.insert/update/delete) ──
@@ -726,13 +1172,22 @@ function _timeAgo(ms) {
  * Scan logs for anomalies worth surfacing to the admin.
  * Returns the highest-priority anomaly object, or null.
  *
- * @returns {{ title: string, desc: string, filterAction: string } | null}
+ * Anomaly objects include:
+ *   key          — stable rule identifier (e.g. "auth.login_failure.burst")
+ *   action       — audit action to write ("security.anomaly.detected")
+ *   title        — short banner headline (includes relative time)
+ *   desc         — longer description
+ *   filterAction — action to filter by when "View events" is clicked
+ *   details      — extra context for the DB audit record
+ *
+ * @returns {{ key: string, action: string, title: string, desc: string, filterAction: string, details: object } | null}
  */
 export function detectAnomalies(logs) {
-  const oneDayMs = 24 * 60 * 60 * 1000;
+  const oneHourMs = 60 * 60 * 1000;
+  const oneDayMs  = 24 * oneHourMs;
   const now = Date.now();
 
-  // Failed admin login burst (highest priority)
+  // Rule 1: Failed admin login burst (≥3 in 24h) — highest priority
   const recentFailures = logs.filter(
     (l) =>
       (l.action === "admin.login.failure" || l.action === "auth.admin.login.failure") &&
@@ -744,13 +1199,98 @@ export function detectAnomalies(logs) {
     const ip = latest.ip_address || null;
     const timeAgo = _timeAgo(Date.parse(latest.created_at));
     return {
+      key: "auth.login_failure.burst",
+      action: "security.anomaly.detected",
       title: `Failed login attempts detected · ${timeAgo}`,
       desc: `${recentFailures.length} failed sign-in${recentFailures.length > 1 ? "s" : ""} in the last 24 hours.${ip ? ` Source: ${ip}.` : ""}`,
       filterAction: latest.action,
+      details: { anomaly_type: "login_failure_burst", count: recentFailures.length, ip },
     };
   }
 
-  // Juror PIN lockout
+  // Rule 2: Organization suspended (any in 24h)
+  const recentSuspensions = logs.filter(
+    (l) =>
+      l.action === "organization.status_changed" &&
+      l.details?.newStatus === "suspended" &&
+      l.created_at &&
+      now - Date.parse(l.created_at) < oneDayMs
+  );
+  if (recentSuspensions.length > 0) {
+    const latest = recentSuspensions[0];
+    const timeAgo = _timeAgo(Date.parse(latest.created_at));
+    const orgCode = latest.details?.organizationCode || "";
+    return {
+      key: "org.status.suspended",
+      action: "security.anomaly.detected",
+      title: `Organization suspended · ${timeAgo}`,
+      desc: `${orgCode ? `"${orgCode}" was` : "An organization was"} suspended.${recentSuspensions.length > 1 ? ` ${recentSuspensions.length} suspension events today.` : ""}`,
+      filterAction: "organization.status_changed",
+      details: { anomaly_type: "org_suspension", count: recentSuspensions.length, orgCode },
+    };
+  }
+
+  // Rule 3: Entry token revocation burst (≥2 in 1h)
+  const recentRevocations = logs.filter(
+    (l) =>
+      l.action === "security.entry_token.revoked" &&
+      l.created_at &&
+      now - Date.parse(l.created_at) < oneHourMs
+  );
+  if (recentRevocations.length >= 2) {
+    const latest = recentRevocations[0];
+    const timeAgo = _timeAgo(Date.parse(latest.created_at));
+    return {
+      key: "token.revoke.burst",
+      action: "security.anomaly.detected",
+      title: `Entry token revocations · ${timeAgo}`,
+      desc: `${recentRevocations.length} access tokens revoked in the last hour.`,
+      filterAction: "security.entry_token.revoked",
+      details: { anomaly_type: "token_revocation_burst", count: recentRevocations.length },
+    };
+  }
+
+  // Rule 4: PIN reset burst (≥3 in 1h)
+  const recentPinResets = logs.filter(
+    (l) =>
+      l.action === "pin.reset" &&
+      l.created_at &&
+      now - Date.parse(l.created_at) < oneHourMs
+  );
+  if (recentPinResets.length >= 3) {
+    const latest = recentPinResets[0];
+    const timeAgo = _timeAgo(Date.parse(latest.created_at));
+    return {
+      key: "pin.reset.burst",
+      action: "security.anomaly.detected",
+      title: `PIN resets detected · ${timeAgo}`,
+      desc: `${recentPinResets.length} juror PINs reset in the last hour.`,
+      filterAction: "pin.reset",
+      details: { anomaly_type: "pin_reset_burst", count: recentPinResets.length },
+    };
+  }
+
+  // Rule 5: Export burst (≥5 in 1h)
+  const recentExports = logs.filter(
+    (l) =>
+      l.action?.startsWith("export.") &&
+      l.created_at &&
+      now - Date.parse(l.created_at) < oneHourMs
+  );
+  if (recentExports.length >= 5) {
+    const latest = recentExports[0];
+    const timeAgo = _timeAgo(Date.parse(latest.created_at));
+    return {
+      key: "export.burst",
+      action: "security.anomaly.detected",
+      title: `Unusual export activity · ${timeAgo}`,
+      desc: `${recentExports.length} export events in the last hour.`,
+      filterAction: "export.audit",
+      details: { anomaly_type: "export_burst", count: recentExports.length },
+    };
+  }
+
+  // Rule 6: Juror PIN lockout (≥1 in 24h)
   const recentLocks = logs.filter(
     (l) => l.action === "juror.pin_locked" && l.created_at && (now - Date.parse(l.created_at)) < oneDayMs
   );
@@ -759,8 +1299,11 @@ export function detectAnomalies(logs) {
   const name = latest.actor_name || latest.details?.actor_name || "A juror";
   const timeAgo = _timeAgo(Date.parse(latest.created_at));
   return {
+    key: "juror.pin_locked",
+    action: "security.anomaly.detected",
     title: `Unusual activity detected · ${timeAgo}`,
     desc: `${name} triggered too many failed PIN attempts and was locked.${recentLocks.length > 1 ? ` ${recentLocks.length} lock events today.` : ""}`,
     filterAction: "juror.pin_locked",
+    details: { anomaly_type: "pin_lockout", count: recentLocks.length },
   };
 }

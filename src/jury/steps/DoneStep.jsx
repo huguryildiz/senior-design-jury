@@ -1,15 +1,7 @@
 // src/jury/steps/DoneStep.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import "../../styles/jury.css";
-import {
-  BarChart2,
-  Check,
-  CheckCircle2,
-  Loader2,
-  Mail,
-  Send,
-  Star,
-} from "lucide-react";
+import { BarChart2, Check, CheckCircle2, Loader2, Mail, Send, Star, Icon } from "lucide-react";
 import { submitJuryFeedback, requestScoreEdit } from "../../shared/api";
 
 /* ── Confetti animation (unchanged) ── */
@@ -202,7 +194,14 @@ export default function DoneStep({ state, onBack }) {
           <div className="dj-feedback-card">
             <div className="dj-feedback-submitted">
               <div className="dj-feedback-check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></Icon>
               </div>
               <div className="dj-feedback-thanks">Thank you for your feedback!</div>
               <div className="dj-feedback-thanks-sub">Your input helps us improve VERA.</div>
@@ -287,7 +286,6 @@ export default function DoneStep({ state, onBack }) {
         </div>
 
       </div>
-
       {/* Confetti canvas */}
       <canvas
         ref={confettiRef}

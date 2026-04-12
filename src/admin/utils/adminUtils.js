@@ -8,6 +8,8 @@
 // ── CSV parser ────────────────────────────────────────────────
 // RFC 4180 compliant. Supports both comma and semicolon as delimiters.
 // Returns array of rows, each row is array of trimmed cell strings.
+import { formatDateTime } from "../../shared/lib/dateUtils";
+
 export function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -185,11 +187,7 @@ export function buildSemesterSearchText(value) {
 // ── Dashboard timestamp formatting ───────────────────────────
 export function formatDashboardTs(date) {
   if (!date) return "—";
-  return date.toLocaleString("tr-TR", {
-    timeZone: "Europe/Istanbul",
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  }).replace(",", " ·").replace(/\//g, ".");
+  return formatDateTime(date);
 }
 
 // ── Generic comparator (number-aware) ────────────────────────

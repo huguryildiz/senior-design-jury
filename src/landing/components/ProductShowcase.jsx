@@ -7,6 +7,8 @@ import SlideEntryControl from "./showcase/SlideEntryControl";
 import SlideCriteria from "./showcase/SlideCriteria";
 import SlideManagement from "./showcase/SlideManagement";
 
+import { Icon } from "lucide-react";
+
 const VISUAL_MAP = {
   analytics: SlideAnalytics,
   juryflow: SlideJuryFlow,
@@ -97,15 +99,28 @@ export default function ProductShowcase() {
           </div>
         </div>
       </div>
-
       {/* Footer controls */}
       <div className="product-showcase-footer">
         <div className="product-showcase-arrows">
           <button type="button" className="product-showcase-arrow" onClick={goPrev} aria-label="Previous slide">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+            <Icon
+              iconNode={[]}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"><path d="m15 18-6-6 6-6" /></Icon>
           </button>
           <button type="button" className="product-showcase-arrow" onClick={goNext} aria-label="Next slide">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+            <Icon
+              iconNode={[]}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"><path d="m9 18 6-6-6-6" /></Icon>
           </button>
         </div>
 

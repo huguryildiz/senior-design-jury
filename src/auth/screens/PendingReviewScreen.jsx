@@ -5,15 +5,7 @@
 import { useEffect, useState } from "react";
 import { Clock, Check, MoreVertical, LogIn, X, FileText, Plus, CircleAlert, Info } from "lucide-react";
 import { getMyApplications } from "@/shared/api";
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  try {
-    return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return dateStr;
-  }
-}
+import { formatDate } from "@/shared/lib/dateUtils";
 
 /* ── Status Stepper ── */
 function StatusStepper({ hasRejected }) {

@@ -36,6 +36,8 @@ import { useCriteriaForm } from "./useCriteriaForm";
 import CriterionEditor from "./CriterionEditor";
 import CriterionDeleteDialog from "./CriterionDeleteDialog";
 
+import { Icon } from "lucide-react";
+
 // ── Sortable row wrapper ──────────────────────────────────────
 
 function SortableCriterionRow({ id, disabled, children }) {
@@ -144,14 +146,12 @@ export default function CriteriaManager({
           <span className="fs-badge red">Must equal 100</span>
         )}
       </div>
-
       {isLocked && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200" style={{ marginBottom: 12 }}>
           <LockIcon className="size-4 shrink-0" />
           <span>Scores exist for this period — criteria weights and rubric ranges are locked to preserve result integrity.</span>
         </div>
       )}
-
       <DndContext
         id={instanceId}
         sensors={sensors}
@@ -184,27 +184,30 @@ export default function CriteriaManager({
           </div>
         </SortableContext>
       </DndContext>
-
       {!fullyLocked && (
         <button
           type="button"
           className="crt-add-criterion-btn"
           onClick={addRow}
         >
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true">
             <circle cx="7" cy="7" r="6" />
             <path d="M7 4v6M4 7h6" />
-          </svg>
+          </Icon>
           Add Criterion
         </button>
       )}
-
       {saveError && (
         <AlertCard variant="error">
           {saveError}
         </AlertCard>
       )}
-
       <CriterionDeleteDialog
         open={pendingDeleteIndex !== null}
         rowLabel={pendingDeleteIndex !== null ? getCriterionDisplayName(rows[pendingDeleteIndex], pendingDeleteIndex) : ""}

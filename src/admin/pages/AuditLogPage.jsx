@@ -2,10 +2,11 @@
 // Audit Log page: track admin actions, score changes, and access events.
 // Hook connections: useAuditLogFilters, usePageRealtime
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { Search, Download, X, Clock, AlertTriangle, Filter, Lock, Shield, UserCheck, Activity, Key, Package, Calendar, LogIn, FileText } from "lucide-react";
 import { useToast } from "@/shared/hooks/useToast";
+import { writeAuditLog } from "@/shared/api";
 import FbAlert from "@/shared/ui/FbAlert";
 import { FilterButton } from "@/shared/ui/FilterButton";
 import { useAuditLogFilters } from "../hooks/useAuditLogFilters";
@@ -163,6 +164,7 @@ export default function AuditLogPage() {
     auditSearch,
     setAuditSearch,
     auditHasMore,
+    auditTotalCount,
     auditExporting,
     showAuditSkeleton,
     isAuditStaleRefresh,
@@ -221,7 +223,8 @@ export default function AuditLogPage() {
   }, [baseFilteredLogs, savedView]);
 
   // ── KPI derived values ────────────────────────────────────
-  const total = baseFilteredLogs.length;
+  // Use server-side total count when available; fall back to loaded row count.
+  const total = auditTotalCount ?? baseFilteredLogs.length;
   const today = baseFilteredLogs.filter((l) => {
     if (!l.created_at) return false;
     const d = new Date(l.created_at);
@@ -283,6 +286,29 @@ export default function AuditLogPage() {
 
   // ── Anomaly detection ────────────────────────────────────
   const anomaly = useMemo(() => detectAnomalies(auditLogs), [auditLogs]);
+
+  const lastAnomalyKeyRef = useRef(null);
+  useEffect(() => {
+    if (!anomaly) return;
+    const bucket = Math.floor(Date.now() / 3_600_000);
+    const dedupeKey = `${anomaly.key}-${bucket}`;
+    if (lastAnomalyKeyRef.current === dedupeKey) return;
+    lastAnomalyKeyRef.current = dedupeKey;
+    // Blocking (awaited) anomaly write. This is still "best effort" because
+    // detection runs only while an admin has the audit page open; the proper
+    // premium fix is a server-side cron (ileri faz). Until then, at least we
+    // surface write failures instead of silently swallowing them.
+    (async () => {
+      try {
+        await writeAuditLog(anomaly.action, {
+          resourceType: "audit_logs",
+          details: { ...anomaly.details, title: anomaly.title },
+        });
+      } catch (e) {
+        console.error("Anomaly audit write failed:", e?.message || e);
+      }
+    })();
+  }, [anomaly]);
 
   // ── Pagination ────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(sortedLogs.length / pageSize));
@@ -482,7 +508,7 @@ export default function AuditLogPage() {
               <CustomSelect
                 compact
                 value={actorFilter}
-                onChange={(v) => { setActorFilter(v); setCurrentPage(1); }}
+                onChange={(v) => { setActorFilter(v); setAuditFilters((f) => ({ ...f, actorTypes: v ? [v] : [] })); setCurrentPage(1); }}
                 options={ACTOR_TYPES}
                 ariaLabel="Actor type"
               />
@@ -492,7 +518,7 @@ export default function AuditLogPage() {
               <CustomSelect
                 compact
                 value={categoryFilter}
-                onChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}
+                onChange={(v) => { setCategoryFilter(v); setAuditFilters((f) => ({ ...f, categories: v ? [v] : [] })); setCurrentPage(1); }}
                 options={CATEGORY_OPTIONS}
                 ariaLabel="Event category"
               />
@@ -502,7 +528,7 @@ export default function AuditLogPage() {
               <CustomSelect
                 compact
                 value={severityFilter}
-                onChange={(v) => { setSeverityFilter(v); setCurrentPage(1); }}
+                onChange={(v) => { setSeverityFilter(v); setAuditFilters((f) => ({ ...f, severities: v ? [v] : [] })); setCurrentPage(1); }}
                 options={SEVERITY_OPTIONS}
                 ariaLabel="Event severity"
               />

@@ -3,10 +3,17 @@
 // Sends an evaluation access link (QR token URL) to a recipient
 // via Resend. Called from the admin Entry Control page.
 //
-// Payload: { recipientEmail, tokenUrl, expiresIn, periodName }
+// Payload: {
+//   recipientEmail, tokenUrl, expiresIn, periodName,
+//   organizationName?, organizationInstitution?, organizationId?
+// }
 //
 // Email provider: Resend (via RESEND_API_KEY env var).
+// Audit: notification.entry_token written server-side after email send.
 // ============================================================
+
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
+import { requireAdminCaller } from "../_shared/admin-auth.ts";
 
 interface Payload {
   recipientEmail: string;
@@ -14,6 +21,9 @@ interface Payload {
   expiresIn?: string;   // e.g. "2h 30m left"
   periodName?: string;
   organizationName?: string;
+  organizationInstitution?: string;
+  organizationId?: string;
+  periodId?: string;
 }
 
 const corsHeaders = {
@@ -112,6 +122,12 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   try {
     const payload: Payload = await req.json();
@@ -123,20 +139,46 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const auth = await requireAdminCaller(req, payload.organizationId || null);
+    if (!auth.ok) {
+      return new Response(
+        JSON.stringify({ error: auth.error }),
+        { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const periodLabel = payload.periodName ? ` — ${payload.periodName}` : "";
     const expiryNote = payload.expiresIn ? `Your link is valid for ${payload.expiresIn}.` : "Your link is time-limited — use it promptly.";
 
-    const metaParts: string[] = [];
-    if (payload.organizationName) metaParts.push(escapeHtml(payload.organizationName));
-    if (payload.periodName) metaParts.push(escapeHtml(payload.periodName));
-    const metaLine = metaParts.length
-      ? `<p style="margin:0 0 16px;font-size:13px;color:#718096;">${metaParts.join(" &middot; ")}</p>`
+    const scopeRows: Array<{ label: string; value: string }> = [];
+    if (payload.organizationInstitution) {
+      scopeRows.push({ label: "ORGANIZATION", value: escapeHtml(payload.organizationInstitution) });
+    }
+    if (payload.organizationName) {
+      scopeRows.push({ label: "PROGRAM", value: escapeHtml(payload.organizationName) });
+    }
+    if (payload.periodName) {
+      scopeRows.push({ label: "PERIOD", value: escapeHtml(payload.periodName) });
+    }
+    const scopeBlock = scopeRows.length
+      ? `<div style="margin:0 0 18px;border:1px solid rgba(108,71,255,0.5);border-radius:16px;background:rgba(255,255,255,0.03);overflow:hidden;">` +
+        scopeRows
+          .map((row, index) =>
+            `<div style="padding:14px 18px;${index > 0 ? "border-top:1px solid rgba(255,255,255,0.08);" : ""}">` +
+            `<p style="margin:0;font-size:11px;line-height:1.3;letter-spacing:1.2px;color:#7c5cff;font-weight:700;">${row.label}</p>` +
+            `<p style="margin:6px 0 0;font-size:16px;line-height:1.4;color:#f1f5f9;font-weight:700;">${row.value}</p>` +
+            `</div>`
+          )
+          .join("") +
+        `</div>`
       : "";
 
     const subject = `Your evaluation access link${periodLabel}`;
     const body = [
-      `You have been invited to participate in a jury evaluation${periodLabel}.`,
-      payload.organizationName ? `Organization: ${payload.organizationName}` : "",
+      `You have been invited to participate in a jury evaluation.`,
+      payload.organizationInstitution ? `Organization: ${payload.organizationInstitution}` : "",
+      payload.organizationName ? `Program: ${payload.organizationName}` : "",
+      payload.periodName ? `Period: ${payload.periodName}` : "",
       `Click the link below to access the evaluation platform:`,
       payload.tokenUrl,
       expiryNote,
@@ -144,9 +186,9 @@ Deno.serve(async (req: Request) => {
 
     const html = buildHtml({
       title: "Jury Evaluation Access",
-      intro: `You have been invited to participate in a jury evaluation${periodLabel}.`,
+      intro: `You have been invited to participate in a jury evaluation.`,
       rawHtmlLines: [
-        metaLine,
+        scopeBlock,
         `<p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:#a0aec0;">Tap the button below or scan the QR code to open the evaluation platform. ${escapeHtml(expiryNote)}</p>`,
         `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 16px;">` +
         `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=12&color=ffffff&bgcolor=1a1a2e&data=${encodeURIComponent(payload.tokenUrl)}" alt="Scan to join evaluation" width="180" height="180" style="display:block;border-radius:12px;" />` +
@@ -172,6 +214,27 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log("send-entry-token-email:", JSON.stringify({ to: payload.recipientEmail, sent, error: sendError || undefined }));
+
+    // Server-side audit write — runs before the response leaves the function.
+    // No client crash can drop this event.
+    if (sent) {
+      try {
+        await writeEdgeAuditLog(req, {
+          action: "notification.entry_token",
+          organization_id: payload.organizationId || null,
+          resource_type: "entry_tokens",
+          resource_id: payload.periodId || null,
+          details: {
+            recipientEmail: payload.recipientEmail,
+            periodName: payload.periodName ?? null,
+            organizationName: payload.organizationName ?? null,
+            organizationInstitution: payload.organizationInstitution ?? null,
+          },
+        });
+      } catch (auditErr) {
+        console.error("audit write failed (notification.entry_token):", (auditErr as Error)?.message);
+      }
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

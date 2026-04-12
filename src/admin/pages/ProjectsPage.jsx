@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Pagination from "@/shared/ui/Pagination";
 import { useAdminContext } from "../hooks/useAdminContext";
-import { BarChart2, Filter, UserRound, MoreVertical, Pencil, Eye, Trash2 } from "lucide-react";
+import { BarChart2, Filter, UserRound, MoreVertical, Pencil, Eye, Trash2, Icon } from "lucide-react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import FbAlert from "@/shared/ui/FbAlert";
@@ -21,6 +21,7 @@ import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
+import { formatDateTime as formatFull } from "@/shared/lib/dateUtils";
 import "../../styles/pages/projects.css";
 
 // ── Column config — single source of truth for table headers and export ──
@@ -66,15 +67,6 @@ function formatRelative(ts) {
   return `${yrs % 1 === 0 ? yrs : yrs.toFixed(1)}yr ago`;
 }
 
-function formatFull(ts) {
-  if (!ts) return "";
-  try {
-    return new Date(ts).toLocaleString("en-GB", {
-      month: "short", day: "numeric", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch { return ""; }
-}
 
 function SortIcon({ colKey, sortKey, sortDir }) {
   if (sortKey !== colKey) {
@@ -345,7 +337,6 @@ export default function ProjectsPage() {
           </div>
         </div>
       </div>
-
       {/* KPI strip */}
       <div className="scores-kpi-strip">
         <div className="scores-kpi-item">
@@ -357,14 +348,21 @@ export default function ProjectsPage() {
           <div className="scores-kpi-item-label">Team Members</div>
         </div>
       </div>
-
       {/* Toolbar */}
       <div className="jurors-toolbar mobile-toolbar-stack">
         <div className="jurors-search-wrap mobile-toolbar-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
-          </svg>
+          </Icon>
           <input
             className="search-input"
             type="text"
@@ -381,19 +379,39 @@ export default function ProjectsPage() {
         />
         <div className="jurors-toolbar-spacer mobile-toolbar-spacer" />
         <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ verticalAlign: "-1px" }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
+          </Icon>
           {" "}Export
         </button>
         <button className="btn btn-outline btn-sm mobile-toolbar-secondary" onClick={() => setImportOpen(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
+          <Icon
+            iconNode={[]}
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ verticalAlign: "-1px" }}>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
+          </Icon>
           {" "}Import
         </button>
         <button
@@ -404,7 +422,6 @@ export default function ProjectsPage() {
           + Add Project
         </button>
       </div>
-
       {/* Filter panel */}
       {filterOpen && (
         <div className="filter-panel show">
@@ -420,7 +437,6 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
-
       {/* Export panel */}
       {exportOpen && (
         <ExportPanel
@@ -461,14 +477,12 @@ export default function ProjectsPage() {
           }}
         />
       )}
-
       {/* Error */}
       {panelError && (
         <FbAlert variant="danger" style={{ marginBottom: "12px" }}>
           {panelError}
         </FbAlert>
       )}
-
       {/* Table */}
       <div className="table-wrap" style={{ borderRadius: "var(--radius) var(--radius) 0 0", overflow: openMenuId ? "visible" : undefined }}>
         <table id="projects-main-table">
@@ -608,7 +622,6 @@ export default function ProjectsPage() {
           </tbody>
         </table>
       </div>
-
       {/* Pagination */}
       <Pagination
         currentPage={safePage}
@@ -619,7 +632,6 @@ export default function ProjectsPage() {
         onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
         itemLabel="projects"
       />
-
       {/* Project detail drawer */}
       {drawerProject && (
         <>
@@ -664,10 +676,19 @@ export default function ProjectsPage() {
             </div>
             <div className="juror-drawer-actions">
               <button className="btn btn-outline btn-sm" onClick={() => { const p = drawerProject; setDrawerProject(null); openEditDrawer(p); }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
+                </Icon>
                 Edit Project
               </button>
               <button
@@ -679,18 +700,26 @@ export default function ProjectsPage() {
                   setDeleteTarget(t);
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <Icon
+                  iconNode={[]}
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                   <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
+                </Icon>
                 Delete Project
               </button>
             </div>
           </div>
         </>
       )}
-
       {/* Edit project drawer */}
       <EditProjectDrawer
         open={editDrawerOpen}
@@ -698,14 +727,12 @@ export default function ProjectsPage() {
         project={editDrawerProject}
         onSave={handleEditSave}
       />
-
       {/* Add project drawer */}
       <AddProjectDrawer
         open={addDrawerOpen}
         onClose={() => setAddDrawerOpen(false)}
         onSave={handleAddSave}
       />
-
       <ImportCsvModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
@@ -717,7 +744,6 @@ export default function ProjectsPage() {
           return result;
         }}
       />
-
       <DeleteProjectModal
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

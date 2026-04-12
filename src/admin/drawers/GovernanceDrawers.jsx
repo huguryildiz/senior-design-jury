@@ -6,7 +6,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { AlertTriangle, AlertCircle, Settings, Download, Wrench, Activity, Database, BarChart2, Layers, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  AlertCircle,
+  Settings,
+  Download,
+  Wrench,
+  Activity,
+  Database,
+  BarChart2,
+  Layers,
+  Users,
+  Icon,
+} from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import FbAlert from "@/shared/ui/FbAlert";
 import { useToast } from "@/shared/hooks/useToast";
@@ -16,13 +28,14 @@ import { invokeEdgeFunction } from "@/shared/api/core/invokeEdgeFunction";
 import { getMaintenanceConfig, setMaintenance, cancelMaintenance, getActiveJurorCount, sendTestMaintenanceEmail } from "@/shared/api/admin/maintenance";
 import { getPlatformSettings, setPlatformSettings } from "@/shared/api/admin/platform";
 import { listOrganizationsPublic } from "@/shared/api/admin/organizations";
-import { listPeriods, listJurorsSummary, getScores, getProjectSummary, writeAuditLog, adminListProjects } from "@/shared/api";
+import { listPeriods, listJurorsSummary, getScores, getProjectSummary, logExportInitiated, adminListProjects } from "@/shared/api";
 import { exportXLSX, buildExportFilename } from "../utils/exportXLSX";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useAuth } from "@/auth";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
 import ManageBackupsDrawer from "./ManageBackupsDrawer";
+import { formatDate, formatTime } from "@/shared/lib/dateUtils";
 
 // ── Shared primitives ──────────────────────────────────────────
 
@@ -102,9 +115,14 @@ function DrawerHeader({ icon, iconStroke, title, subtitle, onClose }) {
           </div>
         </div>
         <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2">
             <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
+          </Icon>
         </button>
       </div>
     </div>
@@ -133,7 +151,7 @@ function formatRelativeUpdatedAt(iso) {
   if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
   const days = Math.floor(hrs / 24);
   if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 export function GlobalSettingsDrawer({ open, onClose }) {
@@ -402,6 +420,12 @@ export function ExportBackupDrawer({ open, onClose }) {
     if (!organizationId) return;
     setScoresLoading(true);
     try {
+      await logExportInitiated({
+        action: "export.backup",
+        organizationId,
+        resourceType: "score_sheets",
+        details: { format: "xlsx", scope: "all_periods" },
+      });
       const sems = (await listPeriods(organizationId)) || [];
       if (!sems.length) { toast.error("No evaluation periods found."); return; }
       const ordered = sortSemesters(sems);
@@ -427,10 +451,6 @@ export function ExportBackupDrawer({ open, onClose }) {
         summaryData: results.flatMap((x) => x.summary),
         tenantCode,
       });
-      writeAuditLog("export.backup", {
-        resourceType: "score_sheets",
-        details: { format: "xlsx", periodCount: ordered.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       toast.success(`Score report downloaded · ${ordered.length} period${ordered.length !== 1 ? "s" : ""} · Excel`);
     } catch (e) {
       toast.error(e?.message || "Score report export failed");
@@ -1072,7 +1092,7 @@ export function SystemHealthDrawer({ open, onClose }) {
   const refreshedLabel = checking
     ? "Checking…"
     : checkedAt
-    ? `Last refreshed: ${checkedAt.toLocaleTimeString()}`
+    ? `Last refreshed: ${formatTime(checkedAt)}`
     : "Not yet checked";
 
   return (
@@ -1164,7 +1184,7 @@ export function SystemHealthDrawer({ open, onClose }) {
                   </defs>
                   <XAxis
                     dataKey="ts"
-                    tickFormatter={(ts) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    tickFormatter={(ts) => formatTime(ts)}
                     tick={{ fontSize: 8, fill: "var(--text-tertiary)" }}
                     height={18}
                   />

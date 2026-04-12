@@ -20,7 +20,7 @@
 //   isSuper      — boolean
 
 import { useState, useEffect } from "react";
-import { AlertCircle, CheckCircle2, Clock, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, X, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import Avatar from "@/shared/ui/Avatar";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
@@ -82,10 +82,10 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, onCa
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="fs-icon identity">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
-              </svg>
+              </Icon>
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Edit Profile</div>
@@ -93,13 +93,17 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, onCa
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body" style={{ gap: 16 }}>
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 4 }}>
@@ -135,9 +139,15 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, onCa
               }}
               aria-label="Change avatar"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" style={{ width: 11, height: 11 }}>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2.5"
+                style={{ width: 11, height: 11 }}>
                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-              </svg>
+              </Icon>
             </button>
           </div>
         </div>
@@ -272,7 +282,6 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, onCa
           </div>
         )}
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
           Cancel

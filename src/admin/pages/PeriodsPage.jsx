@@ -12,7 +12,18 @@ import FbAlert from "@/shared/ui/FbAlert";
 import AddEditPeriodDrawer from "../drawers/AddEditPeriodDrawer";
 import { FilterButton } from "@/shared/ui/FilterButton.jsx";
 import { setEvalLock, deletePeriod, listPeriodCriteria, savePeriodCriteria } from "@/shared/api";
-import { Lock, LockOpen, Trash2, FileEdit, Play, CheckCircle, MoreVertical, Pencil, Eye } from "lucide-react";
+import {
+  Lock,
+  LockOpen,
+  Trash2,
+  FileEdit,
+  Play,
+  CheckCircle,
+  MoreVertical,
+  Pencil,
+  Eye,
+  Icon,
+} from "lucide-react";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import SetCurrentPeriodModal from "../modals/SetCurrentPeriodModal";
 import UnlockPeriodModal from "../modals/UnlockPeriodModal";
@@ -20,6 +31,7 @@ import LockPeriodModal from "../modals/LockPeriodModal";
 import DeletePeriodModal from "../modals/DeletePeriodModal";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
 import Pagination from "@/shared/ui/Pagination";
+import { formatDateTime as formatFull } from "@/shared/lib/dateUtils";
 import "../../styles/pages/periods.css";
 
 function formatRelative(ts) {
@@ -34,15 +46,6 @@ function formatRelative(ts) {
   return `${yrs % 1 === 0 ? yrs : yrs.toFixed(1)}yr ago`;
 }
 
-function formatFull(ts) {
-  if (!ts) return "";
-  try {
-    return new Date(ts).toLocaleString("en-GB", {
-      month: "short", day: "numeric", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch { return ""; }
-}
 
 function getPeriodStatus(period) {
   if (period.is_locked) return "locked";
@@ -325,11 +328,21 @@ export default function PeriodsPage() {
             onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
           />
           <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px" }}>
+            <Icon
+              iconNode={[]}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ verticalAlign: "-1px" }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
+            </Icon>
             {" "}Export
           </button>
           <button
@@ -341,16 +354,25 @@ export default function PeriodsPage() {
           </button>
         </div>
       </div>
-
       {/* Filter panel */}
       {filterOpen && (
         <div className="filter-panel show">
           <div className="filter-panel-header">
             <div>
               <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "-1px", marginRight: "4px", opacity: 0.5 }}>
+                <Icon
+                  iconNode={[]}
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ verticalAlign: "-1px", marginRight: "4px", opacity: 0.5 }}>
                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
+                </Icon>
                 Filter Periods
               </h4>
               <div className="filter-panel-sub">Narrow evaluation periods by status and lock state.</div>
@@ -375,15 +397,24 @@ export default function PeriodsPage() {
               />
             </div>
             <button className="btn btn-outline btn-sm filter-clear-btn" onClick={() => setStatusFilter("all")}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+              <Icon
+                iconNode={[]}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ opacity: 0.5 }}>
                 <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-              </svg>
+              </Icon>
               {" "}Clear
             </button>
           </div>
         </div>
       )}
-
       {/* Export panel */}
       {exportOpen && (
         <ExportPanel
@@ -425,7 +456,6 @@ export default function PeriodsPage() {
           }}
         />
       )}
-
       {/* KPI strip */}
       <div className="scores-kpi-strip">
         <div className="scores-kpi-item">
@@ -449,14 +479,12 @@ export default function PeriodsPage() {
           <div className="scores-kpi-item-label">Locked</div>
         </div>
       </div>
-
       {/* Error */}
       {panelError && (
         <FbAlert variant="danger" style={{ marginBottom: "12px" }}>
           {panelError}
         </FbAlert>
       )}
-
       {/* Table */}
       <div className="sem-table-wrap">
         <table className="sem-table">
@@ -653,7 +681,6 @@ export default function PeriodsPage() {
           </tbody>
         </table>
       </div>
-
       <Pagination
         currentPage={safePage}
         totalPages={totalPages}
@@ -663,7 +690,6 @@ export default function PeriodsPage() {
         onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
         itemLabel="periods"
       />
-
       {/* Set as Current period modal */}
       <SetCurrentPeriodModal
         open={!!switchTarget}
@@ -671,7 +697,6 @@ export default function PeriodsPage() {
         period={switchTarget}
         onConfirm={confirmSetCurrent}
       />
-
       {/* Delete period modal */}
       <DeletePeriodModal
         open={!!deletePeriodTarget}
@@ -679,7 +704,6 @@ export default function PeriodsPage() {
         period={deletePeriodTarget}
         onDelete={handleDeletePeriodViaModal}
       />
-
       {/* Unlock period modal */}
       <UnlockPeriodModal
         open={!!unlockTarget}
@@ -687,7 +711,6 @@ export default function PeriodsPage() {
         period={unlockTarget}
         onUnlock={handleUnlockPeriod}
       />
-
       {/* Lock period modal */}
       <LockPeriodModal
         open={!!lockTarget}
@@ -695,7 +718,6 @@ export default function PeriodsPage() {
         period={lockTarget}
         onLock={handleLockPeriod}
       />
-
       {/* Add / Edit period drawer */}
       <AddEditPeriodDrawer
         open={periodDrawerOpen}

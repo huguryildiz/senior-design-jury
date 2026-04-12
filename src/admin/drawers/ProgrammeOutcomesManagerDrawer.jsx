@@ -14,7 +14,7 @@
 //   onSave          — () => Promise<void>
 
 import { useState } from "react";
-import { Info } from "lucide-react";
+import { Info, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
@@ -47,10 +47,15 @@ export default function ProgrammeOutcomesManagerDrawer({
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="fs-icon muted">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
+              </Icon>
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Programme Outcomes</div>
@@ -59,21 +64,31 @@ export default function ProgrammeOutcomesManagerDrawer({
                 <div className="fw-drawer-header-ctx">
                   {frameworkName && (
                     <span className="fw-drawer-tag">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <Icon
+                        iconNode={[]}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5">
                         <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                         <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-                      </svg>
+                      </Icon>
                       {frameworkName}
                     </span>
                   )}
                   {periodName && (
                     <span className="fw-drawer-period">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <Icon
+                        iconNode={[]}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                         <line x1="16" y1="2" x2="16" y2="6" />
                         <line x1="8" y1="2" x2="8" y2="6" />
                         <line x1="3" y1="10" x2="21" y2="10" />
-                      </svg>
+                      </Icon>
                       {periodName}
                     </span>
                   )}
@@ -82,11 +97,15 @@ export default function ProgrammeOutcomesManagerDrawer({
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         <div className="fs-alert info" style={{ marginBottom: 14 }}>
           <div className="fs-alert-icon"><Info size={15} /></div>
@@ -115,7 +134,12 @@ export default function ProgrammeOutcomesManagerDrawer({
                   title="Edit"
                   onClick={() => onEditOutcome?.(o)}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></Icon>
                 </button>
                 <button
                   className="acc-outcome-action-btn danger"
@@ -123,7 +147,12 @@ export default function ProgrammeOutcomesManagerDrawer({
                   title="Delete"
                   onClick={() => onDeleteOutcome?.(o)}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></Icon>
                 </button>
               </div>
             </div>
@@ -133,15 +162,24 @@ export default function ProgrammeOutcomesManagerDrawer({
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, padding: "8px 0", borderTop: "1px dashed var(--border)" }}>
           <span style={{ flex: 1 }} />
           <button className="fs-list-add" type="button" onClick={onAddOutcome}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M8 12h8M12 8v8" /></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M8 12h8M12 8v8" /></Icon>
             Add Outcome
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-footer">
         <div className="fs-footer-meta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></Icon>
           <span>{outcomes.length} outcome{outcomes.length !== 1 ? "s" : ""} defined</span>
         </div>
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>

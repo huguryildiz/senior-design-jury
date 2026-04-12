@@ -18,7 +18,11 @@
 //   ccSenderEmail  — string?   (CC sender if requested)
 //
 // Email provider: Resend (via RESEND_API_KEY env var).
+// Audit: notification.export_report written server-side after email send.
 // ============================================================
+
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
+import { requireAdminCaller } from "../_shared/admin-auth.ts";
 
 interface Payload {
   recipients: string[];
@@ -32,6 +36,7 @@ interface Payload {
   message?: string;
   senderName?: string;
   ccSenderEmail?: string;
+  organizationId?: string;
 }
 
 const corsHeaders = {
@@ -186,6 +191,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
 
   try {
     const payload: Payload = await req.json();
@@ -203,6 +217,17 @@ Deno.serve(async (req: Request) => {
         }),
         {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const auth = await requireAdminCaller(req, payload.organizationId || null);
+    if (!auth.ok) {
+      return new Response(
+        JSON.stringify({ error: auth.error }),
+        {
+          status: auth.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
@@ -276,6 +301,24 @@ Deno.serve(async (req: Request) => {
         error: sendError || undefined,
       }),
     );
+
+    if (sent) {
+      try {
+        await writeEdgeAuditLog(req, {
+          action: "notification.export_report",
+          organization_id: payload.organizationId || null,
+          resource_type: "score_sheets",
+          details: {
+            recipients: payload.recipients,
+            reportTitle,
+            periodName: payload.periodName ?? null,
+            fileName: payload.fileName,
+          },
+        });
+      } catch (auditErr) {
+        console.error("audit write failed (notification.export_report):", (auditErr as Error)?.message);
+      }
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

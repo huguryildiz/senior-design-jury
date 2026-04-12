@@ -9,7 +9,7 @@
 //   error           — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
@@ -66,7 +66,14 @@ export default function AddSemesterDrawer({ open, onClose, onSave, existingPerio
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="fs-icon accent" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></Icon>
             </span>
             <div className="fs-title-group">
               <div className="fs-title">New Evaluation Period</div>
@@ -74,11 +81,15 @@ export default function AddSemesterDrawer({ open, onClose, onSave, existingPerio
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
@@ -150,7 +161,6 @@ export default function AddSemesterDrawer({ open, onClose, onSave, existingPerio
           />
         </div>
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>Cancel</button>
         <button

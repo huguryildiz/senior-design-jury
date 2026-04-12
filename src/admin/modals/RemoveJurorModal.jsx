@@ -10,7 +10,7 @@
 //   onRemove — () => Promise<void>
 
 import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import JurorBadge from "../components/JurorBadge";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
@@ -44,11 +44,16 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
     <Modal open={open} onClose={handleClose} size="sm" centered>
       <div className="fs-modal-header">
         <div className="fs-modal-icon danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />
             <line x1="22" y1="11" x2="16" y2="11" />
-          </svg>
+          </Icon>
         </div>
         <div className="fs-title" style={{ textAlign: "center" }}>Remove Juror?</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
@@ -56,7 +61,6 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
           will be permanently removed from {periodName || "this evaluation period"}.
         </div>
       </div>
-
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
         {juror && (
           <div
@@ -120,7 +124,6 @@ export default function RemoveJurorModal({ open, onClose, juror, impact = {}, on
           />
         </div>
       </div>
-
       <div
         className="fs-modal-footer"
         style={{ justifyContent: "center", background: "transparent", borderTop: "none", paddingTop: 0 }}

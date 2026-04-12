@@ -12,16 +12,8 @@
 import { Laptop, Smartphone, Monitor, X } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import { maskIpAddress, normalizeCountryCode } from "@/shared/lib/adminSession";
+import { formatDateTime as formatAbsoluteDate } from "@/shared/lib/dateUtils";
 
-function formatAbsoluteDate(ts) {
-  if (!ts) return "Unknown";
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return "Unknown";
-  return d.toLocaleString(undefined, {
-    month: "short", day: "numeric", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
 
 function formatRelative(ts) {
   if (!ts) return "Unknown";

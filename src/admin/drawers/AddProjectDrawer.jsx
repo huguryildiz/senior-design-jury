@@ -8,7 +8,7 @@
 //   error      — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -63,7 +63,14 @@ export default function AddProjectDrawer({ open, onClose, onSave, error }) {
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="fs-icon accent" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></Icon>
             </span>
             <div className="fs-title-group">
               <div className="fs-title">Add Project</div>
@@ -71,11 +78,15 @@ export default function AddProjectDrawer({ open, onClose, onSave, error }) {
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
@@ -161,18 +172,27 @@ export default function AddProjectDrawer({ open, onClose, onSave, error }) {
                   disabled={saving}
                   aria-label="Remove member"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></Icon>
                 </button>
               )}
             </div>
           ))}
           <button className="fs-list-add" type="button" onClick={addMember} disabled={saving}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></Icon>
             Add member
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
           Cancel

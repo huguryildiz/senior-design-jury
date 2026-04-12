@@ -19,7 +19,7 @@
 //   error   — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, ShieldAlert } from "lucide-react";
+import { AlertCircle, ShieldAlert, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import CustomSelect from "@/shared/ui/CustomSelect";
@@ -257,9 +257,15 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
                 border: "1px solid rgba(217,119,6,0.12)",
               }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" style={{ width: 17, height: 17 }}>
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--warning)"
+                strokeWidth="2"
+                style={{ width: 17, height: 17 }}>
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
+              </Icon>
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Security Policy</div>
@@ -269,13 +275,17 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body" style={{ gap: 16 }}>
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 4 }}>
@@ -449,7 +459,6 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
           disabled={saving}
         />
       </div>
-
       <div className="fs-drawer-footer">
         <button className="fs-btn fs-btn-secondary" type="button" onClick={onClose} disabled={saving}>
           Cancel
@@ -466,7 +475,6 @@ export default function SecurityPolicyDrawer({ open, onClose, policy, onSave, er
           </span>
         </button>
       </div>
-
       <DisableAuthMethodModal
         open={soleAuthConfirmOpen}
         onClose={() => setSoleAuthConfirmOpen(false)}

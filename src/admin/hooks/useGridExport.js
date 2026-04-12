@@ -4,7 +4,7 @@
 import { useCallback } from "react";
 import { exportGridXLSX } from "../utils/exportXLSX";
 import { downloadTable } from "../utils/downloadTable";
-import { writeAuditLog } from "@/shared/api";
+import { logExportInitiated } from "@/shared/api";
 import { useAuth } from "@/auth";
 
 export function useGridExport({ buildExportRows, groups, periodName, visibleJurors, lookup, activeCriteria = [] }) {
@@ -12,6 +12,7 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
   const tenantCode = activeOrganization?.code || "";
   const orgName = activeOrganization?.name || "";
   const deptName = activeOrganization?.institution || "";
+  const organizationId = activeOrganization?.id || null;
 
   // Build per-criterion rows (one tab per criterion showing that criterion's score)
   function buildCriterionTabs(jurorList) {
@@ -34,12 +35,22 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
     const exportRows = buildExportRows(visibleJurors);
     const criterionTabs = buildCriterionTabs(visibleJurors);
 
+    // Blocking pre-export audit — if this fails the export is aborted so
+    // there is no "user downloaded a file but we can't prove it" window.
+    await logExportInitiated({
+      action: "export.heatmap",
+      organizationId,
+      resourceType: "score_sheets",
+      details: {
+        format,
+        jurorCount: exportRows.length,
+        projectCount: groups.length,
+        periodName: periodName ?? null,
+      },
+    });
+
     if (format === "xlsx") {
       void exportGridXLSX(exportRows, groups, { periodName, tenantCode, criterionTabs });
-      writeAuditLog("export.heatmap", {
-        resourceType: "score_sheets",
-        details: { format: "xlsx", jurorCount: exportRows.length, projectCount: groups.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       return;
     }
 
@@ -75,10 +86,6 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
         rows,
         colWidths: [28, 28, 14, 16, 8, 8],
       });
-      writeAuditLog("export.heatmap", {
-        resourceType: "score_sheets",
-        details: { format: "csv", jurorCount: exportRows.length, projectCount: groups.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
     } else {
       // PDF: section-based (All Criteria page + per-criterion pages)
       const header = ["Juror", "Affiliation", "Status", ...groupHeaders];
@@ -117,12 +124,8 @@ export function useGridExport({ buildExportRows, groups, periodName, visibleJuro
         colWidths: [28, 28, 18, ...groups.map(() => 10)],
         extraSections,
       });
-      writeAuditLog("export.heatmap", {
-        resourceType: "score_sheets",
-        details: { format: "pdf", jurorCount: exportRows.length, projectCount: groups.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
     }
-  }, [buildExportRows, visibleJurors, groups, periodName, tenantCode, orgName, deptName, lookup, activeCriteria]);
+  }, [buildExportRows, visibleJurors, groups, periodName, tenantCode, orgName, deptName, lookup, activeCriteria, organizationId]);
 
   return {
     requestExport,

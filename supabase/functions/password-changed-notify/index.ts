@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSuperAdminEmails, shouldCcOn } from "../_shared/super-admin-cc.ts";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,6 +174,24 @@ Deno.serve(async (req: Request) => {
     }
 
     await sendViaResend(resendKey, to, subject, text, html, fromAddr, ccEmails);
+
+    // Server-side guaranteed audit write for the password change.
+    // User is already resolved via client.auth.getUser(token) above.
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "auth.admin.password.changed",
+        user_id: userData.user.id,
+        resource_type: "profiles",
+        resource_id: userData.user.id,
+        details: {
+          method: "self_service",
+          email: to,
+          is_super_admin: isSuperAdmin,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (auth.admin.password.changed):", (auditErr as Error)?.message);
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,

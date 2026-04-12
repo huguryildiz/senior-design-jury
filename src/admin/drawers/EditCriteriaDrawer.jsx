@@ -1,7 +1,7 @@
 // src/admin/drawers/EditCriteriaDrawer.jsx
 
 import { useState } from "react";
-import { Check, AlertCircle } from "lucide-react";
+import { Check, AlertCircle, Icon } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import CriteriaManager from "@/admin/criteria/CriteriaManager";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -32,9 +32,14 @@ export default function EditCriteriaDrawer({
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className="crt-drawer-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
-              </svg>
+              </Icon>
             </div>
             <div>
               <div className="crt-drawer-title">Evaluation Criteria</div>
@@ -47,13 +52,17 @@ export default function EditCriteriaDrawer({
             </div>
           </div>
           <button className="fs-close" onClick={onClose} style={{ width: 30, height: 30, borderRadius: 7 }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-drawer-body">
         <CriteriaManager
           template={template}
@@ -66,7 +75,6 @@ export default function EditCriteriaDrawer({
           isLocked={isLocked}
         />
       </div>
-
       <div className="fs-drawer-footer">
         <div className="crt-footer-meta" style={hasError ? { color: "var(--danger)" } : undefined}>
           {hasError ? (

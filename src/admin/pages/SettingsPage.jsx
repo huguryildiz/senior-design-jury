@@ -17,6 +17,9 @@ import Avatar from "@/shared/ui/Avatar";
 import { upsertProfile, getSecurityPolicy, setSecurityPolicy, listAdminSessions, deleteAdminSession } from "@/shared/api";
 import { getAdminDeviceId, getAuthMethodLabelFromSession } from "@/shared/lib/adminSession";
 import { supabase } from "@/shared/lib/supabaseClient";
+import { formatDate } from "@/shared/lib/dateUtils";
+
+import { Icon } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -39,12 +42,6 @@ function getAvatarColor(name) {
   return AVATAR_COLORS[code % AVATAR_COLORS.length];
 }
 
-function formatShortDate(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
 
 function formatRelativeDate(ts) {
   if (!ts) return "—";
@@ -58,7 +55,7 @@ function formatRelativeDate(ts) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return formatShortDate(ts);
+  return formatDate(ts);
 }
 
 function normalizePasswordChangeError(raw) {
@@ -269,7 +266,6 @@ export default function SettingsPage() {
         avatarBg={avatarBg}
         isSuper={isSuper}
       />
-
       <SecurityPolicyDrawer
         open={securityPolicyOpen}
         onClose={() => setSecurityPolicyOpen(false)}
@@ -291,7 +287,6 @@ export default function SettingsPage() {
         currentDeviceId={currentDeviceId}
         onRevoke={handleRevokeSession}
       />
-
       <div className="page">
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -339,7 +334,7 @@ export default function SettingsPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 8 }}>
                 <div style={{ padding: "7px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--surface-1)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12, color: "var(--text-primary)" }}>{formatShortDate(joinedAt)}</div>
+                  <div style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12, color: "var(--text-primary)" }}>{formatDate(joinedAt)}</div>
                   <div style={{ fontSize: 8.5, fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 1 }}>Joined</div>
                 </div>
                 <div style={{ padding: "7px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--surface-1)", textAlign: "center" }}>
@@ -419,7 +414,15 @@ export default function SettingsPage() {
                   {[
                     { label: "Organization", value: activeOrganization?.name || "—" },
                     { label: "Short label", value: <span className="mono">{activeOrganization?.code || "—"}</span> },
-                    { label: "Membership status", value: <span className="badge badge-success"><svg className="badge-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Active</span> },
+                    { label: "Membership status", value: <span className="badge badge-success"><Icon
+                      iconNode={[]}
+                      className="badge-ico"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></Icon>Active</span> },
                   ].map(({ label, value }, i) => (
                     <div
                       key={label}

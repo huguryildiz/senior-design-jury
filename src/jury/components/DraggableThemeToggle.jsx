@@ -5,9 +5,10 @@
 import { useRef, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/shared/theme/ThemeProvider";
+import { Moon, SunMedium } from "lucide-react";
 
-const SIZE = 40;       // button diameter px
-const EDGE_PAD = 16;   // min px from screen edges after snap
+const SIZE = 40; // button diameter px
+const EDGE_PAD = 16; // min px from screen edges after snap
 const DRAG_THRESHOLD = 8; // px movement before touch counts as drag
 
 export default function DraggableThemeToggle() {
@@ -32,6 +33,17 @@ export default function DraggableThemeToggle() {
   });
 
   const [hint, setHint] = useState(true);
+  const ease = "cubic-bezier(.4,0,.2,1)";
+
+  const applySunTransform = (scale) => {
+    if (!raysRef.current) return;
+    raysRef.current.style.transform = `rotate(${spinRef.current.rot}deg) scale(${scale})`;
+  };
+
+  const applyMoonTransform = (scale, rotate) => {
+    if (!moonRef.current) return;
+    moonRef.current.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
+  };
 
   // Dismiss hint jiggle after it finishes
   useEffect(() => {
@@ -45,14 +57,19 @@ export default function DraggableThemeToggle() {
     const id = setInterval(() => {
       if (!dragRef.current.active && raysRef.current) {
         spinRef.current.rot = (spinRef.current.rot + 0.4) % 360;
-        raysRef.current.setAttribute("transform", `rotate(${spinRef.current.rot} 12 12)`);
+        applySunTransform(1);
       }
     }, 50);
     return () => clearInterval(id);
   }, [isDark]);
 
+  useEffect(() => {
+    applySunTransform(isDark ? 0.6 : 1);
+    applyMoonTransform(isDark ? 1 : 0.5, isDark ? 0 : -90);
+  }, [isDark]);
+
   // Shared drag logic (used by both touch and mouse)
-  const startDrag = (el, clientX, clientY, ease) => {
+  const startDrag = (el, clientX, clientY) => {
     const rect = el.getBoundingClientRect();
     if (!dragRef.current.usingAbsolute) {
       el.style.right = "auto";
@@ -85,23 +102,23 @@ export default function DraggableThemeToggle() {
       el.style.left = newX + "px";
       el.style.top = newY + "px";
 
-      if (!isDark && raysRef.current) {
+      if (!isDark) {
         spinRef.current.rot = (spinRef.current.rot + dx * 0.04) % 360;
-        raysRef.current.setAttribute("transform", `rotate(${spinRef.current.rot} 12 12)`);
+        applySunTransform(1);
       }
-      if (isDark && moonRef.current) {
+      if (isDark) {
         const tilt = Math.max(-25, Math.min(25, dx * 0.3));
-        moonRef.current.style.transform = `scale(1) rotate(${tilt}deg)`;
+        applyMoonTransform(1, tilt);
       }
     }
   };
 
-  const endDrag = (el, ease, onClickToggle) => {
+  const endDrag = (el, onClickToggle) => {
     const wasMoved = dragRef.current.moved;
     dragRef.current.active = false;
 
-    if (isDark && moonRef.current) {
-      moonRef.current.style.transform = "scale(1) rotate(0deg)";
+    if (isDark) {
+      applyMoonTransform(1, 0);
     }
 
     if (wasMoved) {
@@ -121,12 +138,11 @@ export default function DraggableThemeToggle() {
   useEffect(() => {
     const el = btnRef.current;
     if (!el) return;
-    const ease = "cubic-bezier(.4,0,.2,1)";
 
     const onTouchStart = (e) => {
       if (e.cancelable) e.preventDefault();
       const touch = e.touches[0];
-      startDrag(el, touch.clientX, touch.clientY, ease);
+      startDrag(el, touch.clientX, touch.clientY);
     };
 
     const onTouchMove = (e) => {
@@ -135,7 +151,7 @@ export default function DraggableThemeToggle() {
     };
 
     const onTouchEnd = () => {
-      endDrag(el, ease, () => setTheme(isDark ? "light" : "dark"));
+      endDrag(el, () => setTheme(isDark ? "light" : "dark"));
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: false });
@@ -152,11 +168,10 @@ export default function DraggableThemeToggle() {
   useEffect(() => {
     const el = btnRef.current;
     if (!el) return;
-    const ease = "cubic-bezier(.4,0,.2,1)";
 
     const onMouseDown = (e) => {
       e.preventDefault();
-      startDrag(el, e.clientX, e.clientY, ease);
+      startDrag(el, e.clientX, e.clientY);
       el.style.cursor = "grabbing";
       document.body.style.userSelect = "none";
     };
@@ -171,7 +186,7 @@ export default function DraggableThemeToggle() {
       el.style.cursor = "";
       document.body.style.userSelect = "";
       // Pass null — onClick handles the toggle for mouse clicks
-      endDrag(el, ease, null);
+      endDrag(el, null);
     };
 
     el.addEventListener("mousedown", onMouseDown);
@@ -184,74 +199,50 @@ export default function DraggableThemeToggle() {
     };
   }, [isDark, setTheme]);
 
-  const ease = "cubic-bezier(.4,0,.2,1)";
-
   return (
     <button
       ref={btnRef}
       className={`dj-float-toggle${hint ? " dj-float-toggle--hint" : ""}${isJuryRoute ? " dj-float-toggle--jury" : ""}${isOverlayRoute ? " dj-float-toggle--above-overlay" : ""}`}
-      onClick={(e) => {
+      onClick={() => {
         // Mouse drag end fires onClick too — ignore if drag moved
-        if (dragRef.current.moved) { dragRef.current.moved = false; return; }
+        if (dragRef.current.moved) {
+          dragRef.current.moved = false;
+          return;
+        }
         setTheme(isDark ? "light" : "dark");
       }}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
-      <svg
-        width={20}
-        height={20}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* Rays — amber, orbit slowly, fade for dark */}
-        <g
+      <span style={{ position: "relative", width: 20, height: 20, display: "inline-flex" }}>
+        <SunMedium
           ref={raysRef}
-          stroke="#f59e0b"
-          style={{ opacity: isDark ? 0 : 1, transition: "opacity 0.4s" }}
-        >
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </g>
-
-        {/* Sun core — amber */}
-        <circle
-          cx="12"
-          cy="12"
-          r="5"
-          stroke="#f59e0b"
+          size={20}
+          strokeWidth={2}
+          color="#f59e0b"
+          aria-hidden="true"
           style={{
             opacity: isDark ? 0 : 1,
-            transform: isDark ? "scale(0.6) rotate(90deg)" : "scale(1)",
-            transformOrigin: "12px 12px",
+            transform: `rotate(${spinRef.current.rot}deg) scale(${isDark ? 0.6 : 1})`,
+            transformOrigin: "center",
             transition: `opacity 0.3s, transform 0.4s ${ease}`,
           }}
         />
-
-        {/* Moon crescent — soft blue */}
-        <path
+        <Moon
           ref={moonRef}
-          d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-          stroke="#93c5fd"
+          size={20}
+          strokeWidth={2}
+          color="#93c5fd"
+          aria-hidden="true"
           style={{
+            position: "absolute",
+            inset: 0,
             opacity: isDark ? 1 : 0,
-            transform: isDark
-              ? "scale(1) rotate(0deg)"
-              : "scale(0.5) rotate(-90deg)",
-            transformOrigin: "12px 12px",
+            transform: `scale(${isDark ? 1 : 0.5}) rotate(${isDark ? 0 : -90}deg)`,
+            transformOrigin: "center",
             transition: `opacity 0.3s ${isDark ? "0.1s" : "0s"}, transform 0.5s ${ease}`,
           }}
         />
-      </svg>
+      </span>
     </button>
   );
 }

@@ -11,7 +11,7 @@
 //   onSendEmail    — (email: string) => Promise<void>
 
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Icon } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
@@ -56,12 +56,17 @@ export default function EntryTokenModal({
         <div className="fs-modal-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="fs-icon success">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <rect x="3" y="3" width="7" height="7" rx="1" />
                 <rect x="14" y="3" width="7" height="7" rx="1" />
                 <rect x="3" y="14" width="7" height="7" rx="1" />
                 <path d="M14 14h3v3h-3z" />
-              </svg>
+              </Icon>
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Jury Entry Token</div>
@@ -69,13 +74,17 @@ export default function EntryTokenModal({
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       <div className="fs-modal-body">
         {/* QR placeholder */}
         <div
@@ -87,12 +96,20 @@ export default function EntryTokenModal({
           }}
         >
           <div style={{ textAlign: "center" }}>
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 4 }}>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              width="28"
+              height="28"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              style={{ marginBottom: 4 }}>
               <rect x="3" y="3" width="7" height="7" rx="1" />
               <rect x="14" y="3" width="7" height="7" rx="1" />
               <rect x="3" y="14" width="7" height="7" rx="1" />
               <path d="M14 14h3v3h-3zM18 18h3v3h-3z" />
-            </svg>
+            </Icon>
             <div style={{ fontSize: 10 }}>QR Code</div>
           </div>
         </div>
@@ -115,13 +132,27 @@ export default function EntryTokenModal({
               style={{ flexShrink: 0, width: 36, height: 36 }}
             >
               {copied ? (
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
+                </Icon>
               ) : (
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                <Icon
+                  iconNode={[]}
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2">
                   <rect width="14" height="14" x="8" y="8" rx="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                </svg>
+                </Icon>
               )}
             </button>
           </div>
@@ -151,9 +182,17 @@ export default function EntryTokenModal({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--accent)" strokeWidth="2" style={{ flexShrink: 0 }}>
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              width="15"
+              height="15"
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="2"
+              style={{ flexShrink: 0 }}>
               <rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-            </svg>
+            </Icon>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Share via Email</span>
           </div>
           <div style={{ fontSize: 10.5, color: "var(--text-tertiary)", marginBottom: 8, lineHeight: 1.4 }}>
@@ -178,9 +217,16 @@ export default function EntryTokenModal({
               <span className="btn-loading-content">
                 <AsyncButtonContent loading={sending} loadingText="Sending…">
                   <>
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
+                    <Icon
+                      iconNode={[]}
+                      viewBox="0 0 24 24"
+                      width="12"
+                      height="12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2">
                       <path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" />
-                    </svg>
+                    </Icon>
                     Send
                   </>
                 </AsyncButtonContent>
@@ -197,7 +243,6 @@ export default function EntryTokenModal({
           </div>
         </div>
       </div>
-
       <div className="fs-modal-footer">
         <button
           type="button"

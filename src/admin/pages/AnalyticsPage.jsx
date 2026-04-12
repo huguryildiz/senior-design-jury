@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useAnalyticsData } from "../hooks/useAnalyticsData";
 import { outcomeValues } from "@/shared/stats";
-import { writeAuditLog } from "@/shared/api";
+import { logExportInitiated } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
@@ -24,25 +24,43 @@ import { CoverageMatrix } from "@/charts/CoverageMatrix";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import "../../styles/pages/analytics.css";
 
+import { Icon } from "lucide-react";
+
 // ── Insight icon ──────────────────────────────────────────────
 function InfoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <Icon
+      iconNode={[]}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true">
       <circle cx="12" cy="12" r="10" />
       <path d="M12 16v-4" />
       <path d="M12 8h.01" />
-    </svg>
+    </Icon>
   );
 }
 
 // ── Download icon ─────────────────────────────────────────────
 function DownloadIcon({ size = 14 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <Icon
+      iconNode={[]}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
+    </Icon>
   );
 }
 
@@ -225,7 +243,16 @@ function ExportPanel({ onClose, onExport, periodName, organization, department, 
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} type="button" title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
+              <Icon
+                iconNode={[]}
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></Icon>
               {" "}Send
             </button>
             <button className="btn btn-primary btn-sm export-download-btn" onClick={handleDownload} disabled={exporting} type="button">
@@ -316,6 +343,14 @@ export default function AnalyticsPage() {
 
   async function handleExport(format = "xlsx") {
     try {
+      await logExportInitiated({
+        action: "export.analytics",
+        organizationId,
+        resourceType: "score_sheets",
+        resourceId: selectedPeriodId || null,
+        details: { format, period_name: periodName || null },
+      });
+
       const exportParams = {
         dashboardStats,
         submittedData,
@@ -354,10 +389,6 @@ export default function AnalyticsPage() {
         const wb = buildAnalyticsWorkbook(exportParams);
         XLSX.writeFile(wb, buildExportFilename("Analytics", periodName || "all", "xlsx", tc));
       }
-      writeAuditLog("export.analytics", {
-        resourceType: "score_sheets",
-        details: { format },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       const fmtLabel = format === "pdf" ? "PDF" : format === "csv" ? "CSV" : "Excel";
       _toast.success(`Analytics exported · ${fmtLabel}${periodName ? ` · ${periodName}` : ""}`);
       setExportOpen(false);

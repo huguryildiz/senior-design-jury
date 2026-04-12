@@ -89,6 +89,7 @@ export {
   writeAuditLog,
   writeAuthFailureEvent,
   fullExport,
+  logExportInitiated,
   upsertProfile,
   getProfile,
   listFrameworks,

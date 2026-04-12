@@ -17,6 +17,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSuperAdminEmails, shouldCcOn } from "../_shared/super-admin-cc.ts";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 interface Payload {
   periodId: string;
@@ -313,6 +314,28 @@ Deno.serve(async (req: Request) => {
       error: sendError || undefined,
     };
     console.log("request-pin-reset:", JSON.stringify(logEntry));
+
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "security.pin_reset.requested",
+        actor_type: "juror",
+        user_id: null,
+        organization_id: info.orgId || null,
+        resource_type: "juror_period_auth",
+        resource_id: payload.periodId,
+        category: "security",
+        severity: "medium",
+        details: {
+          jurorName: payload.jurorName,
+          affiliation: payload.affiliation || null,
+          periodName: info.periodName || null,
+          orgName: info.orgName || null,
+          sent,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (security.pin_reset.requested):", (auditErr as Error)?.message);
+    }
 
     return new Response(
       JSON.stringify({ ok: true, sent, error: sendError || undefined }),

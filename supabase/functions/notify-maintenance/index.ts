@@ -14,6 +14,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSuperAdminEmails, shouldCcOn } from "../_shared/super-admin-cc.ts";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 interface MaintenancePayload {
   message?: string;
@@ -368,6 +369,24 @@ Deno.serve(async (req: Request) => {
         errors.push(`${email}: ${result.error}`);
         console.error(`[notify-maintenance] Failed to send to ${email}: ${result.error}`);
       }
+    }
+
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "notification.maintenance",
+        organization_id: null,
+        actor_type: "admin",
+        details: {
+          mode,
+          startTime: startTime ?? null,
+          endTime: endTime ?? null,
+          sentCount,
+          totalCount: targetUserIds.length,
+          affectedOrgIds: payload.affectedOrgIds ?? null,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (notification.maintenance):", (auditErr as Error)?.message);
     }
 
     return json(200, {

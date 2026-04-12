@@ -40,6 +40,7 @@ import {
   setRawToken as storageSetRawToken,
   clearRawToken as storageClearRawToken,
 } from "../../shared/storage";
+import { formatDateTime as fmtDate } from "@/shared/lib/dateUtils";
 
 // ── Status badge ──────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -53,16 +54,6 @@ function StatusBadge({ status }) {
   return <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide bg-red-100 text-destructive">Disabled</span>;
 }
 
-// ── Formatted date helper ─────────────────────────────────────
-function fmtDate(ts) {
-  if (!ts) return "—";
-  try {
-    return new Date(ts).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch { return ts; }
-}
 
 // ── Main component ────────────────────────────────────────────
 export default function JuryEntryControlPanel({
@@ -235,12 +226,24 @@ export default function JuryEntryControlPanel({
   }
 
   // ── Download QR as PNG ────────────────────────────────────
-  function handleDownload() {
+  async function handleDownload() {
     if (!qrInstance.current) return;
-    qrInstance.current.download({
-      name: `jury-qr-${periodName || periodId || "access"}`,
-      extension: "png",
-    });
+    const fileName = `jury-qr-${periodName || periodId || "access"}`;
+    try {
+      const raw = await qrInstance.current.getRawData("png");
+      if (!raw) throw new Error("QR data unavailable.");
+      const blob = raw instanceof Blob ? raw : new Blob([raw], { type: "image/png" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${fileName}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      setError("Could not download QR.");
+    }
   }
 
   const hasToken    = status?.has_token;

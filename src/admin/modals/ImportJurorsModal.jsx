@@ -8,7 +8,7 @@
 //   onImport   — async (rows) => void   (receives valid rows)
 
 import { useCallback, useRef, useState } from "react";
-import { AlertCircle, CheckCircle, Info } from "lucide-react";
+import { AlertCircle, CheckCircle, Info, Icon } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
@@ -97,12 +97,17 @@ export default function ImportJurorsModal({ open, onClose, parseFile, onImport }
         <div className="fs-modal-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="fs-icon accent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
                 <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
+              </Icon>
             </div>
             <div className="fs-title-group">
               <div className="fs-title">Import Jurors</div>
@@ -110,13 +115,17 @@ export default function ImportJurorsModal({ open, onClose, parseFile, onImport }
             </div>
           </div>
           <button className="fs-close" type="button" onClick={handleClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
       </div>
-
       {phase === "preview" ? (
         <>
           <div className="fs-modal-body">
@@ -157,15 +166,21 @@ export default function ImportJurorsModal({ open, onClose, parseFile, onImport }
                   margin: "0 auto 12px",
                   transition: "background .15s",
                 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  <Icon
+                    iconNode={[]}
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
                     stroke={dragging ? "var(--accent)" : "var(--text-tertiary)"}
-                    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ transition: "stroke .15s" }}
-                  >
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ transition: "stroke .15s" }}>
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
+                  </Icon>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
                   {parsing ? "Parsing…" : dragging ? "Release to upload" : "Drop CSV file here"}
@@ -195,10 +210,15 @@ export default function ImportJurorsModal({ open, onClose, parseFile, onImport }
             {file && (
               <div className="fs-upload-file" style={{ marginBottom: 14 }}>
                 <div className="fs-upload-file-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <Icon
+                    iconNode={[]}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2">
                     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
                     <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                  </svg>
+                  </Icon>
                 </div>
                 <div className="fs-upload-file-info">
                   <div className="fs-upload-file-name">{file.name}</div>

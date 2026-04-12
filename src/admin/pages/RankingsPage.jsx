@@ -5,11 +5,11 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { exportRankingsXLSX } from "../utils/exportXLSX";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
-import { writeAuditLog } from "@/shared/api";
+import { logExportInitiated } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
-import { GitCompare, Filter } from "lucide-react";
+import { GitCompare, Filter, Icon } from "lucide-react";
 import CompareProjectsModal from "@/admin/modals/CompareProjectsModal";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 import CustomSelect from "@/shared/ui/CustomSelect";
@@ -185,7 +185,8 @@ function MedalCell({ rank }) {
 
 // ── Icons ────────────────────────────────────────────────────────
 const DownloadIcon = ({ size = 14, style }) => (
-  <svg
+  <Icon
+    iconNode={[]}
     width={size}
     height={size}
     viewBox="0 0 24 24"
@@ -194,12 +195,11 @@ const DownloadIcon = ({ size = 14, style }) => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={style}
-  >
+    style={style}>
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <polyline points="7 10 12 15 17 10" />
     <line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
+  </Icon>
 );
 
 function SortIcon({ field, sortField, sortDir }) {
@@ -440,6 +440,17 @@ export default function RankingsPage() {
 
   async function handleExport() {
     try {
+      await logExportInitiated({
+        action: "export.rankings",
+        organizationId: activeOrganization?.id || null,
+        resourceType: "score_sheets",
+        details: {
+          format: exportFormat,
+          period_name: periodName || null,
+          row_count: filteredRows.length,
+        },
+      });
+
       const tc = activeOrganization?.code || "";
       const fmtMembers = (m) => {
         if (!m) return "";
@@ -463,10 +474,6 @@ export default function RankingsPage() {
           rows,
         });
       }
-      writeAuditLog("export.rankings", {
-        resourceType: "score_sheets",
-        details: { format: exportFormat, rowCount: filteredRows.length },
-      }).catch((e) => console.warn("Audit write failed:", e?.message));
       setExportPanelOpen(false);
       _toast.success("Rankings exported");
     } catch (e) {
@@ -482,490 +489,498 @@ export default function RankingsPage() {
 
   return (
     <>
-    <div className="rankings-page">
-      {/* ── Header ───────────────────────────────────────────── */}
-      <div className="scores-header">
-        <div className="scores-header-left">
-          <div className="page-title">Rankings</div>
-          <div className="page-desc">Project rankings by weighted average score.</div>
-        </div>
-        <div className="scores-header-actions">
-          {summaryData.length >= 2 && (
-            <>
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => setCompareOpen(true)}
-              >
-                <GitCompare size={14} style={{ verticalAlign: "-1px" }} /> Compare
-              </button>
-              <div className="scores-action-sep" />
-            </>
-          )}
-          <FilterButton
-            activeCount={activeFilterCount}
-            isOpen={filterPanelOpen}
-            onClick={() => setFilterPanelOpen((o) => !o)}
-          />
-          <div className="scores-action-sep" />
-          <button
-            className={`btn btn-outline btn-sm${exportPanelOpen ? " active" : ""}`}
-            onClick={() => setExportPanelOpen((o) => !o)}
-          >
-            <DownloadIcon style={{ verticalAlign: "-1px" }} /> Export
-          </button>
-        </div>
-      </div>
-
-      {/* ── KPI Strip ────────────────────────────────────────── */}
-      <div className="scores-kpi-strip">
-        <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value">{totalProjects}</div>
-          <div className="scores-kpi-item-label">Projects</div>
-        </div>
-        <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value">{totalJurors}</div>
-          <div className="scores-kpi-item-label">Jurors</div>
-        </div>
-        <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value">{avgScore}</div>
-          <div className="scores-kpi-item-label">Avg. Score</div>
-        </div>
-        <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value">
-            <span className="accent">{topScore}</span>
+      <div className="rankings-page">
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div className="scores-header">
+          <div className="scores-header-left">
+            <div className="page-title">Rankings</div>
+            <div className="page-desc">Project rankings by weighted average score.</div>
           </div>
-          <div className="scores-kpi-item-label">Top Score</div>
-        </div>
-        <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value">
-            <span className="success">
-              {actualCoverage} / {maxPossible}
-            </span>
+          <div className="scores-header-actions">
+            {summaryData.length >= 2 && (
+              <>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setCompareOpen(true)}
+                >
+                  <GitCompare size={14} style={{ verticalAlign: "-1px" }} /> Compare
+                </button>
+                <div className="scores-action-sep" />
+              </>
+            )}
+            <FilterButton
+              activeCount={activeFilterCount}
+              isOpen={filterPanelOpen}
+              onClick={() => setFilterPanelOpen((o) => !o)}
+            />
+            <div className="scores-action-sep" />
+            <button
+              className={`btn btn-outline btn-sm${exportPanelOpen ? " active" : ""}`}
+              onClick={() => setExportPanelOpen((o) => !o)}
+            >
+              <DownloadIcon style={{ verticalAlign: "-1px" }} /> Export
+            </button>
           </div>
-          <div className="scores-kpi-item-label">Full Coverage</div>
         </div>
-      </div>
 
-      {/* ── Filter Panel (always in DOM, toggled via CSS class) ─ */}
-      <div className={`filter-panel${filterPanelOpen ? " show" : ""}`}>
-        <div className="filter-panel-header">
-          <div>
-            <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <Filter size={14} />
-              Filter Scores
-            </h4>
-            <div className="filter-panel-sub">
-              Narrow rankings by consensus level, score range, and evaluation coverage.
+        {/* ── KPI Strip ────────────────────────────────────────── */}
+        <div className="scores-kpi-strip">
+          <div className="scores-kpi-item">
+            <div className="scores-kpi-item-value">{totalProjects}</div>
+            <div className="scores-kpi-item-label">Projects</div>
+          </div>
+          <div className="scores-kpi-item">
+            <div className="scores-kpi-item-value">{totalJurors}</div>
+            <div className="scores-kpi-item-label">Jurors</div>
+          </div>
+          <div className="scores-kpi-item">
+            <div className="scores-kpi-item-value">{avgScore}</div>
+            <div className="scores-kpi-item-label">Avg. Score</div>
+          </div>
+          <div className="scores-kpi-item">
+            <div className="scores-kpi-item-value">
+              <span className="accent">{topScore}</span>
             </div>
+            <div className="scores-kpi-item-label">Top Score</div>
           </div>
-          <button className="filter-panel-close" onClick={() => setFilterPanelOpen(false)}>
-            &#215;
-          </button>
+          <div className="scores-kpi-item">
+            <div className="scores-kpi-item-value">
+              <span className="success">
+                {actualCoverage} / {maxPossible}
+              </span>
+            </div>
+            <div className="scores-kpi-item-label">Full Coverage</div>
+          </div>
         </div>
-        <div className="filter-row">
-          <div className="filter-group">
-            <label>Search</label>
-            <input
-              type="text"
-              placeholder="Search groups..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
+
+        {/* ── Filter Panel (always in DOM, toggled via CSS class) ─ */}
+        <div className={`filter-panel${filterPanelOpen ? " show" : ""}`}>
+          <div className="filter-panel-header">
+            <div>
+              <h4 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Filter size={14} />
+                Filter Scores
+              </h4>
+              <div className="filter-panel-sub">
+                Narrow rankings by consensus level, score range, and evaluation coverage.
+              </div>
+            </div>
+            <button className="filter-panel-close" onClick={() => setFilterPanelOpen(false)}>
+              &#215;
+            </button>
           </div>
-          <div className="filter-group">
-            <label>Consensus</label>
-            <CustomSelect
-              value={consensusFilter}
-              onChange={(v) => setConsensusFilter(v)}
-              options={[
-                { value: "all", label: "All levels" },
-                { value: "high", label: "High only" },
-                { value: "moderate", label: "Moderate only" },
-                { value: "disputed", label: "Disputed only" },
-              ]}
-              ariaLabel="Consensus"
-            />
-          </div>
-          <div className="filter-group">
-            <label>Average Range</label>
-            <div style={{ display: "flex", gap: 0 }}>
+          <div className="filter-row">
+            <div className="filter-group">
+              <label>Search</label>
               <input
-                type="number"
-                placeholder="Min"
-                min="0"
-                max="100"
-                value={minAvg}
-                onChange={(e) => setMinAvg(e.target.value)}
-                style={{ borderRadius: "10px 0 0 10px", borderRight: "none", width: 90 }}
-              />
-              <input
-                type="number"
-                placeholder="Max"
-                min="0"
-                max="100"
-                value={maxAvg}
-                onChange={(e) => setMaxAvg(e.target.value)}
-                style={{ borderRadius: "0 10px 10px 0", width: 90 }}
+                type="text"
+                placeholder="Search groups..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
               />
             </div>
+            <div className="filter-group">
+              <label>Consensus</label>
+              <CustomSelect
+                value={consensusFilter}
+                onChange={(v) => setConsensusFilter(v)}
+                options={[
+                  { value: "all", label: "All levels" },
+                  { value: "high", label: "High only" },
+                  { value: "moderate", label: "Moderate only" },
+                  { value: "disputed", label: "Disputed only" },
+                ]}
+                ariaLabel="Consensus"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Average Range</label>
+              <div style={{ display: "flex", gap: 0 }}>
+                <input
+                  type="number"
+                  placeholder="Min"
+                  min="0"
+                  max="100"
+                  value={minAvg}
+                  onChange={(e) => setMinAvg(e.target.value)}
+                  style={{ borderRadius: "10px 0 0 10px", borderRight: "none", width: 90 }}
+                />
+                <input
+                  type="number"
+                  placeholder="Max"
+                  min="0"
+                  max="100"
+                  value={maxAvg}
+                  onChange={(e) => setMaxAvg(e.target.value)}
+                  style={{ borderRadius: "0 10px 10px 0", width: 90 }}
+                />
+              </div>
+            </div>
+            <div className="filter-group">
+              <label>Criterion</label>
+              <CustomSelect
+                value={criterionFilter}
+                onChange={(v) => setCriterionFilter(v)}
+                options={[
+                  { value: "all", label: "All criteria" },
+                  ...criteriaConfig.map((c) => ({
+                    value: c.id,
+                    label: `${c.shortLabel || c.label} ≥ ${criterionThresholds[c.id]}`,
+                  })),
+                ]}
+                ariaLabel="Criterion"
+              />
+            </div>
+            <button className="btn btn-outline btn-sm filter-clear-btn" onClick={clearFilters}>
+              <Icon
+                iconNode={[]}
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ opacity: 0.5 }}>
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </Icon>{" "}
+              Clear all
+            </button>
           </div>
-          <div className="filter-group">
-            <label>Criterion</label>
-            <CustomSelect
-              value={criterionFilter}
-              onChange={(v) => setCriterionFilter(v)}
-              options={[
-                { value: "all", label: "All criteria" },
-                ...criteriaConfig.map((c) => ({
-                  value: c.id,
-                  label: `${c.shortLabel || c.label} ≥ ${criterionThresholds[c.id]}`,
-                })),
-              ]}
-              ariaLabel="Criterion"
-            />
-          </div>
-          <button className="btn btn-outline btn-sm filter-clear-btn" onClick={clearFilters}>
-            <svg
+          <div className="filter-tags" />
+        </div>
+
+        {/* ── Active Filters Bar ───────────────────────────────── */}
+        {hasActiveFilters && (
+          <div className="active-filters-bar">
+            <Icon
+              iconNode={[]}
               width="12"
               height="12"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ opacity: 0.5 }}
-            >
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>{" "}
-            Clear all
-          </button>
-        </div>
-        <div className="filter-tags" />
-      </div>
-
-      {/* ── Active Filters Bar ───────────────────────────────── */}
-      {hasActiveFilters && (
-        <div className="active-filters-bar">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
-          </svg>
-          <span>
-            Filtered · {filteredRows.length} of {totalProjects} projects
-          </span>
-          <span className="clear-link" onClick={clearFilters}>
-            Clear filters
-          </span>
-        </div>
-      )}
-
-      {/* ── Export Panel (always in DOM, toggled via CSS class) ─ */}
-      <div className={`export-panel${exportPanelOpen ? " show" : ""}`}>
-        <div className="export-panel-header">
-          <div>
-            <h4>
-              <DownloadIcon size={14} style={{ verticalAlign: "-1px", marginRight: 4 }} />
-              Export Score Rankings
-            </h4>
-            <div className="export-panel-sub">
-              Download rankings, averages, and per-juror breakdowns for the active evaluation
-              period.
-            </div>
+              strokeWidth="2">
+              <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+            </Icon>
+            <span>
+              Filtered · {filteredRows.length} of {totalProjects} projects
+            </span>
+            <span className="clear-link" onClick={clearFilters}>
+              Clear filters
+            </span>
           </div>
-          <button className="export-panel-close" onClick={() => setExportPanelOpen(false)}>
-            &#215;
-          </button>
-        </div>
-        <div className="export-options">
-          {[
-            {
-              id: "xlsx",
-              label: "Excel (.xlsx)",
-              fileLabel: "XLS",
-              desc: "Rankings, averages, and per-juror breakdown",
-              hint: "Best for sharing",
-            },
-            {
-              id: "csv",
-              label: "CSV (.csv)",
-              fileLabel: "CSV",
-              desc: "Raw scores for custom analysis pipelines",
-              hint: "Best for analysis",
-            },
-            {
-              id: "pdf",
-              label: "PDF Report",
-              fileLabel: "PDF",
-              desc: "Formatted report with charts and context",
-              hint: "Best for archival",
-            },
-          ].map((opt) => (
-            <div
-              key={opt.id}
-              className={`export-option${exportFormat === opt.id ? " selected" : ""}`}
-              onClick={() => setExportFormat(opt.id)}
-            >
-              <span className="export-option-selected-pill">Selected</span>
-              <div className={`export-option-icon export-option-icon--${opt.id}`}>
-                <span className="file-icon">
-                  <span className="file-icon-label">{opt.fileLabel}</span>
-                </span>
+        )}
+
+        {/* ── Export Panel (always in DOM, toggled via CSS class) ─ */}
+        <div className={`export-panel${exportPanelOpen ? " show" : ""}`}>
+          <div className="export-panel-header">
+            <div>
+              <h4>
+                <DownloadIcon size={14} style={{ verticalAlign: "-1px", marginRight: 4 }} />
+                Export Score Rankings
+              </h4>
+              <div className="export-panel-sub">
+                Download rankings, averages, and per-juror breakdowns for the active evaluation
+                period.
               </div>
-              <div className="export-option-title">{opt.label}</div>
-              <div className="export-option-desc">{opt.desc}</div>
-              <div className="export-option-hint">{opt.hint}</div>
             </div>
-          ))}
-        </div>
-        <div className="export-footer">
-          <div className="export-footer-info">
-            <div className="export-footer-format">
-              {exportLabels[exportFormat]} · Score Rankings
-            </div>
-            <div className="export-footer-meta">
-              {totalProjects} projects · {totalJurors} jurors
-              {periodName ? ` · ${periodName}` : ""}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></svg>
-              {" "}Send
-            </button>
-            <button
-              className="btn btn-primary btn-sm export-download-btn"
-              onClick={handleExport}
-            >
-              <DownloadIcon size={14} />
-              {exportFormat === "xlsx"
-                ? "Download Excel"
-                : exportFormat === "csv"
-                ? "Download CSV"
-                : "Download PDF"}
+            <button className="export-panel-close" onClick={() => setExportPanelOpen(false)}>
+              &#215;
             </button>
           </div>
+          <div className="export-options">
+            {[
+              {
+                id: "xlsx",
+                label: "Excel (.xlsx)",
+                fileLabel: "XLS",
+                desc: "Rankings, averages, and per-juror breakdown",
+                hint: "Best for sharing",
+              },
+              {
+                id: "csv",
+                label: "CSV (.csv)",
+                fileLabel: "CSV",
+                desc: "Raw scores for custom analysis pipelines",
+                hint: "Best for analysis",
+              },
+              {
+                id: "pdf",
+                label: "PDF Report",
+                fileLabel: "PDF",
+                desc: "Formatted report with charts and context",
+                hint: "Best for archival",
+              },
+            ].map((opt) => (
+              <div
+                key={opt.id}
+                className={`export-option${exportFormat === opt.id ? " selected" : ""}`}
+                onClick={() => setExportFormat(opt.id)}
+              >
+                <span className="export-option-selected-pill">Selected</span>
+                <div className={`export-option-icon export-option-icon--${opt.id}`}>
+                  <span className="file-icon">
+                    <span className="file-icon-label">{opt.fileLabel}</span>
+                  </span>
+                </div>
+                <div className="export-option-title">{opt.label}</div>
+                <div className="export-option-desc">{opt.desc}</div>
+                <div className="export-option-hint">{opt.hint}</div>
+              </div>
+            ))}
+          </div>
+          <div className="export-footer">
+            <div className="export-footer-info">
+              <div className="export-footer-format">
+                {exportLabels[exportFormat]} · Score Rankings
+              </div>
+              <div className="export-footer-meta">
+                {totalProjects} projects · {totalJurors} jurors
+                {periodName ? ` · ${periodName}` : ""}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="btn btn-outline btn-sm" onClick={() => setSendOpen(true)} title="Send report via email" style={{ borderRadius: 999, padding: "9px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icon
+                  iconNode={[]}
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z" /><path d="m22 2-11 11" /></Icon>
+                {" "}Send
+              </button>
+              <button
+                className="btn btn-primary btn-sm export-download-btn"
+                onClick={handleExport}
+              >
+                <DownloadIcon size={14} />
+                {exportFormat === "xlsx"
+                  ? "Download Excel"
+                  : exportFormat === "csv"
+                  ? "Download CSV"
+                  : "Download PDF"}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <SendReportModal
-        open={sendOpen}
-        onClose={() => setSendOpen(false)}
-        format={exportFormat}
-        formatLabel={`${exportLabels[exportFormat]} · Score Rankings`}
-        meta={`${totalProjects} projects · ${totalJurors} jurors${periodName ? ` · ${periodName}` : ""}`}
-        reportTitle="Score Rankings"
-        periodName={periodName}
-        organization={activeOrganization?.name || ""}
-        department={activeOrganization?.institution || ""}
-        generateFile={async (fmt) => {
-          const fmtMembers = (m) => {
-            if (!m) return "";
-            if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
-            return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
-          };
-          const { header, rows } = buildRankingsExportData(filteredRows, criteriaConfig, consensusMap, fmtMembers);
-          return generateTableBlob(fmt, {
-            filenameType: "Rankings", sheetName: "Rankings", periodName,
-            tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
-            department: activeOrganization?.institution || "", pdfTitle: "VERA — Rankings",
-            header, rows,
-          });
-        }}
-      />
-
-      {compareOpen && (
-        <CompareProjectsModal
-          open={true}
-          onClose={() => setCompareOpen(false)}
-          projects={summaryData}
-          criteriaConfig={criteriaConfig}
-          rawScores={rawScores}
+        <SendReportModal
+          open={sendOpen}
+          onClose={() => setSendOpen(false)}
+          format={exportFormat}
+          formatLabel={`${exportLabels[exportFormat]} · Score Rankings`}
+          meta={`${totalProjects} projects · ${totalJurors} jurors${periodName ? ` · ${periodName}` : ""}`}
+          reportTitle="Score Rankings"
+          periodName={periodName}
+          organization={activeOrganization?.name || ""}
+          department={activeOrganization?.institution || ""}
+          generateFile={async (fmt) => {
+            const fmtMembers = (m) => {
+              if (!m) return "";
+              if (Array.isArray(m)) return m.map((e) => (e?.name || e || "").toString().trim()).filter(Boolean).join("; ");
+              return String(m).split(/,/).map((s) => s.trim()).filter(Boolean).join("; ");
+            };
+            const { header, rows } = buildRankingsExportData(filteredRows, criteriaConfig, consensusMap, fmtMembers);
+            return generateTableBlob(fmt, {
+              filenameType: "Rankings", sheetName: "Rankings", periodName,
+              tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
+              department: activeOrganization?.institution || "", pdfTitle: "VERA — Rankings",
+              header, rows,
+            });
+          }}
         />
-      )}
 
-      {/* ── Rankings Table ───────────────────────────────────── */}
-      <div id="sub-rankings">
-        <div className="table-wrap">
-          <table className="ranking-table">
-            <colgroup>
-              <col style={{ width: 42 }} />
-              <col style={{ width: "24%" }} />
-              <col style={{ width: "14%" }} />
-              {criteriaConfig.map((c) => (
-                <col key={c.id} style={{ width: "8%" }} />
-              ))}
-              <col style={{ width: "8%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "5%" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th
-                  className={`col-rank sortable${sortField === "rank" ? " sorted" : ""}`}
-                  onClick={() => handleSort("rank")}
-                >
-                  Rank
-                  <SortIcon field="rank" sortField={sortField} sortDir={sortDir} />
-                </th>
-                <th
-                  className={`sortable${sortField === "project" ? " sorted" : ""}`}
-                  onClick={() => handleSort("project")}
-                >
-                  Project Title
-                  <SortIcon field="project" sortField={sortField} sortDir={sortDir} />
-                </th>
-                <th>Team Members</th>
+        {compareOpen && (
+          <CompareProjectsModal
+            open={true}
+            onClose={() => setCompareOpen(false)}
+            projects={summaryData}
+            criteriaConfig={criteriaConfig}
+            rawScores={rawScores}
+          />
+        )}
+
+        {/* ── Rankings Table ───────────────────────────────────── */}
+        <div id="sub-rankings">
+          <div className="table-wrap">
+            <table className="ranking-table">
+              <colgroup>
+                <col style={{ width: 42 }} />
+                <col style={{ width: "24%" }} />
+                <col style={{ width: "14%" }} />
                 {criteriaConfig.map((c) => (
-                  <th
-                    key={c.id}
-                    className={`sortable text-right col-criteria-th${sortField === c.id ? " sorted" : ""}`}
-                    onClick={() => handleSort(c.id)}
-                  >
-                    {c.shortLabel || c.label} ({c.max})
-                    <SortIcon field={c.id} sortField={sortField} sortDir={sortDir} />
-                  </th>
+                  <col key={c.id} style={{ width: "8%" }} />
                 ))}
-                <th
-                  className={`sortable text-right${sortField === "avg" ? " sorted" : ""}`}
-                  style={{ paddingRight: 18 }}
-                  onClick={() => handleSort("avg")}
-                >
-                  Average ({criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})
-                  <SortIcon field="avg" sortField={sortField} sortDir={sortDir} />
-                </th>
-                <th
-                  className={`sortable text-center${sortField === "consensus" ? " sorted" : ""}`}
-                  onClick={() => handleSort("consensus")}
-                >
-                  <div className="col-info">
-                    Consensus
-                    <SortIcon field="consensus" sortField={sortField} sortDir={sortDir} />
-                    <span
-                      ref={consensusIconRef}
-                      className="col-info-icon"
-                      onClick={openConsensusPopover}
-                    >?</span>
-                  </div>
-                </th>
-                <th
-                  className={`sortable text-right${sortField === "jurors" ? " sorted" : ""}`}
-                  onClick={() => handleSort("jurors")}
-                >
-                  Jurors Evaluated
-                  <SortIcon field="jurors" sortField={sortField} sortDir={sortDir} />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "5%" }} />
+              </colgroup>
+              <thead>
                 <tr>
-                  <td
-                    colSpan={3 + criteriaConfig.length + 3}
-                    style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)" }}
+                  <th
+                    className={`col-rank sortable${sortField === "rank" ? " sorted" : ""}`}
+                    onClick={() => handleSort("rank")}
                   >
-                    Loading…
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                pagedRows.map((proj) => {
-                  const rank = ranksMap[proj.id];
-                  const consensus = consensusMap[proj.id];
-                  const title = proj.title || proj.name || "";
-                  const members = proj.members || proj.students || "";
-
-                  return (
-                    <tr key={proj.id} className={rank <= 3 ? "ranking-highlight" : ""}>
-                      <td className="col-rank" data-label="Rank">
-                        <MedalCell rank={rank} />
-                      </td>
-                      <td className="col-project" data-label="Project Title">{title}</td>
-                      <td className="col-students" data-label="Team Members"><StudentNames names={members} /></td>
-                      {criteriaConfig.map((c) => (
-                        <HeatCell
-                          key={c.id}
-                          value={proj.avg?.[c.id]}
-                          max={c.max}
-                          color={c.color}
-                          label={c.shortLabel || c.label}
-                        />
-                      ))}
-                      <td
-                        className="col-avg"
-                        data-label="Average"
-                        style={rank === 1 ? { color: "var(--accent)" } : undefined}
-                      >
-                        {proj.totalAvg.toFixed(1)}
-                      </td>
-                      <td className="text-center consensus-cell" data-label="Consensus">
-                        <ConsensusBadge consensus={consensus} />
-                      </td>
-                      <td className="col-jurors" data-label="Jurors">{proj.count ?? "—"}</td>
-                    </tr>
-                  );
-                })}
-              {!loading && filteredRows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={3 + criteriaConfig.length + 3}
-                    style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)" }}
+                    Rank
+                    <SortIcon field="rank" sortField={sortField} sortDir={sortDir} />
+                  </th>
+                  <th
+                    className={`sortable${sortField === "project" ? " sorted" : ""}`}
+                    onClick={() => handleSort("project")}
                   >
-                    {totalProjects === 0
-                      ? "No scores available for this period."
-                      : "No projects match the current filters."}
-                  </td>
+                    Project Title
+                    <SortIcon field="project" sortField={sortField} sortDir={sortDir} />
+                  </th>
+                  <th>Team Members</th>
+                  {criteriaConfig.map((c) => (
+                    <th
+                      key={c.id}
+                      className={`sortable text-right col-criteria-th${sortField === c.id ? " sorted" : ""}`}
+                      onClick={() => handleSort(c.id)}
+                    >
+                      {c.shortLabel || c.label} ({c.max})
+                      <SortIcon field={c.id} sortField={sortField} sortDir={sortDir} />
+                    </th>
+                  ))}
+                  <th
+                    className={`sortable text-right${sortField === "avg" ? " sorted" : ""}`}
+                    style={{ paddingRight: 18 }}
+                    onClick={() => handleSort("avg")}
+                  >
+                    Average ({criteriaConfig.reduce((s, c) => s + (c.max || 0), 0)})
+                    <SortIcon field="avg" sortField={sortField} sortDir={sortDir} />
+                  </th>
+                  <th
+                    className={`sortable text-center${sortField === "consensus" ? " sorted" : ""}`}
+                    onClick={() => handleSort("consensus")}
+                  >
+                    <div className="col-info">
+                      Consensus
+                      <SortIcon field="consensus" sortField={sortField} sortDir={sortDir} />
+                      <span
+                        ref={consensusIconRef}
+                        className="col-info-icon"
+                        onClick={openConsensusPopover}
+                      >?</span>
+                    </div>
+                  </th>
+                  <th
+                    className={`sortable text-right${sortField === "jurors" ? " sorted" : ""}`}
+                    onClick={() => handleSort("jurors")}
+                  >
+                    Jurors Evaluated
+                    <SortIcon field="jurors" sortField={sortField} sortDir={sortDir} />
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <Pagination
-          currentPage={safePage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          totalItems={filteredRows.length}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-          itemLabel="projects"
-        />
-      </div>
-    </div>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td
+                      colSpan={3 + criteriaConfig.length + 3}
+                      style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)" }}
+                    >
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  pagedRows.map((proj) => {
+                    const rank = ranksMap[proj.id];
+                    const consensus = consensusMap[proj.id];
+                    const title = proj.title || proj.name || "";
+                    const members = proj.members || proj.students || "";
 
-    {consensusPopoverOpen && (
-      <div
-        ref={consensusPopoverRef}
-        className="col-info-popover show"
-        style={{ position: "fixed", top: consensusPopoverPos.top, left: consensusPopoverPos.left, zIndex: 9999 }}
-      >
-        <h5>Juror Consensus</h5>
-        <p>Measures how much jurors agree on a project&apos;s score. Based on the standard deviation (σ) of total scores across all jurors.</p>
-        <div className="consensus-info-rows">
-          <div className="consensus-info-row">
-            <span className="consensus-badge consensus-high">High</span>
-            <span className="consensus-info-desc">σ &lt; 3.0 — Jurors closely agree</span>
+                    return (
+                      <tr key={proj.id} className={rank <= 3 ? "ranking-highlight" : ""}>
+                        <td className="col-rank" data-label="Rank">
+                          <MedalCell rank={rank} />
+                        </td>
+                        <td className="col-project" data-label="Project Title">{title}</td>
+                        <td className="col-students" data-label="Team Members"><StudentNames names={members} /></td>
+                        {criteriaConfig.map((c) => (
+                          <HeatCell
+                            key={c.id}
+                            value={proj.avg?.[c.id]}
+                            max={c.max}
+                            color={c.color}
+                            label={c.shortLabel || c.label}
+                          />
+                        ))}
+                        <td
+                          className="col-avg"
+                          data-label="Average"
+                          style={rank === 1 ? { color: "var(--accent)" } : undefined}
+                        >
+                          {proj.totalAvg.toFixed(1)}
+                        </td>
+                        <td className="text-center consensus-cell" data-label="Consensus">
+                          <ConsensusBadge consensus={consensus} />
+                        </td>
+                        <td className="col-jurors" data-label="Jurors">{proj.count ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                {!loading && filteredRows.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={3 + criteriaConfig.length + 3}
+                      style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)" }}
+                    >
+                      {totalProjects === 0
+                        ? "No scores available for this period."
+                        : "No projects match the current filters."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          <div className="consensus-info-row">
-            <span className="consensus-badge consensus-moderate">Moderate</span>
-            <span className="consensus-info-desc">σ 3.0–5.0 — Some variation</span>
-          </div>
-          <div className="consensus-info-row">
-            <span className="consensus-badge consensus-disputed">Disputed</span>
-            <span className="consensus-info-desc">σ &gt; 5.0 — Significant disagreement</span>
-          </div>
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredRows.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+            itemLabel="projects"
+          />
         </div>
-        <p style={{ marginTop: 8, fontSize: 10, color: "var(--text-tertiary)" }}>
-          Hover each badge to see the exact σ value and score range.
-        </p>
       </div>
-    )}
+      {consensusPopoverOpen && (
+        <div
+          ref={consensusPopoverRef}
+          className="col-info-popover show"
+          style={{ position: "fixed", top: consensusPopoverPos.top, left: consensusPopoverPos.left, zIndex: 9999 }}
+        >
+          <h5>Juror Consensus</h5>
+          <p>Measures how much jurors agree on a project&apos;s score. Based on the standard deviation (σ) of total scores across all jurors.</p>
+          <div className="consensus-info-rows">
+            <div className="consensus-info-row">
+              <span className="consensus-badge consensus-high">High</span>
+              <span className="consensus-info-desc">σ &lt; 3.0 — Jurors closely agree</span>
+            </div>
+            <div className="consensus-info-row">
+              <span className="consensus-badge consensus-moderate">Moderate</span>
+              <span className="consensus-info-desc">σ 3.0–5.0 — Some variation</span>
+            </div>
+            <div className="consensus-info-row">
+              <span className="consensus-badge consensus-disputed">Disputed</span>
+              <span className="consensus-info-desc">σ &gt; 5.0 — Significant disagreement</span>
+            </div>
+          </div>
+          <p style={{ marginTop: 8, fontSize: 10, color: "var(--text-tertiary)" }}>
+            Hover each badge to see the exact σ value and score range.
+          </p>
+        </div>
+      )}
     </>
   );
 }

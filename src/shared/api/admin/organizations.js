@@ -71,6 +71,10 @@ export async function createOrganization(payload) {
 
 export async function updateOrganization(payload) {
   const id = payload.organizationId || payload.id;
+  if (!id) throw new Error("updateOrganization: organizationId required");
+
+  // Build the patch JSONB for the RPC. The RPC handles previous-status fetch,
+  // UPDATE, and audit write (with before/after diff) in a single transaction.
   const updates = {};
   if (payload.name !== undefined) updates.name = payload.name;
   const resolvedCode = payload.code !== undefined ? payload.code : payload.shortLabel;
@@ -84,13 +88,12 @@ export async function updateOrganization(payload) {
   }
   if (payload.contact_email !== undefined) updates.contact_email = payload.contact_email;
   if (payload.status !== undefined) updates.status = payload.status;
+  if (payload.reason !== undefined) updates.reason = payload.reason;
 
-  const { data, error } = await supabase
-    .from("organizations")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("rpc_admin_update_organization", {
+    p_org_id: id,
+    p_updates: updates,
+  });
   if (error) throw error;
   return data;
 }
@@ -108,18 +111,19 @@ export async function listOrganizationsPublic() {
 export async function updateMemberAdmin(payload) {
   const userId = payload?.userId || payload?.id;
   if (!userId) throw new Error("userId is required");
+  if (!payload?.organizationId) throw new Error("organizationId is required");
 
   const displayName =
-    payload.displayName !== undefined
-      ? payload.displayName
-      : payload.name;
-  if (displayName !== undefined) {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ display_name: String(displayName || "").trim() || null })
-      .eq("id", userId);
-    if (error) throw error;
-  }
+    payload.displayName !== undefined ? payload.displayName : payload.name;
+
+  // RPC updates profiles.display_name + writes audit atomically.
+  const { error } = await supabase.rpc("rpc_admin_update_member_profile", {
+    p_user_id: userId,
+    p_display_name: displayName ?? null,
+    p_organization_id: payload.organizationId,
+  });
+  if (error) throw error;
+
   return true;
 }
 
@@ -153,6 +157,10 @@ export async function inviteOrgAdmin(orgId, email, approvalFlow = false) {
   try { data = await res.json(); } catch { data = null; }
   if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
   if (data?.error) throw new Error(data.error);
+
+  // Audit row is written inside the invite-org-admin Edge Function
+  // (notification.admin_invite) — no client-side fire-and-forget.
+
   return data;
 }
 

@@ -2,7 +2,7 @@
 // ============================================================
 // All icon components used across the application.
 // Thin wrappers around lucide-react for consistent icon usage.
-// GoogleIcon is kept as an inline SVG (brand icon, not in lucide).
+// GoogleIcon is kept as inline SVG (brand icon).
 // ============================================================
 
 import {
@@ -511,7 +511,7 @@ export function PlayIcon({ size = 16, className = "", ...props }) {
   return <Play size={size} className={className} {...props} />;
 }
 
-// Brand icon — no lucide equivalent, kept as inline SVG
+// Brand icon — no lucide equivalent, kept as inline SVG.
 export function GoogleIcon({ width = 18, height = 18 }) {
   return (
     <svg width={width} height={height} viewBox="0 0 48 48">

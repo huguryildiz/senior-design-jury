@@ -8,6 +8,8 @@ import FbAlert from "@/shared/ui/FbAlert";
 import { AuthContext } from "@/auth/AuthProvider";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
 
+import { Icon } from "lucide-react";
+
 export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,10 +47,20 @@ export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin })
         <div className="login-card">
           <div className="login-header">
             <div className="login-icon-wrap">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <Icon
+                iconNode={[]}
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true">
                 <rect width="20" height="16" x="2" y="4" rx="2"/>
                 <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-              </svg>
+              </Icon>
             </div>
             <div className="login-title">Forgot your password?</div>
             <div className="login-sub">No worries, we&apos;ll help you get back in.</div>
@@ -86,10 +98,20 @@ export default function ForgotPasswordScreen({ onResetPassword, onBackToLogin })
                 background: "rgba(22,163,74,0.1)", display: "inline-grid",
                 placeItems: "center", marginBottom: "14px",
               }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <Icon
+                  iconNode={[]}
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true">
                   <path d="m22 2-7 20-4-9-9-4z"/>
                   <path d="m22 2-11 11"/>
-                </svg>
+                </Icon>
               </div>
               <div className="auth-state-title">Check your inbox</div>
               <div className="auth-state-desc">

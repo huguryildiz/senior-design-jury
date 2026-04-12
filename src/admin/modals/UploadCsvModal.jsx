@@ -10,6 +10,8 @@
 import { useCallback, useRef, useState } from "react";
 import Modal from "@/shared/ui/Modal";
 
+import { Icon } from "lucide-react";
+
 const VARIANTS = {
   jurors: {
     title: "Import Jurors",
@@ -77,9 +79,16 @@ export default function UploadCsvModal({ open, onClose, variant = "jurors", onFi
             }}
             aria-label="Close"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <Icon
+              iconNode={[]}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5">
               <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
+            </Icon>
           </button>
         </div>
 
@@ -111,15 +120,21 @@ export default function UploadCsvModal({ open, onClose, variant = "jurors", onFi
             margin: "0 auto 10px",
             transition: "background .15s",
           }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            <Icon
+              iconNode={[]}
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
               stroke={dragging ? "var(--accent)" : "var(--text-tertiary)"}
-              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-              style={{ transition: "stroke .15s" }}
-            >
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ transition: "stroke .15s" }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
+            </Icon>
           </div>
 
           <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-primary)", marginBottom: 3 }}>

@@ -2,7 +2,18 @@
 // Phase 8 — full rewrite from vera-premium-prototype.html lines 14519–14718
 
 import { useCallback, useEffect, useState } from "react";
-import { Lock, Plus, ClipboardList, CheckCircle2, Pencil, Trash2, MoreVertical, ClipboardX, AlertCircle } from "lucide-react";
+import {
+  Lock,
+  Plus,
+  ClipboardList,
+  CheckCircle2,
+  Pencil,
+  Trash2,
+  MoreVertical,
+  ClipboardX,
+  AlertCircle,
+  Icon,
+} from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useToast } from "@/shared/hooks/useToast";
 import { useManagePeriods } from "../hooks/useManagePeriods";
@@ -166,14 +177,12 @@ export default function CriteriaPage() {
           </div>
         </div>
       )}
-
       {/* Panel error */}
       {panelError && (
         <FbAlert variant="danger" style={{ marginBottom: 16 }}>
           {panelError}
         </FbAlert>
       )}
-
       {/* Page header */}
       <div className="crt-header">
         <div className="crt-header-left">
@@ -187,7 +196,6 @@ export default function CriteriaPage() {
           </button>
         )}
       </div>
-
       {/* No periods exist yet */}
       {!periods.viewPeriodId && periods.periodList.length === 0 && !panelError && (
         <div className="crt-empty-state">
@@ -208,7 +216,6 @@ export default function CriteriaPage() {
           </button>
         </div>
       )}
-
       {/* Periods exist but none selected */}
       {!periods.viewPeriodId && periods.periodList.length > 0 && (
         <div className="crt-empty-state">
@@ -219,7 +226,6 @@ export default function CriteriaPage() {
           <div className="crt-empty-state-desc">Select an evaluation period to manage its criteria.</div>
         </div>
       )}
-
       {/* Criteria table */}
       {periods.viewPeriodId && (
         <div className="crt-table-card">
@@ -326,7 +332,6 @@ export default function CriteriaPage() {
           )}
         </div>
       )}
-
       {/* Delete confirm */}
       <Modal
         open={deleteIndex !== null}
@@ -339,12 +344,19 @@ export default function CriteriaPage() {
       >
         <div className="fs-modal-header">
           <div className="fs-modal-icon danger">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Icon
+              iconNode={[]}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6" />
               <path d="M19 6l-1 14H6L5 6" />
               <path d="M10 11v6M14 11v6" />
               <path d="M9 6V4h6v2" />
-            </svg>
+            </Icon>
           </div>
           <div className="fs-title" style={{ textAlign: "center" }}>Remove Criterion?</div>
           <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
@@ -416,7 +428,6 @@ export default function CriteriaPage() {
           </button>
         </div>
       </Modal>
-
       {/* Single-criterion editor drawer */}
       <EditSingleCriterionDrawer
         open={editingIndex !== null}

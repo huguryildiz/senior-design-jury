@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { writeEdgeAuditLog } from "../_shared/audit-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +119,11 @@ Deno.serve(async (req: Request) => {
     });
 
     // Do not leak account existence/details.
+    let linkGenerated = false;
+    let resolvedUserId: string | null = null;
     if (!error && data?.properties?.action_link) {
+      linkGenerated = true;
+      resolvedUserId = (data as { user?: { id?: string } } | null)?.user?.id ?? null;
       const resendKey = Deno.env.get("RESEND_API_KEY") || "";
       const fromAddr = Deno.env.get("NOTIFICATION_FROM") || "VERA <noreply@vera-eval.app>";
       const logoUrl = (Deno.env.get("NOTIFICATION_LOGO_URL") || "").trim();
@@ -136,6 +141,24 @@ Deno.serve(async (req: Request) => {
         });
         await sendViaResend(resendKey, to, subject, text, html, fromAddr);
       }
+    }
+
+    // Audit every reset request, even if the email address is unknown.
+    // anonymous actor_type avoids leaking existence through the audit feed.
+    try {
+      await writeEdgeAuditLog(req, {
+        action: "auth.admin.password.reset.requested",
+        user_id: resolvedUserId,
+        resource_type: "profiles",
+        resource_id: resolvedUserId,
+        actor_type: resolvedUserId ? "admin" : "anonymous",
+        details: {
+          email: to,
+          link_generated: linkGenerated,
+        },
+      });
+    } catch (auditErr) {
+      console.error("audit write failed (auth.admin.password.reset.requested):", (auditErr as Error)?.message);
     }
 
     return new Response(JSON.stringify({ ok: true }), {

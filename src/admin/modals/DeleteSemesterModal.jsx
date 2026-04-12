@@ -10,7 +10,7 @@
 //   onDelete   — () => Promise<void>
 
 import { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Icon } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
@@ -43,20 +43,26 @@ export default function DeleteSemesterModal({ open, onClose, periodName, impact 
     <Modal open={open} onClose={onClose} size="md" centered>
       <div className="fs-modal-header">
         <div className="fs-modal-icon danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <Icon
+            iconNode={[]}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round">
             <path d="M3 6h18" />
             <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             <path d="M10 11v6" />
             <path d="M14 11v6" />
             <path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6" />
-          </svg>
+          </Icon>
         </div>
         <div className="fs-title" style={{ textAlign: "center" }}>Delete Evaluation Period?</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
           Deleting this evaluation period will permanently remove all project groups, juror assignments and scores. This action cannot be undone.
         </div>
       </div>
-
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
         {deleteError && (
           <div className="fs-alert danger" style={{ marginBottom: 12 }}>
@@ -94,7 +100,6 @@ export default function DeleteSemesterModal({ open, onClose, periodName, impact 
           />
         </div>
       </div>
-
       <div
         className="fs-modal-footer"
         style={{ justifyContent: "center", background: "transparent", borderTop: "none", paddingTop: 0 }}

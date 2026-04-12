@@ -4,7 +4,7 @@
 
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { UserPlus, Eye, EyeOff, Check, Info } from "lucide-react";
+import { UserPlus, Eye, EyeOff, Check, Info, Icon } from "lucide-react";
 import FbAlert from "@/shared/ui/FbAlert";
 import { listOrganizationsPublic, checkEmailAvailable } from "@/shared/api";
 import GroupedCombobox from "@/shared/ui/GroupedCombobox";
@@ -248,10 +248,16 @@ export default function RegisterScreen({ onRegister, onSwitchToLogin, onReturnHo
         <div className="apply-wrap">
           <div className="apply-card apply-success-card">
             <div className="apply-success-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+              <Icon
+                iconNode={[]}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" opacity="0.3"/>
                 <path className="check-path" d="M8 12.5l2.5 3 5.5-6.5"/>
-              </svg>
+              </Icon>
             </div>
             <div className="apply-success-title">Application Submitted</div>
             <div className="apply-success-sub">
