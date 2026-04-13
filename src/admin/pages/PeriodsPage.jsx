@@ -11,7 +11,7 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import FbAlert from "@/shared/ui/FbAlert";
 import AddEditPeriodDrawer from "../drawers/AddEditPeriodDrawer";
 import { FilterButton } from "@/shared/ui/FilterButton.jsx";
-import { setEvalLock, deletePeriod, listPeriodCriteria, savePeriodCriteria } from "@/shared/api";
+import { setEvalLock, deletePeriod, listPeriodCriteria, savePeriodCriteria, listPeriodStats } from "@/shared/api";
 import {
   Lock,
   LockOpen,
@@ -22,8 +22,12 @@ import {
   MoreVertical,
   Pencil,
   Eye,
-  Icon,
   CalendarRange,
+  Filter,
+  Download,
+  Plus,
+  Layers,
+  X,
   Info,
 } from "lucide-react";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
@@ -101,6 +105,70 @@ function SortIcon({ colKey, sortKey, sortDir }) {
   );
 }
 
+function LifecycleBar({ draft, active, completed, locked }) {
+  const total = draft + active + completed + locked;
+  if (total === 0) return null;
+  const pct = (n) => `${(n / total) * 100}%`;
+
+  const parts = [];
+  if (active > 0) parts.push(`${active} active`);
+  if (locked > 0) parts.push(`${locked} locked`);
+  if (draft > 0) parts.push(`${draft} draft`);
+  if (completed > 0) parts.push(`${completed} completed`);
+
+  return (
+    <div className="periods-lifecycle-bar">
+      <div className="periods-lifecycle-top">
+        <span className="periods-lifecycle-label">Period Lifecycle</span>
+        <span className="periods-lifecycle-summary">{parts.join(" · ")}</span>
+      </div>
+      <div className="periods-lifecycle-track">
+        {draft > 0 && <div className="periods-lifecycle-segment draft" style={{ width: pct(draft) }} />}
+        {active > 0 && <div className="periods-lifecycle-segment active" style={{ width: pct(active) }} />}
+        {completed > 0 && <div className="periods-lifecycle-segment completed" style={{ width: pct(completed) }} />}
+        {locked > 0 && <div className="periods-lifecycle-segment locked" style={{ width: pct(locked) }} />}
+      </div>
+      <div className="periods-lifecycle-legend">
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot draft" /> Draft ({draft})</span>
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot active" /> Active ({active})</span>
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot completed" /> Completed ({completed})</span>
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot locked" /> Locked ({locked})</span>
+      </div>
+    </div>
+  );
+}
+
+function ProgressCell({ period, stats }) {
+  const status = getPeriodStatus(period);
+  const progress = stats?.[period.id]?.progress;
+
+  if (status === "draft") {
+    return (
+      <div className="periods-progress-cell">
+        <span className="periods-progress-val muted">—</span>
+        <div className="periods-progress-bar"><div className="periods-progress-fill" style={{ width: "0%" }} /></div>
+      </div>
+    );
+  }
+
+  const pct = progress ?? (status === "locked" || status === "completed" ? 100 : null);
+  if (pct === null) {
+    return (
+      <div className="periods-progress-cell">
+        <span className="periods-progress-val muted">—</span>
+        <div className="periods-progress-bar"><div className="periods-progress-fill" style={{ width: "0%" }} /></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="periods-progress-cell">
+      <span className={`periods-progress-val${pct >= 100 ? " done" : ""}`}>{pct}%</span>
+      <div className="periods-progress-bar"><div className="periods-progress-fill" style={{ width: `${pct}%` }} /></div>
+    </div>
+  );
+}
+
 export default function PeriodsPage() {
   const {
     organizationId,
@@ -131,6 +199,9 @@ export default function PeriodsPage() {
     setPanelError,
     clearPanelError,
   });
+
+  // Period stats state
+  const [periodStats, setPeriodStats] = useState({});
 
   // Filter/export panel state
   const [filterOpen, setFilterOpen] = useState(false);
@@ -170,6 +241,14 @@ export default function PeriodsPage() {
 
 
   const periodList = periods.periodList || [];
+
+  // Load period stats
+  useEffect(() => {
+    if (!organizationId) return;
+    listPeriodStats(organizationId)
+      .then(setPeriodStats)
+      .catch(() => {}); // Non-fatal — columns show "—" on failure
+  }, [organizationId, periodList]);
 
   // Derived stats
   const totalPeriods = periodList.length;
@@ -332,29 +411,12 @@ export default function PeriodsPage() {
             onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
           />
           <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
-            <Icon
-              iconNode={[]}
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ verticalAlign: "-1px" }}>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </Icon>
+            <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
             {" "}Export
           </button>
-          <button
-            className="btn btn-primary btn-sm mobile-toolbar-secondary"
-            style={{ width: "auto", padding: "6px 14px", fontSize: "12px", background: "var(--accent)", boxShadow: "none" }}
-            onClick={openAddDrawer}
-          >
-            + Add Period
+          <button className="btn btn-primary btn-sm mobile-toolbar-secondary" onClick={openAddDrawer}>
+            <Plus size={13} strokeWidth={2.2} />
+            Add Period
           </button>
         </div>
       </div>
@@ -364,19 +426,7 @@ export default function PeriodsPage() {
           <div className="filter-panel-header">
             <div>
               <h4>
-                <Icon
-                  iconNode={[]}
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ verticalAlign: "-1px", marginRight: "4px", opacity: 0.5 }}>
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </Icon>
+                <Filter size={14} strokeWidth={2} style={{ verticalAlign: "-1px", marginRight: "4px", opacity: 0.5, display: "inline" }} />
                 Filter Periods
               </h4>
               <div className="filter-panel-sub">Narrow evaluation periods by status and lock state.</div>
@@ -401,19 +451,7 @@ export default function PeriodsPage() {
               />
             </div>
             <button className="btn btn-outline btn-sm filter-clear-btn" onClick={() => setStatusFilter("all")}>
-              <Icon
-                iconNode={[]}
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ opacity: 0.5 }}>
-                <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-              </Icon>
+              <X size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
               {" "}Clear
             </button>
           </div>
@@ -428,28 +466,46 @@ export default function PeriodsPage() {
           organization={activeOrganization?.name || ""}
           onClose={() => setExportOpen(false)}
           generateFile={async (fmt) => {
-            const header = ["Name", "Season", "Status", "Current", "Locked", "Created"];
-            const rows = sortedFilteredList.map((p) => [
-              p.name ?? "", p.season ?? "", getPeriodStatus(p), p.is_current ? "Yes" : "No", p.is_locked ? "Yes" : "No", formatFull(p.created_at),
-            ]);
+            const header = ["Name", "Season", "Status", "Start Date", "End Date", "Projects", "Jurors", "Criteria", "Framework", "Current", "Locked", "Created"];
+            const rows = sortedFilteredList.map((p) => {
+              const st = periodStats[p.id] || {};
+              const fw = frameworks.find((f) => f.id === p.framework_id);
+              return [
+                p.name ?? "", p.season ?? "", getPeriodStatus(p),
+                p.start_date ?? "", p.end_date ?? "",
+                st.projectCount ?? "", st.jurorCount ?? "", st.criteriaCount ?? "",
+                fw?.name ?? "",
+                p.is_current ? "Yes" : "No", p.is_locked ? "Yes" : "No",
+                formatFull(p.created_at),
+              ];
+            });
             return generateTableBlob(fmt, {
               filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "all",
               tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
               department: activeOrganization?.institution || "", pdfTitle: "VERA — Evaluation Periods",
-              header, rows, colWidths: [28, 14, 12, 10, 10, 18],
+              header, rows, colWidths: [24, 10, 12, 12, 12, 10, 10, 10, 18, 8, 8, 16],
             });
           }}
           onExport={async (fmt) => {
             try {
-              const header = ["Name", "Season", "Status", "Current", "Locked", "Created"];
-              const rows = sortedFilteredList.map((p) => [
-                p.name ?? "", p.season ?? "", getPeriodStatus(p), p.is_current ? "Yes" : "No", p.is_locked ? "Yes" : "No", formatFull(p.created_at),
-              ]);
+              const header = ["Name", "Season", "Status", "Start Date", "End Date", "Projects", "Jurors", "Criteria", "Framework", "Current", "Locked", "Created"];
+              const rows = sortedFilteredList.map((p) => {
+                const st = periodStats[p.id] || {};
+                const fw = frameworks.find((f) => f.id === p.framework_id);
+                return [
+                  p.name ?? "", p.season ?? "", getPeriodStatus(p),
+                  p.start_date ?? "", p.end_date ?? "",
+                  st.projectCount ?? "", st.jurorCount ?? "", st.criteriaCount ?? "",
+                  fw?.name ?? "",
+                  p.is_current ? "Yes" : "No", p.is_locked ? "Yes" : "No",
+                  formatFull(p.created_at),
+                ];
+              });
               await downloadTable(fmt, {
                 filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "all",
                 tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
                 department: activeOrganization?.institution || "", pdfTitle: "VERA — Evaluation Periods",
-                header, rows, colWidths: [28, 14, 12, 10, 10, 18],
+                header, rows, colWidths: [24, 10, 12, 12, 12, 10, 10, 10, 18, 8, 8, 16],
               });
               setExportOpen(false);
               const fmtLabel = fmt === "pdf" ? "PDF" : fmt === "csv" ? "CSV" : "Excel";
@@ -483,6 +539,13 @@ export default function PeriodsPage() {
           <div className="scores-kpi-item-label">Locked</div>
         </div>
       </div>
+      {/* Lifecycle Bar */}
+      <LifecycleBar
+        draft={draftPeriods}
+        active={activePeriods}
+        completed={completedPeriods}
+        locked={lockedPeriods}
+      />
       {/* Error */}
       {panelError && (
         <FbAlert variant="danger" style={{ marginBottom: "12px" }}>
@@ -490,44 +553,48 @@ export default function PeriodsPage() {
         </FbAlert>
       )}
       {/* Table */}
-      <div className="sem-table-wrap">
+      <div className="periods-table-card">
+        <div className="periods-table-card-header">
+          <div className="periods-table-card-title">All Evaluation Periods</div>
+          <div className="periods-summary-badge">
+            <CalendarRange size={13} strokeWidth={2.2} />
+            {totalPeriods} {totalPeriods === 1 ? "period" : "periods"}{activePeriods > 0 ? ` · ${activePeriods} active` : ""}
+          </div>
+        </div>
+        <div className="periods-table-scroll">
+          <div className="sem-table-wrap">
         <table className="sem-table">
           <thead>
             <tr>
-              <th
-                className={`sortable${sortKey === "name" ? " sorted" : ""}`}
-                style={{ minWidth: "200px" }}
-                onClick={() => handleSort("name")}
-              >
-                Evaluation Period <SortIcon colKey="name" sortKey={sortKey} sortDir={sortDir} />
+              <th className={`sortable${sortKey === "name" ? " sorted" : ""}`} style={{ minWidth: "160px" }} onClick={() => handleSort("name")}>
+                Period <SortIcon colKey="name" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th
-                className={`sortable${sortKey === "status" ? " sorted" : ""}`}
-                style={{ width: "120px" }}
-                onClick={() => handleSort("status")}
-              >
+              <th className={`sortable${sortKey === "status" ? " sorted" : ""}`} style={{ width: "90px" }} onClick={() => handleSort("status")}>
                 Status <SortIcon colKey="status" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th
-                className={`sortable${sortKey === "updated_at" ? " sorted" : ""}`}
-                style={{ width: "130px" }}
-                onClick={() => handleSort("updated_at")}
-              >
-                Last Updated <SortIcon colKey="updated_at" sortKey={sortKey} sortDir={sortDir} />
+              <th style={{ width: "130px" }}>Date Range</th>
+              <th style={{ width: "64px", textAlign: "center" }}>Progress</th>
+              <th style={{ width: "56px", textAlign: "center" }}>Projects</th>
+              <th style={{ width: "50px", textAlign: "center" }}>Jurors</th>
+              <th style={{ width: "54px", textAlign: "center" }}>Criteria</th>
+              <th style={{ width: "110px" }}>Criteria Set</th>
+              <th style={{ width: "90px" }}>Framework</th>
+              <th className={`sortable${sortKey === "updated_at" ? " sorted" : ""}`} style={{ width: "80px" }} onClick={() => handleSort("updated_at")}>
+                Updated <SortIcon colKey="updated_at" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th style={{ width: "52px" }}>Actions</th>
+              <th style={{ width: "36px" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loadingCount > 0 && filteredList.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
+                <td colSpan={11} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
                   Loading periods…
                 </td>
               </tr>
             ) : filteredList.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: "center", padding: "48px 24px" }}>
+                <td colSpan={11} style={{ textAlign: "center", padding: "48px 24px" }}>
                   {statusFilter !== "all" ? (
                     <div style={{ color: "var(--text-tertiary)" }}>
                       No periods match the current filter.
@@ -592,32 +659,97 @@ export default function PeriodsPage() {
                     : undefined
                   }
                 >
+                  {/* Period name */}
                   <td data-label="Evaluation Period">
                     <div className="sem-name" style={period.is_locked ? { color: "var(--text-secondary)" } : undefined}>
                       {period.name}
                       {isCurrent && (
-                        <span className="sem-badge-current">
-                          <span className="dot" />
-                          Current
-                        </span>
+                        <span className="sem-badge-current"><span className="dot" /> Current</span>
                       )}
                     </div>
-                    <div className="sem-name-sub">
-                      {status === "locked"
-                        ? "Locked · scores finalized · read-only"
-                        : status === "active"
-                        ? "Evaluation in progress"
-                        : status === "completed"
-                        ? "Completed · all evaluations submitted"
-                        : "Setup in progress"}
+                    {(status === "active" || status === "draft") && (
+                      <div className="sem-name-sub">
+                        {status === "active" ? "Evaluation in progress" : "Setup in progress"}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Status */}
+                  <td data-label="Status"><StatusPill status={status} /></td>
+
+                  {/* Date Range */}
+                  <td data-label="Date Range">
+                    {period.start_date || period.end_date ? (
+                      <span className="periods-date-range">
+                        {period.start_date ? new Date(period.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+                        <span className="periods-date-sep">→</span>
+                        {period.end_date ? new Date(period.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-quaternary)", fontSize: 11 }}>—</span>
+                    )}
+                  </td>
+
+                  {/* Progress */}
+                  <td data-label="Progress" style={{ textAlign: "center" }}>
+                    <ProgressCell period={period} stats={periodStats} />
+                  </td>
+
+                  {/* Projects */}
+                  <td data-label="Projects" style={{ textAlign: "center" }}>
+                    <span className={`periods-stat-val${(periodStats[period.id]?.projectCount || 0) === 0 ? " zero" : ""}`}>
+                      {periodStats[period.id]?.projectCount ?? "—"}
+                    </span>
+                  </td>
+
+                  {/* Jurors */}
+                  <td data-label="Jurors" style={{ textAlign: "center" }}>
+                    <span className={`periods-stat-val${(periodStats[period.id]?.jurorCount || 0) === 0 ? " zero" : ""}`}>
+                      {periodStats[period.id]?.jurorCount ?? "—"}
+                    </span>
+                  </td>
+
+                  {/* Criteria */}
+                  <td data-label="Criteria" style={{ textAlign: "center" }}>
+                    <span className={`periods-stat-val${(periodStats[period.id]?.criteriaCount || 0) === 0 ? " zero" : ""}`}>
+                      {periodStats[period.id]?.criteriaCount ?? "—"}
+                    </span>
+                  </td>
+
+                  {/* Mobile stats strip */}
+                  <td className="periods-mobile-stats">
+                    <div className="periods-mobile-stats-row">
+                      <span className="periods-m-stat"><span className={`val${(periodStats[period.id]?.projectCount || 0) === 0 ? " zero" : ""}`}>{periodStats[period.id]?.projectCount ?? "—"}</span> projects</span>
+                      <span className="periods-m-stat"><span className={`val${(periodStats[period.id]?.jurorCount || 0) === 0 ? " zero" : ""}`}>{periodStats[period.id]?.jurorCount ?? "—"}</span> jurors</span>
+                      <span className="periods-m-stat"><span className={`val${(periodStats[period.id]?.criteriaCount || 0) === 0 ? " zero" : ""}`}>{periodStats[period.id]?.criteriaCount ?? "—"}</span> criteria</span>
                     </div>
                   </td>
-                  <td data-label="Status"><StatusPill status={status} /></td>
+
+                  {/* Criteria Set */}
+                  <td data-label="Criteria Set">
+                    <span className="periods-cset-badge muted">—</span>
+                  </td>
+
+                  {/* Framework */}
+                  <td data-label="Framework">
+                    {(() => {
+                      const fw = frameworks.find((f) => f.id === period.framework_id);
+                      return fw ? (
+                        <span className="periods-fw-badge"><Layers size={11} strokeWidth={2} /> {fw.name}</span>
+                      ) : (
+                        <span className="periods-fw-badge none">—</span>
+                      );
+                    })()}
+                  </td>
+
+                  {/* Updated */}
                   <td data-label="Last Updated">
                     <PremiumTooltip text={formatFull(period.updated_at)}>
                       <span className="vera-datetime-text">{formatRelative(period.updated_at)}</span>
                     </PremiumTooltip>
                   </td>
+
+                  {/* Actions */}
                   <td className="col-actions">
                     <FloatingMenu
                       isOpen={openMenuId === period.id}
@@ -720,6 +852,8 @@ export default function PeriodsPage() {
             })}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
       <Pagination
         currentPage={safePage}
