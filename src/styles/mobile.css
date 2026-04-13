@@ -263,3 +263,17 @@ html, body {
     justify-self: stretch;
   }
 }
+
+/* ── Global justified text for alerts and cards on mobile ── */
+@media (max-width: 768px) {
+  .fb-alert-title,
+  .fb-alert-desc,
+  .fs-alert-title,
+  .fs-alert-desc,
+  .fs-alert-body,
+  .card p,
+  .card .kpi-label,
+  .card .kpi-sub {
+    text-align: justify;
+  }
+}

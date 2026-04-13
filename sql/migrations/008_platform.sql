@@ -987,3 +987,69 @@ SELECT cron.schedule(
     ) AS request_id;
   $$
 );
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- GLOBAL FRAMEWORK TEMPLATES (organization_id IS NULL → read-only for all orgs)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+DO $$
+DECLARE
+  v_mudek UUID := '3ae7e475-dd51-45e7-a79a-1c159fbf6abc';
+  v_abet  UUID := '253751a6-09dd-47d7-93b4-7064456e553c';
+BEGIN
+
+  -- ── MÜDEK 2024 ──────────────────────────────────────────────────────────────
+  INSERT INTO frameworks (id, organization_id, name, description, version)
+  VALUES (
+    v_mudek, NULL,
+    'MÜDEK 2024',
+    'MÜDEK mühendislik akreditasyon çerçevesi — 18 program çıktısı (PO 1.1–11)',
+    '2024'
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  IF NOT EXISTS (SELECT 1 FROM framework_outcomes WHERE framework_id = v_mudek LIMIT 1) THEN
+    INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order) VALUES
+      (v_mudek, 'PO 1.1',  'Matematik, fen bilimleri, temel mühendislik, bilgisayarla hesaplama ve ilgili mühendislik disiplinine özgü konularda bilgi.',                                                                                                  'Bilgi ve Uygulama Becerisi', 1),
+      (v_mudek, 'PO 1.2',  'Matematik, fen bilimleri, temel mühendislik, bilgisayarla hesaplama ve ilgili mühendislik disiplinine özgü konulardaki bilgileri, karmaşık mühendislik problemlerinin çözümünde kullanabilme becerisi.',                      'Bilgi ve Uygulama Becerisi', 2),
+      (v_mudek, 'PO 2',    'Karmaşık mühendislik problemlerini, temel bilim, matematik ve mühendislik bilgilerini kullanarak ve ele alınan problemle ilgili BM Sürdürülebilir Kalkınma Amaçlarını gözeterek tanımlama, formüle etme ve analiz becerisi.', 'Problem Analizi',            3),
+      (v_mudek, 'PO 3.1',  'Karmaşık mühendislik problemlerine yaratıcı çözümler tasarlama becerisi.',                                                                                                                                                    'Tasarım ve Geliştirme',      4),
+      (v_mudek, 'PO 3.2',  'Karmaşık sistemleri, süreçleri, cihazları veya ürünleri gerçekçi kısıtları ve koşulları gözeterek, mevcut ve gelecekteki gereksinimleri karşılayacak biçimde tasarlama becerisi.',                                           'Tasarım ve Geliştirme',      5),
+      (v_mudek, 'PO 4',    'Uygun teknikleri, kaynakları ve modern mühendislik ve bilişim araçlarını, sınırlamalarının da farkında olarak seçme ve kullanma becerisi.',                                                                                   'Modern Araç Kullanımı',      6),
+      (v_mudek, 'PO 5',    'Karmaşık mühendislik problemlerinin incelenmesi için literatür araştırması, deney tasarlama, deney yapma, veri toplama, sonuçları analiz etme ve yorumlama dahil, araştırma yöntemlerini kullanma becerisi.',                  'Araştırma',                  7),
+      (v_mudek, 'PO 6.1',  'Mühendislik uygulamalarının BM Sürdürülebilir Kalkınma Amaçları kapsamında, topluma, sağlık ve güvenliğe, ekonomiye, sürdürülebilirlik ve çevreye etkileri hakkında bilgi.',                                                 'Mühendislik ve Toplum',      8),
+      (v_mudek, 'PO 6.2',  'Mühendislik çözümlerinin hukuksal sonuçları konusunda farkındalık.',                                                                                                                                                          'Mühendislik ve Toplum',      9),
+      (v_mudek, 'PO 7.1',  'Mühendislik meslek ilkelerine uygun davranma, etik sorumluluk hakkında bilgi.',                                                                                                                                               'Etik ve Çeşitlilik',         10),
+      (v_mudek, 'PO 7.2',  'Hiçbir konuda ayrımcılık yapmadan, tarafsız davranma ve çeşitliliği kapsayıcı olma konularında farkındalık.',                                                                                                                'Etik ve Çeşitlilik',         11),
+      (v_mudek, 'PO 8.1',  'Bireysel olarak disiplin içi takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi.',                                                                                   'Takım Çalışması',            12),
+      (v_mudek, 'PO 8.2',  'Bireysel olarak çok disiplinli takımlarda (yüz yüze, uzaktan veya karma) takım üyesi veya lideri olarak etkin biçimde çalışabilme becerisi.',                                                                                 'Takım Çalışması',            13),
+      (v_mudek, 'PO 9.1',  'Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda sözlü etkin iletişim kurma becerisi.',                                                                                    'İletişim',                   14),
+      (v_mudek, 'PO 9.2',  'Hedef kitlenin çeşitli farklılıklarını (eğitim, dil, meslek gibi) dikkate alarak, teknik konularda yazılı etkin iletişim kurma becerisi.',                                                                                   'İletişim',                   15),
+      (v_mudek, 'PO 10.1', 'Proje yönetimi ve ekonomik yapılabilirlik analizi gibi iş hayatındaki uygulamalar hakkında bilgi.',                                                                                                                            'İş Hayatı ve Girişimcilik',  16),
+      (v_mudek, 'PO 10.2', 'Girişimcilik ve yenilikçilik hakkında farkındalık.',                                                                                                                                                                          'İş Hayatı ve Girişimcilik',  17),
+      (v_mudek, 'PO 11',   'Bağımsız ve sürekli öğrenebilme, yeni ve gelişmekte olan teknolojilere uyum sağlayabilme ve teknolojik değişimlerle ilgili sorgulayıcı düşünebilmeyi kapsayan yaşam boyu öğrenme becerisi.',                                  'Yaşam Boyu Öğrenme',         18);
+  END IF;
+
+  -- ── ABET 2024 ────────────────────────────────────────────────────────────────
+  INSERT INTO frameworks (id, organization_id, name, description, version)
+  VALUES (
+    v_abet, NULL,
+    'ABET 2024',
+    'ABET EAC Student Outcomes — SO 1 through SO 7 (2026-2027 Criteria)',
+    '2024'
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  IF NOT EXISTS (SELECT 1 FROM framework_outcomes WHERE framework_id = v_abet LIMIT 1) THEN
+    INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order) VALUES
+      (v_abet, 'SO 1', 'an ability to identify, formulate, and solve complex engineering problems by applying principles of engineering, science, and mathematics.',                                                                                                                       'Complex Problem Solving',          1),
+      (v_abet, 'SO 2', 'an ability to apply engineering design to produce solutions that meet specified needs with consideration of public health, safety, and welfare, as well as global, cultural, social, environmental, and economic factors.',                                        'Engineering Design',               2),
+      (v_abet, 'SO 3', 'an ability to communicate effectively with a range of audiences.',                                                                                                                                                                                               'Effective Communication',          3),
+      (v_abet, 'SO 4', 'an ability to recognize ethical and professional responsibilities in engineering situations and make informed judgments, which must consider the impact of engineering solutions in global, economic, environmental, and societal contexts.',                      'Ethics & Professional Responsibility', 4),
+      (v_abet, 'SO 5', 'an ability to function effectively on a team whose members together provide leadership, create a collaborative environment, establish goals, plan tasks, and meet objectives.',                                                                                   'Teamwork & Leadership',            5),
+      (v_abet, 'SO 6', 'an ability to develop and conduct appropriate experimentation, analyze and interpret data, and use engineering judgment to draw conclusions.',                                                                                                                    'Experimentation & Analysis',       6),
+      (v_abet, 'SO 7', 'an ability to acquire and apply new knowledge as needed, using appropriate learning strategies.',                                                                                                                                                                'Lifelong Learning',                7);
+  END IF;
+
+END;
+$$;

@@ -848,9 +848,9 @@ BEGIN
   GET DIAGNOSTICS v_criteria_count = ROW_COUNT;
 
   INSERT INTO period_outcomes (
-    period_id, source_outcome_id, code, label, description, sort_order
+    period_id, source_outcome_id, code, label, description, sort_order, coverage_hint
   )
-  SELECT p_period_id, fo.id, fo.code, fo.label, fo.description, fo.sort_order
+  SELECT p_period_id, fo.id, fo.code, fo.label, fo.description, fo.sort_order, fo.coverage_hint
   FROM framework_outcomes fo
   WHERE fo.framework_id = v_period.framework_id;
 
@@ -1714,3 +1714,118 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_admin_reject_join_request(UUID) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_clone_framework
+-- Deep-clones a framework (rows, outcomes, criteria, maps) into a new
+-- org-owned copy. Used by OutcomesPage and period setup.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_clone_framework(
+  p_framework_id UUID,
+  p_new_name     TEXT,
+  p_org_id       UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, extensions
+AS $$
+DECLARE
+  v_is_admin    BOOLEAN;
+  v_new_fw_id   UUID;
+  v_outcome_map JSONB := '{}';
+  v_crit_map    JSONB := '{}';
+  r             RECORD;
+  v_new_id      UUID;
+BEGIN
+  -- Auth: caller must be admin (or super-admin) of p_org_id
+  SELECT EXISTS(
+    SELECT 1 FROM memberships
+    WHERE user_id = auth.uid()
+      AND (organization_id = p_org_id OR organization_id IS NULL)
+  ) INTO v_is_admin;
+
+  IF NOT v_is_admin THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  -- Validate source framework exists and is accessible to this org
+  IF NOT EXISTS(
+    SELECT 1 FROM frameworks
+    WHERE id = p_framework_id
+      AND (organization_id IS NULL OR organization_id = p_org_id)
+  ) THEN
+    RAISE EXCEPTION 'source_framework_not_found';
+  END IF;
+
+  -- 1. Clone the frameworks row
+  INSERT INTO frameworks (
+    organization_id, name, description, version,
+    outcome_code_prefix, default_threshold
+  )
+  SELECT
+    p_org_id, p_new_name, description, version,
+    outcome_code_prefix, default_threshold
+  FROM frameworks
+  WHERE id = p_framework_id
+  RETURNING id INTO v_new_fw_id;
+
+  -- 2. Clone framework_outcomes, track old→new UUID mapping
+  FOR r IN
+    SELECT * FROM framework_outcomes
+    WHERE framework_id = p_framework_id
+    ORDER BY sort_order
+  LOOP
+    INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order, coverage_hint)
+    VALUES (v_new_fw_id, r.code, r.label, r.description, r.sort_order, r.coverage_hint)
+    RETURNING id INTO v_new_id;
+
+    v_outcome_map := v_outcome_map || jsonb_build_object(r.id::TEXT, v_new_id::TEXT);
+  END LOOP;
+
+  -- 3. Clone framework_criteria, track old→new UUID mapping
+  FOR r IN
+    SELECT * FROM framework_criteria
+    WHERE framework_id = p_framework_id
+    ORDER BY sort_order
+  LOOP
+    INSERT INTO framework_criteria (
+      framework_id, key, label, short_label, description,
+      max_score, weight, color, rubric_bands, sort_order
+    )
+    VALUES (
+      v_new_fw_id, r.key, r.label, r.short_label, r.description,
+      r.max_score, r.weight, r.color, r.rubric_bands, r.sort_order
+    )
+    RETURNING id INTO v_new_id;
+
+    v_crit_map := v_crit_map || jsonb_build_object(r.id::TEXT, v_new_id::TEXT);
+  END LOOP;
+
+  -- 4. Clone framework_criterion_outcome_maps with remapped IDs
+  FOR r IN
+    SELECT * FROM framework_criterion_outcome_maps
+    WHERE framework_id = p_framework_id
+  LOOP
+    -- Skip orphaned maps (shouldn't exist, but guard against it)
+    CONTINUE WHEN (v_crit_map ->> r.criterion_id::TEXT) IS NULL;
+    CONTINUE WHEN (v_outcome_map ->> r.outcome_id::TEXT) IS NULL;
+
+    INSERT INTO framework_criterion_outcome_maps (
+      framework_id, criterion_id, outcome_id, coverage_type, weight
+    )
+    VALUES (
+      v_new_fw_id,
+      (v_crit_map ->> r.criterion_id::TEXT)::UUID,
+      (v_outcome_map ->> r.outcome_id::TEXT)::UUID,
+      r.coverage_type,
+      r.weight
+    );
+  END LOOP;
+
+  RETURN v_new_fw_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_clone_framework(UUID, TEXT, UUID) TO authenticated;

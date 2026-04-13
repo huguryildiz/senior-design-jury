@@ -18,6 +18,8 @@ import {
   setEvalLock,
   listPeriodCriteria,
   listPeriodOutcomes,
+  cloneFramework,
+  assignFrameworkToPeriod,
 } from "../../shared/api";
 import { getActiveCriteria } from "../../shared/criteria/criteriaHelpers";
 import { sortPeriodsByStartDateDesc } from "../../shared/periodSort";
@@ -243,8 +245,23 @@ export function useManagePeriods({
     incLoading();
     try {
       const created = await createPeriod({ ...payload, organizationId });
+
+      // If a framework was selected, clone it and assign to the new period
+      let assignedFrameworkId = null;
+      if (payload.frameworkId && created?.id) {
+        try {
+          const autoName = `${payload.name} Framework`;
+          const { id: clonedId } = await cloneFramework(payload.frameworkId, autoName, organizationId);
+          await assignFrameworkToPeriod(created.id, clonedId);
+          assignedFrameworkId = clonedId;
+        } catch {
+          // Non-fatal: period was created, framework assignment failed
+          // User can assign from Outcomes page
+        }
+      }
+
       if (created?.id) {
-        applyPeriodPatch(created);
+        applyPeriodPatch({ ...created, ...(assignedFrameworkId ? { framework_id: assignedFrameworkId } : {}) });
       } else {
         applyPeriodPatch({
           id: `temp-${Date.now()}`,
@@ -410,8 +427,18 @@ export function useManagePeriods({
       setDraftCriteria(structuredClone(fresh));
       setMessage("Criteria saved successfully.");
     } catch (e) {
-      const msg = String(e?.message || "");
-      setPanelError("period", msg || "Could not save criteria. Try again or check your session.");
+      const raw = String(e?.message || e?.details || "");
+      let msg = raw || "Could not save criteria. Try again or check your session.";
+      if (raw.includes("foreign key") && raw.includes("score_sheet_items")) {
+        msg = "Cannot modify criteria while scores exist for this evaluation period. Lock the period first, or clear existing scores before making structural changes.";
+      } else if (raw.includes("foreign key")) {
+        msg = "Cannot save — other records depend on the current criteria structure.";
+      } else if (raw.includes("duplicate key")) {
+        msg = "A criterion with that label already exists. Use a unique name for each criterion.";
+      } else if (raw.includes("permission") || raw.includes("denied") || raw.includes("RLS")) {
+        msg = "You don't have permission to modify criteria for this period.";
+      }
+      setPanelError("period", msg);
     } finally {
       decLoading();
     }

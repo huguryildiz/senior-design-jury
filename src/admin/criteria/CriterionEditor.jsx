@@ -3,6 +3,7 @@
 
 import Tooltip from "@/shared/ui/Tooltip";
 import InlineError from "@/shared/ui/InlineError";
+import AutoTextarea from "@/shared/ui/AutoTextarea";
 import {
   XIcon,
   ChevronRightIcon,
@@ -103,23 +104,36 @@ export default function CriterionEditor({
             )}
           </div>
 
-          <div className="crt-field">
-            <div className="crt-field-label">Short label</div>
-            <input
-              className={[
-                "crt-field-input",
-                (saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] && "error",
-              ].filter(Boolean).join(" ")}
-              value={row.shortLabel}
-              onChange={(e) => setRow(i, "shortLabel", e.target.value)}
-              onBlur={() => markTouched(i, "shortLabel")}
-              placeholder="Technical"
-              aria-label={`Criterion ${i + 1} short label`}
-            />
-            {(saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] && (
-              <InlineError>{errors[`shortLabel_${i}`]}</InlineError>
-            )}
-          </div>
+          {(() => {
+            const slWords = (row.shortLabel || "").trim().split(/\s+/).filter(Boolean).length;
+            const slOver  = slWords > 20;
+            return (
+              <div className="crt-field">
+                <div className="crt-field-label">Short label</div>
+                <input
+                  className={[
+                    "crt-field-input crt-field-capitalize",
+                    (slOver || ((saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`])) && "error",
+                  ].filter(Boolean).join(" ")}
+                  value={row.shortLabel}
+                  onChange={(e) => setRow(i, "shortLabel", e.target.value)}
+                  onBlur={() => markTouched(i, "shortLabel")}
+                  placeholder="Technical"
+                  aria-label={`Criterion ${i + 1} short label`}
+                />
+                <div className="crt-field-hint" style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span />
+                  <span style={{ color: slOver ? "var(--danger)" : "var(--text-quaternary)", fontVariantNumeric: "tabular-nums" }}>
+                    {slWords}/20 words
+                  </span>
+                </div>
+                {slOver && <InlineError>Max 20 words</InlineError>}
+                {!slOver && (saveAttempted || row._fieldTouched?.shortLabel) && errors[`shortLabel_${i}`] && (
+                  <InlineError>{errors[`shortLabel_${i}`]}</InlineError>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="crt-field">
             <div className="crt-field-label">Weight</div>
@@ -165,7 +179,7 @@ export default function CriterionEditor({
           <div className="crt-field-label">
             Description <span className="crt-opt">(optional)</span>
           </div>
-          <textarea
+          <AutoTextarea
             className={[
               "crt-textarea",
               (saveAttempted || row._fieldTouched?.blurb) && errors[`blurb_${i}`] && "error",
@@ -175,7 +189,6 @@ export default function CriterionEditor({
             onBlur={() => markTouched(i, "blurb")}
             placeholder={RUBRIC_EDITOR_TEXT.criterionBlurbPlaceholder}
             aria-label={`Criterion ${i + 1} description`}
-            rows={2}
           />
           {(saveAttempted || row._fieldTouched?.blurb) && errors[`blurb_${i}`] && (
             <InlineError>{errors[`blurb_${i}`]}</InlineError>

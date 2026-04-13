@@ -759,10 +759,11 @@ BEGIN
   PERFORM public._assert_org_admin(v_org_id);
 
   UPDATE framework_outcomes
-  SET code        = COALESCE(p_patch->>'code', code),
-      label       = COALESCE(p_patch->>'label', label),
-      description = COALESCE(p_patch->>'description', description),
-      sort_order  = COALESCE((p_patch->>'sort_order')::INT, sort_order)
+  SET code          = COALESCE(p_patch->>'code', code),
+      label         = COALESCE(p_patch->>'label', label),
+      description   = COALESCE(p_patch->>'description', description),
+      sort_order    = COALESCE((p_patch->>'sort_order')::INT, sort_order),
+      coverage_hint = CASE WHEN p_patch ? 'coverage_hint' THEN p_patch->>'coverage_hint' ELSE coverage_hint END
   WHERE id = p_outcome_id
   RETURNING to_jsonb(framework_outcomes.*) INTO v_after;
 

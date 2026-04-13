@@ -83,15 +83,11 @@ CREATE POLICY "memberships_delete" ON memberships FOR DELETE USING (
 
 -- Org admins can see 'requested' memberships for their own organization
 -- (needed for join-request approval workflow).
+-- Uses SECURITY DEFINER helper to avoid infinite recursion on memberships.
 CREATE POLICY "memberships_select_org_admin_join_requests" ON memberships
   FOR SELECT USING (
     status = 'requested'
-    AND organization_id IN (
-      SELECT m.organization_id FROM memberships m
-      WHERE m.user_id = auth.uid()
-        AND m.status = 'active'
-        AND m.role = 'org_admin'
-    )
+    AND organization_id IN (SELECT current_user_admin_org_ids())
   );
 
 -- =============================================================================

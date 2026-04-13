@@ -199,6 +199,68 @@ export function clampRubricBandsToCriterionMax(rubric, criterionMax) {
   return result;
 }
 
+/**
+ * Proportionally rescale rubric band ranges to a new max score.
+ * Pins first band's min to 0 and last band's max to newMax.
+ * Fixes rounding gaps: each band's max = next band's min − 1.
+ * Preserves level (name) and desc unchanged.
+ *
+ * @param {Array}  bands   - Array of band objects { level, min, max, desc }
+ * @param {number} newMax  - The new max score to scale to
+ * @returns {Array} Rescaled bands array (new objects, same band order)
+ */
+export function rescaleRubricBandsByWeight(bands, newMax) {
+  const newMaxNum = Number(newMax);
+  if (!Array.isArray(bands) || bands.length === 0) return bands ?? [];
+  if (!Number.isFinite(newMaxNum) || newMaxNum <= 0) return bands;
+
+  const origMax = Math.max(0, ...bands.map((b) => {
+    const n = Number(b.max);
+    return Number.isFinite(n) ? n : 0;
+  }));
+  if (origMax <= 0 || origMax === newMaxNum) return bands;
+
+  // Sort by current min to establish position order; keep original index for result placement
+  const sorted = [...bands]
+    .map((band, idx) => ({ band, idx }))
+    .sort((a, b) => (Number(a.band.min) || 0) - (Number(b.band.min) || 0));
+
+  const n = sorted.length;
+  const result = bands.map((b) => ({ ...b }));
+
+  // Scale each band proportionally
+  sorted.forEach(({ band, idx }, j) => {
+    const scaledMin = j === 0 ? 0 : Math.round((Number(band.min) / origMax) * newMaxNum);
+    const scaledMax = j === n - 1 ? newMaxNum : Math.round((Number(band.max) / origMax) * newMaxNum);
+    result[idx] = {
+      ...result[idx],
+      min: String(Math.max(0, Math.min(scaledMin, newMaxNum))),
+      max: String(Math.max(0, Math.min(scaledMax, newMaxNum))),
+    };
+  });
+
+  // Fix rounding gaps: each band's max = next band's min − 1
+  const finalSorted = result
+    .map((b, idx) => ({ b, idx }))
+    .sort((a, b) => Number(a.b.min) - Number(b.b.min));
+
+  for (let j = 0; j < finalSorted.length - 1; j++) {
+    const curr = finalSorted[j];
+    const next = finalSorted[j + 1];
+    if (Number(curr.b.max) !== Number(next.b.min) - 1) {
+      const adjusted = { ...result[curr.idx], max: String(Number(next.b.min) - 1) };
+      result[curr.idx] = adjusted;
+      finalSorted[j].b = adjusted;
+    }
+  }
+
+  // Pin last band's max to newMax
+  const lastEntry = finalSorted[finalSorted.length - 1];
+  result[lastEntry.idx] = { ...result[lastEntry.idx], max: String(newMaxNum) };
+
+  return result;
+}
+
 export function getBandRangeLabel(band) {
   const min = Number(band?.min);
   const max = Number(band?.max);

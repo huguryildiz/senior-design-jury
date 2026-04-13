@@ -1755,44 +1755,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_landing_stats() TO anon, authenticated;
 
--- =============================================================================
--- rpc_platform_metrics
--- =============================================================================
-
-CREATE OR REPLACE FUNCTION public.rpc_platform_metrics()
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_db_size_bytes      bigint;
-  v_db_size_pretty     text;
-  v_active_connections bigint;
-  v_audit_24h          bigint;
-  v_total_orgs         bigint;
-  v_total_jurors       bigint;
-BEGIN
-  SELECT pg_database_size(current_database()) INTO v_db_size_bytes;
-  SELECT pg_size_pretty(v_db_size_bytes) INTO v_db_size_pretty;
-  SELECT count(*) INTO v_active_connections FROM pg_stat_activity WHERE state = 'active';
-  SELECT count(*) INTO v_audit_24h FROM audit_logs WHERE created_at > now() - interval '24 hours';
-  SELECT count(*) INTO v_total_orgs FROM organizations;
-  SELECT count(*) INTO v_total_jurors FROM jurors;
-
-  RETURN jsonb_build_object(
-    'db_size_bytes',       v_db_size_bytes,
-    'db_size_pretty',      v_db_size_pretty,
-    'active_connections',  v_active_connections,
-    'audit_requests_24h',  v_audit_24h,
-    'total_organizations', v_total_orgs,
-    'total_jurors',        v_total_jurors
-  );
-END;
-$$;
-
--- Service role only — no public/authenticated/anon grant
-REVOKE ALL ON FUNCTION public.rpc_platform_metrics() FROM PUBLIC, authenticated, anon;
+-- rpc_platform_metrics moved to 008_platform.sql
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- G) PERIOD MANAGEMENT
@@ -1867,47 +1830,13 @@ GRANT EXECUTE ON FUNCTION public.rpc_period_freeze_snapshot(UUID) TO authenticat
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- H) SYSTEM CONFIG
+-- rpc_public_maintenance_status, rpc_admin_set_maintenance,
+-- rpc_admin_cancel_maintenance moved to 008_platform.sql
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- =============================================================================
--- Maintenance Mode RPCs
+-- rpc_admin_get_maintenance
 -- =============================================================================
-
-CREATE OR REPLACE FUNCTION public.rpc_public_maintenance_status()
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_row  maintenance_mode%ROWTYPE;
-  v_now  TIMESTAMPTZ := now();
-  v_live BOOLEAN;
-BEGIN
-  SELECT * INTO v_row FROM maintenance_mode WHERE id = 1;
-
-  IF v_row.is_active THEN
-    IF v_row.mode = 'scheduled' THEN
-      v_live := (v_row.start_time IS NOT NULL AND v_now >= v_row.start_time);
-    ELSE
-      v_live := true;
-    END IF;
-  ELSE
-    v_live := false;
-  END IF;
-
-  IF v_live AND v_row.end_time IS NOT NULL AND v_now > v_row.end_time THEN
-    v_live := false;
-  END IF;
-
-  RETURN jsonb_build_object(
-    'is_active', v_live, 'mode', v_row.mode,
-    'start_time', v_row.start_time, 'end_time', v_row.end_time, 'message', v_row.message
-  )::JSON;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.rpc_public_maintenance_status() TO anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_get_maintenance()
 RETURNS JSON
@@ -1930,56 +1859,6 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_admin_get_maintenance() TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.rpc_admin_set_maintenance(
-  p_mode TEXT, p_start_time TIMESTAMPTZ DEFAULT NULL,
-  p_duration_min INT DEFAULT NULL, p_message TEXT DEFAULT NULL,
-  p_affected_org_ids UUID[] DEFAULT NULL, p_notify_admins BOOLEAN DEFAULT true
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, auth
-AS $$
-DECLARE
-  v_end_time TIMESTAMPTZ;
-  v_effective_start TIMESTAMPTZ;
-BEGIN
-  IF NOT current_user_is_super_admin() THEN RAISE EXCEPTION 'super_admin required'; END IF;
-  IF p_mode NOT IN ('scheduled', 'immediate') THEN RAISE EXCEPTION 'invalid mode: %', p_mode; END IF;
-
-  v_effective_start := CASE WHEN p_mode = 'immediate' THEN now() ELSE p_start_time END;
-  IF p_duration_min IS NOT NULL AND v_effective_start IS NOT NULL THEN
-    v_end_time := v_effective_start + (p_duration_min || ' minutes')::INTERVAL;
-  END IF;
-
-  UPDATE maintenance_mode SET
-    is_active = true, mode = p_mode, start_time = v_effective_start,
-    end_time = v_end_time, message = COALESCE(p_message, message),
-    affected_org_ids = p_affected_org_ids, notify_admins = p_notify_admins,
-    activated_by = auth.uid(), updated_at = now()
-  WHERE id = 1;
-
-  RETURN jsonb_build_object('ok', true, 'start_time', v_effective_start, 'end_time', v_end_time)::JSON;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.rpc_admin_set_maintenance(TEXT, TIMESTAMPTZ, INT, TEXT, UUID[], BOOLEAN) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.rpc_admin_cancel_maintenance()
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, auth
-AS $$
-BEGIN
-  IF NOT current_user_is_super_admin() THEN RAISE EXCEPTION 'super_admin required'; END IF;
-  UPDATE maintenance_mode SET is_active = false, updated_at = now() WHERE id = 1;
-  RETURN jsonb_build_object('ok', true)::JSON;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.rpc_admin_cancel_maintenance() TO authenticated;
 
 -- =============================================================================
 -- Security Policy RPCs

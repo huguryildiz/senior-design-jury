@@ -94,6 +94,8 @@ export {
   createFramework,
   updateFramework,
   deleteFramework,
+  cloneFramework,
+  assignFrameworkToPeriod,
   listOutcomes,
   createOutcome,
   updateOutcome,

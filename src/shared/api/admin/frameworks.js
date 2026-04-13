@@ -69,6 +69,7 @@ export async function updateOutcome(id, payload) {
   if (payload.label !== undefined) patch.label = payload.label;
   if (payload.description !== undefined) patch.description = payload.description;
   if (payload.sort_order !== undefined) patch.sort_order = payload.sort_order;
+  if (payload.coverage_hint !== undefined) patch.coverage_hint = payload.coverage_hint ?? null;
 
   const { data, error } = await supabase.rpc("rpc_admin_update_framework_outcome", {
     p_outcome_id: id,
@@ -99,7 +100,7 @@ export async function listFrameworkCriteria(frameworkId) {
 export async function listCriterionOutcomeMappings(frameworkId) {
   const { data, error } = await supabase
     .from("framework_criterion_outcome_maps")
-    .select("*, outcome:framework_outcomes(*)")
+    .select("*")
     .eq("framework_id", frameworkId);
   if (error) throw error;
   return data || [];
@@ -117,5 +118,32 @@ export async function upsertCriterionOutcomeMapping(payload) {
 
 export async function deleteCriterionOutcomeMapping(id) {
   const { error } = await supabase.from("framework_criterion_outcome_maps").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Deep-clone a framework under a new name for the given org.
+ * Calls rpc_admin_clone_framework which copies outcomes, criteria, and maps.
+ * Returns { id, name } of the new framework.
+ */
+export async function cloneFramework(frameworkId, newName, orgId) {
+  const { data, error } = await supabase.rpc("rpc_admin_clone_framework", {
+    p_framework_id: frameworkId,
+    p_new_name: newName,
+    p_org_id: orgId,
+  });
+  if (error) throw error;
+  return { id: data, name: newName };
+}
+
+/**
+ * Assign (or reassign) a framework to a period by setting periods.framework_id.
+ * Hard-confirm logic and mapping cleanup are handled in the UI before calling this.
+ */
+export async function assignFrameworkToPeriod(periodId, frameworkId) {
+  const { error } = await supabase
+    .from("periods")
+    .update({ framework_id: frameworkId })
+    .eq("id", periodId);
   if (error) throw error;
 }

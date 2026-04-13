@@ -77,10 +77,7 @@ export function validateRubric(rubric, criterionMax) {
       }
     }
 
-    // Band description required
-    if ((band.desc ?? "").trim() === "") {
-      bandDescErrors[bi] = "Description required";
-    }
+    // Band description optional (no validation required)
 
     // Band range validation
     const bMin = Number(band.min);
@@ -180,19 +177,24 @@ export function validateCriterion(row, allRows, outcomeConfig, index) {
     errors.label = "Required";
   }
 
-  // shortLabel — required + uniqueness
+  // shortLabel — required + word count + uniqueness
   const shortLabelTrimmed = (row.shortLabel ?? "").trim();
   if (shortLabelTrimmed === "") {
     errors.shortLabel = "Required";
   } else {
-    const normalized = shortLabelTrimmed.toLowerCase();
-    const isDuplicate = allRows.some(
-      (r, i) =>
-        i !== index &&
-        (r.shortLabel ?? "").trim().toLowerCase() === normalized
-    );
-    if (isDuplicate) {
-      errors.shortLabel = "Duplicate short label";
+    const wordCount = shortLabelTrimmed.split(/\s+/).length;
+    if (wordCount > 20) {
+      errors.shortLabel = "Max 20 words";
+    } else {
+      const normalized = shortLabelTrimmed.toLowerCase();
+      const isDuplicate = allRows.some(
+        (r, i) =>
+          i !== index &&
+          (r.shortLabel ?? "").trim().toLowerCase() === normalized
+      );
+      if (isDuplicate) {
+        errors.shortLabel = "Duplicate short label";
+      }
     }
   }
 

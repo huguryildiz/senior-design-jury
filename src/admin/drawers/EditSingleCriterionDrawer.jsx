@@ -3,7 +3,8 @@
 // Opens from CriteriaPage row actions ("Edit") or "Add Criterion" button.
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { Check, AlertCircle, X, Plus, Pencil, Lock, ChevronRight } from "lucide-react";
+import { Check, AlertCircle, X, Plus, Pencil, Lock } from "lucide-react";
+import AutoTextarea from "@/shared/ui/AutoTextarea";
 import Drawer from "@/shared/ui/Drawer";
 import AlertCard from "@/shared/ui/AlertCard";
 import InlineError from "@/shared/ui/InlineError";
@@ -14,6 +15,7 @@ import {
   templateToRow,
   emptyRow,
   clampRubricBandsToCriterionMax,
+  rescaleRubricBandsByWeight,
   defaultRubricBands,
   getConfigRubricSeed,
 } from "../criteria/criteriaFormHelpers";
@@ -31,6 +33,7 @@ export default function EditSingleCriterionDrawer({
   onSave,
   disabled,
   isLocked,
+  initialTab,       // optional: 'details' | 'rubric' | 'mapping'
 }) {
   const isNew = editIndex == null || editIndex < 0;
   const formRef = useRef(null);
@@ -44,8 +47,7 @@ export default function EditSingleCriterionDrawer({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [touched, setTouched] = useState({});
-  const [rubricOpen, setRubricOpen] = useState(false);
-  const [outcomeOpen, setOutcomeOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
 
   // Reset when drawer opens with a new target
   useEffect(() => {
@@ -58,10 +60,9 @@ export default function EditSingleCriterionDrawer({
       setSaving(false);
       setSaveError("");
       setTouched({});
-      setRubricOpen(!!criterion?.rubric?.length);
-      setOutcomeOpen(false);
+      setActiveTab(initialTab || "details");
     }
-  }, [open, editIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, editIndex, initialTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Budget ──────────────────────────────────────────────────
   const otherTotal = useMemo(
@@ -120,8 +121,8 @@ export default function EditSingleCriterionDrawer({
     }
     setRowState((prev) => {
       let next = { ...prev, [field]: finalValue };
-      if (field === "max" && finalValue !== "") {
-        next.rubric = clampRubricBandsToCriterionMax(next.rubric, Number(finalValue));
+      if (field === "max" && finalValue !== "" && next.rubric.length > 0) {
+        next.rubric = rescaleRubricBandsByWeight(next.rubric, Number(finalValue));
       }
       if (field === "rubric") next._rubricTouched = true;
       return next;
@@ -133,22 +134,20 @@ export default function EditSingleCriterionDrawer({
     setTouched((prev) => ({ ...prev, [field]: true }));
   }, []);
 
-  // ── Rubric toggle ───────────────────────────────────────────
-  const toggleRubric = useCallback(() => {
-    setRubricOpen((prev) => {
-      if (!prev && row.rubric.length === 0) {
-        const seeded =
-          getConfigRubricSeed(row) ||
-          defaultRubricBands(Number(row.max) || 30);
-        const cMax = Number(row.max);
-        const bounded =
-          Number.isFinite(cMax) && cMax >= 0
-            ? clampRubricBandsToCriterionMax(seeded, cMax)
-            : seeded;
-        setRowState((r) => ({ ...r, rubric: bounded, _rubricTouched: true }));
-      }
-      return !prev;
-    });
+  // ── Tab switching with rubric auto-seed ─────────────────────
+  const handleTabChange = useCallback((tab) => {
+    if (tab === "rubric" && row.rubric.length === 0) {
+      const seeded =
+        getConfigRubricSeed(row) ||
+        defaultRubricBands(Number(row.max) || 30);
+      const cMax = Number(row.max);
+      const bounded =
+        Number.isFinite(cMax) && cMax >= 0
+          ? clampRubricBandsToCriterionMax(seeded, cMax)
+          : seeded;
+      setRowState((r) => ({ ...r, rubric: bounded, _rubricTouched: true }));
+    }
+    setActiveTab(tab);
   }, [row.rubric.length, row.max]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Save ────────────────────────────────────────────────────
@@ -169,8 +168,8 @@ export default function EditSingleCriterionDrawer({
         rubricErrors.coverageError);
 
     if (hasFieldErrors || hasRubricErrors) {
-      if (hasRubricErrors) setRubricOpen(true);
-      if (fieldErrors.outcome) setOutcomeOpen(true);
+      if (hasRubricErrors) setActiveTab("rubric");
+      if (fieldErrors.outcome) setActiveTab("mapping");
 
       // Shake the save button
       if (saveBtnRef.current) {
@@ -262,12 +261,8 @@ export default function EditSingleCriterionDrawer({
                 {isNew ? "Add Criterion" : "Edit Criterion"}
               </div>
               <div className="crt-drawer-subtitle">
-                {isNew
-                  ? "Define a new scoring criterion"
-                  : "Modify scoring weights and rubric"}
-                {period?.name && (
-                  <span className="crt-semester-tag">{period.name}</span>
-                )}
+                {isNew ? "New criterion" : (criterion?.label ?? "Criterion")}
+                {period?.name && ` · ${period.name}`}
               </div>
             </div>
           </div>
@@ -282,209 +277,242 @@ export default function EditSingleCriterionDrawer({
         </div>
       </div>
 
+      {/* ── Tab bar ──────────────────────────────────────────── */}
+      <div className="crt-drawer-tabs">
+        <button
+          className={`crt-drawer-tab${activeTab === "details" ? " active" : ""}`}
+          onClick={() => setActiveTab("details")}
+          type="button"
+        >
+          Details
+        </button>
+        <button
+          className={`crt-drawer-tab${activeTab === "rubric" ? " active" : ""}`}
+          onClick={() => handleTabChange("rubric")}
+          type="button"
+        >
+          Rubric
+          <span className="crt-drawer-tab-badge">{row.rubric.length}</span>
+        </button>
+        <button
+          className={`crt-drawer-tab${activeTab === "mapping" ? " active" : ""}`}
+          onClick={() => setActiveTab("mapping")}
+          type="button"
+        >
+          Mapping
+          <span className="crt-drawer-tab-badge">{sanitizeOutcomes(row.outcomes).length}</span>
+        </button>
+      </div>
+
       {/* ── Body ────────────────────────────────────────── */}
       <div className="fs-drawer-body">
-        {/* Budget bar */}
-        <div className="crt-budget-bar">
-          <div className="crt-budget-header">
-            <span className="crt-budget-label">WEIGHT BUDGET</span>
-            <span
-              className={`crt-budget-badge${newTotal === 100 ? " valid" : newTotal > 100 ? " over" : ""}`}
-            >
-              {newTotal} / 100
-            </span>
-          </div>
-          <div className="crt-budget-track">
-            <div
-              className="crt-budget-fill-other"
-              style={{ width: `${budgetFillOther}%` }}
-            />
-            <div
-              className="crt-budget-fill-current"
-              style={{
-                width: `${budgetFillCurrent}%`,
-                background: budgetColor,
-              }}
-            />
-          </div>
-          <div className="crt-budget-detail">
-            <span>
-              Other criteria: <strong>{otherTotal}</strong> pts
-            </span>
-            <span>
-              Available: <strong>{available}</strong> pts
-            </span>
-          </div>
-        </div>
-
-        {/* Form */}
-        <div className="crt-single-form" ref={formRef}>
-          {/* Field grid: Label / Short label / Weight */}
-          <div className="crt-field-grid">
-            <div className="crt-field">
-              <div className="crt-field-label">Label</div>
-              <input
-                className={[
-                  "crt-field-input",
-                  showError("label") && "error",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                value={row.label}
-                onChange={(e) => setField("label", e.target.value)}
-                onBlur={() => markTouched("label")}
-                placeholder="Technical Content"
-                aria-label="Criterion label"
-              />
-              {showError("label") && (
-                <InlineError>{fieldErrors.label}</InlineError>
-              )}
-            </div>
-
-            <div className="crt-field">
-              <div className="crt-field-label">Short label</div>
-              <input
-                className={[
-                  "crt-field-input",
-                  showError("shortLabel") && "error",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                value={row.shortLabel}
-                onChange={(e) => setField("shortLabel", e.target.value)}
-                onBlur={() => markTouched("shortLabel")}
-                placeholder="Technical"
-                aria-label="Criterion short label"
-              />
-              {showError("shortLabel") && (
-                <InlineError>{fieldErrors.shortLabel}</InlineError>
-              )}
-            </div>
-
-            <div className="crt-field">
-              <div className="crt-field-label">Weight</div>
-              {fullyLocked ? (
-                <>
-                  <input
-                    className="crt-field-input mono locked"
-                    value={row.max}
-                    readOnly
-                    aria-label="Criterion weight (locked)"
-                  />
-                  <div className="crt-locked-hint">
-                    <Lock size={12} /> Locked
-                  </div>
-                </>
-              ) : (
-                <>
-                  <input
-                    className={[
-                      "crt-field-input mono",
-                      showError("max") && "error",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={row.max}
-                    onChange={(e) => setField("max", e.target.value)}
-                    onBlur={() => markTouched("max")}
-                    placeholder="30"
-                    aria-label="Criterion weight"
-                  />
-                  {showError("max") && (
-                    <InlineError>{fieldErrors.max}</InlineError>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="crt-field" style={{ marginTop: 10 }}>
-            <div className="crt-field-label">
-              Description <span className="crt-opt">(optional)</span>
-            </div>
-            <textarea
-              className={[
-                "crt-textarea",
-                showError("blurb") && "error",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              value={row.blurb}
-              onChange={(e) => setField("blurb", e.target.value)}
-              onBlur={() => markTouched("blurb")}
-              placeholder={RUBRIC_EDITOR_TEXT.criterionBlurbPlaceholder}
-              aria-label="Criterion description"
-              rows={2}
-            />
-            {showError("blurb") && (
-              <InlineError>{fieldErrors.blurb}</InlineError>
-            )}
-          </div>
-
-          {/* Outcome mapping */}
-          {(outcomeConfig || []).length > 0 && (
-            <div className="crt-sub">
-              <button
-                type="button"
-                className={`crt-sub-toggle${outcomeOpen ? " open" : ""}`}
-                onClick={() => !fullyLocked && setOutcomeOpen((p) => !p)}
-                aria-expanded={outcomeOpen}
-                disabled={fullyLocked}
-              >
-                <ChevronRight size={14} />
-                Outcome Mapping
-                <span className="crt-sub-count">
-                  {sanitizeOutcomes(row.outcomes).length} mapped
+        {/* Details Tab */}
+        {activeTab === "details" && (
+          <div className="crt-tab-panel">
+            {/* Budget bar */}
+            <div className="crt-drawer-budget">
+              <div className="crt-drawer-budget-header">
+                <span className="crt-drawer-budget-label">Weight Budget</span>
+                <span
+                  className="crt-drawer-budget-value"
+                  style={{ color: budgetColor }}
+                >
+                  {newTotal} / 100{newTotal === 100 ? " ✓" : ""}
                 </span>
-              </button>
-              {outcomeOpen && (
-                <div className="crt-sub-body">
-                  <OutcomePillSelector
-                    selected={sanitizeOutcomes(row.outcomes)}
-                    outcomeConfig={outcomeConfig}
-                    onChange={(next) => setField("outcomes", next)}
-                    disabled={fullyLocked}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Rubric bands */}
-          <div className="crt-sub">
-            <button
-              type="button"
-              className={`crt-sub-toggle${rubricOpen ? " open" : ""}`}
-              onClick={toggleRubric}
-              aria-expanded={rubricOpen}
-            >
-              <ChevronRight size={14} />
-              Rubric Bands
-              <span className="crt-sub-count">
-                {row.rubric.length} level{row.rubric.length !== 1 ? "s" : ""}
-              </span>
-            </button>
-            {rubricOpen && (
-              <div className="crt-sub-body">
-                <RubricBandEditor
-                  bands={row.rubric}
-                  onChange={(next) => setField("rubric", next)}
-                  disabled={fullyLocked}
-                  criterionMax={row.max}
-                  rubricErrors={
-                    row._rubricTouched || saveAttempted ? rubricErrors : null
-                  }
+              </div>
+              <div className="crt-drawer-budget-track">
+                <div
+                  className="crt-drawer-budget-fill-current"
+                  style={{
+                    width: `${Math.min(100, newTotal)}%`,
+                    background: budgetColor,
+                  }}
                 />
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="crt-single-form" ref={formRef}>
+              {/* Label */}
+              <div className="crt-field">
+                <div className="crt-field-label">
+                  Label <span className="crt-req">*</span>
+                </div>
+                <input
+                  className={[
+                    "crt-field-input",
+                    showError("label") && "error",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  value={row.label}
+                  onChange={(e) => setField("label", e.target.value)}
+                  onBlur={() => markTouched("label")}
+                  placeholder="Technical Content"
+                  aria-label="Criterion label"
+                />
+                {showError("label") && (
+                  <InlineError>{fieldErrors.label}</InlineError>
+                )}
+              </div>
+
+              {/* Short label */}
+              {(() => {
+                const slWords = (row.shortLabel || "").trim().split(/\s+/).filter(Boolean).length;
+                const slOver  = slWords > 20;
+                return (
+                  <div className="crt-field">
+                    <div className="crt-field-label">
+                      Short label <span className="crt-req">*</span>
+                    </div>
+                    <input
+                      className={[
+                        "crt-field-input crt-field-capitalize",
+                        (showError("shortLabel") || slOver) && "error",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      value={row.shortLabel}
+                      onChange={(e) => setField("shortLabel", e.target.value)}
+                      onBlur={() => markTouched("shortLabel")}
+                      placeholder="Technical"
+                      aria-label="Criterion short label"
+                    />
+                    <div className="crt-field-hint" style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Shown in juror scoring interface</span>
+                      <span style={{ color: slOver ? "var(--danger)" : "var(--text-quaternary)", fontVariantNumeric: "tabular-nums" }}>
+                        {slWords}/20 words
+                      </span>
+                    </div>
+                    {slOver && (
+                      <InlineError>Max 20 words</InlineError>
+                    )}
+                    {!slOver && showError("shortLabel") && (
+                      <InlineError>{fieldErrors.shortLabel}</InlineError>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Weight */}
+              <div className="crt-field">
+                <div className="crt-field-label">
+                  Weight (points) <span className="crt-req">*</span>
+                </div>
+                {fullyLocked ? (
+                  <>
+                    <input
+                      className="crt-field-input mono locked"
+                      value={row.max}
+                      readOnly
+                      aria-label="Criterion weight (locked)"
+                    />
+                    <div className="crt-locked-hint">
+                      <Lock size={12} /> Locked
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      className={[
+                        "crt-field-input mono",
+                        showError("max") && "error",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={row.max}
+                      onChange={(e) => setField("max", e.target.value)}
+                      onBlur={() => markTouched("max")}
+                      placeholder="30"
+                      aria-label="Criterion weight"
+                    />
+                    {!currentMax ? (
+                      <div className="crt-field-hint">
+                        Other criteria use {otherTotal} pts · {available} pts available
+                      </div>
+                    ) : newTotal === 100 ? (
+                      <div className="crt-field-hint hint-success">
+                        ✓ Perfect — budget fully allocated
+                      </div>
+                    ) : newTotal > 100 ? (
+                      <div className="crt-field-hint hint-danger">
+                        Over budget by {newTotal - 100} pts
+                      </div>
+                    ) : (
+                      <div className="crt-field-hint hint-warning">
+                        {100 - newTotal} pts remaining
+                      </div>
+                    )}
+                    {showError("max") && (
+                      <InlineError>{fieldErrors.max}</InlineError>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="crt-field">
+                <div className="crt-field-label">
+                  Description <span className="crt-opt">(optional)</span>
+                </div>
+                <AutoTextarea
+                  className={[
+                    "crt-textarea",
+                    showError("blurb") && "error",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  value={row.blurb}
+                  onChange={(e) => setField("blurb", e.target.value)}
+                  onBlur={() => markTouched("blurb")}
+                  placeholder={RUBRIC_EDITOR_TEXT.criterionBlurbPlaceholder}
+                  aria-label="Criterion description"
+                />
+                {showError("blurb") && (
+                  <InlineError>{fieldErrors.blurb}</InlineError>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rubric Tab */}
+        {activeTab === "rubric" && (
+          <div className="crt-tab-panel">
+            <RubricBandEditor
+              bands={row.rubric}
+              onChange={(next) => setField("rubric", next)}
+              disabled={fullyLocked}
+              criterionMax={row.max}
+              rubricErrors={
+                row._rubricTouched || saveAttempted ? rubricErrors : null
+              }
+            />
+          </div>
+        )}
+
+        {/* Mapping Tab */}
+        {activeTab === "mapping" && (
+          <div className="crt-tab-panel">
+            {(outcomeConfig || []).length > 0 ? (
+              <OutcomePillSelector
+                selected={sanitizeOutcomes(row.outcomes)}
+                outcomeConfig={outcomeConfig}
+                onChange={(next) => setField("outcomes", next)}
+                disabled={fullyLocked}
+              />
+            ) : (
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", padding: "20px 0" }}>
+                No outcomes configured. Go to Outcomes page to define them.
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Save error */}
+        {/* Save error - always visible */}
         {saveError && (
           <div style={{ marginTop: 16 }}>
             <AlertCard variant="error">{saveError}</AlertCard>
@@ -495,36 +523,21 @@ export default function EditSingleCriterionDrawer({
       {/* ── Footer ──────────────────────────────────────── */}
       <div className="fs-drawer-footer">
         <div className="crt-footer-meta">
-          {newTotal === 100 ? (
+          {!row.label?.trim() ? (
             <>
-              <Check
-                size={14}
-                style={{ color: "var(--success)", flexShrink: 0 }}
-              />
-              <span>
-                Total: <span className="crt-footer-count">100</span> pts
-              </span>
+              <AlertCircle size={14} style={{ color: "var(--danger)", flexShrink: 0 }} />
+              <span style={{ color: "var(--danger)" }}>Label required</span>
+            </>
+          ) : !currentMax ? (
+            <>
+              <AlertCircle size={14} style={{ color: "var(--danger)", flexShrink: 0 }} />
+              <span style={{ color: "var(--danger)" }}>Weight required</span>
             </>
           ) : (
             <>
-              <AlertCircle
-                size={14}
-                style={{
-                  color:
-                    newTotal > 100
-                      ? "var(--danger)"
-                      : "var(--warning, #f59e0b)",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  color:
-                    newTotal > 100 ? "var(--danger)" : "var(--text-tertiary)",
-                }}
-              >
-                Total: <span className="crt-footer-count">{newTotal}</span> /
-                100 pts
+              <Check size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
+              <span style={{ color: "var(--success)" }}>
+                {row.label} · <span className="crt-footer-count">{currentMax}</span> pts
               </span>
             </>
           )}
@@ -538,7 +551,7 @@ export default function EditSingleCriterionDrawer({
           disabled={saving || fullyLocked}
           onClick={handleSave}
         >
-          {saving ? "Saving…" : isNew ? "Add Criterion" : "Save Changes"}
+          {saving ? "Saving…" : isNew ? "Add Criterion" : "Done"}
         </button>
       </div>
     </Drawer>

@@ -104,6 +104,7 @@ export default function PeriodsPage() {
   const {
     organizationId,
     selectedPeriodId,
+    frameworks = [],
     isDemoMode = false,
     onDirtyChange,
     onCurrentSemesterChange,
@@ -745,6 +746,7 @@ export default function PeriodsPage() {
         period={periodDrawerTarget}
         onSave={handleSavePeriod}
         allPeriods={periodList}
+        frameworks={frameworks}
         onNavigateToCriteria={() => onNavigate?.("criteria")}
       />
     </div>

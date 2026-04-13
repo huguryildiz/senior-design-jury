@@ -86,13 +86,14 @@ CREATE TABLE frameworks (
 -- =============================================================================
 
 CREATE TABLE framework_outcomes (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  framework_id UUID NOT NULL REFERENCES frameworks(id) ON DELETE CASCADE,
-  code         TEXT NOT NULL,
-  label        TEXT NOT NULL,
-  description  TEXT,
-  sort_order   INT DEFAULT 0,
-  created_at   TIMESTAMPTZ DEFAULT now(),
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  framework_id   UUID NOT NULL REFERENCES frameworks(id) ON DELETE CASCADE,
+  code           TEXT NOT NULL,
+  label          TEXT NOT NULL,
+  description    TEXT,
+  sort_order     INT DEFAULT 0,
+  coverage_hint  TEXT CHECK (coverage_hint IN ('indirect')),
+  created_at     TIMESTAMPTZ DEFAULT now(),
   UNIQUE(framework_id, code)
 );
 
@@ -326,6 +327,7 @@ CREATE TABLE period_outcomes (
   label             TEXT NOT NULL,
   description       TEXT,
   sort_order        INT DEFAULT 0,
+  coverage_hint     TEXT CHECK (coverage_hint IN ('indirect')),
   UNIQUE(period_id, code)
 );
 

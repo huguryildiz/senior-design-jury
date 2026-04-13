@@ -64,11 +64,14 @@ export function useFrameworkOutcomes({ frameworkId }) {
   const getCoverage = useCallback(
     (outcomeId) => {
       const maps = mappings.filter((m) => m.outcome_id === outcomeId);
-      if (maps.length === 0) return "none";
+      if (maps.length === 0) {
+        const outcome = outcomes.find((o) => o.id === outcomeId);
+        return outcome?.coverage_hint === "indirect" ? "indirect" : "none";
+      }
       if (maps.some((m) => m.coverage_type === "direct")) return "direct";
       return "indirect";
     },
-    [mappings]
+    [mappings, outcomes]
   );
 
   const getMappedCriteria = useCallback(
@@ -118,11 +121,16 @@ export function useFrameworkOutcomes({ frameworkId }) {
   );
 
   const editOutcome = useCallback(
-    async (outcomeId, { label, description, criterionIds = [] }) => {
+    async (outcomeId, { code, label, description, criterionIds = [], coverageType = "direct" }) => {
+      // coverage_hint persists "indirect" for unmapped outcomes; cleared when criteria are selected
+      const coverage_hint = criterionIds.length === 0 && coverageType === "indirect" ? "indirect" : null;
+
       // Update the outcome row
       await updateOutcome(outcomeId, {
+        ...(code !== undefined && { code }),
         label,
         description: description || null,
+        coverage_hint,
       });
 
       // Sync mappings: remove old, add new
@@ -131,6 +139,9 @@ export function useFrameworkOutcomes({ frameworkId }) {
 
       const toRemove = currentMaps.filter((m) => !criterionIds.includes(m.criterion_id));
       const toAdd = criterionIds.filter((id) => !currentCritIds.includes(id));
+      const toUpdate = currentMaps.filter(
+        (m) => criterionIds.includes(m.criterion_id) && m.coverage_type !== coverageType
+      );
 
       await Promise.all([
         ...toRemove.map((m) => deleteCriterionOutcomeMapping(m.id)),
@@ -139,7 +150,13 @@ export function useFrameworkOutcomes({ frameworkId }) {
             framework_id: frameworkId,
             criterion_id: critId,
             outcome_id: outcomeId,
-            coverage_type: "direct",
+            coverage_type: coverageType,
+          })
+        ),
+        ...toUpdate.map((m) =>
+          upsertCriterionOutcomeMapping({
+            ...m,
+            coverage_type: coverageType,
           })
         ),
       ]);
@@ -192,14 +209,12 @@ export function useFrameworkOutcomes({ frameworkId }) {
       const maps = mappings.filter((m) => m.outcome_id === outcomeId);
 
       if (maps.length === 0) {
-        // none → indirect: we need at least one mapping to mark indirect.
-        // Since there's no criterion, we can't create a real mapping.
-        // Use a special "indirect" marker — pick the first criterion as a placeholder.
-        // Actually, the cleaner approach: if the outcome has no mappings,
-        // the UI cycles none ↔ indirect purely locally. We'll handle
-        // persistence via outcome-level flag if DB supports it.
-        // For now, return the target state and let the page handle local state.
-        return "indirect";
+        // No criterion mappings — cycle none ↔ indirect via coverage_hint on the outcome row
+        const outcome = outcomes.find((o) => o.id === outcomeId);
+        const newHint = outcome?.coverage_hint === "indirect" ? null : "indirect";
+        await updateOutcome(outcomeId, { coverage_hint: newHint });
+        await loadAll();
+        return newHint === "indirect" ? "indirect" : "none";
       }
 
       // If all mappings are indirect → cycle to none (remove all)
@@ -223,7 +238,7 @@ export function useFrameworkOutcomes({ frameworkId }) {
       await loadAll();
       return "indirect";
     },
-    [mappings, loadAll]
+    [mappings, outcomes, loadAll]
   );
 
   return {

@@ -27,6 +27,7 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import { getPeriodCounts } from "@/shared/api";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
 import { formatDate } from "@/shared/lib/dateUtils";
+import FrameworkPickerModal from "../modals/FrameworkPickerModal";
 
 
 const LOCK_OPTIONS = [
@@ -45,6 +46,7 @@ export default function AddEditPeriodDrawer({
   period,
   onSave,
   allPeriods = [],
+  frameworks = [],
   onNavigateToCriteria,
 }) {
   const isEdit = !!period;
@@ -56,6 +58,9 @@ export default function AddEditPeriodDrawer({
   const [formIsLocked, setFormIsLocked] = useState("open");
   const [formIsVisible, setFormIsVisible] = useState("visible");
   const [formCopyCriteriaFrom, setFormCopyCriteriaFrom] = useState("");
+  const [formFrameworkId, setFormFrameworkId] = useState(null);
+  const [formFrameworkName, setFormFrameworkName] = useState("");
+  const [fwPickerOpen, setFwPickerOpen] = useState(false);
 
   const [counts, setCounts] = useState(null);
   const [countsLoading, setCountsLoading] = useState(false);
@@ -73,6 +78,10 @@ export default function AddEditPeriodDrawer({
     setFormIsLocked(period?.is_locked ? "locked" : "open");
     setFormIsVisible(period?.is_visible === false ? "hidden" : "visible");
     setFormCopyCriteriaFrom("");
+    setFormFrameworkId(period?.framework_id ?? null);
+    setFormFrameworkName(
+      period?.framework_id ? (frameworks.find((f) => f.id === period.framework_id)?.name || "") : ""
+    );
     setSaveError("");
     setNameError("");
     setSaving(false);
@@ -118,6 +127,7 @@ export default function AddEditPeriodDrawer({
         is_locked: formIsLocked === "locked",
         is_visible: formIsVisible === "visible",
         ...(!isEdit && formCopyCriteriaFrom ? { copyCriteriaFromPeriodId: formCopyCriteriaFrom } : {}),
+        frameworkId: formFrameworkId || null,
       });
       onClose();
     } catch (e) {
@@ -293,6 +303,50 @@ export default function AddEditPeriodDrawer({
             </div>
 
             <div className="fs-field">
+              <label className="fs-field-label">
+                Framework <span className="fs-field-opt">(optional)</span>
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div
+                  style={{
+                    flex: 1,
+                    padding: "9px 12px",
+                    borderRadius: "var(--radius)",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface-1)",
+                    fontSize: 13,
+                    color: formFrameworkName ? "var(--text-primary)" : "var(--text-tertiary)",
+                  }}
+                >
+                  {formFrameworkName || "— Select or add later from the Outcomes page —"}
+                </div>
+                <button
+                  type="button"
+                  className="fs-btn fs-btn-secondary"
+                  style={{ flexShrink: 0, fontSize: 12, padding: "6px 12px" }}
+                  onClick={() => setFwPickerOpen(true)}
+                  disabled={saving}
+                >
+                  {formFrameworkName ? "Change" : "Select…"}
+                </button>
+                {formFrameworkName && (
+                  <button
+                    type="button"
+                    className="fs-btn fs-btn-secondary"
+                    style={{ flexShrink: 0, fontSize: 12, padding: "6px 10px", color: "var(--text-tertiary)" }}
+                    onClick={() => { setFormFrameworkId(null); setFormFrameworkName(""); }}
+                    disabled={saving}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <div className="fs-field-helper hint">
+                The selected framework will be cloned for this period. You can also set it later from the Outcomes page.
+              </div>
+            </div>
+
+            <div className="fs-field">
               <label className="fs-field-label">Evaluation Lock</label>
               <CustomSelect
                 value={formIsLocked}
@@ -452,6 +506,15 @@ export default function AddEditPeriodDrawer({
           </AsyncButtonContent>
         </button>
       </div>
+      <FrameworkPickerModal
+        open={fwPickerOpen}
+        onClose={() => setFwPickerOpen(false)}
+        frameworks={frameworks}
+        onSelect={(fw) => {
+          setFormFrameworkId(fw.id);
+          setFormFrameworkName(fw.name);
+        }}
+      />
     </Drawer>
   );
 }

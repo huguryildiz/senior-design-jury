@@ -4303,5 +4303,25 @@
     "risk": "A broken delete action would leave backups orphaned or prevent cleanup of old exports.",
     "coverageStrength": "Medium",
     "severity": "normal"
+  },
+  {
+    "id": "criteria.rescale.01",
+    "description": "rescaleRubricBandsByWeight: returns bands unchanged when origMax === newMax"
+  },
+  {
+    "id": "criteria.rescale.02",
+    "description": "rescaleRubricBandsByWeight: scales bands up proportionally (10 → 30)"
+  },
+  {
+    "id": "criteria.rescale.03",
+    "description": "rescaleRubricBandsByWeight: scales bands down proportionally (30 → 10)"
+  },
+  {
+    "id": "criteria.rescale.04",
+    "description": "rescaleRubricBandsByWeight: returns empty array unchanged when bands is empty"
+  },
+  {
+    "id": "criteria.rescale.05",
+    "description": "rescaleRubricBandsByWeight: preserves level and desc, only changes min/max"
   }
 ]

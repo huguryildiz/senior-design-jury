@@ -129,14 +129,14 @@ export default function CreateOrganizationDrawer({ open, onClose, onSave, error 
           <label className="fs-field-label">
             Short Label <span className="fs-field-req">*</span>
           </label>
-          <input
+          <textarea
             className="fs-input"
-            type="text"
+            style={{ resize: "vertical", overflow: "hidden", padding: "10px 12px", fontSize: 13, marginTop: 2, minHeight: 40, textTransform: "uppercase" }}
             placeholder="e.g. BILKENT-CS"
             value={form.shortLabel}
             onChange={(e) => set("shortLabel", e.target.value.toUpperCase())}
             disabled={saving}
-            style={{ textTransform: "uppercase" }}
+            rows={2}
           />
           <div className="fs-field-helper hint">Used in exports and cross-org reports. Must be unique.</div>
         </div>

@@ -1,25 +1,17 @@
 // src/admin/criteria/RubricBandEditor.jsx
 
+import { useState } from "react";
 import InlineError, { CoverageBanner } from "@/shared/ui/InlineError";
 import { clampToCriterionMax, getDescPlaceholder } from "./criteriaFormHelpers";
-
+import CoverageBar from "./CoverageBar";
+import AutoTextarea from "@/shared/ui/AutoTextarea";
 import { Icon } from "lucide-react";
 
-const BAND_TAG_CLASSES = ["tag-exemplary", "tag-strong", "tag-adequate", "tag-needs-work"];
-
-function getBandTagClass(bi, bands) {
-  // Position 0 = best band (highest score = first in array by prototype convention)
-  // We use index position relative to total bands
-  const idx = Math.min(bi, BAND_TAG_CLASSES.length - 1);
-  return BAND_TAG_CLASSES[idx] || "";
-}
-
-function getBandColor(bi) {
-  const colors = ["#16a34a", "#0f766e", "#b45309", "#dc2626"];
-  return colors[Math.min(bi, colors.length - 1)];
-}
+const BAND_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"];
 
 export default function RubricBandEditor({ bands, onChange, disabled, criterionMax, rubricErrors }) {
+  const [expandedIndex, setExpandedIndex] = useState(0); // first band expanded by default
+
   const bandRangeErrors = rubricErrors?.bandRangeErrors ?? {};
   const bandLevelErrors = rubricErrors?.bandLevelErrors ?? {};
   const bandDescErrors  = rubricErrors?.bandDescErrors  ?? {};
@@ -38,6 +30,11 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
     const next = bands.map((b, idx) => idx === bi ? { ...b, [field]: finalValue } : b);
     onChange(next);
   };
+  const toggleDescription = (bi) => {
+    const band = bands[bi];
+    const hasDesc = band.desc && band.desc.trim().length > 0;
+    setBand(bi, "desc", hasDesc ? "" : " ");
+  };
 
   return (
     <div className="crt-band-grid">
@@ -50,142 +47,183 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
         const descError  = bandDescErrors[bi];
         const hasError   = !!(rangeError || levelError || descError);
         const isValid    = !hasError && band.level && band.min !== "" && band.max !== "";
-        const bandColor  = getBandColor(bi);
-        const tagClass   = getBandTagClass(bi, bands);
+        const bandColor  = BAND_COLORS[bi % BAND_COLORS.length];
+        const isExpanded = expandedIndex === bi;
+        const hasDesc    = band.desc && band.desc.trim().length > 0;
 
         return (
           <div
             key={bi}
-            className={`crt-band-edit${isValid ? " band-valid" : ""}${hasError ? " band-error" : ""}`}
+            className={`crt-band-card ${isExpanded ? "expanded" : ""}`}
           >
-            <div className="crt-band-edit-color" style={{ background: bandColor }} />
-            <div className="crt-band-edit-header">
-              <div className="crt-band-edit-header-left">
-                <span className="crt-band-edit-ordinal">{bi + 1}</span>
-                <span className={`crt-band-edit-level-tag ${tagClass}`}>
-                  {band.level || `Band ${bi + 1}`}
-                </span>
-              </div>
-              {!disabled && (
+            {/* Collapsed header */}
+            <div
+              className="crt-band-header"
+              onClick={() => setExpandedIndex(isExpanded ? -1 : bi)}
+            >
+              <span
+                className="crt-band-dot"
+                style={{ background: bandColor }}
+              />
+              <span className="crt-band-level">
+                {band.level || "Untitled"}
+              </span>
+              <span className="crt-band-range-text">
+                {band.min}–{band.max}
+              </span>
+              {!disabled && bands.length > 2 && (
                 <button
+                  className="crt-band-remove"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeBand(bi);
+                  }}
                   type="button"
-                  className="crt-band-edit-remove"
-                  onClick={() => removeBand(bi)}
                   aria-label={`Remove band ${bi + 1}`}
-                  title="Remove band"
                 >
-                  <Icon
-                    iconNode={[]}
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2">
-                    <path d="M2 2l8 8M10 2l-8 8" />
-                  </Icon>
+                  ×
                 </button>
               )}
+              <span className="crt-band-chevron">▸</span>
             </div>
-            <div className="crt-band-edit-fields">
-              <div className="crt-field">
-                <div className="crt-field-label">Level label</div>
-                <input
-                  className={`crt-field-input${levelError ? " error" : ""}`}
-                  value={band.level}
-                  onChange={(e) => setBand(bi, "level", e.target.value)}
-                  placeholder="e.g. Excellent"
-                  disabled={disabled}
-                  aria-label={`Band ${bi + 1} level`}
-                />
-                {levelError && (
-                  <InlineError>{levelError}</InlineError>
-                )}
-              </div>
 
-              <div className="crt-field">
-                <div className="crt-field-label">Score range</div>
-                <div className="crt-band-edit-range">
+            {/* Expanded body */}
+            {isExpanded && (
+              <div className="crt-band-body">
+                {/* Level input */}
+                <div className="crt-field">
+                  <div className="crt-field-label">Level label</div>
                   <input
-                    className={`crt-field-input mono${rangeError ? " error" : ""}`}
-                    type="number"
-                    min="0"
-                    max={criterionMax}
-                    value={band.min}
-                    onChange={(e) => setBand(bi, "min", e.target.value)}
-                    placeholder="0"
+                    className={`crt-band-input${levelError ? " error" : ""}`}
+                    value={band.level}
+                    onChange={(e) => setBand(bi, "level", e.target.value)}
+                    placeholder="e.g. Excellent"
                     disabled={disabled}
-                    aria-label={`Band ${bi + 1} min`}
+                    aria-label={`Band ${bi + 1} level`}
                   />
-                  <span className="range-sep">–</span>
-                  <input
-                    className={`crt-field-input mono${rangeError ? " error" : ""}`}
-                    type="number"
-                    min="0"
-                    max={criterionMax}
-                    value={band.max}
-                    onChange={(e) => setBand(bi, "max", e.target.value)}
-                    placeholder={criterionMax || "30"}
-                    disabled={disabled}
-                    aria-label={`Band ${bi + 1} max`}
-                  />
+                  {levelError && (
+                    <InlineError>{levelError}</InlineError>
+                  )}
                 </div>
-                {rangeError && (
-                  <InlineError>{rangeError}</InlineError>
-                )}
-              </div>
 
-              <div className="crt-field full">
-                <div className="crt-field-label">
-                  Description <span className="crt-opt">(optional)</span>
+                {/* Range inputs */}
+                <div className="crt-field">
+                  <div className="crt-field-label">Score range</div>
+                  <div className="crt-band-range-inputs">
+                    <input
+                      className={`crt-band-input${rangeError ? " error" : ""}`}
+                      type="number"
+                      min="0"
+                      max={criterionMax}
+                      value={band.min}
+                      onChange={(e) => setBand(bi, "min", e.target.value)}
+                      placeholder="0"
+                      disabled={disabled}
+                      aria-label={`Band ${bi + 1} min`}
+                    />
+                    <span className="crt-band-range-sep">–</span>
+                    <input
+                      className={`crt-band-input${rangeError ? " error" : ""}`}
+                      type="number"
+                      min="0"
+                      max={criterionMax}
+                      value={band.max}
+                      onChange={(e) => setBand(bi, "max", e.target.value)}
+                      placeholder={criterionMax || "30"}
+                      disabled={disabled}
+                      aria-label={`Band ${bi + 1} max`}
+                    />
+                  </div>
+                  {rangeError && (
+                    <InlineError>{rangeError}</InlineError>
+                  )}
                 </div>
-                <textarea
-                  className={`crt-textarea${descError ? " error" : ""}`}
-                  value={band.desc}
-                  onChange={(e) => setBand(bi, "desc", e.target.value)}
-                  disabled={disabled}
-                  placeholder={getDescPlaceholder(band.level)}
-                  aria-label={`Band ${bi + 1} description`}
-                  rows={2}
-                />
-                {descError && (
-                  <InlineError>{descError}</InlineError>
-                )}
-              </div>
-            </div>
-            {(isValid || hasError) && (
-              <div className={`crt-band-edit-helper ${hasError ? "helper-error" : "helper-success"}`}>
-                {hasError ? (
-                  <>
-                    <Icon
-                      iconNode={[]}
-                      viewBox="0 0 12 12"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden="true">
-                      <circle cx="6" cy="6" r="5" />
-                      <path d="M6 4v3M6 8.5v.5" />
-                    </Icon>
-                    {rangeError || levelError || descError}
-                  </>
-                ) : (
-                  <>
-                    <Icon
-                      iconNode={[]}
-                      viewBox="0 0 12 12"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      aria-hidden="true">
-                      <polyline points="2,6.5 5,9.5 10,3" />
-                    </Icon>
-                    Looks good
-                  </>
+
+                {/* Optional description */}
+                <div className="crt-field">
+                  {!hasDesc ? (
+                    <button
+                      type="button"
+                      className="crt-band-desc-toggle"
+                      onClick={() => toggleDescription(bi)}
+                      disabled={disabled}
+                    >
+                      + Add description (optional)
+                    </button>
+                  ) : (
+                    <>
+                      <div className="crt-field-label">
+                        Description{" "}
+                        <button
+                          type="button"
+                          className="crt-band-desc-toggle"
+                          onClick={() => toggleDescription(bi)}
+                          disabled={disabled}
+                          style={{ marginLeft: "8px" }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <AutoTextarea
+                        className={`crt-textarea${descError ? " error" : ""}`}
+                        value={band.desc}
+                        onChange={(e) => setBand(bi, "desc", e.target.value)}
+                        disabled={disabled}
+                        placeholder={getDescPlaceholder(band.level)}
+                        aria-label={`Band ${bi + 1} description`}
+                      />
+                      {descError && (
+                        <InlineError>{descError}</InlineError>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Validation feedback */}
+                {(isValid || hasError) && (
+                  <div className={`crt-band-edit-helper ${hasError ? "helper-error" : "helper-success"}`}>
+                    {hasError ? (
+                      <>
+                        <Icon
+                          iconNode={[]}
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          aria-hidden="true"
+                        >
+                          <circle cx="6" cy="6" r="5" />
+                          <path d="M6 4v3M6 8.5v.5" />
+                        </Icon>
+                        {rangeError || levelError || descError}
+                      </>
+                    ) : (
+                      <>
+                        <Icon
+                          iconNode={[]}
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          aria-hidden="true"
+                        >
+                          <polyline points="2,6.5 5,9.5 10,3" />
+                        </Icon>
+                        Looks good
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
           </div>
         );
       })}
+
+      {/* Coverage bar */}
+      <CoverageBar bands={bands} maxScore={Number(criterionMax) || 0} />
+
+      {/* Add Band button */}
       {!disabled && (
         <button type="button" className="crt-band-add" onClick={addBand}>
           <Icon
@@ -194,7 +232,8 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            aria-hidden="true">
+            aria-hidden="true"
+          >
             <circle cx="7" cy="7" r="6" />
             <path d="M7 4v6M4 7h6" />
           </Icon>

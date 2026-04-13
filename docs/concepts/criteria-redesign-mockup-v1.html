@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Evaluation Criteria</title>
+<style>
+:root {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --surface: #f0f3f9;
+  --surface-2: #f8fafc;
+  --accent: #4f6ef7;
+  --accent-soft: #eef1fe;
+  --accent-text: #3451d1;
+  --green: #1a9a5c;
+  --green-soft: #e8f8f0;
+  --amber: #c47f17;
+  --amber-soft: #fef5e0;
+  --red: #d6365b;
+  --red-soft: #fdeef1;
+  --text: #111827;
+  --text-2: #4b5563;
+  --text-3: #9ca3af;
+  --border: #e8ecf4;
+  --border-2: #d5dbe8;
+  --r: 12px;
+  --r-sm: 8px;
+  --r-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  --shadow-focus: 0 0 0 3px rgba(79,110,247,0.12);
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+
+.page { max-width:1080px; margin:0 auto; padding:28px 24px 120px; }
+
+/* ── HEADER ── */
+.header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
+.header-left {}
+.header-title { font-size:24px; font-weight:800; letter-spacing:-0.5px; color:var(--text); }
+.header-desc { font-size:13px; color:var(--text-3); margin-top:4px; }
+.header-right { display:flex; gap:8px; }
+.btn {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 18px; border-radius:var(--r-sm); font-size:13px; font-weight:600;
+  border:none; cursor:pointer; transition:all 0.15s; font-family:var(--font);
+  letter-spacing:-0.1px;
+}
+.btn-primary { background:var(--accent); color:white; box-shadow:0 1px 3px rgba(79,110,247,0.3); }
+.btn-primary:hover { background:#3d5ce6; box-shadow:0 2px 8px rgba(79,110,247,0.4); transform:translateY(-1px); }
+.btn-secondary { background:var(--card); color:var(--text-2); border:1px solid var(--border-2); }
+.btn-secondary:hover { background:var(--surface); border-color:var(--text-3); }
+
+/* ── WEIGHT BUDGET ── */
+.budget {
+  background:var(--card); border-radius:var(--r-lg); border:1px solid var(--border);
+  padding:18px 22px; margin-bottom:20px; box-shadow:var(--shadow);
+}
+.budget-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.budget-left { display:flex; align-items:baseline; gap:12px; }
+.budget-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-3); }
+.budget-value { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+.budget-value.valid { color:var(--green); }
+.budget-value.under { color:var(--text); }
+.budget-value.over { color:var(--red); }
+.budget-status { font-size:12px; font-weight:600; display:flex; align-items:center; gap:5px; }
+.budget-status.valid { color:var(--green); }
+.budget-status.under { color:var(--amber); }
+.budget-status.over { color:var(--red); }
+.budget-right { display:flex; gap:6px; }
+.btn-pill {
+  padding:6px 14px; border-radius:999px; font-size:11.5px; font-weight:600;
+  border:1px solid var(--border-2); background:var(--card); color:var(--text-2);
+  cursor:pointer; transition:all 0.15s; font-family:var(--font);
+}
+.btn-pill:hover { background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); }
+
+/* Segmented weight bar */
+.budget-bar { display:flex; height:8px; border-radius:99px; overflow:hidden; gap:2px; }
+.budget-segment { border-radius:99px; transition:flex 0.4s cubic-bezier(0.4,0,0.2,1); position:relative; min-width:4px; }
+.budget-segment:first-child { border-radius:99px 0 0 99px; }
+.budget-segment:last-child { border-radius:0 99px 99px 0; }
+.budget-segment:only-child { border-radius:99px; }
+.budget-remaining { background:var(--surface); flex:var(--rem); border-radius:0 99px 99px 0; }
+.budget-labels { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
+.budget-legend { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-3); }
+.budget-legend-dot { width:8px; height:8px; border-radius:3px; }
+
+/* ── CRITERIA CARDS ── */
+.criteria-list { display:flex; flex-direction:column; gap:10px; }
+
+.criterion {
+  background:var(--card); border-radius:var(--r-lg); border:1px solid var(--border);
+  box-shadow:var(--shadow); transition:all 0.2s; overflow:hidden;
+  display:grid; grid-template-columns:52px 1fr; position:relative;
+}
+.criterion:hover { box-shadow:var(--shadow-md); border-color:var(--border-2); }
+
+/* Left color accent bar + number */
+.criterion-accent {
+  display:flex; flex-direction:column; align-items:center;
+  padding:18px 0 18px; gap:8px; position:relative;
+}
+.criterion-accent::before {
+  content:''; position:absolute; left:0; top:12px; bottom:12px; width:4px;
+  border-radius:0 4px 4px 0; background:var(--c-color);
+}
+.criterion-num {
+  font-size:12px; font-weight:700; color:var(--text-3);
+  font-family:var(--mono); width:24px; height:24px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface); border-radius:6px;
+}
+
+/* Main content */
+.criterion-body { padding:16px 18px 16px 8px; display:flex; flex-direction:column; gap:12px; }
+
+/* Top row: name + weight */
+.criterion-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.criterion-info { flex:1; min-width:0; }
+.criterion-name { font-size:15px; font-weight:700; letter-spacing:-0.2px; }
+.criterion-desc { font-size:12px; color:var(--text-3); margin-top:3px; line-height:1.5; }
+
+.criterion-weight {
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+}
+.weight-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:6px 14px; border-radius:var(--r-sm);
+  font-size:14px; font-weight:800; letter-spacing:-0.3px;
+  cursor:pointer; transition:all 0.15s; user-select:none;
+  position:relative;
+}
+.weight-badge::after {
+  content:'pts'; font-size:10px; font-weight:600; opacity:0.5;
+  letter-spacing:0; margin-left:1px;
+}
+.weight-badge:hover { transform:translateY(-1px); box-shadow:var(--shadow-focus); }
+.weight-edit-wrap { display:none; align-items:center; gap:6px; }
+.weight-edit-wrap.active { display:flex; }
+.weight-badge.hidden { display:none; }
+.weight-input {
+  width:56px; height:36px; text-align:center; font-size:15px; font-weight:800;
+  border:2px solid var(--accent); border-radius:var(--r-sm);
+  color:var(--accent-text); outline:none; box-shadow:var(--shadow-focus);
+  font-family:var(--font); letter-spacing:-0.3px;
+}
+.weight-input-hint { font-size:10px; font-weight:600; white-space:nowrap; }
+
+/* Bottom row: rubric + mapping */
+.criterion-bottom { display:flex; gap:16px; align-items:flex-start; }
+
+/* Rubric visual */
+.rubric-group { flex:1; min-width:0; }
+.rubric-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-3); margin-bottom:6px; }
+.rubric-bar-wrap { display:flex; flex-direction:column; gap:3px; }
+.rubric-bar-row {
+  display:flex; align-items:center; gap:6px;
+  cursor:pointer; padding:3px 6px 3px 0; border-radius:var(--r-sm);
+  transition:background 0.1s;
+}
+.rubric-bar-row:hover { background:var(--surface); }
+.rubric-bar-fill {
+  height:6px; border-radius:99px; transition:width 0.3s;
+  min-width:3px;
+}
+.rubric-bar-label { font-size:10.5px; font-weight:600; white-space:nowrap; min-width:48px; }
+.rubric-bar-range { font-size:10px; font-family:var(--mono); color:var(--text-3); white-space:nowrap; }
+
+/* Mapping pills */
+.mapping-group { flex-shrink:0; }
+.mapping-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-3); margin-bottom:6px; }
+.mapping-pills { display:flex; gap:4px; flex-wrap:wrap; }
+.mapping-pill {
+  padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700;
+  font-family:var(--mono); letter-spacing:-0.2px;
+  background:var(--accent-soft); color:var(--accent-text);
+  border:1px solid transparent; cursor:pointer; transition:all 0.15s;
+}
+.mapping-pill:hover { border-color:var(--accent); transform:translateY(-1px); box-shadow:0 2px 4px rgba(79,110,247,0.15); }
+.mapping-add {
+  padding:4px 8px; border-radius:999px; font-size:11px; font-weight:600;
+  color:var(--text-3); border:1px dashed var(--border-2); background:transparent;
+  cursor:pointer; transition:all 0.15s;
+}
+.mapping-add:hover { color:var(--accent-text); border-color:var(--accent); background:var(--accent-soft); }
+
+/* Actions */
+.criterion-actions {
+  position:absolute; top:14px; right:14px;
+}
+.actions-btn {
+  width:28px; height:28px; border-radius:6px; border:none;
+  background:transparent; color:var(--text-3); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; transition:all 0.15s;
+}
+.actions-btn:hover { background:var(--surface); color:var(--text-2); }
+.actions-menu {
+  display:none; position:absolute; right:0; top:100%;
+  background:var(--card); border:1px solid var(--border-2);
+  border-radius:var(--r-sm); box-shadow:var(--shadow-lg);
+  min-width:160px; z-index:100; padding:4px; margin-top:4px;
+}
+.actions-menu.open { display:block; }
+.actions-menu-item {
+  padding:8px 12px; font-size:12px; border-radius:5px;
+  cursor:pointer; display:flex; align-items:center; gap:8px;
+  transition:background 0.1s; font-weight:500;
+}
+.actions-menu-item:hover { background:var(--surface); }
+.actions-menu-item.danger { color:var(--red); }
+.actions-menu-item.danger:hover { background:var(--red-soft); }
+.actions-divider { height:1px; background:var(--border); margin:3px 0; }
+
+/* ── DRAWER ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.25); z-index:500; backdrop-filter:blur(2px); }
+.overlay.open { display:block; }
+.drawer {
+  position:fixed; right:0; top:0; bottom:0; width:500px; max-width:96vw;
+  background:var(--card); box-shadow:-8px 0 40px rgba(0,0,0,0.12);
+  z-index:501; display:flex; flex-direction:column;
+  transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+.drawer.open { transform:translateX(0); }
+.drawer-head { padding:20px 24px 16px; border-bottom:1px solid var(--border); }
+.drawer-head-row { display:flex; justify-content:space-between; align-items:center; }
+.drawer-head-left { display:flex; gap:14px; align-items:center; }
+.drawer-head-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+.drawer-head-title { font-size:17px; font-weight:800; letter-spacing:-0.3px; }
+.drawer-head-sub { font-size:12px; color:var(--text-3); margin-top:1px; }
+.drawer-close {
+  width:30px; height:30px; border-radius:var(--r-sm); border:1px solid var(--border-2);
+  background:var(--card); display:flex; align-items:center; justify-content:center;
+  font-size:14px; color:var(--text-3); cursor:pointer;
+}
+.drawer-close:hover { background:var(--surface); }
+
+/* Tabs */
+.drawer-tabs { display:flex; padding:0 24px; border-bottom:1px solid var(--border); gap:0; }
+.drawer-tab {
+  padding:12px 18px 10px; font-size:13px; font-weight:600;
+  color:var(--text-3); cursor:pointer; border-bottom:2px solid transparent;
+  transition:all 0.15s; user-select:none;
+}
+.drawer-tab:hover { color:var(--text-2); }
+.drawer-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-count {
+  display:inline-flex; padding:1px 6px; border-radius:99px; font-size:10px;
+  margin-left:5px; background:var(--surface); color:var(--text-3);
+}
+.drawer-tab.active .tab-count { background:var(--accent-soft); color:var(--accent-text); }
+
+.drawer-body { flex:1; overflow-y:auto; padding:20px 24px; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* Form fields */
+.field { margin-bottom:16px; }
+.field-label { font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:5px; display:flex; align-items:center; gap:4px; }
+.field-req { color:var(--red); }
+.field-opt { color:var(--text-3); font-weight:400; font-size:11px; }
+.field-input {
+  width:100%; height:40px; padding:0 14px; border:1px solid var(--border-2);
+  border-radius:var(--r-sm); font-size:14px; font-family:var(--font);
+  color:var(--text); outline:none; transition:all 0.15s;
+}
+.field-input:focus { border-color:var(--accent); box-shadow:var(--shadow-focus); }
+.field-textarea {
+  width:100%; padding:10px 14px; min-height:80px; border:1px solid var(--border-2);
+  border-radius:var(--r-sm); font-size:13px; font-family:var(--font);
+  color:var(--text); outline:none; resize:vertical; line-height:1.5;
+}
+.field-textarea:focus { border-color:var(--accent); box-shadow:var(--shadow-focus); }
+.field-hint { font-size:11px; color:var(--text-3); margin-top:4px; }
+
+/* Budget mini in drawer */
+.budget-mini {
+  padding:12px 14px; background:var(--surface); border-radius:var(--r-sm);
+  margin-bottom:18px; border:1px solid var(--border);
+}
+.budget-mini-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.budget-mini-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-3); }
+.budget-mini-value { font-size:13px; font-weight:800; }
+.budget-mini-track { height:4px; background:var(--border); border-radius:99px; overflow:hidden; }
+.budget-mini-fill { height:100%; border-radius:99px; transition:width 0.3s; }
+
+/* Band cards in drawer */
+.band-card {
+  border:1px solid var(--border); border-radius:var(--r); margin-bottom:8px;
+  overflow:hidden; transition:all 0.2s;
+}
+.band-card:hover { border-color:var(--border-2); }
+.band-header {
+  display:flex; align-items:center; padding:10px 14px; gap:10px;
+  cursor:pointer; transition:background 0.15s; user-select:none;
+}
+.band-header:hover { background:var(--surface-2); }
+.band-dot { width:5px; height:28px; border-radius:99px; flex-shrink:0; }
+.band-name { font-size:13px; font-weight:700; flex:1; }
+.band-range-text { font-size:12px; font-family:var(--mono); color:var(--text-2); }
+.band-chevron { font-size:10px; color:var(--text-3); transition:transform 0.2s; }
+.band-card.expanded .band-chevron { transform:rotate(90deg); }
+.band-body { display:none; padding:0 14px 14px; border-top:1px solid var(--border); }
+.band-card.expanded .band-body { display:block; padding-top:12px; }
+.band-fields { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.band-field-label { font-size:10px; font-weight:700; color:var(--text-3); margin-bottom:3px; }
+.band-input {
+  width:100%; height:34px; padding:0 10px; border:1px solid var(--border);
+  border-radius:6px; font-size:13px; font-family:var(--font); outline:none;
+}
+.band-input:focus { border-color:var(--accent); box-shadow:var(--shadow-focus); }
+.band-range-inputs { display:flex; gap:6px; align-items:center; }
+.band-range-inputs .band-input { text-align:center; }
+.band-sep { color:var(--text-3); font-size:12px; }
+.band-desc-toggle { font-size:11px; color:var(--accent-text); cursor:pointer; margin-top:8px; border:none; background:none; font-family:var(--font); font-weight:600; padding:0; }
+.band-desc-toggle:hover { text-decoration:underline; }
+
+/* Coverage */
+.coverage {
+  margin-top:8px; padding:12px 14px; border-radius:var(--r-sm);
+  border:1px solid;
+}
+.coverage.ok { background:var(--green-soft); border-color:#b8e6d0; }
+.coverage.err { background:var(--red-soft); border-color:#f5c6cf; }
+.coverage-top { display:flex; justify-content:space-between; margin-bottom:6px; }
+.coverage-label { font-size:10.5px; font-weight:700; }
+.coverage-status { font-size:10.5px; font-weight:600; }
+.coverage.ok .coverage-label, .coverage.ok .coverage-status { color:var(--green); }
+.coverage.err .coverage-label, .coverage.err .coverage-status { color:var(--red); }
+.coverage-track { display:flex; height:6px; border-radius:99px; overflow:hidden; gap:1px; }
+
+.add-band {
+  width:100%; margin-top:10px; padding:10px; border:1px dashed var(--border-2);
+  border-radius:var(--r-sm); background:transparent; font-size:12px; font-weight:600;
+  color:var(--text-3); cursor:pointer; font-family:var(--font); transition:all 0.15s;
+}
+.add-band:hover { color:var(--accent-text); border-color:var(--accent); background:var(--accent-soft); }
+
+/* Outcome pills in drawer */
+.outcome-grid { display:flex; flex-wrap:wrap; gap:6px; }
+.outcome-chip {
+  padding:6px 14px; border-radius:999px; font-size:12px; font-weight:700;
+  border:1.5px solid var(--border-2); background:var(--card); color:var(--text-2);
+  cursor:pointer; transition:all 0.15s; user-select:none;
+}
+.outcome-chip:hover { background:var(--surface); }
+.outcome-chip.on { background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); }
+.outcome-chip.on::before { content:"✓ "; font-size:10px; }
+
+.drawer-foot {
+  padding:14px 24px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center; background:var(--surface-2);
+}
+.foot-status { font-size:12px; font-weight:600; display:flex; align-items:center; gap:5px; }
+.foot-status.ok { color:var(--green); }
+.foot-status.err { color:var(--red); }
+.foot-actions { display:flex; gap:8px; }
+
+/* ── SAVE BAR ── */
+.save-bar {
+  position:fixed; bottom:0; left:0; right:0; padding:14px 24px;
+  background:var(--card); border-top:1px solid var(--border-2);
+  box-shadow:0 -4px 20px rgba(0,0,0,0.06);
+  display:none; align-items:center; justify-content:center; gap:16px;
+  z-index:100; animation:slideUp 0.25s ease-out;
+}
+.save-bar.visible { display:flex; }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.save-bar-left { display:flex; align-items:center; gap:10px; flex:1; }
+.save-bar-dot { width:7px; height:7px; border-radius:99px; background:var(--amber); animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.save-bar-text { font-size:13px; color:var(--text-2); }
+.save-bar-text strong { color:var(--text); font-weight:700; }
+.save-bar-error { font-size:12px; color:var(--red); font-weight:600; }
+.save-bar .btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ── EMPTY STATE ── */
+.empty { display:none; text-align:center; padding:52px 24px; }
+.empty.visible { display:block; }
+.empty-icon { width:60px; height:60px; margin:0 auto 20px; background:var(--surface); border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:28px; }
+.empty-title { font-size:18px; font-weight:800; letter-spacing:-0.3px; margin-bottom:5px; }
+.empty-desc { font-size:13px; color:var(--text-3); margin-bottom:28px; }
+.clone-card {
+  display:inline-block; text-align:left; padding:20px 24px;
+  background:var(--card); border-radius:var(--r-lg); border:1px solid var(--border);
+  box-shadow:var(--shadow-md); min-width:360px;
+}
+.clone-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-3); margin-bottom:12px; }
+.clone-option {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; background:var(--surface-2); border-radius:var(--r-sm);
+  margin-bottom:8px; cursor:pointer; border:1.5px solid transparent; transition:all 0.15s;
+}
+.clone-option:hover { border-color:var(--accent); background:var(--accent-soft); }
+.clone-name { font-size:14px; font-weight:700; }
+.clone-meta { font-size:11px; color:var(--text-3); margin-top:1px; }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+  padding:12px 24px; border-radius:var(--r); font-size:14px; font-weight:700;
+  color:white; box-shadow:var(--shadow-lg); opacity:0;
+  transition:all 0.3s cubic-bezier(0.4,0,0.2,1); z-index:1000; pointer-events:none;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.success { background:#059669; }
+.toast.info { background:var(--accent); }
+
+/* Responsive */
+@media(max-width:768px) {
+  .page { padding:16px 14px 100px; }
+  .header { flex-direction:column; gap:14px; }
+  .header-right { width:100%; }
+  .header-right .btn { flex:1; justify-content:center; }
+  .budget-top { flex-direction:column; gap:10px; align-items:flex-start; }
+  .budget-right { width:100%; }
+  .btn-pill { flex:1; text-align:center; }
+  .criterion { grid-template-columns:1fr; }
+  .criterion-accent { flex-direction:row; padding:12px 14px 0; }
+  .criterion-accent::before { left:0; top:0; bottom:0; width:4px; height:auto; }
+  .criterion-bottom { flex-direction:column; gap:10px; }
+  .mapping-group { width:100%; }
+  .drawer { width:100vw; max-width:100vw; }
+  .band-fields { grid-template-columns:1fr; }
+  .clone-card { min-width:auto; width:100%; }
+  .save-bar { flex-direction:column; gap:10px; }
+  .save-bar-left { width:100%; }
+  .save-bar .foot-actions { width:100%; }
+  .save-bar .foot-actions .btn { flex:1; justify-content:center; }
+}
+</style>
+</head>
+<body>
+
+<div class="page" id="mainPage">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">Evaluation Criteria</div>
+      <div class="header-desc">Define scoring rubrics and criteria weights for the active evaluation period.</div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-secondary" onclick="showEmpty()">Clone from Period</button>
+      <button class="btn btn-primary" onclick="openDrawer(-1)">+ Add Criterion</button>
+    </div>
+  </div>
+
+  <div class="budget" id="budgetBar">
+    <div class="budget-top">
+      <div class="budget-left">
+        <span class="budget-label">Weight Budget</span>
+        <span class="budget-value valid" id="budgetValue">100 / 100</span>
+        <span class="budget-status valid" id="budgetStatus">✓ Valid</span>
+      </div>
+      <div class="budget-right">
+        <button class="btn-pill" onclick="distribute()">Distribute equally</button>
+        <span style="position:relative; display:inline-block;">
+          <button class="btn-pill" onclick="toggleAutoFill()" id="afBtn">Auto-fill remaining</button>
+          <div class="actions-menu" id="afPop" style="right:0; top:100%; min-width:260px;"></div>
+        </span>
+      </div>
+    </div>
+    <div class="budget-bar" id="budgetBar2"></div>
+    <div class="budget-labels" id="budgetLegend"></div>
+  </div>
+
+  <div class="criteria-list" id="criteriaList"></div>
+
+  <div class="empty" id="emptyState">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">No criteria defined yet</div>
+    <div class="empty-desc">Start by importing from a previous period or create from scratch.</div>
+    <div class="clone-card">
+      <div class="clone-label">Import from previous period</div>
+      <div class="clone-option" onclick="clonePeriod('Fall 2025')">
+        <div><div class="clone-name">Fall 2025</div><div class="clone-meta">4 criteria · 100 pts · 4 rubric bands each</div></div>
+        <button class="btn btn-primary" style="padding:6px 14px; font-size:12px;">Clone</button>
+      </div>
+      <div class="clone-option" onclick="clonePeriod('Spring 2025')">
+        <div><div class="clone-name">Spring 2025</div><div class="clone-meta">3 criteria · 100 pts · 3 rubric bands each</div></div>
+        <button class="btn btn-secondary" style="padding:6px 14px; font-size:12px;">Clone</button>
+      </div>
+    </div>
+    <div style="margin-top:20px; font-size:13px; color:var(--text-3);">or <span style="color:var(--accent-text); font-weight:700; cursor:pointer;" onclick="hideEmpty(); openDrawer(-1);">+ Add Criterion</span> to start from scratch</div>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-head-row">
+      <div class="drawer-head-left">
+        <div class="drawer-head-icon" id="dhIcon" style="background:var(--accent-soft);">✏️</div>
+        <div><div class="drawer-head-title" id="dhTitle">Edit Criterion</div><div class="drawer-head-sub" id="dhSub">Technical Content · Spring 2026</div></div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+  </div>
+  <div class="drawer-tabs">
+    <div class="drawer-tab active" data-tab="details" onclick="switchTab('details')">Details</div>
+    <div class="drawer-tab" data-tab="rubric" onclick="switchTab('rubric')">Rubric <span class="tab-count" id="tcRubric">4</span></div>
+    <div class="drawer-tab" data-tab="mapping" onclick="switchTab('mapping')">Mapping <span class="tab-count" id="tcMapping">3</span></div>
+  </div>
+  <div class="drawer-body">
+    <div class="tab-panel active" id="tp-details">
+      <div class="budget-mini" id="dmBudget">
+        <div class="budget-mini-row"><span class="budget-mini-label">Weight Budget</span><span class="budget-mini-value" id="dmVal" style="color:var(--green);">100 / 100 ✓</span></div>
+        <div class="budget-mini-track"><div class="budget-mini-fill" id="dmFill" style="width:100%; background:var(--green);"></div></div>
+      </div>
+      <div class="field"><label class="field-label">Label <span class="field-req">*</span></label><input class="field-input" id="fLabel" placeholder="e.g., Technical Content" oninput="updateFoot()"></div>
+      <div class="field"><label class="field-label">Short label <span class="field-req">*</span></label><input class="field-input" id="fShort" placeholder="e.g., Technical"><div class="field-hint">Max 15 chars · Shown in juror scoring UI</div></div>
+      <div class="field"><label class="field-label">Weight <span class="field-req">*</span></label><input class="field-input" id="fWeight" type="number" min="1" max="100" placeholder="30" oninput="onDWeight()"><div class="field-hint" id="fWeightHint">Points out of 100 total</div></div>
+      <div class="field"><label class="field-label">Description <span class="field-opt">(optional)</span></label><textarea class="field-textarea" id="fDesc" placeholder="What does this criterion assess?"></textarea></div>
+    </div>
+    <div class="tab-panel" id="tp-rubric">
+      <div style="padding:10px 14px; background:var(--accent-soft); border-radius:var(--r-sm); margin-bottom:14px; font-size:12px; color:var(--accent-text); border:1px solid #c7d2fe;">Auto-generated 4 bands. Adjust as needed. Descriptions optional.</div>
+      <div id="rubricBands"></div>
+      <div class="coverage ok" id="coverageBox"><div class="coverage-top"><span class="coverage-label">Score Coverage</span><span class="coverage-status" id="covStatus">✓ Full (0–30)</span></div><div class="coverage-track" id="covTrack"></div></div>
+      <button class="add-band" onclick="addBand()">+ Add Band</button>
+    </div>
+    <div class="tab-panel" id="tp-mapping">
+      <div style="font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-3); margin-bottom:10px;">Select outcomes to map</div>
+      <div class="outcome-grid" id="outcomeGrid"></div>
+      <div id="mappedSection" style="display:none; margin-top:16px;"><div style="font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-3); margin-bottom:8px;">Mapped outcomes</div><div id="mappedList"></div></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <div class="foot-status ok" id="footStat"><span>✓</span> <span id="footText">Ready</span></div>
+    <div class="foot-actions"><button class="btn btn-secondary" onclick="closeDrawer()">Cancel</button><button class="btn btn-primary" id="saveBtn" onclick="saveCrit()">Done</button></div>
+  </div>
+</div>
+
+<!-- Save Bar -->
+<div class="save-bar" id="saveBar">
+  <div class="save-bar-left"><span class="save-bar-dot"></span><span class="save-bar-text" id="sbText"><strong>Unsaved changes</strong></span></div>
+  <div class="foot-actions"><span class="save-bar-error" id="sbErr"></span><button class="btn btn-secondary" onclick="discardAll()">Discard</button><button class="btn btn-primary" id="sbSave" disabled onclick="saveAll()">Save Changes</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COLORS = ["#4f6ef7","#8b5cf6","#f59e0b","#10b981","#ef4444","#ec4899"];
+const BAND_COLORS = ["#22c55e","#3b82f6","#f59e0b","#ef4444","#8b5cf6","#64748b"];
+const BAND_BG = ["#dcfce7","#dbeafe","#fef3c7","#fee2e2","#ede9fe","#e2e8f0"];
+
+let criteria = [
+  { label:"Technical Content", short:"Technical", weight:30, color:COLORS[0], desc:"Evaluates the depth, correctness, and originality of the engineering work itself — independent of how well it is communicated.",
+    bands:[{level:"Excellent",min:27,max:30,desc:"Problem is clearly defined with strong motivation."},{level:"Good",min:21,max:26,desc:""},{level:"Developing",min:13,max:20,desc:""},{level:"Insufficient",min:0,max:12,desc:""}],
+    outcomes:["PÇ1","PÇ2","PÇ5"] },
+  { label:"Written Communication", short:"Written", weight:30, color:COLORS[1], desc:"Evaluates how effectively the team communicates their project in written and visual form on the poster.",
+    bands:[{level:"Excellent",min:27,max:30,desc:""},{level:"Good",min:21,max:26,desc:""},{level:"Developing",min:13,max:20,desc:""},{level:"Insufficient",min:0,max:12,desc:""}],
+    outcomes:["PÇ3","PÇ10"] },
+  { label:"Oral Communication", short:"Oral", weight:30, color:COLORS[2], desc:"Evaluates the team's ability to present their work verbally and respond to questions from jurors with varying technical backgrounds.",
+    bands:[{level:"Excellent",min:27,max:30,desc:""},{level:"Good",min:21,max:26,desc:""},{level:"Developing",min:13,max:20,desc:""},{level:"Insufficient",min:0,max:12,desc:""}],
+    outcomes:["PÇ3","PÇ4"] },
+  { label:"Teamwork", short:"Teamwork", weight:10, color:COLORS[3], desc:"Evaluates visible evidence of equal and effective team participation during the poster session.",
+    bands:[{level:"Excellent",min:9,max:10,desc:""},{level:"Good",min:7,max:8,desc:""},{level:"Developing",min:4,max:6,desc:""},{level:"Insufficient",min:0,max:3,desc:""}],
+    outcomes:["PÇ9","PÇ10"] },
+];
+let snapshot = JSON.stringify(criteria);
+const outcomes = [
+  {code:"PÇ1",desc:"Apply knowledge of mathematics, science, and engineering"},
+  {code:"PÇ2",desc:"Design and conduct experiments, analyze and interpret data"},
+  {code:"PÇ3",desc:"Communicate effectively in writing and orally"},
+  {code:"PÇ4",desc:"Function on multidisciplinary teams"},
+  {code:"PÇ5",desc:"Identify, formulate, and solve engineering problems"},
+  {code:"PÇ9",desc:"Demonstrate professional and ethical responsibility"},
+  {code:"PÇ10",desc:"Engage in life-long learning"},
+  {code:"PÇ11",desc:"Use modern techniques, skills, and tools"},
+];
+
+let editIdx = null, dBands = [], dOutcomes = [];
+
+function render() {
+  const list = document.getElementById("criteriaList");
+  const total = criteria.reduce((s,c)=>s+c.weight,0);
+  list.innerHTML = "";
+  criteria.forEach((c,i) => {
+    const max = c.weight;
+    list.innerHTML += `
+    <div class="criterion" style="--c-color:${c.color};">
+      <div class="criterion-accent">
+        <div class="criterion-num">${i+1}</div>
+      </div>
+      <div class="criterion-body">
+        <div class="criterion-top">
+          <div class="criterion-info">
+            <div class="criterion-name">${c.label}</div>
+            <div class="criterion-desc">${c.desc}</div>
+          </div>
+          <div class="criterion-weight">
+            <span class="weight-badge" id="wb-${i}" onclick="startEdit(${i})" style="background:${c.color}11; color:${c.color};">${c.weight}</span>
+            <div class="weight-edit-wrap" id="we-${i}">
+              <input class="weight-input" id="wi-${i}" type="number" min="1" max="100" value="${c.weight}" onkeydown="editKey(event,${i})" onblur="endEdit(${i})" oninput="editHint(${i})">
+              <span class="weight-input-hint" id="wh-${i}"></span>
+            </div>
+          </div>
+        </div>
+        <div class="criterion-bottom">
+          <div class="rubric-group">
+            <div class="rubric-label">Rubric Bands</div>
+            <div class="rubric-bar-wrap">
+              ${c.bands.map((b,j) => {
+                const pct = max > 0 ? ((b.max-b.min+1)/max*100) : 0;
+                return `<div class="rubric-bar-row" onclick="openDrawerAt(${i},'rubric',${j})">
+                  <span class="rubric-bar-label" style="color:${BAND_COLORS[j]}">${b.level}</span>
+                  <div style="flex:1; background:${BAND_BG[j]}; border-radius:99px; height:6px;">
+                    <div class="rubric-bar-fill" style="width:${pct}%; background:${BAND_COLORS[j]};"></div>
+                  </div>
+                  <span class="rubric-bar-range">${b.min}–${b.max}</span>
+                </div>`;
+              }).join("")}
+            </div>
+          </div>
+          <div class="mapping-group">
+            <div class="mapping-label">Mapping</div>
+            <div class="mapping-pills">
+              ${c.outcomes.map(code=>`<span class="mapping-pill" onclick="event.stopPropagation();openDrawerAt(${i},'mapping')">${code}</span>`).join("")}
+              <span class="mapping-add" onclick="event.stopPropagation();openDrawerAt(${i},'mapping')">+</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="criterion-actions">
+        <button class="actions-btn" onclick="toggleMenu(${i})">⋮</button>
+        <div class="actions-menu" id="menu-${i}">
+          <div class="actions-menu-item" onclick="event.stopPropagation();closeMenus();openDrawer(${i})">✏️ Edit</div>
+          <div class="actions-divider"></div>
+          <div class="actions-menu-item danger" onclick="event.stopPropagation();closeMenus();delCrit(${i})">🗑 Remove</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  updateBudget();
+}
+
+function updateBudget() {
+  const total = criteria.reduce((s,c)=>s+c.weight,0);
+  const v = document.getElementById("budgetValue");
+  const st = document.getElementById("budgetStatus");
+  v.textContent = total+" / 100";
+  v.className = "budget-value "+(total===100?"valid":total>100?"over":"under");
+  st.className = "budget-status "+(total===100?"valid":total>100?"over":"under");
+  st.textContent = total===100?"✓ Valid":total>100?`Over by ${total-100} pts`:`${100-total} pts remaining`;
+
+  // Segmented bar
+  const bar = document.getElementById("budgetBar2");
+  const leg = document.getElementById("budgetLegend");
+  bar.innerHTML = criteria.map((c,i)=>`<div class="budget-segment" style="flex:${c.weight};background:${c.color};"></div>`).join("");
+  if(total<100) bar.innerHTML += `<div class="budget-remaining" style="--rem:${100-total};"></div>`;
+  leg.innerHTML = criteria.map(c=>`<span class="budget-legend"><span class="budget-legend-dot" style="background:${c.color};"></span>${c.short} ${c.weight}</span>`).join("");
+
+  updateSaveBar();
+}
+
+function updateSaveBar() {
+  const dirty = JSON.stringify(criteria) !== snapshot;
+  const total = criteria.reduce((s,c)=>s+c.weight,0);
+  const bar = document.getElementById("saveBar");
+  const btn = document.getElementById("sbSave");
+  const txt = document.getElementById("sbText");
+  const err = document.getElementById("sbErr");
+  const page = document.getElementById("mainPage");
+  if(!dirty){bar.classList.remove("visible");page.style.paddingBottom="";return;}
+  bar.classList.add("visible"); page.style.paddingBottom="120px";
+  if(total===100){btn.disabled=false;txt.innerHTML="<strong>Unsaved changes</strong> — ready to save";err.textContent="";}
+  else if(total>100){btn.disabled=true;txt.innerHTML=`<strong>Unsaved changes</strong> — over by ${total-100} pts`;err.textContent="Total must equal 100";}
+  else{btn.disabled=true;txt.innerHTML=`<strong>Unsaved changes</strong> — ${100-total} pts remaining`;err.textContent="Total must equal 100";}
+}
+function saveAll(){snapshot=JSON.stringify(criteria);updateSaveBar();toast("All criteria saved","success");}
+function discardAll(){criteria=JSON.parse(snapshot);render();toast("Changes discarded","info");}
+
+// Inline weight
+function startEdit(i){closeMenus();document.getElementById("wb-"+i).classList.add("hidden");document.getElementById("we-"+i).classList.add("active");const inp=document.getElementById("wi-"+i);inp.value=criteria[i].weight;inp.focus();inp.select();editHint(i);}
+function endEdit(i){const inp=document.getElementById("wi-"+i);criteria[i].weight=Math.max(1,Math.min(100,parseInt(inp.value)||criteria[i].weight));criteria[i].bands=genBands(criteria[i].weight);document.getElementById("we-"+i).classList.remove("active");document.getElementById("wb-"+i).classList.remove("hidden");render();}
+function editKey(e,i){if(e.key==="Enter")e.target.blur();if(e.key==="Escape"){document.getElementById("wi-"+i).value=criteria[i].weight;e.target.blur();}if(e.key==="Tab"){e.preventDefault();e.target.blur();const n=e.shiftKey?i-1:i+1;if(n>=0&&n<criteria.length)setTimeout(()=>startEdit(n),50);}setTimeout(()=>editHint(i),0);}
+function editHint(i){const v=parseInt(document.getElementById("wi-"+i).value)||0;const ot=criteria.reduce((s,c,j)=>j===i?s:s+c.weight,0);const rem=100-ot-v;const h=document.getElementById("wh-"+i);if(rem===0){h.textContent="✓ Perfect";h.style.color="var(--green)";}else if(rem>0){h.textContent=rem+" left";h.style.color="var(--amber)";}else{h.textContent="Over "+Math.abs(rem);h.style.color="var(--red)";}}
+
+// Menus
+function toggleMenu(i){const m=document.getElementById("menu-"+i);const o=m.classList.contains("open");closeMenus();if(!o)m.classList.add("open");}
+function closeMenus(){document.querySelectorAll(".actions-menu").forEach(m=>m.classList.remove("open"));}
+document.addEventListener("click",e=>{if(!e.target.closest(".criterion-actions")&&!e.target.closest(".autofill-anchor"))closeMenus();if(!e.target.closest("[onclick*=toggleAutoFill]")&&!e.target.closest("#afPop"))document.getElementById("afPop").classList.remove("open");});
+
+function delCrit(i){if(confirm(`Remove "${criteria[i].label}"?`)){criteria.splice(i,1);render();toast("Removed","info");}}
+function distribute(){if(!criteria.length)return;const each=Math.floor(100/criteria.length);const rem=100-each*criteria.length;criteria.forEach((c,i)=>{c.weight=each+(i<rem?1:0);c.bands=genBands(c.weight);});render();toast("Distributed equally","success");}
+function toggleAutoFill(){const total=criteria.reduce((s,c)=>s+c.weight,0);const rem=100-total;if(rem<=0){toast("Budget already full","info");return;}const pop=document.getElementById("afPop");if(pop.classList.contains("open")){pop.classList.remove("open");return;}
+  pop.innerHTML=`<div style="padding:8px 10px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);border-bottom:1px solid var(--border);margin-bottom:4px;">Add ${rem} pts to…</div>`+criteria.map((c,i)=>`<div class="actions-menu-item" onclick="applyAF(${i},${rem})" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:3px;background:${c.color};"></span>${c.label} <span style="color:var(--text-3);font-size:11px;">${c.weight}</span></span><span style="background:var(--accent-soft);color:var(--accent-text);padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;">${c.weight} → ${c.weight+rem}</span></div>`).join("");
+  pop.classList.add("open");}
+function applyAF(i,pts){criteria[i].weight+=pts;criteria[i].bands=genBands(criteria[i].weight);document.getElementById("afPop").classList.remove("open");render();toast(`+${pts} pts → ${criteria[i].label}`,"success");}
+
+// Drawer
+function openDrawer(i,opts){editIdx=i;const isNew=i===-1;const c=isNew?{label:"",short:"",weight:"",desc:"",bands:[],outcomes:[]}:{...criteria[i]};
+  document.getElementById("dhIcon").textContent=isNew?"➕":"✏️";document.getElementById("dhTitle").textContent=isNew?"Add Criterion":"Edit Criterion";document.getElementById("dhSub").textContent=isNew?"New · Spring 2026":c.label+" · Spring 2026";document.getElementById("saveBtn").textContent=isNew?"Add Criterion":"Done";
+  document.getElementById("fLabel").value=c.label;document.getElementById("fShort").value=c.short;document.getElementById("fWeight").value=c.weight;document.getElementById("fDesc").value=c.desc;
+  dBands=isNew?[]:c.bands.map(b=>({...b}));dOutcomes=[...c.outcomes];
+  switchTab((opts&&opts.tab)||"details");renderBands();renderOutcomes();updateDMBudget();updateFoot();
+  document.getElementById("overlay").classList.add("open");document.getElementById("drawer").classList.add("open");
+  if(opts&&typeof opts.band==="number")setTimeout(()=>{document.querySelectorAll(".band-card").forEach(b=>b.classList.remove("expanded"));const t=document.getElementById("bc-"+opts.band);if(t){t.classList.add("expanded");t.style.boxShadow="0 0 0 2px var(--accent)";t.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>t.style.boxShadow="",1200);}},120);}
+function openDrawerAt(i,tab,band){openDrawer(i,{tab,band});}
+function closeDrawer(){document.getElementById("overlay").classList.remove("open");document.getElementById("drawer").classList.remove("open");}
+function switchTab(t){document.querySelectorAll(".drawer-tab").forEach(x=>x.classList.remove("active"));document.querySelector(`.drawer-tab[data-tab="${t}"]`).classList.add("active");document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));document.getElementById("tp-"+t).classList.add("active");}
+function onDWeight(){const w=parseInt(document.getElementById("fWeight").value)||0;if(w>0&&dBands.length===0){dBands=genBands(w);renderBands();}updateDMBudget();updateFoot();}
+function updateDMBudget(){const w=parseInt(document.getElementById("fWeight").value)||0;const ot=criteria.reduce((s,c,j)=>j===editIdx?s:s+c.weight,0);const t=ot+w;document.getElementById("dmVal").textContent=t+" / 100"+(t===100?" ✓":"");document.getElementById("dmVal").style.color=t===100?"var(--green)":t>100?"var(--red)":"var(--text)";document.getElementById("dmFill").style.width=Math.min(t,100)+"%";document.getElementById("dmFill").style.background=t===100?"var(--green)":t>100?"var(--red)":"var(--accent)";const h=document.getElementById("fWeightHint");const rem=100-ot-w;if(!w)h.textContent=`${100-ot} pts available`;else if(rem===0){h.textContent="✓ Budget fully allocated";h.style.color="var(--green)";}else if(rem>0){h.textContent=rem+" pts remaining";h.style.color="var(--amber)";}else{h.textContent="Over by "+Math.abs(rem);h.style.color="var(--red)";}}
+function updateFoot(){const l=document.getElementById("fLabel").value.trim();const w=parseInt(document.getElementById("fWeight").value)||0;const el=document.getElementById("footStat");const tx=document.getElementById("footText");if(!l){el.className="foot-status err";tx.textContent="Label required";}else if(w<1){el.className="foot-status err";tx.textContent="Weight required";}else{el.className="foot-status ok";tx.textContent=l+" · "+w+" pts";}}
+function saveCrit(){const l=document.getElementById("fLabel").value.trim();const s=document.getElementById("fShort").value.trim();const w=parseInt(document.getElementById("fWeight").value)||0;const d=document.getElementById("fDesc").value;if(!l||w<1){toast("Fill required fields","info");return;}
+  const obj={label:l,short:s||l.substring(0,15),weight:w,color:editIdx>=0?criteria[editIdx].color:COLORS[criteria.length%COLORS.length],desc:d,bands:dBands.length?dBands:genBands(w),outcomes:dOutcomes};
+  if(editIdx>=0)criteria[editIdx]=obj;else criteria.push(obj);closeDrawer();render();toast(l+(editIdx>=0?" updated":" added"),"info");}
+
+// Bands
+function genBands(m){const e=Math.round(m*0.9),g=Math.round(m*0.7),d=Math.round(m*0.4);return[{level:"Excellent",min:e,max:m,desc:""},{level:"Good",min:g,max:e-1,desc:""},{level:"Developing",min:d,max:g-1,desc:""},{level:"Insufficient",min:0,max:d-1,desc:""}];}
+function renderBands(){const el=document.getElementById("rubricBands");el.innerHTML="";dBands.forEach((b,i)=>{el.innerHTML+=`
+  <div class="band-card ${i===0?"expanded":""}" id="bc-${i}">
+    <div class="band-header" onclick="document.getElementById('bc-${i}').classList.toggle('expanded')">
+      <span class="band-dot" style="background:${BAND_COLORS[i]||'#64748b'};"></span>
+      <span class="band-name">${b.level}</span>
+      <span class="band-range-text">${b.min} – ${b.max}</span>
+      <span class="band-chevron">▸</span>
+    </div>
+    <div class="band-body">
+      <div class="band-fields">
+        <div><div class="band-field-label">Level</div><input class="band-input" value="${b.level}" onchange="dBands[${i}].level=this.value;renderBands()"></div>
+        <div><div class="band-field-label">Score range</div><div class="band-range-inputs"><input class="band-input" type="number" value="${b.min}" onchange="dBands[${i}].min=+this.value;renderBands()"><span class="band-sep">–</span><input class="band-input" type="number" value="${b.max}" onchange="dBands[${i}].max=+this.value;renderBands()"></div></div>
+      </div>
+      <button class="band-desc-toggle" onclick="this.nextElementSibling.classList.toggle('active');this.textContent=this.nextElementSibling.classList.contains('active')?'▾ Hide description':'+ Add description'">${b.desc?"▾ Hide description":"+ Add description"}</button>
+      <div style="display:${b.desc?"block":"none"};margin-top:8px;" class="${b.desc?"active":""}"><textarea class="field-textarea" style="min-height:50px;font-size:12px;" onchange="dBands[${i}].desc=this.value">${b.desc}</textarea></div>
+    </div>
+  </div>`;});
+  document.getElementById("tcRubric").textContent=dBands.length;
+  const max=parseInt(document.getElementById("fWeight").value)||30;const sorted=[...dBands].sort((a,b)=>a.min-b.min);const trk=document.getElementById("covTrack");trk.innerHTML="";sorted.forEach((b,j)=>{const span=b.max-b.min+1;const idx=dBands.indexOf(b);trk.innerHTML+=`<div style="flex:${span};background:${BAND_COLORS[idx]||'#64748b'};border-radius:${j===0?'99px 0 0 99px':'0'}${j===sorted.length-1?' 0 99px 99px 0':''}"></div>`;});
+  const full=sorted.length>=2&&sorted[0].min===0&&sorted[sorted.length-1].max===max;document.getElementById("coverageBox").className="coverage "+(full?"ok":"err");document.getElementById("covStatus").textContent=full?`✓ Full (0–${max})`:`⚠ Gap (expected 0–${max})`;}
+function addBand(){if(dBands.length>=6){toast("Max 6 bands","info");return;}dBands.push({level:"New Level",min:0,max:0,desc:""});renderBands();}
+
+// Outcomes
+function renderOutcomes(){const grid=document.getElementById("outcomeGrid");grid.innerHTML="";outcomes.forEach(o=>{const sel=dOutcomes.includes(o.code);grid.innerHTML+=`<span class="outcome-chip ${sel?"on":""}" onclick="togOut('${o.code}')">${o.code}</span>`;});
+  const sec=document.getElementById("mappedSection");const list=document.getElementById("mappedList");if(dOutcomes.length){sec.style.display="block";list.innerHTML=dOutcomes.map(c=>{const o=outcomes.find(x=>x.code===c);return o?`<div style="display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="font-weight:700;color:var(--accent-text);font-family:var(--mono);font-size:11px;">${o.code}</span><span style="color:var(--text-2);">${o.desc}</span></div>`:""}).join("");}else sec.style.display="none";document.getElementById("tcMapping").textContent=dOutcomes.length;}
+function togOut(c){const i=dOutcomes.indexOf(c);if(i>=0)dOutcomes.splice(i,1);else dOutcomes.push(c);renderOutcomes();}
+
+// Empty
+function showEmpty(){document.getElementById("criteriaList").style.display="none";document.getElementById("budgetBar").style.display="none";document.getElementById("emptyState").classList.add("visible");}
+function hideEmpty(){document.getElementById("criteriaList").style.display="";document.getElementById("budgetBar").style.display="";document.getElementById("emptyState").classList.remove("visible");}
+function clonePeriod(n){hideEmpty();toast("Cloned from "+n,"success");}
+
+function toast(m,t){const el=document.getElementById("toast");el.textContent=m;el.className="toast "+t;setTimeout(()=>el.classList.add("show"),10);setTimeout(()=>el.classList.remove("show"),2500);}
+
+render();
+</script>
+</body>
+</html>

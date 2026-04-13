@@ -25,6 +25,29 @@ $$;
 GRANT EXECUTE ON FUNCTION public.current_user_is_super_admin() TO authenticated;
 
 -- =============================================================================
+-- HELPER: current_user_admin_org_ids()
+-- =============================================================================
+-- Returns org IDs where current user is an active org_admin.
+-- SECURITY DEFINER avoids infinite recursion in memberships RLS policies.
+
+CREATE OR REPLACE FUNCTION public.current_user_admin_org_ids()
+RETURNS SETOF UUID
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT organization_id
+  FROM memberships
+  WHERE user_id = auth.uid()
+    AND status = 'active'
+    AND role = 'org_admin'
+    AND organization_id IS NOT NULL;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.current_user_admin_org_ids() TO authenticated;
+
+-- =============================================================================
 -- HELPER: _assert_super_admin()
 -- =============================================================================
 -- Raises 'unauthorized' if caller is not a super admin.

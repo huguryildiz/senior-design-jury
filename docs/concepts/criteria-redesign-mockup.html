@@ -99,25 +99,35 @@
   .weight-bar-value { font-size: 15px; font-weight: 700; }
   .weight-bar-right { display: flex; align-items: center; gap: 8px; }
   .weight-bar-status { font-size: 11px; font-weight: 500; }
-  .weight-track {
-    height: 5px; background: var(--surface-1); border-radius: 99px;
-    overflow: hidden; transition: all 0.3s;
+  /* Segmented weight bar */
+  .weight-segments {
+    display: flex; height: 8px; border-radius: 99px; overflow: hidden;
+    gap: 2px; transition: all 0.3s;
   }
-  .weight-fill {
-    height: 100%; border-radius: 99px;
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
+  .weight-seg {
+    border-radius: 99px; transition: flex 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 4px;
   }
+  .weight-seg:first-child { border-radius: 99px 0 0 99px; }
+  .weight-seg:last-child { border-radius: 0 99px 99px 0; }
+  .weight-seg:only-child { border-radius: 99px; }
+  .weight-seg-remaining { background: var(--surface-1); border-radius: 0 99px 99px 0; }
+  .weight-legend {
+    display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .weight-legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text-tertiary);
+  }
+  .weight-legend-dot { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
 
   /* State colors */
   .state-valid .weight-bar-value { color: var(--success); }
   .state-valid .weight-bar-status { color: var(--success); }
-  .state-valid .weight-fill { background: linear-gradient(90deg, #22c55e, #4ade80); }
   .state-under .weight-bar-value { color: var(--text-primary); }
   .state-under .weight-bar-status { color: var(--warning); }
-  .state-under .weight-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
   .state-over .weight-bar-value { color: var(--danger); }
   .state-over .weight-bar-status { color: var(--danger); }
-  .state-over .weight-fill { background: linear-gradient(90deg, #e11d48, #fb7185); }
   .state-over .weight-bar { border-color: rgba(225,29,72,0.2); background: #fff8f8; }
 
   /* Criteria Table */
@@ -162,6 +172,13 @@
     gap: 8px;
     border-bottom: 1px solid rgba(15,23,42,0.03);
     transition: background 0.15s;
+    position: relative;
+  }
+  .criteria-row::before {
+    content: '';
+    position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; border-radius: 0 3px 3px 0;
+    background: var(--row-color);
   }
   .criteria-row:hover { background: #fafbff; }
   .criteria-row:last-child { border-bottom: none; }
@@ -781,9 +798,8 @@
         </span>
       </div>
     </div>
-    <div class="weight-track">
-      <div class="weight-fill" id="weightFill" style="width:100%;"></div>
-    </div>
+    <div class="weight-segments" id="weightSegments"></div>
+    <div class="weight-legend" id="weightLegend"></div>
   </div>
 
   <!-- Criteria Table -->
@@ -1018,7 +1034,7 @@ function renderTable() {
     ).join("");
 
     rows.innerHTML += `
-      <div class="criteria-row" ondblclick="openDrawer(${i})">
+      <div class="criteria-row" ondblclick="openDrawer(${i})" style="--row-color:${c.color};">
         <div class="row-num">${i + 1}</div>
         <div class="row-info">
           <div class="row-label">${c.label}</div>
@@ -1047,6 +1063,10 @@ function renderTable() {
         <div class="row-actions" onclick="toggleMenu(${i})">⋮
           <div class="actions-menu" id="menu-${i}">
             <div class="actions-menu-item" onclick="event.stopPropagation(); closeMenus(); openDrawer(${i});">✏️ Edit Criterion</div>
+            <div class="actions-menu-item" onclick="event.stopPropagation(); closeMenus(); duplicateCriterion(${i});">📋 Duplicate</div>
+            <div class="actions-menu-divider"></div>
+            <div class="actions-menu-item ${i === 0 ? 'disabled' : ''}" onclick="event.stopPropagation(); closeMenus(); moveCriterion(${i}, -1);" ${i === 0 ? 'style="opacity:0.4;pointer-events:none;"' : ''}>↑ Move Up</div>
+            <div class="actions-menu-item ${i === criteria.length - 1 ? 'disabled' : ''}" onclick="event.stopPropagation(); closeMenus(); moveCriterion(${i}, 1);" ${i === criteria.length - 1 ? 'style="opacity:0.4;pointer-events:none;"' : ''}>↓ Move Down</div>
             <div class="actions-menu-divider"></div>
             <div class="actions-menu-item danger" onclick="event.stopPropagation(); closeMenus(); deleteCriterion(${i});">🗑 Remove</div>
           </div>
@@ -1064,11 +1084,24 @@ function updateWeightBar() {
   const bar = document.getElementById("weightBar");
   const val = document.getElementById("weightValue");
   const status = document.getElementById("weightStatus");
-  const fill = document.getElementById("weightFill");
   const badge = document.getElementById("criteriaBadge");
+  const segs = document.getElementById("weightSegments");
+  const legend = document.getElementById("weightLegend");
 
   val.textContent = `${total} / 100`;
-  fill.style.width = Math.min(total, 100) + "%";
+
+  // Segmented bar
+  segs.innerHTML = criteria.map(c =>
+    `<div class="weight-seg" style="flex:${c.weight}; background:${c.color};"></div>`
+  ).join("");
+  if (total < 100) {
+    segs.innerHTML += `<div class="weight-seg-remaining" style="flex:${100 - total};"></div>`;
+  }
+
+  // Legend
+  legend.innerHTML = criteria.map(c =>
+    `<span class="weight-legend-item"><span class="weight-legend-dot" style="background:${c.color};"></span>${c.shortLabel} ${c.weight}</span>`
+  ).join("");
 
   bar.className = "weight-bar";
   if (total === 100) {
@@ -1529,6 +1562,27 @@ function deleteCriterion(i) {
     renderTable();
     showToast(name + " removed", "info");
   }
+}
+
+function duplicateCriterion(i) {
+  const orig = criteria[i];
+  const copy = JSON.parse(JSON.stringify(orig));
+  copy.label = orig.label + " (copy)";
+  copy.shortLabel = (orig.shortLabel + " Copy").substring(0, 15);
+  copy.color = randomColor();
+  criteria.splice(i + 1, 0, copy);
+  renderTable();
+  showToast("Duplicated " + orig.label, "success");
+}
+
+function moveCriterion(i, dir) {
+  const target = i + dir;
+  if (target < 0 || target >= criteria.length) return;
+  const temp = criteria[i];
+  criteria[i] = criteria[target];
+  criteria[target] = temp;
+  renderTable();
+  showToast("Moved " + temp.label + (dir < 0 ? " up" : " down"), "info");
 }
 
 // ── WEIGHT HELPERS ──

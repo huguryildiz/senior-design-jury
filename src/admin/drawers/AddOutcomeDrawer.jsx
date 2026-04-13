@@ -11,10 +11,12 @@
 //   error          — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Info, Icon } from "lucide-react";
+import { AlertCircle, Info, PlusCircle, GraduationCap, X, Check } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
+import AutoTextarea from "@/shared/ui/AutoTextarea";
+import InlineError from "@/shared/ui/InlineError";
 
 const EMPTY = { code: "", shortLabel: "", description: "", criterionIds: [] };
 
@@ -64,36 +66,16 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
       <div className="fs-drawer-header">
         <div className="fs-drawer-header-row">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span
-              className="fs-icon"
-              style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08))", borderColor: "rgba(16,185,129,0.18)" }}
-              aria-hidden="true"
-            >
-              <Icon
-                iconNode={[]}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" /><path d="M8 12h8M12 8v8" />
-              </Icon>
-            </span>
+            <div className="fs-icon success" aria-hidden="true">
+              <PlusCircle size={18} strokeWidth={2} />
+            </div>
             <div className="fs-title-group">
               <div className="fs-title">Add Outcome</div>
               <div className="fs-subtitle">Define a new programme outcome for the active framework.</div>
               {frameworkName && (
                 <div className="fw-drawer-header-ctx">
                   <span className="fw-drawer-tag">
-                    <Icon
-                      iconNode={[]}
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5">
-                      <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-                    </Icon>
+                    <GraduationCap size={13} strokeWidth={1.5} />
                     {frameworkName}
                   </span>
                 </div>
@@ -101,12 +83,7 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
             </div>
           </div>
           <button className="fs-close" type="button" onClick={onClose} aria-label="Close">
-            <Icon
-              iconNode={[]}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></Icon>
+            <X size={20} strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -123,7 +100,7 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
           <div className="fs-section-header" style={{ padding: "0 0 10px 0" }}>
             <span className="fs-section-title">Outcome Identity</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div className="fs-field">
               <label className="fs-field-label">Code <span className="fs-field-req">*</span></label>
               <input
@@ -141,16 +118,29 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
             </div>
             <div className="fs-field">
               <label className="fs-field-label">Short Label <span className="fs-field-req">*</span></label>
-              <input
-                className="fs-input"
-                type="text"
-                placeholder="e.g. Problem Solving"
-                value={form.shortLabel}
-                onChange={(e) => set("shortLabel", e.target.value)}
-                disabled={saving}
-                maxLength={48}
-              />
-              <div className="fs-field-helper hint" style={{ fontSize: "10.5px" }}>Shown in table rows</div>
+              {(() => {
+                const slWords = (form.shortLabel || "").trim().split(/\s+/).filter(Boolean).length;
+                const slOver  = slWords > 20;
+                return (
+                  <>
+                    <input
+                      className={["fs-input", slOver && "error"].filter(Boolean).join(" ")}
+                      style={{ textTransform: "capitalize", marginTop: 2 }}
+                      placeholder="e.g. Problem Solving"
+                      value={form.shortLabel}
+                      onChange={(e) => set("shortLabel", e.target.value)}
+                      disabled={saving}
+                    />
+                    <div className="fs-field-helper" style={{ display: "flex", justifyContent: "space-between", fontSize: "10.5px" }}>
+                      <span className="hint">Shown in table rows</span>
+                      <span style={{ color: slOver ? "var(--danger)" : "var(--text-quaternary)", fontVariantNumeric: "tabular-nums" }}>
+                        {slWords}/20 words
+                      </span>
+                    </div>
+                    {slOver && <InlineError>Max 20 words</InlineError>}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -158,9 +148,9 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
         {/* Description */}
         <div style={{ marginTop: 16 }}>
           <div className="acc-detail-section-label">Outcome Description</div>
-          <textarea
+          <AutoTextarea
             className="fs-input"
-            style={{ height: 90, resize: "vertical", padding: "10px 12px", fontSize: 13, marginTop: 6 }}
+            style={{ resize: "none", overflow: "hidden", padding: "10px 12px", fontSize: 13, marginTop: 6, minHeight: 40 }}
             placeholder="Full statement of the programme outcome as defined by the accreditation body…"
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
@@ -193,12 +183,7 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
                   <span className="acc-crit-dot" style={{ background: c.color }} />
                   {c.label}
                   <span className="acc-crit-check">
-                    <Icon
-                      iconNode={[]}
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></Icon>
+                    <Check size={14} strokeWidth={2.5} />
                   </span>
                 </label>
               ))}

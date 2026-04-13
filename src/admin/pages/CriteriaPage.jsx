@@ -13,6 +13,9 @@ import {
   ClipboardX,
   AlertCircle,
   Icon,
+  Copy,
+  MoveUp,
+  MoveDown,
 } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useToast } from "@/shared/hooks/useToast";
@@ -22,8 +25,15 @@ import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import FbAlert from "@/shared/ui/FbAlert";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
 import EditSingleCriterionDrawer from "@/admin/drawers/EditSingleCriterionDrawer";
+import WeightBudgetBar from "@/admin/criteria/WeightBudgetBar";
+import SaveBar from "@/admin/criteria/SaveBar";
+import InlineWeightEdit from "@/admin/criteria/InlineWeightEdit";
+import Pagination from "@/shared/ui/Pagination";
+import {
+  rescaleRubricBandsByWeight,
+  defaultRubricBands,
+} from "@/admin/criteria/criteriaFormHelpers";
 import "../../styles/pages/criteria.css";
-import "../../styles/pages/setup-wizard.css";
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -101,53 +111,176 @@ export default function CriteriaPage() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
+  // ── Clone state ───────────────────────────────────────────
+  const [cloneLoading, setCloneLoading] = useState(false);
+
+  // ── Pagination ────────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
   // ── Derived data ──────────────────────────────────────────────
 
   const viewPeriod = periods.periodList.find((s) => s.id === periods.viewPeriodId);
-  const criteriaConfig = periods.criteriaConfig || [];
+  const draftCriteria = periods.draftCriteria || [];
+  const outcomeConfig = periods.outcomeConfig || [];
   const isLocked = !!(viewPeriod?.is_locked);
-  const totalMax = criteriaConfig.reduce((s, c) => s + (c.max || 0), 0);
+  const [saving, setSaving] = useState(false);
 
-  // ── Save handler (used by CriteriaManager overlay) ───────────
+  const totalPages = Math.max(1, Math.ceil(draftCriteria.length / pageSize));
+  const safePage = Math.min(currentPage, Math.max(1, totalPages));
+  const pageRows = draftCriteria.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899"];
+
+  // ── Weight budget handlers ─────────────────────────────────────
+
+  const handleDistribute = () => {
+    if (!draftCriteria.length) return;
+    const each = Math.floor(100 / draftCriteria.length);
+    const remainder = 100 - each * draftCriteria.length;
+    const next = draftCriteria.map((c, i) => {
+      const newMax = each + (i < remainder ? 1 : 0);
+      const rubric = Array.isArray(c.rubric) ? c.rubric : [];
+      const scaled = rubric.length > 0
+        ? rescaleRubricBandsByWeight(rubric, newMax)
+        : defaultRubricBands(newMax);
+      return { ...c, max: newMax, rubric: scaled };
+    });
+    periods.updateDraft(next);
+  };
+
+  const handleAutoFill = (criterion) => {
+    const total = draftCriteria.reduce((s, c) => s + (c.max || 0), 0);
+    const remaining = 100 - total;
+    if (remaining <= 0) return;
+    const next = draftCriteria.map((c) => {
+      if (c !== criterion) return c;
+      const newMax = (c.max || 0) + remaining;
+      const rubric = Array.isArray(c.rubric) ? c.rubric : [];
+      const scaled = rubric.length > 0
+        ? rescaleRubricBandsByWeight(rubric, newMax)
+        : defaultRubricBands(newMax);
+      return { ...c, max: newMax, rubric: scaled };
+    });
+    periods.updateDraft(next);
+  };
+
+  // ── Inline weight change ───────────────────────────────────────
+
+  const handleWeightChange = (index, newWeight) => {
+    const next = draftCriteria.map((c, i) => {
+      if (i !== index) return c;
+      const rubric = Array.isArray(c.rubric) ? c.rubric : [];
+      const scaled = rubric.length > 0
+        ? rescaleRubricBandsByWeight(rubric, newWeight)
+        : defaultRubricBands(newWeight);
+      return { ...c, max: newWeight, rubric: scaled };
+    });
+    periods.updateDraft(next);
+  };
+
+  // ── Row actions ────────────────────────────────────────────────
+
+  const handleDuplicate = (index) => {
+    const orig = draftCriteria[index];
+    const copy = {
+      ...structuredClone(orig),
+      label: (orig.label || "") + " (copy)",
+      shortLabel: ((orig.shortLabel || "") + " Copy").substring(0, 15),
+      key: `${orig.key || "crt"}-copy-${Date.now()}`,
+    };
+    const next = [...draftCriteria];
+    next.splice(index + 1, 0, copy);
+    periods.updateDraft(next);
+  };
+
+  const handleMove = (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= draftCriteria.length) return;
+    const next = [...draftCriteria];
+    [next[index], next[target]] = [next[target], next[index]];
+    periods.updateDraft(next);
+  };
+
+  // ── Save/discard ───────────────────────────────────────────────
+
+  const handleCommit = async () => {
+    setSaving(true);
+    try {
+      await periods.commitDraft();
+      _toast.success("All criteria saved successfully");
+    } catch (err) {
+      const raw = err?.message || "";
+      let msg = "Failed to save criteria. Please try again.";
+      if (raw.includes("foreign key") && raw.includes("score_sheet_items")) {
+        msg = "Cannot modify criteria while scores exist for this period. Lock the evaluation period first, or contact an administrator to clear existing scores before making structural changes.";
+      } else if (raw.includes("foreign key")) {
+        msg = "Cannot save — other data depends on the current criteria structure. Make sure no scores or evaluations reference criteria you're trying to remove.";
+      } else if (raw.includes("duplicate key")) {
+        msg = "A criterion with that label already exists. Please use a unique name for each criterion.";
+      } else if (raw.includes("permission") || raw.includes("denied") || raw.includes("RLS")) {
+        msg = "You don't have permission to modify criteria for this period. Contact your organization admin.";
+      } else if (raw) {
+        msg = `Failed to save criteria: ${raw}`;
+      }
+      setPanelError("criteria", msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    periods.discardDraft();
+  };
+
+  // ── Save handler (used by drawer) ──────────────────────────────
 
   const handleSave = async (newTemplate) => {
-    if (!periods.viewPeriodId) return { ok: false, error: "No period selected" };
-    try {
-      incLoading();
-      await periods.updateCriteriaTemplate(periods.viewPeriodId, newTemplate);
-      setMessage("Criteria updated successfully");
-      return { ok: true };
-    } catch (err) {
-      const msg = err?.message || "Failed to update criteria";
-      setPanelError("criteria", msg);
-      return { ok: false, error: msg };
-    } finally {
-      decLoading();
-    }
+    periods.updateDraft(newTemplate);
+    return { ok: true };
   };
 
   // ── Row delete handler ────────────────────────────────────────
 
-  const handleDeleteConfirm = async () => {
-    if (deleteIndex === null || deleteSubmitting) return;
-    const indexToDelete = deleteIndex;
-    const next = criteriaConfig.filter((_, i) => i !== indexToDelete);
+  const handleDeleteConfirm = () => {
+    if (deleteIndex === null) return;
+    const next = draftCriteria.filter((_, i) => i !== deleteIndex);
+    periods.updateDraft(next);
+    setDeleteIndex(null);
+    setDeleteSubmitting(false);
+  };
 
-    setDeleteSubmitting(true);
+  // ── Clone from period handler ──────────────────────────────────────
+
+  const otherPeriods = (periods.periodList || []).filter(
+    (p) => p.id !== periods.viewPeriodId && p.id
+  );
+
+  const handleClone = async (sourcePeriodId) => {
+    setCloneLoading(true);
     try {
-      const result = await handleSave(next);
-      if (!result.ok) {
-        setPanelError("criteria", result.error);
-        return;
+      const { listPeriodCriteria } = await import("@/shared/api");
+      const { getActiveCriteria } = await import("@/shared/criteria/criteriaHelpers");
+      const rows = await listPeriodCriteria(sourcePeriodId);
+      const cloned = getActiveCriteria(rows).map((c) => ({
+        ...structuredClone(c),
+        key: `${c.key || "crt"}-clone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      }));
+      if (cloned.length > 0) {
+        periods.updateDraft(cloned);
+        _toast.success(`Cloned ${cloned.length} criteria`);
+      } else {
+        _toast.info("Source period has no criteria to clone");
       }
-      setDeleteIndex(null);
+    } catch (err) {
+      setPanelError("criteria", err?.message || "Failed to clone criteria");
     } finally {
-      setDeleteSubmitting(false);
+      setCloneLoading(false);
     }
   };
 
   const deleteLabel = deleteIndex !== null
-    ? (criteriaConfig[deleteIndex]?.label || `Criterion ${deleteIndex + 1}`)
+    ? (draftCriteria[deleteIndex]?.label || `Criterion ${deleteIndex + 1}`)
     : "";
   const deleteTargetText = deleteLabel || "";
   const canDeleteCriterion = !deleteTargetText || deleteConfirmText === deleteTargetText;
@@ -197,33 +330,32 @@ export default function CriteriaPage() {
           </button>
         )}
       </div>
+      {/* Weight budget bar */}
+      {periods.viewPeriodId && draftCriteria.length > 0 && (
+        <WeightBudgetBar
+          criteria={draftCriteria}
+          onDistribute={handleDistribute}
+          onAutoFill={handleAutoFill}
+        />
+      )}
       {/* No periods exist yet */}
       {!periods.viewPeriodId && periods.periodList.length === 0 && !panelError && (
-        <div className="sw-empty-state">
-          <div className="sw-empty-icon">
+        <div className="crt-empty-state">
+          <div className="crt-empty-state-icon">
             <ClipboardList size={28} strokeWidth={1.5} />
           </div>
-          <div className="sw-empty-title">Criteria need an evaluation period</div>
-          <div className="sw-empty-desc">
-            Evaluation criteria define what jurors score on — categories like Technical Content, Presentation, and Teamwork, each with rubric bands and weights. Create a period first, then set up criteria here.
+          <div className="crt-empty-state-title">No evaluation periods yet</div>
+          <div className="crt-empty-state-desc">
+            Create an evaluation period first — then come back here to configure its criteria.
           </div>
-          <div className="sw-empty-actions">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => onNavigate?.("setup")}
-              style={{ width: "auto", padding: "8px 20px" }}
-            >
-              Start Setup Wizard
-            </button>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => onNavigate?.("periods")}
-              style={{ width: "auto", padding: "8px 20px" }}
-            >
-              Go to Evaluation Periods
-            </button>
-          </div>
-          <div className="sw-empty-context">Step 3 of 7 in minimum setup · Requires: Evaluation Period</div>
+          <button
+            className="crt-add-btn"
+            style={{ marginTop: 16 }}
+            onClick={() => onNavigate?.("periods")}
+          >
+            <Plus size={13} strokeWidth={2.2} />
+            Go to Evaluation Periods
+          </button>
         </div>
       )}
       {/* Periods exist but none selected */}
@@ -243,73 +375,115 @@ export default function CriteriaPage() {
             <div className="crt-table-card-title">
               Active Criteria{periods.viewPeriodLabel ? ` — ${periods.viewPeriodLabel}` : ""}
             </div>
-            {criteriaConfig.length > 0 && (
+            {draftCriteria.length > 0 && (
               <div className="crt-summary-badge">
                 <CheckCircle2 size={14} strokeWidth={2.2} />
-                {criteriaConfig.length} {criteriaConfig.length === 1 ? "criterion" : "criteria"} &middot; {totalMax} points
+                {draftCriteria.length} {draftCriteria.length === 1 ? "criterion" : "criteria"} &middot; {periods.draftTotal} points
               </div>
             )}
           </div>
 
-          {criteriaConfig.length === 0 ? (
-            <div className="sw-empty-state">
-              <div className="sw-empty-icon">
+          {draftCriteria.length === 0 ? (
+            <div className="crt-empty-state">
+              <div className="crt-empty-state-icon">
                 <ClipboardX size={28} strokeWidth={1.5} />
               </div>
-              <div className="sw-empty-title">No criteria defined for this period</div>
-              <div className="sw-empty-desc">
-                Define scoring criteria so jurors know what to evaluate. You can use the Standard Evaluation Template for a quick start or build custom criteria.
+              <div className="crt-empty-state-title">No criteria defined yet</div>
+              <div className="crt-empty-state-desc">
+                Start by importing from a previous period or create from scratch.
               </div>
-              <div className="sw-empty-actions">
-                <button
-                  className="btn btn-primary btn-sm"
+
+              {otherPeriods.length > 0 && (
+                <div className="crt-clone-card">
+                  <div className="crt-clone-label">Import from previous period</div>
+                  {otherPeriods.slice(0, 3).map((p) => (
+                    <button
+                      key={p.id}
+                      className="crt-clone-option"
+                      onClick={() => handleClone(p.id)}
+                      disabled={cloneLoading || isLocked}
+                      type="button"
+                    >
+                      <div>
+                        <div className="crt-clone-name">{p.name}</div>
+                        <div className="crt-clone-meta">
+                          {p.criteria_count || "—"} criteria
+                        </div>
+                      </div>
+                      <span className="crt-clone-btn">Clone</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginTop: 18, fontSize: 12.5, color: "var(--text-tertiary)" }}>
+                or{" "}
+                <span
+                  style={{ color: "var(--accent)", fontWeight: 600, cursor: "pointer" }}
                   onClick={() => setEditingIndex(-1)}
-                  disabled={isLocked}
-                  style={{ width: "auto", padding: "8px 20px" }}
                 >
-                  <Plus size={13} strokeWidth={2.2} />
-                  Add Custom Criterion
-                </button>
+                  + Add Criterion
+                </span>{" "}
+                to start from scratch
               </div>
             </div>
           ) : (
             <table className="crt-table">
+              <colgroup>
+                <col style={{ width: 36 }} />
+                <col />
+                <col style={{ width: 72 }} />
+                <col style={{ width: "30%" }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 40 }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th>#</th>
                   <th className="col-criterion">Criterion</th>
                   <th className="col-weight">Weight</th>
-                  <th className="col-max">Max Score</th>
                   <th className="col-rubric">Rubric Bands</th>
+                  <th className="col-mapping">Mapping</th>
                   <th className="col-action">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {criteriaConfig.map((criterion, i) => {
-                  const weight = totalMax > 0 ? Math.round((criterion.max / totalMax) * 100) : 0;
+                {pageRows.map((criterion, rowIdx) => {
+                  const i = (safePage - 1) * pageSize + rowIdx;
                   const rubric = Array.isArray(criterion.rubric) ? criterion.rubric : [];
                   const menuKey = `crt-row-${i}`;
                   const isMenuOpen = openMenuId === menuKey;
                   return (
-                    <tr key={criterion.key || i}>
+                    <tr key={criterion.key || i} style={{ "--row-color": criterion.color || COLORS[i % COLORS.length] }}>
                       <td data-label="#"><span className="crt-row-num">{i + 1}</span></td>
                       <td data-label="Criterion">
-                        <div className="crt-name">{criterion.label || criterion.shortLabel || `Criterion ${i + 1}`}</div>
+                        <div className="crt-name">
+                          <span className="crt-color-dot" style={{ background: criterion.color || COLORS[i % COLORS.length] }} />
+                          {criterion.label || criterion.shortLabel || `Criterion ${i + 1}`}
+                        </div>
                         {criterion.blurb && (
                           <div className="crt-desc">{criterion.blurb}</div>
                         )}
                       </td>
-                      <td className="col-weight text-center" data-label="Weight">
-                        <span className="crt-weight-cell">{weight}%</span>
-                      </td>
-                      <td className="col-max text-center" data-label="Max Score">
-                        <span className="crt-max">{criterion.max}</span>
+                      <td className="col-weight" data-label="Weight">
+                        <InlineWeightEdit
+                          value={criterion.max || 0}
+                          color={criterion.color || COLORS[i % COLORS.length]}
+                          otherTotal={draftCriteria.reduce((s, c, j) => j === i ? s : s + (c.max || 0), 0)}
+                          onChange={(v) => handleWeightChange(i, v)}
+                          disabled={isLocked}
+                        />
                       </td>
                       <td className="col-rubric" data-label="Rubric Bands">
                         {rubric.length > 0 ? (
                           <div className="crt-rubric-bands">
                             {rubric.map((band, bi) => (
-                              <span key={bi} className={`crt-band-pill ${rubricBandClass(band.level || band.label)}`}>
+                              <span
+                                key={bi}
+                                className={`crt-band-pill ${rubricBandClass(band.level || band.label)}`}
+                                onClick={() => { setEditingIndex(i); }}
+                                style={{ cursor: "pointer" }}
+                              >
                                 {bandRangeText(band) && (
                                   <span className="crt-band-range">{bandRangeText(band)}</span>
                                 )}
@@ -320,6 +494,25 @@ export default function CriteriaPage() {
                         ) : (
                           <span style={{ fontSize: 11.5, color: "var(--text-quaternary)" }}>No rubric defined</span>
                         )}
+                      </td>
+                      <td className="col-mapping" data-label="Mapping">
+                        <div className="crt-mapping-pills">
+                          {(criterion.outcomes || []).map((code) => (
+                            <span
+                              key={code}
+                              className="crt-mapping-pill"
+                              onClick={() => { setEditingIndex(i); }}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                          <span
+                            className="crt-mapping-add"
+                            onClick={() => { setEditingIndex(i); }}
+                          >
+                            +
+                          </span>
+                        </div>
                       </td>
                       <td className="col-crt-actions">
                         <div style={{ display: "flex", justifyContent: "center" }}>
@@ -336,13 +529,39 @@ export default function CriteriaPage() {
                               <Pencil size={13} strokeWidth={2} />
                               Edit Criterion
                             </button>
+                            <button
+                              className="floating-menu-item"
+                              onMouseDown={() => { setOpenMenuId(null); handleDuplicate(i); }}
+                            >
+                              <Copy size={13} strokeWidth={2} />
+                              Duplicate
+                            </button>
+                            <div className="floating-menu-divider" />
+                            <button
+                              className="floating-menu-item"
+                              onMouseDown={() => { setOpenMenuId(null); handleMove(i, -1); }}
+                              disabled={i === 0}
+                              style={i === 0 ? { opacity: 0.4, pointerEvents: "none" } : {}}
+                            >
+                              <MoveUp size={13} strokeWidth={2} />
+                              Move Up
+                            </button>
+                            <button
+                              className="floating-menu-item"
+                              onMouseDown={() => { setOpenMenuId(null); handleMove(i, 1); }}
+                              disabled={i === draftCriteria.length - 1}
+                              style={i === draftCriteria.length - 1 ? { opacity: 0.4, pointerEvents: "none" } : {}}
+                            >
+                              <MoveDown size={13} strokeWidth={2} />
+                              Move Down
+                            </button>
                             <div className="floating-menu-divider" />
                             <button
                               className="floating-menu-item danger"
                               onMouseDown={() => { setOpenMenuId(null); setDeleteIndex(i); }}
                             >
                               <Trash2 size={13} strokeWidth={2} />
-                              Remove Criterion
+                              Remove
                             </button>
                           </FloatingMenu>
                         </div>
@@ -352,6 +571,17 @@ export default function CriteriaPage() {
                 })}
               </tbody>
             </table>
+          )}
+          {draftCriteria.length > 0 && (
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={draftCriteria.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+              itemLabel="criteria"
+            />
           )}
         </div>
       )}
@@ -451,15 +681,24 @@ export default function CriteriaPage() {
           </button>
         </div>
       </Modal>
+      {/* Save bar */}
+      <SaveBar
+        isDirty={periods.isDraftDirty}
+        canSave={periods.canSaveDraft}
+        total={periods.draftTotal}
+        onSave={handleCommit}
+        onDiscard={handleDiscard}
+        saving={saving}
+      />
       {/* Single-criterion editor drawer */}
       <EditSingleCriterionDrawer
         open={editingIndex !== null}
         onClose={closeEditor}
         period={{ id: periods.viewPeriodId, name: periods.viewPeriodLabel }}
-        criterion={editingIndex >= 0 ? criteriaConfig[editingIndex] : null}
+        criterion={editingIndex >= 0 ? draftCriteria[editingIndex] : null}
         editIndex={editingIndex}
-        criteriaConfig={criteriaConfig}
-        outcomeConfig={periods.outcomeConfig || []}
+        criteriaConfig={draftCriteria}
+        outcomeConfig={outcomeConfig}
         onSave={handleSave}
         disabled={loadingCount > 0}
         isLocked={isLocked}

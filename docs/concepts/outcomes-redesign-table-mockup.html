@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERA — Outcomes & Mapping Premium v2</title>
+<style>
+  :root {
+    --bg-page: #f4f7fb;
+    --bg-card: #ffffff;
+    --surface-1: #eef2f8;
+    --surface-2: #f8fafc;
+    --accent: #3b82f6;
+    --accent-dark: #1e40af;
+    --accent-ring: rgba(59,130,246,0.12);
+    --accent-soft: rgba(59,130,246,0.06);
+    --success: #15803d;
+    --success-bg: #f0fdf4;
+    --success-border: #bbf7d0;
+    --success-soft: rgba(21,128,61,0.08);
+    --warning: #d97706;
+    --warning-bg: #fffbeb;
+    --warning-border: #fde68a;
+    --warning-soft: rgba(217,119,6,0.08);
+    --danger: #e11d48;
+    --danger-bg: #fff1f2;
+    --danger-soft: rgba(225,29,72,0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+    --text-quaternary: #cbd5e1;
+    --border: rgba(15,23,42,0.08);
+    --border-strong: rgba(15,23,42,0.13);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+    --shadow-card: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-elevated: 0 4px 16px rgba(15,23,42,0.10);
+    --shadow-glow: 0 0 0 3px rgba(59,130,246,0.08);
+    --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── View toggle ──────────────────────────────────────────── */
+  .view-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: var(--shadow-elevated);
+  }
+  .view-toggle button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .view-toggle button.active {
+    background: var(--accent);
+    color: white;
+  }
+  .view-toggle button:not(.active):hover {
+    background: var(--surface-1);
+    color: var(--text-secondary);
+  }
+
+  /* ── Desktop / Mobile toggle ──────────────────────────────── */
+  .desktop-view { display: block; }
+  .mobile-view { display: none; }
+  .mobile-view.active { display: block; }
+  .desktop-view.hidden { display: none; }
+
+  /* ── Page shell ───────────────────────────────────────────── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .page-title { font-size: 22px; font-weight: 750; letter-spacing: -0.3px; }
+  .page-subtitle { font-size: 12.5px; color: var(--text-tertiary); margin-top: 3px; }
+
+  /* ── Framework bar ────────────────────────────────────────── */
+  .fw-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .fw-bar-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-tertiary);
+  }
+  .fw-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.04));
+    border: 1px solid rgba(59,130,246,0.15);
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--accent-dark);
+  }
+  .fw-chip svg { width: 14px; height: 14px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+  .fw-chip-count {
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    margin-left: 2px;
+  }
+
+  /* ── KPI Strip ────────────────────────────────────────────── */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .kpi-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-card);
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .kpi-card.kpi-total::before { background: var(--accent); }
+  .kpi-card.kpi-direct::before { background: var(--success); }
+  .kpi-card.kpi-indirect::before { background: var(--warning); }
+  .kpi-card.kpi-unmapped::before { background: var(--text-quaternary); }
+
+  .kpi-icon {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    display: grid; place-items: center;
+    margin-bottom: 10px;
+  }
+  .kpi-total .kpi-icon { background: var(--accent-soft); color: var(--accent); }
+  .kpi-direct .kpi-icon { background: var(--success-soft); color: var(--success); }
+  .kpi-indirect .kpi-icon { background: var(--warning-soft); color: var(--warning); }
+  .kpi-unmapped .kpi-icon { background: rgba(148,163,184,0.1); color: var(--text-tertiary); }
+  .kpi-icon svg { width: 16px; height: 16px; stroke-width: 2; fill: none; stroke: currentColor; }
+
+  .kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; margin-bottom: 4px; }
+  .kpi-total .kpi-value { color: var(--text-primary); }
+  .kpi-direct .kpi-value { color: var(--success); }
+  .kpi-indirect .kpi-value { color: var(--warning); }
+  .kpi-unmapped .kpi-value { color: var(--text-tertiary); }
+
+  .kpi-label { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 1px; }
+  .kpi-sublabel { font-size: 10px; color: var(--text-quaternary); font-weight: 500; }
+
+  /* ── Coverage Progress Bar ────────────────────────────────── */
+  .coverage-progress {
+    margin-bottom: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .coverage-progress-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .coverage-progress-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-tertiary);
+  }
+  .coverage-progress-pct { font-size: 13px; font-weight: 700; color: var(--accent); }
+  .coverage-bar-track {
+    height: 8px; background: var(--surface-1); border-radius: 999px;
+    overflow: hidden; display: flex;
+  }
+  .coverage-bar-direct {
+    height: 100%;
+    background: linear-gradient(90deg, #15803d, #22c55e);
+    border-radius: 999px 0 0 999px;
+  }
+  .coverage-bar-indirect {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  }
+  .coverage-bar-legend {
+    display: flex; gap: 16px; margin-top: 8px;
+  }
+  .coverage-bar-legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10.5px; color: var(--text-tertiary); font-weight: 500;
+  }
+  .legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Table card ───────────────────────────────────────────── */
+  .table-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+  .table-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-card-title { font-size: 14px; font-weight: 700; }
+  .table-card-actions { display: flex; align-items: center; gap: 10px; }
+  .table-card-hint { font-size: 10.5px; color: var(--text-quaternary); font-weight: 500; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: none; transition: all 0.15s; font-family: var(--font);
+  }
+  .btn-primary {
+    background: var(--accent); color: white;
+    box-shadow: 0 1px 2px rgba(59,130,246,0.3);
+  }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-primary svg { width: 13px; height: 13px; stroke: white; fill: none; stroke-width: 2.2; }
+
+  /* ── Table ────────────────────────────────────────────────── */
+  .outcomes-table { width: 100%; border-collapse: collapse; }
+
+  .outcomes-table thead th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-tertiary);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap; user-select: none;
+  }
+  .outcomes-table thead th.sortable { cursor: pointer; }
+  .outcomes-table thead th.sortable:hover { color: var(--text-secondary); }
+  .sort-icon { font-size: 8px; margin-left: 3px; opacity: 0.5; }
+  .sort-icon.active { opacity: 1; color: var(--accent); }
+
+  .outcomes-table tbody tr {
+    transition: background 0.1s;
+  }
+  .outcomes-table tbody tr:hover td {
+    background: rgba(59,130,246,0.02);
+  }
+  .outcomes-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 13px;
+  }
+
+  /* ── Code badge ───────────────────────────────────────────── */
+  .code-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 700;
+    font-family: var(--mono); letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .code-badge.mapped {
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.04));
+    color: var(--accent-dark);
+    border: 1px solid rgba(59,130,246,0.12);
+  }
+  .code-badge.unmapped {
+    background: var(--surface-1); color: var(--text-tertiary);
+    border: 1px solid var(--border);
+  }
+  .code-prefix {
+    font-size: 8px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.5px; opacity: 0.6;
+  }
+
+  /* ── Outcome cell: label + description stacked ────────────── */
+  .outcome-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .outcome-label {
+    font-size: 13px; color: var(--text-primary);
+    line-height: 1.4; font-weight: 550;
+  }
+  .outcome-desc {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    max-width: 420px;
+  }
+
+  /* ── Criteria chips ───────────────────────────────────────── */
+  .chip-wrap {
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  }
+  .crit-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px 3px 8px; border-radius: 999px;
+    background: var(--surface-1); border: 1px solid var(--border);
+    font-size: 11px; font-weight: 600; color: var(--text-secondary);
+    transition: all 0.12s; cursor: default; white-space: nowrap;
+  }
+  .crit-chip:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  .crit-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .chip-x {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; margin-left: 1px; color: var(--text-quaternary);
+    transition: all 0.12s;
+  }
+  .chip-x:hover { background: var(--danger-soft); color: var(--danger); }
+  .chip-x svg { width: 9px; height: 9px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+  .chip-add {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 999px;
+    background: transparent; border: 1px dashed var(--border-strong);
+    font-size: 10.5px; font-weight: 600; color: var(--text-quaternary);
+    cursor: pointer; transition: all 0.12s; font-family: var(--font);
+  }
+  .chip-add:hover {
+    border-color: var(--accent); color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .chip-add svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+
+  /* ── Coverage badge ───────────────────────────────────────── */
+  .coverage-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 650; white-space: nowrap;
+  }
+  .coverage-badge.direct {
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid var(--success-border);
+  }
+  .coverage-badge.indirect {
+    background: var(--warning-bg); color: var(--warning);
+    border: 1px solid var(--warning-border); cursor: pointer;
+  }
+  .coverage-badge.none {
+    background: var(--surface-1); color: var(--text-tertiary);
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .cov-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .direct .cov-dot { background: var(--success); }
+  .indirect .cov-dot { background: var(--warning); }
+  .none .cov-dot { background: var(--text-quaternary); }
+
+  /* ── Actions ──────────────────────────────────────────────── */
+  .action-btn {
+    width: 28px; height: 28px; border-radius: 7px;
+    border: 1px solid transparent; background: transparent;
+    cursor: pointer; display: inline-flex; align-items: center;
+    justify-content: center; color: var(--text-tertiary);
+    transition: all 0.12s;
+  }
+  .action-btn:hover {
+    background: var(--surface-1); border-color: var(--border);
+    color: var(--text-secondary);
+  }
+  .action-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  .text-center { text-align: center; }
+
+  /* ═══════════════════════════════════════════════════════════ */
+  /* MOBILE                                                      */
+  /* ═══════════════════════════════════════════════════════════ */
+  .phone-frame-wrap {
+    display: flex; justify-content: center;
+    padding: 40px 20px; background: var(--bg-page); min-height: 100vh;
+  }
+  .phone-frame {
+    width: 375px; min-height: 812px;
+    background: var(--bg-page);
+    border-radius: 40px; border: 6px solid #1e293b;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15), 0 0 0 2px rgba(255,255,255,0.1);
+    position: relative;
+  }
+  .phone-notch {
+    width: 150px; height: 28px; background: #1e293b;
+    border-radius: 0 0 18px 18px; margin: 0 auto;
+    position: relative; z-index: 10;
+  }
+  .phone-content {
+    padding: 12px 16px 24px;
+    overflow-y: auto; max-height: 770px;
+  }
+
+  .m-page-title { font-size: 18px; font-weight: 750; letter-spacing: -0.3px; margin-bottom: 2px; }
+  .m-page-subtitle { font-size: 11px; color: var(--text-tertiary); margin-bottom: 14px; }
+
+  .m-fw-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.04));
+    border: 1px solid rgba(59,130,246,0.15);
+    font-size: 11px; font-weight: 650; color: var(--accent-dark);
+    margin-bottom: 12px;
+  }
+  .m-fw-chip svg { width: 12px; height: 12px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+
+  .m-kpi-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 14px;
+  }
+  .m-kpi {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+    position: relative; overflow: hidden;
+  }
+  .m-kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px;
+  }
+  .m-kpi.kpi-total::before { background: var(--accent); }
+  .m-kpi.kpi-direct::before { background: var(--success); }
+  .m-kpi.kpi-indirect::before { background: var(--warning); }
+  .m-kpi.kpi-unmapped::before { background: var(--text-quaternary); }
+  .m-kpi-value { font-size: 22px; font-weight: 800; line-height: 1; margin-bottom: 2px; }
+  .m-kpi.kpi-total .m-kpi-value { color: var(--text-primary); }
+  .m-kpi.kpi-direct .m-kpi-value { color: var(--success); }
+  .m-kpi.kpi-indirect .m-kpi-value { color: var(--warning); }
+  .m-kpi.kpi-unmapped .m-kpi-value { color: var(--text-tertiary); }
+  .m-kpi-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); }
+  .m-kpi-sublabel { font-size: 9px; color: var(--text-quaternary); font-weight: 500; }
+
+  .m-coverage-bar {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+  }
+  .m-cov-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .m-cov-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); }
+  .m-cov-pct { font-size: 11px; font-weight: 700; color: var(--accent); }
+  .m-bar-track { height: 6px; background: var(--surface-1); border-radius: 999px; overflow: hidden; display: flex; }
+  .m-bar-direct { height: 100%; background: linear-gradient(90deg, #15803d, #22c55e); border-radius: 999px 0 0 999px; }
+  .m-bar-indirect { height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+  .m-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .m-card-title { font-size: 13px; font-weight: 700; }
+  .m-add-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border-radius: 7px;
+    background: var(--accent); color: white;
+    font-size: 11px; font-weight: 600; border: none;
+    cursor: pointer; font-family: var(--font);
+  }
+  .m-add-btn svg { width: 11px; height: 11px; stroke: white; fill: none; stroke-width: 2.5; }
+
+  .m-card-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .m-outcome-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+    transition: all 0.15s;
+  }
+  .m-outcome-card:hover {
+    border-color: var(--accent); box-shadow: var(--shadow-glow);
+  }
+  .m-outcome-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .m-outcome-code {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px; border-radius: 5px;
+    font-size: 10px; font-weight: 700;
+    font-family: var(--mono); letter-spacing: 0.3px;
+  }
+  .m-outcome-code.mapped {
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.04));
+    color: var(--accent-dark); border: 1px solid rgba(59,130,246,0.12);
+  }
+  .m-outcome-label {
+    font-size: 12.5px; font-weight: 550; color: var(--text-primary);
+    line-height: 1.4; margin-bottom: 4px;
+  }
+  .m-outcome-desc {
+    font-size: 11px; color: var(--text-tertiary);
+    line-height: 1.45; margin-bottom: 8px;
+  }
+  .m-outcome-chips {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding-top: 8px; border-top: 1px solid var(--border);
+  }
+  .m-crit-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--surface-1); border: 1px solid var(--border);
+    font-size: 10px; font-weight: 600; color: var(--text-secondary);
+  }
+  .m-crit-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .m-chip-add {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px; border-radius: 999px;
+    background: transparent; border: 1px dashed var(--border-strong);
+    font-size: 10px; font-weight: 600; color: var(--text-quaternary);
+    cursor: pointer; font-family: var(--font);
+  }
+  .m-chip-add svg { width: 9px; height: 9px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── Annotation ───────────────────────────────────────────── */
+  .annotation {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px 16px;
+    background: rgba(59,130,246,0.04); border: 1px solid rgba(59,130,246,0.1);
+    border-radius: var(--radius-sm); margin-bottom: 12px;
+    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  }
+  .annotation-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: white;
+    font-size: 11px; font-weight: 700;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .annotation strong { color: var(--text-primary); }
+
+  .section-label {
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+    margin: 48px 0 8px 0; padding-top: 32px;
+    border-top: 2px solid var(--border); text-align: center;
+  }
+  .section-sublabel {
+    font-size: 12px; color: var(--text-tertiary);
+    text-align: center; margin-bottom: 24px;
+  }
+</style>
+</head>
+<body>
+
+<!-- View toggle -->
+<div class="view-toggle">
+  <button class="active" onclick="showView('desktop')">Desktop</button>
+  <button onclick="showView('mobile')">Mobile Portrait</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- DESKTOP VIEW                                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="desktop-view" id="desktop-view">
+<div class="page">
+
+  <div class="section-label" style="border:none; margin-top:0; padding-top:0;">Outcomes & Mapping — Premium v2</div>
+  <div class="section-sublabel">Chevron/expand kaldırıldı — description her satırda inline olarak gösteriliyor</div>
+
+  <div class="annotation">
+    <span class="annotation-num">!</span>
+    <span><strong>v2 farkı:</strong> Expand/chevron mekanizması tamamen kaldırıldı. Outcome açıklaması doğrudan outcome label'ın altında (aynı hücrede, daha küçük ve soluk font ile) her zaman görünür. Tablo daha "flat" ve scannable.</span>
+  </div>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Outcomes & Mapping</div>
+      <div class="page-subtitle">Map evaluation criteria to programme outcomes and track coverage.</div>
+    </div>
+  </div>
+
+  <!-- Framework bar -->
+  <div class="fw-bar">
+    <span class="fw-bar-label">Framework</span>
+    <span class="fw-chip">
+      <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5"/></svg>
+      MÜDEK 2024
+      <span class="fw-chip-count">7</span>
+    </span>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+    <div class="kpi-card kpi-total">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+      <div class="kpi-value">7</div>
+      <div class="kpi-label">Total Outcomes</div>
+      <div class="kpi-sublabel">Defined in framework</div>
+    </div>
+    <div class="kpi-card kpi-direct">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="kpi-value">7</div>
+      <div class="kpi-label">Direct</div>
+      <div class="kpi-sublabel">Explicitly mapped</div>
+    </div>
+    <div class="kpi-card kpi-indirect">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
+      <div class="kpi-value">0</div>
+      <div class="kpi-label">Indirect</div>
+      <div class="kpi-sublabel">Tangentially assessed</div>
+    </div>
+    <div class="kpi-card kpi-unmapped">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></div>
+      <div class="kpi-value">0</div>
+      <div class="kpi-label">Unmapped</div>
+      <div class="kpi-sublabel">No coverage</div>
+    </div>
+  </div>
+
+  <!-- Coverage bar -->
+  <div class="coverage-progress">
+    <div class="coverage-progress-top">
+      <span class="coverage-progress-label">Overall Coverage</span>
+      <span class="coverage-progress-pct">100% covered</span>
+    </div>
+    <div class="coverage-bar-track">
+      <div class="coverage-bar-direct" style="width: 100%"></div>
+      <div class="coverage-bar-indirect" style="width: 0%"></div>
+    </div>
+    <div class="coverage-bar-legend">
+      <span class="coverage-bar-legend-item"><span class="legend-dot" style="background: #22c55e"></span> Direct (7)</span>
+      <span class="coverage-bar-legend-item"><span class="legend-dot" style="background: #fbbf24"></span> Indirect (0)</span>
+      <span class="coverage-bar-legend-item"><span class="legend-dot" style="background: var(--text-quaternary)"></span> Unmapped (0)</span>
+    </div>
+  </div>
+
+  <!-- Table card -->
+  <div class="table-card">
+    <div class="table-card-header">
+      <div class="table-card-title">Programme Outcomes</div>
+      <div class="table-card-actions">
+        <span class="fw-chip" style="font-size:11px; padding:4px 10px;">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5"/></svg>
+          MÜDEK 2024
+        </span>
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          Add Outcome
+        </button>
+      </div>
+    </div>
+
+    <table class="outcomes-table">
+      <thead>
+        <tr>
+          <th style="width:80px" class="sortable">Code <span class="sort-icon active">▲</span></th>
+          <th>Outcome</th>
+          <th>Mapped Criteria</th>
+          <th style="width:110px" class="text-center">Coverage</th>
+          <th style="width:44px" class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Row 1 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>1.2</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Adequate knowledge of mathematics, science and engineering</span>
+              <span class="outcome-desc">Students demonstrate competence in fundamental mathematical principles, scientific reasoning, and core engineering knowledge.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#3b82f6"></span>Technical<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+
+        <!-- Row 2 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>2</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Ability to formulate and solve complex engineering problems</span>
+              <span class="outcome-desc">Identify, formulate, and develop solutions to complex problems using principles of engineering, science, and mathematics.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#3b82f6"></span>Technical<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+
+        <!-- Row 3 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>3</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Ability to design solutions under realistic constraints</span>
+              <span class="outcome-desc">Apply creative engineering design to produce solutions that meet specified needs with consideration of public health, safety, and welfare.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#3b82f6"></span>Technical<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+
+        <!-- Row 4 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>8.1</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Ability to function effectively in disciplinary teams</span>
+              <span class="outcome-desc">Demonstrate the ability to collaborate within single-discipline teams to accomplish shared engineering objectives.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#f59e0b"></span>Teamwork<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+
+        <!-- Row 5 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>8.2</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Ability to work in multi-disciplinary teams</span>
+              <span class="outcome-desc">Function effectively on cross-disciplinary teams integrating perspectives from diverse fields.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#f59e0b"></span>Teamwork<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+
+        <!-- Row 6 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>9.1</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Oral communication effectiveness</span>
+              <span class="outcome-desc">Communicate effectively through oral presentations and discussions in both technical and non-technical settings.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#8b5cf6"></span>Oral<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+
+        <!-- Row 7 -->
+        <tr>
+          <td><span class="code-badge mapped"><span class="code-prefix">MDK</span>9.2</span></td>
+          <td>
+            <div class="outcome-cell">
+              <span class="outcome-label">Written communication effectiveness</span>
+              <span class="outcome-desc">Produce clear, well-structured written reports, documentation, and technical correspondence.</span>
+            </div>
+          </td>
+          <td>
+            <div class="chip-wrap">
+              <span class="crit-chip"><span class="crit-dot" style="background:#ec4899"></span>Written<span class="chip-x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></span>
+              <button class="chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </td>
+          <td class="text-center"><span class="coverage-badge direct"><span class="cov-dot"></span>Direct</span></td>
+          <td class="text-center"><button class="action-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MOBILE PORTRAIT VIEW                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="mobile-view" id="mobile-view">
+  <div class="section-label" style="border:none; margin-top:60px; padding-top:0;">Mobile Portrait View</div>
+  <div class="section-sublabel">375px — description her kartta inline, expand/chevron yok</div>
+
+  <div style="max-width:600px; margin:0 auto 24px;">
+    <div class="annotation">
+      <span class="annotation-num">!</span>
+      <span><strong>v2 mobile:</strong> Her kart doğrudan label + description gösteriyor. Chevron yok, fazladan tıklamaya gerek yok. Kartlar daha bilgi-yoğun ama tek bakışta okunabilir.</span>
+    </div>
+  </div>
+
+  <div class="phone-frame-wrap">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-content">
+
+        <div class="m-page-title">Outcomes & Mapping</div>
+        <div class="m-page-subtitle">Map criteria to programme outcomes</div>
+
+        <div class="m-fw-chip">
+          <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5"/></svg>
+          MÜDEK 2024
+        </div>
+
+        <div class="m-kpi-grid">
+          <div class="m-kpi kpi-total"><div class="m-kpi-value">7</div><div class="m-kpi-label">Total Outcomes</div><div class="m-kpi-sublabel">Defined in framework</div></div>
+          <div class="m-kpi kpi-direct"><div class="m-kpi-value">7</div><div class="m-kpi-label">Direct</div><div class="m-kpi-sublabel">Explicitly mapped</div></div>
+          <div class="m-kpi kpi-indirect"><div class="m-kpi-value">0</div><div class="m-kpi-label">Indirect</div><div class="m-kpi-sublabel">Tangentially assessed</div></div>
+          <div class="m-kpi kpi-unmapped"><div class="m-kpi-value">0</div><div class="m-kpi-label">Unmapped</div><div class="m-kpi-sublabel">No coverage</div></div>
+        </div>
+
+        <div class="m-coverage-bar">
+          <div class="m-cov-top"><span class="m-cov-label">Overall Coverage</span><span class="m-cov-pct">100%</span></div>
+          <div class="m-bar-track"><div class="m-bar-direct" style="width:100%"></div></div>
+        </div>
+
+        <div class="m-card-header">
+          <span class="m-card-title">Programme Outcomes</span>
+          <button class="m-add-btn"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Add</button>
+        </div>
+
+        <div class="m-card-list">
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 1.2</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Adequate knowledge of mathematics, science and engineering</div>
+            <div class="m-outcome-desc">Students demonstrate competence in fundamental mathematical principles, scientific reasoning, and core engineering knowledge.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#3b82f6"></span>Technical</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 2</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Ability to formulate and solve complex engineering problems</div>
+            <div class="m-outcome-desc">Identify, formulate, and develop solutions using principles of engineering, science, and mathematics.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#3b82f6"></span>Technical</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 3</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Ability to design solutions under realistic constraints</div>
+            <div class="m-outcome-desc">Apply creative design to produce solutions with consideration of public health, safety, and welfare.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#3b82f6"></span>Technical</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 8.1</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Ability to function effectively in disciplinary teams</div>
+            <div class="m-outcome-desc">Collaborate within single-discipline teams to accomplish shared engineering objectives.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#f59e0b"></span>Teamwork</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 8.2</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Ability to work in multi-disciplinary teams</div>
+            <div class="m-outcome-desc">Function effectively on cross-disciplinary teams integrating perspectives from diverse fields.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#f59e0b"></span>Teamwork</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 9.1</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Oral communication effectiveness</div>
+            <div class="m-outcome-desc">Communicate effectively through oral presentations in technical and non-technical settings.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#8b5cf6"></span>Oral</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+          <div class="m-outcome-card">
+            <div class="m-outcome-top">
+              <span class="m-outcome-code mapped">MDK 9.2</span>
+              <span class="coverage-badge direct" style="font-size:9.5px; padding:2px 8px;"><span class="cov-dot"></span>Direct</span>
+            </div>
+            <div class="m-outcome-label">Written communication effectiveness</div>
+            <div class="m-outcome-desc">Produce clear, well-structured written reports, documentation, and technical correspondence.</div>
+            <div class="m-outcome-chips">
+              <span class="m-crit-chip"><span class="m-crit-dot" style="background:#ec4899"></span>Written</span>
+              <button class="m-chip-add"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showView(view) {
+  const d = document.getElementById('desktop-view');
+  const m = document.getElementById('mobile-view');
+  const btns = document.querySelectorAll('.view-toggle button');
+  if (view === 'desktop') {
+    d.classList.remove('hidden'); m.classList.remove('active');
+    btns[0].classList.add('active'); btns[1].classList.remove('active');
+  } else {
+    d.classList.add('hidden'); m.classList.add('active');
+    btns[0].classList.remove('active'); btns[1].classList.add('active');
+  }
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 
+const SEGMENT_COLORS = [
+  "var(--accent)",
+  "#8b5cf6",
+  "#ec4899",
+  "#f59e0b",
+  "#10b981",
+  "#06b6d4",
+  "#6366f1",
+];
+
 export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) {
   const [autoFillOpen, setAutoFillOpen] = useState(false);
   const popoverRef = useRef(null);
@@ -89,23 +99,13 @@ export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) 
       <div className="crt-budget-bar-container">
         <div className="crt-budget-bar">
           {criteria.map((crit, idx) => {
-            const percentage = (crit.max / 100) * 100;
-            const colors = [
-              "var(--accent)",
-              "#8b5cf6",
-              "#ec4899",
-              "#f59e0b",
-              "#10b981",
-              "#06b6d4",
-              "#6366f1",
-            ];
-            const color = colors[idx % colors.length];
+            const color = SEGMENT_COLORS[idx % SEGMENT_COLORS.length];
             return (
               <div
                 key={crit.id || crit.key || idx}
                 className="crt-budget-segment"
                 style={{
-                  flex: `${percentage}%`,
+                  flex: crit.max,
                   backgroundColor: color,
                 }}
               />
@@ -114,7 +114,7 @@ export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) 
           {isUnder && (
             <div
               className="crt-budget-segment crt-budget-segment-remaining"
-              style={{ flex: `${remaining}%` }}
+              style={{ flex: remaining }}
             />
           )}
         </div>
@@ -122,16 +122,7 @@ export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) 
 
       <div className="crt-budget-legend">
         {criteria.map((crit, idx) => {
-          const colors = [
-            "var(--accent)",
-            "#8b5cf6",
-            "#ec4899",
-            "#f59e0b",
-            "#10b981",
-            "#06b6d4",
-            "#6366f1",
-          ];
-          const color = colors[idx % colors.length];
+          const color = SEGMENT_COLORS[idx % SEGMENT_COLORS.length];
           return (
             <div key={crit.id || crit.key || idx} className="crt-budget-legend-item">
               <div className="crt-budget-legend-dot" style={{ backgroundColor: color }} />
