@@ -5,6 +5,301 @@
 .sem-header-left { flex: 1; min-width: 0 }
 .sem-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0 }
 
+/* ─── Lifecycle progress bar ─────────────────────────────── */
+.periods-lifecycle-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.periods-lifecycle-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.periods-lifecycle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.periods-lifecycle-summary {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.periods-lifecycle-track {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(15, 23, 42, 0.05);
+  display: flex;
+  overflow: hidden;
+  gap: 1px;
+}
+
+.dark-mode .periods-lifecycle-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.periods-lifecycle-segment {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.periods-lifecycle-segment.draft    { background: linear-gradient(90deg, #818cf8, #6366f1); }
+.periods-lifecycle-segment.active   { background: linear-gradient(90deg, #34d399, #10b981); }
+.periods-lifecycle-segment.completed { background: linear-gradient(90deg, #fbbf24, #d97706); }
+.periods-lifecycle-segment.locked   { background: linear-gradient(90deg, #94a3b8, #64748b); }
+
+.periods-lifecycle-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.periods-lifecycle-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.periods-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.periods-legend-dot.draft    { background: #6366f1; }
+.periods-legend-dot.active   { background: #10b981; }
+.periods-legend-dot.completed { background: #d97706; }
+.periods-legend-dot.locked   { background: #64748b; }
+
+/* ─── Table card wrapper ─────────────────────────────────── */
+.periods-table-card {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.periods-table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--surface-1);
+}
+
+.periods-table-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.periods-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(22, 163, 74, 0.06);
+  color: var(--success);
+  border: 1px solid rgba(22, 163, 74, 0.12);
+  letter-spacing: 0.15px;
+}
+
+.periods-summary-badge svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.8;
+}
+
+.dark-mode .periods-summary-badge {
+  background: rgba(74, 222, 128, 0.08);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.18);
+}
+
+.periods-table-scroll {
+  overflow-x: auto;
+}
+
+.periods-table-card .sem-table {
+  min-width: 900px;
+}
+
+.periods-table-card .sem-table-wrap {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* ─── Progress column ────────────────────────────────────── */
+.periods-progress-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 50px;
+}
+
+.periods-progress-bar {
+  width: 100%;
+  max-width: 48px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.dark-mode .periods-progress-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.periods-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--success);
+  transition: width 0.3s;
+}
+
+.periods-progress-val {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.periods-progress-val.muted {
+  color: var(--text-quaternary);
+  font-weight: 500;
+}
+
+.periods-progress-val.done {
+  color: var(--success);
+}
+
+/* ─── Framework badge ────────────────────────────────────── */
+.periods-fw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.07), rgba(139, 92, 246, 0.07));
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.periods-fw-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+.periods-fw-badge.none {
+  color: var(--text-quaternary);
+  background: rgba(15, 23, 42, 0.03);
+  border-color: var(--border);
+}
+
+.dark-mode .periods-fw-badge {
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.08));
+  border-color: rgba(96, 165, 250, 0.18);
+  color: var(--accent);
+}
+
+.dark-mode .periods-fw-badge.none {
+  color: var(--text-quaternary);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+
+/* ─── Criteria set badge ─────────────────────────────────── */
+.periods-cset-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.14);
+  color: #7c3aed;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.periods-cset-badge.muted {
+  color: var(--text-tertiary);
+  background: rgba(15, 23, 42, 0.03);
+  border-color: var(--border);
+}
+
+.dark-mode .periods-cset-badge {
+  background: rgba(167, 139, 250, 0.08);
+  border-color: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+}
+
+.dark-mode .periods-cset-badge.muted {
+  color: var(--text-quaternary);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+
+/* ─── Date range ─────────────────────────────────────────── */
+.periods-date-range {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.periods-date-sep {
+  color: var(--text-quaternary);
+  margin: 0 3px;
+}
+
+/* ─── Stat columns ───────────────────────────────────────── */
+.periods-stat-val {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.periods-stat-val.zero {
+  color: var(--text-quaternary);
+}
+
+/* Mobile stats strip hidden on desktop */
+.periods-mobile-stats { display: none; }
+
 /* ─── Locked period banner ────────────────────────────────── */
 .sem-banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius); font-size: 11.5px; font-weight: 500; margin-bottom: 14px; background: rgba(217,119,6,.04); border: 1px solid rgba(217,119,6,.12); color: #92400e; position: relative; overflow: hidden }
 .sem-banner::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #d97706; border-radius: var(--radius) 0 0 var(--radius) }
@@ -74,82 +369,112 @@
 .sem-action-menu-label { padding: 6px 11px 4px; font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.6px }
 .sem-action-item-disabled { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--text-tertiary); opacity: 0.58; cursor: default; pointer-events: none }
 
-/* ─── Portrait card layout (≤ 768px portrait) ────────────────
-   Each table row becomes a stacked card.
-   ──────────────────────────────────────────────────────────── */
+/* ─── Mobile card layout (portrait ≤ 768px) ──────────────── */
 @media (max-width: 768px) and (orientation: portrait) {
-  .sem-table-wrap {
-    overflow: hidden;
-    border: none;
-    background: none;
-    box-shadow: none;
-    border-radius: 0;
-  }
+  .periods-lifecycle-bar { padding: 12px 14px; }
+  .periods-lifecycle-legend { flex-wrap: wrap; gap: 8px 14px; }
 
-  .sem-table { display: contents; }
+  .periods-table-card { border-radius: var(--radius); overflow: hidden; }
+  .periods-table-scroll { overflow: visible; }
+  .periods-table-card .sem-table { min-width: 0; }
+
+  .sem-table, .sem-table thead, .sem-table tbody { display: block; width: 100%; }
   .sem-table thead { display: none !important; }
-  .sem-table tbody { display: block; width: 100%; }
 
-  /* Card container */
   .sem-table tbody tr {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "period status"
-      "period updated"
-      "actions actions";
-    width: 100%;
-    box-sizing: border-box;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 10px;
-    padding: 14px 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    transition: box-shadow 0.15s, border-color 0.15s;
-    gap: 4px 12px;
+    display: flex; flex-direction: column; gap: 0;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px; padding: 0;
+    box-shadow: var(--shadow-sm); overflow: hidden; position: relative;
   }
   .sem-table tbody tr:hover {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.10);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+  }
+  .sem-table tbody td { display: block; padding: 0; border-bottom: none; }
+
+  /* Period name — top */
+  .sem-table td[data-label="Evaluation Period"] { padding: 14px 16px 6px; order: 1; }
+
+  /* Status — below name */
+  .sem-table td[data-label="Status"] { padding: 0 16px 10px; order: 2; }
+
+  /* Date range */
+  .sem-table td[data-label="Date Range"] {
+    order: 3; padding: 10px 16px 0; border-top: 1px solid var(--border);
+  }
+  .sem-table td[data-label="Date Range"]::before {
+    content: "Date Range"; display: block; font-size: 8.5px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-quaternary); font-weight: 600; margin-bottom: 2px;
   }
 
-  /* Current period accent */
-  .periods-page .sem-table tbody tr.sem-row-current {
-    border-left: 3px solid #10b981;
+  /* Progress */
+  .sem-table td[data-label="Progress"] { order: 4; padding: 8px 16px 0; }
+  .sem-table td[data-label="Progress"]::before {
+    content: "Progress"; display: block; font-size: 8.5px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-quaternary); font-weight: 600; margin-bottom: 2px;
+  }
+  .sem-table td[data-label="Progress"] .periods-progress-cell { align-items: flex-start; }
+  .sem-table td[data-label="Progress"] .periods-progress-bar { max-width: 100%; }
+
+  /* Stats strip (Projects · Jurors · Criteria) */
+  .sem-table td.periods-mobile-stats { display: block !important; order: 5; padding: 8px 16px 0; }
+  .periods-mobile-stats-row {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .periods-m-stat {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--text-tertiary); font-weight: 500;
+  }
+  .periods-m-stat .val {
+    font-weight: 700; color: var(--text-secondary);
+    font-family: var(--mono); font-size: 11.5px;
+  }
+  .periods-m-stat .val.zero { color: var(--text-quaternary); }
+
+  /* Criteria Set */
+  .sem-table td[data-label="Criteria Set"] { order: 6; padding: 8px 16px 0; }
+  .sem-table td[data-label="Criteria Set"]::before {
+    content: "Criteria Set"; display: block; font-size: 8.5px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-quaternary); font-weight: 600; margin-bottom: 2px;
   }
 
-  /* Base cell reset */
-  .sem-table td {
-    display: block;
-    border-bottom: none;
-    padding: 0;
-    box-sizing: border-box;
+  /* Framework */
+  .sem-table td[data-label="Framework"] { order: 7; padding: 8px 16px 0; }
+  .sem-table td[data-label="Framework"]::before {
+    content: "Framework"; display: block; font-size: 8.5px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-quaternary); font-weight: 600; margin-bottom: 2px;
   }
 
-  /* data-label micro-labels */
-  .sem-table td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 8.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--text-tertiary);
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-
-  /* Grid area assignments */
-  .sem-table td:nth-child(1) { grid-area: period; align-self: center; }
-  .sem-table td:nth-child(2) { grid-area: status; align-self: flex-start; }
-  .sem-table td:nth-child(3) { grid-area: updated; align-self: flex-end; font-size: 11px; color: var(--text-tertiary); }
-  .sem-table td.col-actions  {
-    grid-area: actions;
-    padding-top: 10px;
+  /* Updated — bottom */
+  .sem-table td[data-label="Last Updated"] {
+    order: 8; padding: 10px 16px 14px; margin-top: 6px;
     border-top: 1px solid var(--border);
-    margin-top: 4px;
-    text-align: right;
   }
+  .sem-table td[data-label="Last Updated"]::before {
+    content: "Updated"; display: inline; font-size: 8.5px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-quaternary); font-weight: 600; margin-right: 8px;
+  }
+
+  /* Actions — absolute top right */
+  .sem-table td.col-actions { position: absolute; top: 10px; right: 10px; order: 10; }
+
+  /* Desktop-only individual stat cells hidden */
+  .sem-table td[data-label="Projects"],
+  .sem-table td[data-label="Jurors"],
+  .sem-table td[data-label="Criteria"] { display: none !important; }
+
+  /* Row accents */
+  .periods-page .sem-row-current { border-left: 3px solid #10b981; }
+  .sem-row-draft { border-left: 3px solid rgba(79, 70, 229, 0.3); }
+
+  .sem-name { font-size: 14px; }
+  .periods-page .sem-badge-current { font-size: 9px; padding: 2px 7px; }
 }
 
 /* ─── Landscape compact ───────────────────────────────────────
