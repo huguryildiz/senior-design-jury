@@ -854,16 +854,16 @@ export default function PeriodsPage() {
         </table>
           </div>
         </div>
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredList.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+          itemLabel="periods"
+        />
       </div>
-      <Pagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        pageSize={pageSize}
-        totalItems={filteredList.length}
-        onPageChange={setCurrentPage}
-        onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-        itemLabel="periods"
-      />
       {/* Set as Current period modal */}
       <SetCurrentPeriodModal
         open={!!switchTarget}
