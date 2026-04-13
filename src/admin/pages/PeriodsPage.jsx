@@ -248,7 +248,7 @@ export default function PeriodsPage() {
     listPeriodStats(organizationId)
       .then(setPeriodStats)
       .catch(() => {}); // Non-fatal — columns show "—" on failure
-  }, [organizationId, periodList]);
+  }, [organizationId, periodList.length]);
 
   // Derived stats
   const totalPeriods = periodList.length;
