@@ -1,17 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
+import { CRITERION_COLORS } from "./criteriaFormHelpers";
 
-const SEGMENT_COLORS = [
-  "var(--accent)",
-  "#8b5cf6",
-  "#ec4899",
-  "#f59e0b",
-  "#10b981",
-  "#06b6d4",
-  "#6366f1",
-];
-
-export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) {
+export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill, locked }) {
   const [autoFillOpen, setAutoFillOpen] = useState(false);
   const popoverRef = useRef(null);
 
@@ -41,7 +32,7 @@ export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) 
   };
 
   return (
-    <div className={`crt-budget-card ${isOver ? "crt-budget-over" : ""}`}>
+    <div className={`crt-budget-card${isOver ? " crt-budget-over" : ""}${locked ? " crt-budget-card--locked" : ""}`}>
       <div className="crt-budget-header">
         <div className="crt-budget-left">
           <div className="crt-budget-label">WEIGHT BUDGET</div>
@@ -97,9 +88,9 @@ export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) 
       </div>
 
       <div className="crt-budget-bar-container">
-        <div className="crt-budget-bar">
+        <div className={`crt-budget-bar${locked ? " crt-budget-bar--locked" : ""}`}>
           {criteria.map((crit, idx) => {
-            const color = SEGMENT_COLORS[idx % SEGMENT_COLORS.length];
+            const color = crit.color || CRITERION_COLORS[idx % CRITERION_COLORS.length];
             return (
               <div
                 key={crit.id || crit.key || idx}
@@ -122,7 +113,7 @@ export default function WeightBudgetBar({ criteria, onDistribute, onAutoFill }) 
 
       <div className="crt-budget-legend">
         {criteria.map((crit, idx) => {
-          const color = SEGMENT_COLORS[idx % SEGMENT_COLORS.length];
+          const color = crit.color || CRITERION_COLORS[idx % CRITERION_COLORS.length];
           return (
             <div key={crit.id || crit.key || idx} className="crt-budget-legend-item">
               <div className="crt-budget-legend-dot" style={{ backgroundColor: color }} />

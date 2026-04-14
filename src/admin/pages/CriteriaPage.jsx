@@ -6,7 +6,7 @@ import {
   Lock,
   Plus,
   ClipboardList,
-  CheckCircle2,
+  Calendar,
   Pencil,
   Trash2,
   MoreVertical,
@@ -34,6 +34,7 @@ import {
   rescaleRubricBandsByWeight,
   defaultRubricBands,
   nextCriterionColor,
+  CRITERION_COLORS,
 } from "@/admin/criteria/criteriaFormHelpers";
 import "../../styles/pages/criteria.css";
 
@@ -135,7 +136,6 @@ export default function CriteriaPage() {
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
   const pageRows = draftCriteria.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899"];
 
   // ── Weight budget handlers ─────────────────────────────────────
 
@@ -329,12 +329,6 @@ export default function CriteriaPage() {
           <div className="page-title">Evaluation Criteria</div>
           <div className="page-desc">Define scoring rubrics and criteria weights for the active evaluation period.</div>
         </div>
-        {periods.viewPeriodId && (
-          <button className="crt-add-btn" onClick={() => setEditingIndex(-1)} disabled={isLocked}>
-            <Plus size={13} strokeWidth={2.2} />
-            Add Criterion
-          </button>
-        )}
       </div>
       {/* Weight budget bar */}
       {periods.viewPeriodId && draftCriteria.length > 0 && (
@@ -342,6 +336,7 @@ export default function CriteriaPage() {
           criteria={draftCriteria}
           onDistribute={handleDistribute}
           onAutoFill={handleAutoFill}
+          locked={isLocked}
         />
       )}
       {/* No periods exist yet */}
@@ -378,15 +373,23 @@ export default function CriteriaPage() {
       {periods.viewPeriodId && (
         <div className="crt-table-card">
           <div className="crt-table-card-header">
-            <div className="crt-table-card-title">
-              Active Criteria{periods.viewPeriodLabel ? ` — ${periods.viewPeriodLabel}` : ""}
+            <div className="crt-table-card-title">Active Criteria</div>
+            <div className="crt-chips-row">
+              {periods.viewPeriodLabel && (
+                <div className="crt-period-badge">
+                  <Calendar size={11} strokeWidth={1.75} />
+                  {periods.viewPeriodLabel}
+                </div>
+              )}
+              <button
+                className="crt-add-btn"
+                onClick={() => setEditingIndex(-1)}
+                disabled={isLocked}
+              >
+                <Plus size={13} strokeWidth={2.2} />
+                Add Criterion
+              </button>
             </div>
-            {draftCriteria.length > 0 && (
-              <div className="crt-summary-badge">
-                <CheckCircle2 size={14} strokeWidth={2.2} />
-                {draftCriteria.length} {draftCriteria.length === 1 ? "criterion" : "criteria"} &middot; {periods.draftTotal} points
-              </div>
-            )}
           </div>
 
           {draftCriteria.length === 0 && !adminLoading && loadingCount === 0 && contextPeriods.length > 0 ? (
@@ -486,11 +489,11 @@ export default function CriteriaPage() {
                   const menuKey = `crt-row-${i}`;
                   const isMenuOpen = openMenuId === menuKey;
                   return (
-                    <tr key={criterion.key || i} style={{ "--row-color": criterion.color || COLORS[i % COLORS.length] }}>
+                    <tr key={criterion.key || i} style={{ "--row-color": criterion.color || CRITERION_COLORS[i % CRITERION_COLORS.length] }}>
                       <td data-label="#"><span className="crt-row-num">{i + 1}</span></td>
                       <td data-label="Criterion">
                         <div className="crt-name">
-                          <span className="crt-color-dot" style={{ background: criterion.color || COLORS[i % COLORS.length] }} />
+                          <span className="crt-color-dot" style={{ background: criterion.color || CRITERION_COLORS[i % CRITERION_COLORS.length] }} />
                           {criterion.label || criterion.shortLabel || `Criterion ${i + 1}`}
                         </div>
                         {criterion.blurb && (
@@ -500,7 +503,7 @@ export default function CriteriaPage() {
                       <td className="col-weight" data-label="Weight">
                         <InlineWeightEdit
                           value={criterion.max || 0}
-                          color={criterion.color || COLORS[i % COLORS.length]}
+                          color={criterion.color || CRITERION_COLORS[i % CRITERION_COLORS.length]}
                           otherTotal={draftCriteria.reduce((s, c, j) => j === i ? s : s + (c.max || 0), 0)}
                           onChange={(v) => handleWeightChange(i, v)}
                           disabled={isLocked}
