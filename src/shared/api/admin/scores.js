@@ -364,7 +364,8 @@ export async function getPeriodMaxScore(periodId) {
 
 /**
  * Returns criteria rows for a period snapshot (from period_criteria table),
- * enriched with mapped outcome codes from period_criterion_outcome_maps.
+ * enriched with mapped outcome codes from framework_criterion_outcome_maps
+ * (the authoritative source edited on the Outcomes & Mapping page).
  */
 export async function listPeriodCriteria(periodId) {
   const [criteriaRes, mapsRes] = await Promise.all([
@@ -374,8 +375,8 @@ export async function listPeriodCriteria(periodId) {
       .eq("period_id", periodId)
       .order("sort_order"),
     supabase
-      .from("period_criterion_outcome_maps")
-      .select("period_criterion_id, coverage_type, period_outcomes(code)")
+      .from("framework_criterion_outcome_maps")
+      .select("criterion_id, coverage_type, framework_outcomes(code)")
       .eq("period_id", periodId),
   ]);
   if (criteriaRes.error) throw criteriaRes.error;
@@ -386,10 +387,10 @@ export async function listPeriodCriteria(periodId) {
   const codeMap = {};
   const typeMap = {};
   for (const row of mapsRes.data || []) {
-    const code = row.period_outcomes?.code;
+    const code = row.framework_outcomes?.code;
     if (!code) continue;
-    (codeMap[row.period_criterion_id] ||= []).push(code);
-    (typeMap[row.period_criterion_id] ||= {})[code] = row.coverage_type ?? "direct";
+    (codeMap[row.criterion_id] ||= []).push(code);
+    (typeMap[row.criterion_id] ||= {})[code] = row.coverage_type ?? "direct";
   }
 
   return criteria.map((c) => ({

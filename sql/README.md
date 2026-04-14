@@ -242,7 +242,8 @@ Single-row configuration table seeded inline in `002_tables.sql`.
 | `rpc_admin_verify_audit_chain(org_id)` | Verify hash-chain integrity; returns broken-link JSONB array or `[]` |
 | `rpc_admin_set_current_period(period_id)` | Mark a period as current; write audit event |
 | `rpc_admin_set_period_lock(period_id, locked)` | Lock/unlock evaluation period; write audit event |
-| `rpc_admin_save_period_criteria(period_id, criteria)` | Upsert period criteria config; write audit event |
+| `rpc_admin_save_period_criteria(period_id, criteria)` | Upsert period criteria config (delete + re-insert); write audit event |
+| `rpc_admin_reorder_period_criteria(period_id, keys)` | Update `sort_order` for existing criteria without deleting rows; safe when `score_sheet_items` exist |
 | `rpc_admin_create_framework_outcome(framework_id, code, label, description, sort_order)` | Create framework outcome; write audit event |
 | `rpc_admin_update_framework_outcome(outcome_id, updates)` | Update framework outcome; write audit event |
 | `rpc_admin_delete_framework_outcome(outcome_id)` | Delete framework outcome; write audit event |

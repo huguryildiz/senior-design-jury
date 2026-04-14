@@ -1,9 +1,8 @@
 // src/admin/drawers/StarterCriteriaDrawer.jsx
 
 import { useState } from "react";
-import { LayoutTemplate } from "lucide-react";
+import { LayoutTemplate, Copy } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
-import FbAlert from "@/shared/ui/FbAlert";
 import CustomSelect from "@/shared/ui/CustomSelect";
 
 // ── Starter template data ─────────────────────────────────
@@ -83,6 +82,7 @@ export default function StarterCriteriaDrawer({
   onCopyFromPeriod,
 }) {
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [confirmingAction, setConfirmingAction] = useState(null); // null | 'template' | 'copy'
 
   const hasExisting = draftCriteria.length > 0;
   const totalMax = draftCriteria.reduce((s, c) => s + (Number(c.max) || 0), 0);
@@ -93,12 +93,36 @@ export default function StarterCriteriaDrawer({
     label: p.name,
   }));
 
-  function handleCopy() {
-    onCopyFromPeriod(selectedPeriodId);
+  const selectedPeriodLabel = otherPeriods.find((p) => p.id === selectedPeriodId)?.name ?? "the selected period";
+
+  function handleCopyClick() {
+    if (hasExisting) {
+      setConfirmingAction("copy");
+    } else {
+      onCopyFromPeriod(selectedPeriodId);
+    }
   }
 
-  function handleUseTemplate() {
+  function handleTemplateClick() {
+    if (hasExisting) {
+      setConfirmingAction("template");
+    } else {
+      onApplyTemplate(STARTER_CRITERIA);
+    }
+  }
+
+  function confirmCopy() {
+    onCopyFromPeriod(selectedPeriodId);
+    setConfirmingAction(null);
+  }
+
+  function confirmTemplate() {
     onApplyTemplate(STARTER_CRITERIA);
+    setConfirmingAction(null);
+  }
+
+  function cancelConfirm() {
+    setConfirmingAction(null);
   }
 
   return (
@@ -126,48 +150,76 @@ export default function StarterCriteriaDrawer({
       {/* ── Section 2: Copy from Existing Period ────────── */}
       <div className="scd-section">
         <div className="scd-section-label">Copy from Existing Period</div>
-        <CustomSelect
-          value={selectedPeriodId}
-          onChange={setSelectedPeriodId}
-          options={periodOptions}
-          disabled={otherPeriods.length === 0 || isLocked}
-          placeholder={otherPeriods.length === 0 ? "No other periods available" : "Select a period…"}
-        />
-        <div className="scd-action-row">
-          {hasExisting && (
-            <FbAlert variant="warning">This will replace your current criteria.</FbAlert>
-          )}
-          <button
-            className="scd-use-btn"
-            onClick={handleCopy}
-            disabled={!selectedPeriodId || isLocked}
-          >
-            Copy &amp; Use
-          </button>
-        </div>
+
+        {confirmingAction === "copy" ? (
+          <div className="fs-confirm-panel">
+            <p className="fs-confirm-msg">
+              This replaces your {draftCriteria.length} existing {draftCriteria.length === 1 ? "criterion" : "criteria"} with criteria from <strong>{selectedPeriodLabel}</strong>.
+            </p>
+            <div className="fs-confirm-btns">
+              <button className="fs-confirm-cancel" onClick={cancelConfirm}>Cancel</button>
+              <button className="fs-confirm-action" onClick={confirmCopy}>
+                <Copy size={13} strokeWidth={2.2} />
+                Copy
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <CustomSelect
+              value={selectedPeriodId}
+              onChange={setSelectedPeriodId}
+              options={periodOptions}
+              disabled={otherPeriods.length === 0 || isLocked}
+              placeholder={otherPeriods.length === 0 ? "No other periods available" : "Select a period…"}
+            />
+            <div className="scd-action-row">
+              <button
+                className="scd-use-btn"
+                onClick={handleCopyClick}
+                disabled={!selectedPeriodId || isLocked}
+              >
+                Copy &amp; Use
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Section 3: Starter Templates ────────────────── */}
       <div className="scd-section">
-        <div className="scd-section-label">Starter Templates</div>
-        <div className="scd-template-card">
-          <div className="scd-template-info">
-            <div className="scd-template-name">Standard Evaluation</div>
-            <div className="scd-template-meta">4 criteria · 100 pts total</div>
+        <div className="scd-section-label">Default Template</div>
+
+        {confirmingAction === "template" ? (
+          <div className="fs-confirm-panel">
+            <p className="fs-confirm-msg">
+              This replaces your {draftCriteria.length} existing {draftCriteria.length === 1 ? "criterion" : "criteria"} with the VERA Default template.
+            </p>
+            <div className="fs-confirm-btns">
+              <button className="fs-confirm-cancel" onClick={cancelConfirm}>Cancel</button>
+              <button className="fs-confirm-action" onClick={confirmTemplate}>
+                <LayoutTemplate size={13} strokeWidth={2.2} />
+                Replace
+              </button>
+            </div>
           </div>
-          <div className="scd-action-row">
-            {hasExisting && (
-              <FbAlert variant="warning">This will replace your current criteria.</FbAlert>
-            )}
-            <button
-              className="scd-use-btn"
-              onClick={handleUseTemplate}
-              disabled={isLocked}
-            >
-              Use Template
-            </button>
+        ) : (
+          <div className="scd-template-card">
+            <div className="scd-template-info">
+              <div className="scd-template-name">Standard Evaluation</div>
+              <div className="scd-template-meta">4 criteria · 100 pts total</div>
+            </div>
+            <div className="scd-action-row" style={{ marginTop: 0 }}>
+              <button
+                className="scd-use-btn"
+                onClick={handleTemplateClick}
+                disabled={isLocked}
+              >
+                Use Template
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </Drawer>
   );

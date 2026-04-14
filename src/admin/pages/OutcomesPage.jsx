@@ -3,7 +3,7 @@
 // Matches vera-premium-prototype.html mockup.
 
 import { useState } from "react";
-import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, AlertCircle, XCircle, ChevronDown, CheckCircle, AlertTriangle, Circle, Info } from "lucide-react";
+import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, AlertCircle, XCircle, ChevronRight, CheckCircle, AlertTriangle, Circle, Info } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useFrameworkOutcomes } from "../hooks/useFrameworkOutcomes";
 import { useToast } from "@/shared/hooks/useToast";
@@ -285,7 +285,8 @@ export default function OutcomesPage() {
       await fw.addOutcome({ code, shortLabel, description, criterionIds });
       toast.success("Outcome added successfully");
     } catch (e) {
-      throw e; // Let drawer handle display
+      toast.error(e?.message || "Failed to add outcome");
+      throw e;
     }
   };
 
@@ -302,6 +303,7 @@ export default function OutcomesPage() {
       });
       toast.success("Outcome updated successfully");
     } catch (e) {
+      toast.error(e?.message || "Failed to update outcome");
       throw e;
     }
   };
@@ -316,7 +318,9 @@ export default function OutcomesPage() {
       setDeleteConfirmText("");
       toast.success("Outcome removed");
     } catch (e) {
-      setPanelError(e?.message || "Failed to remove outcome");
+      const msg = e?.message || "Failed to remove outcome";
+      setPanelError(msg);
+      toast.error(msg);
       setDeleteTarget(null);
       setDeleteConfirmText("");
     } finally {
@@ -496,8 +500,7 @@ export default function OutcomesPage() {
                 >
                   <BadgeCheck size={13} strokeWidth={1.5} className="fw-chip-icon" />
                   {frameworkName}
-                  <span className="fw-chip-count">{fw.outcomes.length}</span>
-                  <ChevronDown size={12} strokeWidth={2} style={{ marginLeft: 2, opacity: 0.6 }} />
+                  <ChevronRight size={12} strokeWidth={2} style={{ marginLeft: 2, opacity: 0.6 }} />
                 </button>
                 <button
                   className="btn btn-primary btn-sm"

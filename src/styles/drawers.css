@@ -1149,4 +1149,75 @@ textarea.fs-outcome-input{min-height:38px;max-height:120px}
   color: var(--danger);
   border-color: rgba(225, 29, 72, 0.4);
 }
+
+/* ── Inline confirmation panel (shared across all drawers) ── */
+
+.fs-confirm-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg-card);
+}
+
+.fs-confirm-msg {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  text-align: justify;
+  text-justify: inter-word;
+  margin: 0;
+}
+
+.fs-confirm-btns {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fs-confirm-cancel {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fs-confirm-cancel:hover:not(:disabled) {
+  background: var(--surface-1);
+}
+.fs-confirm-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fs-confirm-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.fs-confirm-action:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.fs-confirm-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .fs-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }

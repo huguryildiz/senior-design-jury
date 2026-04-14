@@ -10,8 +10,10 @@ import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import CustomSelect from "@/shared/ui/CustomSelect";
 import FbAlert from "@/shared/ui/FbAlert";
 import AddEditPeriodDrawer from "../drawers/AddEditPeriodDrawer";
+import PeriodCriteriaDrawer from "../drawers/PeriodCriteriaDrawer";
 import { FilterButton } from "@/shared/ui/FilterButton.jsx";
 import { setEvalLock, deletePeriod, listPeriodCriteria, savePeriodCriteria, listPeriodStats } from "@/shared/api";
+import { getActiveCriteria } from "@/shared/criteria/criteriaHelpers";
 import {
   Lock,
   LockOpen,
@@ -229,6 +231,11 @@ export default function PeriodsPage() {
   // Add/edit period drawer
   const [periodDrawerOpen, setPeriodDrawerOpen] = useState(false);
   const [periodDrawerTarget, setPeriodDrawerTarget] = useState(null);
+
+  // Criteria summary drawer
+  const [criteriaDrawerOpen, setCriteriaDrawerOpen] = useState(false);
+  const [criteriaDrawerPeriod, setCriteriaDrawerPeriod] = useState(null);
+  const [criteriaDrawerCriteria, setCriteriaDrawerCriteria] = useState([]);
 
   // Action menu open state
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -726,8 +733,17 @@ export default function PeriodsPage() {
                       return (
                         <button
                           className="periods-cset-badge"
-                          onClick={() => onNavigate?.("criteria")}
-                          title="Go to Evaluation Criteria"
+                          onClick={async () => {
+                            try {
+                              const rows = await listPeriodCriteria(period.id);
+                              setCriteriaDrawerCriteria(getActiveCriteria(rows));
+                            } catch {
+                              setCriteriaDrawerCriteria([]);
+                            }
+                            setCriteriaDrawerPeriod(period);
+                            setCriteriaDrawerOpen(true);
+                          }}
+                          title="View criteria summary"
                         >
                           <ListChecks size={12} strokeWidth={1.75} />
                           {count} {count === 1 ? "criterion" : "criteria"}
@@ -897,6 +913,19 @@ export default function PeriodsPage() {
         allPeriods={periodList}
         frameworks={frameworks}
         onNavigateToCriteria={() => onNavigate?.("criteria")}
+      />
+      {/* Criteria summary drawer */}
+      <PeriodCriteriaDrawer
+        open={criteriaDrawerOpen}
+        onClose={() => setCriteriaDrawerOpen(false)}
+        period={criteriaDrawerPeriod}
+        criteria={criteriaDrawerCriteria}
+        isLocked={criteriaDrawerPeriod?.is_locked}
+        otherPeriods={[]}
+        onApplyTemplate={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
+        onCopyFromPeriod={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
+        onEditCriteria={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
+        onClearCriteria={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
       />
     </div>
   );

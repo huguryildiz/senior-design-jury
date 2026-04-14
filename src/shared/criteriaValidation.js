@@ -42,15 +42,13 @@ export function validateRubric(rubric, criterionMax) {
       bandRangeErrors,
       bandLevelErrors,
       bandDescErrors,
-      coverageError: "Rubric must have at least 2 bands",
+      coverageError: "Add at least one band",
     };
   }
 
   // Set count-based coverageError but do NOT return early — per-band checks
   // must still run so that range/name/desc errors are always reported.
-  if (rubric.length < 2) {
-    coverageError = "Rubric must have at least 2 bands";
-  } else if (rubric.length > 6) {
+  if (rubric.length > 6) {
     coverageError = "Rubric cannot exceed 6 bands";
   }
 

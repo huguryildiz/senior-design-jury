@@ -133,6 +133,23 @@ export async function savePeriodCriteria(periodId, criteria) {
 }
 
 /**
+ * Reorder criteria for a period without deleting or re-creating rows.
+ * Safe to call even when score_sheet_items exist for the period.
+ *
+ * @param {string} periodId
+ * @param {string[]} keys — criterion keys in the desired new order
+ */
+export async function reorderPeriodCriteria(periodId, keys) {
+  if (!periodId) throw new Error("reorderPeriodCriteria: periodId required");
+  if (!Array.isArray(keys)) throw new Error("reorderPeriodCriteria: keys must be an array");
+  const { error } = await supabase.rpc("rpc_admin_reorder_period_criteria", {
+    p_period_id: periodId,
+    p_keys: keys,
+  });
+  if (error) throw error;
+}
+
+/**
  * Fetch aggregate stats (projects, jurors, criteria, score sheets) per period
  * for an organization.
  *

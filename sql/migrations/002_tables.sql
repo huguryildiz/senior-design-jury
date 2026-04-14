@@ -94,6 +94,8 @@ CREATE TABLE framework_outcomes (
   created_at     TIMESTAMPTZ DEFAULT now(),
   UNIQUE(framework_id, code)
 );
+-- Forward-compat: add short_label to existing tables that predate this column
+ALTER TABLE framework_outcomes ADD COLUMN IF NOT EXISTS short_label TEXT;
 
 -- =============================================================================
 -- 7. FRAMEWORK_CRITERIA

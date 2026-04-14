@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { clampToCriterionMax, getDescPlaceholder } from "./criteriaFormHelpers";
 import CoverageBar from "./CoverageBar";
-import { Icon, AlertCircle, Wand2 } from "lucide-react";
+import { Icon, AlertCircle, Wand2, X, ChevronRight } from "lucide-react";
 
 const BAND_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"];
 
@@ -54,16 +54,22 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
     const next = bands.map((b, idx) => idx === bi ? { ...b, [field]: finalValue } : b);
     onChange(next);
   };
+  // Display bands sorted high→low by max score; original indices preserved for ops
+  const sortedIndices = [...bands.keys()].sort(
+    (a, b) => Number(bands[b].max) - Number(bands[a].max)
+  );
+
   return (
     <div className="crt-band-grid">
-      {bands.map((band, bi) => {
+      {sortedIndices.map((bi, sortedPos) => {
+        const band = bands[bi];
         const rangeError    = bandRangeErrors[bi];
         const rangeInvalid  = !!(rangeError || coverageError); // drives red border; coverage doesn't repeat inline
         const levelError    = bandLevelErrors[bi];
         const descError     = bandDescErrors[bi];
         const hasError      = !!(rangeInvalid || levelError || descError);
         const isValid    = !hasError && band.level && band.min !== "" && band.max !== "";
-        const bandColor  = BAND_COLORS[bi % BAND_COLORS.length];
+        const bandColor  = BAND_COLORS[sortedPos % BAND_COLORS.length];
         const isExpanded = expandedIndex === bi;
 
         return (
@@ -89,7 +95,7 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
               {hasError && !isExpanded && (
                 <span className="crt-band-error-badge" title="This band has errors">!</span>
               )}
-              {!disabled && bands.length > 2 && (
+              {!disabled && bands.length > 0 && (
                 <button
                   className="crt-band-remove"
                   onClick={(e) => {
@@ -99,10 +105,10 @@ export default function RubricBandEditor({ bands, onChange, disabled, criterionM
                   type="button"
                   aria-label={`Remove band ${bi + 1}`}
                 >
-                  ×
+                  <X size={13} strokeWidth={2} />
                 </button>
               )}
-              <span className="crt-band-chevron">▸</span>
+              <span className="crt-band-chevron"><ChevronRight size={14} strokeWidth={2} /></span>
             </div>
 
             {/* Expanded body */}

@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
-import ConfirmDialog from "@/shared/ui/ConfirmDialog";
 import InlineError from "@/shared/ui/InlineError";
 import { useToast } from "@/shared/hooks/useToast";
 import {
@@ -233,8 +232,7 @@ export default function FrameworkPickerDrawer({
   };
 
   return (
-    <>
-      <Drawer open={open} onClose={handleClose} id="fw-picker-drawer">
+    <Drawer open={open} onClose={handleClose} id="fw-picker-drawer">
         {/* Header */}
         <div className="fs-drawer-header">
           <div className="fs-drawer-header-row">
@@ -260,6 +258,21 @@ export default function FrameworkPickerDrawer({
           {frameworkId && (
             <div className="fpd-section">
               <div className="fpd-section-label">Active Framework</div>
+
+              {removeConfirmOpen ? (
+                <div className="fs-confirm-panel">
+                  <p className="fs-confirm-msg">
+                    This will unassign <strong>{frameworkName}</strong> from this period. All outcome mappings will be cleared. This cannot be undone.
+                  </p>
+                  <div className="fs-confirm-btns">
+                    <button className="fs-confirm-cancel" onClick={() => setRemoveConfirmOpen(false)} disabled={removing}>Cancel</button>
+                    <button className="fs-confirm-action" onClick={handleRemove} disabled={removing}>
+                      <Trash2 size={13} strokeWidth={2.2} />
+                      <AsyncButtonContent loading={removing}>Remove</AsyncButtonContent>
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="fpd-active-card">
                 <div className="fpd-active-card-top">
                   <div className="fpd-active-name">
@@ -370,6 +383,7 @@ export default function FrameworkPickerDrawer({
                   </div>
                 )}
               </div>
+              )}
             </div>
           )}
 
@@ -377,6 +391,43 @@ export default function FrameworkPickerDrawer({
           {(orgFrameworks.length > 0 || platformFrameworks.length > 0) && (
             <div className="fpd-section">
               <div className="fpd-section-label">Clone from Existing</div>
+
+              {changeConfirmOpen ? (
+                <div className="fs-confirm-panel">
+                  <p className="fs-confirm-msg">
+                    All outcome mappings for this period will be deleted. Are you sure you want to continue?
+                  </p>
+                  <div className="fs-confirm-btns">
+                    <button
+                      className="fs-confirm-cancel"
+                      onClick={() => { setChangeConfirmOpen(false); setPendingTarget(null); }}
+                      disabled={changingFw}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="fs-confirm-action"
+                      onClick={() => execCloneAndUse()}
+                      disabled={changingFw}
+                    >
+                      <AsyncButtonContent loading={changingFw}>Change</AsyncButtonContent>
+                    </button>
+                  </div>
+                </div>
+              ) : deleteTarget ? (
+                <div className="fs-confirm-panel">
+                  <p className="fs-confirm-msg">
+                    <strong>"{deleteTarget.name}"</strong> will be permanently deleted from the library. This cannot be undone.
+                  </p>
+                  <div className="fs-confirm-btns">
+                    <button className="fs-confirm-cancel" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
+                    <button className="fs-confirm-action" onClick={handleDeleteLibraryFw} disabled={deleting}>
+                      <Trash2 size={13} strokeWidth={2.2} />
+                      <AsyncButtonContent loading={deleting}>Delete</AsyncButtonContent>
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="fpd-picker-row">
                 {/* Custom dropdown */}
                 <div className="fpd-picker-select-wrap">
@@ -452,6 +503,7 @@ export default function FrameworkPickerDrawer({
                   </AsyncButtonContent>
                 </button>
               </div>
+              )}
             </div>
           )}
 
@@ -520,40 +572,5 @@ export default function FrameworkPickerDrawer({
           </button>
         </div>
       </Drawer>
-
-      {/* Remove (unassign) confirm */}
-      <ConfirmDialog
-        open={removeConfirmOpen}
-        onOpenChange={(v) => { if (!v) setRemoveConfirmOpen(false); }}
-        onConfirm={handleRemove}
-        title="Remove framework?"
-        body="This will unassign the framework from this period. All outcome mappings will be cleared. This cannot be undone."
-        confirmLabel="Remove"
-        tone="danger"
-      />
-
-      {/* Delete library framework confirm */}
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
-        onConfirm={handleDeleteLibraryFw}
-        title="Delete framework?"
-        body={`"${deleteTarget?.name}" will be permanently deleted from the library. This cannot be undone.`}
-        confirmLabel="Delete"
-        tone="danger"
-      />
-
-      {/* Clone & Use confirm — shown only when period already has mappings */}
-      <ConfirmDialog
-        open={changeConfirmOpen}
-        onOpenChange={(v) => { if (!v) { setChangeConfirmOpen(false); setPendingTarget(null); } }}
-        onConfirm={() => execCloneAndUse()}
-        title="Change framework?"
-        body="All outcome mappings for this period will be deleted. Are you sure you want to continue?"
-        confirmLabel="Change"
-        tone="danger"
-        icon="alert"
-      />
-    </>
   );
 }

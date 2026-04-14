@@ -14,10 +14,12 @@ import {
   createPeriod,
   updatePeriod,
   savePeriodCriteria,
+  reorderPeriodCriteria,
   deletePeriod,
   setEvalLock,
   listPeriodCriteria,
   listPeriodOutcomes,
+  listOutcomes,
   cloneFramework,
   assignFrameworkToPeriod,
 } from "../../shared/api";
@@ -116,9 +118,10 @@ export function useManagePeriods({
     let alive = true;
     (async () => {
       try {
+        const frameworkId = viewPeriod?.framework_id || null;
         const [criteriaRows, outcomeRows] = await Promise.all([
           listPeriodCriteria(viewPeriodId),
-          listPeriodOutcomes(viewPeriodId),
+          frameworkId ? listOutcomes(frameworkId) : Promise.resolve([]),
         ]);
         if (!alive) return;
         const active = getActiveCriteria(criteriaRows);
@@ -141,7 +144,7 @@ export function useManagePeriods({
       }
     })();
     return () => { alive = false; };
-  }, [viewPeriodId]);
+  }, [viewPeriodId, viewPeriod?.framework_id]);
 
   // ── Sync settings when viewPeriod changes ──────────────
   useEffect(() => {
@@ -415,11 +418,24 @@ export function useManagePeriods({
 
   const canSaveDraft = isDraftDirty && draftTotal === 100;
 
+  // True when the draft differs from saved only by position (keys and content identical).
+  // In this case we can use the lightweight reorder RPC instead of the full delete+insert RPC,
+  // which is safe even when score_sheet_items exist for the period.
+  const isOrderOnly = useMemo(() => {
+    if (!isDraftDirty || draftCriteria.length !== savedCriteria.length) return false;
+    const sortByKey = (arr) => [...arr].sort((a, b) => a.key.localeCompare(b.key));
+    return JSON.stringify(sortByKey(draftCriteria)) === JSON.stringify(sortByKey(savedCriteria));
+  }, [isDraftDirty, draftCriteria, savedCriteria]);
+
   const commitDraft = useCallback(async () => {
     if (!viewPeriodId || !canSaveDraft) return;
     incLoading();
     try {
-      await savePeriodCriteria(viewPeriodId, draftCriteria);
+      if (isOrderOnly) {
+        await reorderPeriodCriteria(viewPeriodId, draftCriteria.map((c) => c.key));
+      } else {
+        await savePeriodCriteria(viewPeriodId, draftCriteria);
+      }
       const rows = await listPeriodCriteria(viewPeriodId);
       const fresh = getActiveCriteria(rows);
       setCriteriaConfig(fresh);
@@ -439,10 +455,11 @@ export function useManagePeriods({
         msg = "You don't have permission to modify criteria for this period.";
       }
       setPanelError("period", msg);
+      throw e;
     } finally {
       decLoading();
     }
-  }, [viewPeriodId, canSaveDraft, draftCriteria]);
+  }, [viewPeriodId, canSaveDraft, isOrderOnly, draftCriteria]);
 
   const discardDraft = useCallback(() => {
     setDraftCriteria(structuredClone(savedCriteria));
