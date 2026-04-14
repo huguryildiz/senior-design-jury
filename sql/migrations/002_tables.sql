@@ -87,15 +87,12 @@ CREATE TABLE framework_outcomes (
   framework_id   UUID NOT NULL REFERENCES frameworks(id) ON DELETE CASCADE,
   code           TEXT NOT NULL,
   label          TEXT NOT NULL,
-  short_label    TEXT,
   description    TEXT,
   sort_order     INT DEFAULT 0,
   coverage_hint  TEXT CHECK (coverage_hint IN ('indirect')),
   created_at     TIMESTAMPTZ DEFAULT now(),
   UNIQUE(framework_id, code)
 );
--- Forward-compat: add short_label to existing tables that predate this column
-ALTER TABLE framework_outcomes ADD COLUMN IF NOT EXISTS short_label TEXT;
 
 -- =============================================================================
 -- 7. FRAMEWORK_CRITERIA
@@ -124,7 +121,7 @@ CREATE TABLE framework_criterion_outcome_maps (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   framework_id    UUID NOT NULL REFERENCES frameworks(id) ON DELETE CASCADE,
   period_id       UUID REFERENCES periods(id) ON DELETE CASCADE,
-  criterion_id    UUID NOT NULL REFERENCES framework_criteria(id) ON DELETE CASCADE,
+  criterion_id    UUID NOT NULL REFERENCES period_criteria(id) ON DELETE CASCADE,
   outcome_id      UUID NOT NULL REFERENCES framework_outcomes(id) ON DELETE CASCADE,
   coverage_type   TEXT NOT NULL DEFAULT 'direct'
                   CHECK (coverage_type IN ('direct', 'indirect')),

@@ -326,7 +326,7 @@ out.push('');
 // FRAMEWORKS — criteria & outcomes with descriptions
 // ═══════════════════════════════════════════════════════════════
 
-const fws = [], fwOutcomes = [], fwCriteria = [], fwMaps = [];
+const fws = [], fwOutcomes = [], fwCriteria = [];
 
 function parseRubric(maxScore) {
   let rubric = [];
@@ -369,11 +369,10 @@ function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
   fws.push(`INSERT INTO frameworks (id, organization_id, name, description) VALUES ('${fwId}', '${o.id}', '${escapeSql(fwName)}', '${escapeSql(fwDesc)}') ON CONFLICT DO NOTHING;`);
   const oMap = {}; let outOrder = 1; o.outcomesData = [];
   for (const arr of outcomes) {
-    const [code, lbl, desc, shortLbl] = arr; const oId = uuid(`fw-out-${orgCode}-${code}`); oMap[code] = oId;
+    const [code, lbl, desc] = arr; const oId = uuid(`fw-out-${orgCode}-${code}`); oMap[code] = oId;
     const descSql = desc ? `'${escapeSql(desc)}'` : 'NULL';
-    const shortSql = shortLbl ? `'${escapeSql(shortLbl)}'` : 'NULL';
-    o.outcomesData.push({ id: oId, code, label: lbl, shortLabel: shortLbl || null, desc: desc || null, sortOrder: outOrder });
-    fwOutcomes.push(`INSERT INTO framework_outcomes (id, framework_id, code, short_label, label, description, sort_order) VALUES ('${oId}', '${fwId}', '${escapeSql(code)}', ${shortSql}, '${escapeSql(lbl)}', ${descSql}, ${outOrder++}) ON CONFLICT DO NOTHING;`);
+    o.outcomesData.push({ id: oId, code, label: lbl, desc: desc || null, sortOrder: outOrder });
+    fwOutcomes.push(`INSERT INTO framework_outcomes (id, framework_id, code, label, description, sort_order) VALUES ('${oId}', '${fwId}', '${escapeSql(code)}', '${escapeSql(lbl)}', ${descSql}, ${outOrder++}) ON CONFLICT (id) DO UPDATE SET label=EXCLUDED.label, description=EXCLUDED.description;`);
   }
   const cMap = {}; let critOrder = 1; o.criteriaData = [];
   for (const c of criteria) {
@@ -387,11 +386,9 @@ function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
   for (const m of mappings) {
     const cId = cMap[m.crit];
     for (const mo of m.outs) {
-      const oId = oMap[mo.code]; const mId = uuid(`fw-map-${orgCode}-${m.crit}-${mo.code}`);
-      o.mapsData.push({ id: mId, cId, oId, weight: mo.weight, critKey: m.crit, outCode: mo.code });
+      const oId = oMap[mo.code];
       const coverType = mo.type || 'direct';
-      const weightVal = mo.weight != null ? mo.weight : 'NULL';
-      fwMaps.push(`INSERT INTO framework_criterion_outcome_maps (id, framework_id, criterion_id, outcome_id, coverage_type, weight) VALUES ('${mId}', '${fwId}', '${cId}', '${oId}', '${coverType}', ${weightVal}) ON CONFLICT DO NOTHING;`);
+      o.mapsData.push({ cId, oId, weight: mo.weight, critKey: m.crit, outCode: mo.code, coverType });
     }
   }
 }
@@ -433,24 +430,24 @@ processOrgfw('TEDU-EE', 'MUDEK v3.1',
       ] }
   ],
   [
-    ['PO 1.1','Knowledge in mathematics, natural sciences, fundamental engineering, computational methods, and discipline-specific topics.','Demonstrate foundational knowledge in mathematics, natural sciences, fundamental engineering, and discipline-specific topics required for engineering practice.','Foundational Knowledge'],
-    ['PO 1.2','Ability to apply knowledge of mathematics, natural sciences, fundamental engineering, computation, and discipline-specific topics to solve complex engineering problems.','Apply foundational knowledge in mathematics, natural sciences, and engineering to analyse and solve complex engineering problems.','Knowledge Application'],
-    ['PO 2','Ability to identify, formulate, and analyse complex engineering problems using fundamental science, mathematics, and engineering knowledge, with consideration of relevant UN Sustainable Development Goals.','Identify, formulate, and analyse complex engineering problems using fundamental science and mathematics, with consideration of relevant UN SDGs.','Problem Analysis'],
-    ['PO 3.1','Ability to design creative solutions to complex engineering problems.','Design creative and original solutions to complex engineering problems.','Creative Solutions'],
-    ['PO 3.2','Ability to design complex systems, processes, devices, or products under realistic constraints and conditions, meeting current and future requirements.','Design complex systems, processes, devices, or products under realistic constraints, meeting current and future requirements.','System Design'],
-    ['PO 4','Ability to select and use appropriate techniques, resources, and modern engineering and IT tools including estimation and modelling for the analysis and solution of complex engineering problems, with awareness of their limitations.','Select and apply modern engineering tools, techniques, and resources for analysis and solution of complex problems, with awareness of limitations.','Modern Tools'],
-    ['PO 5','Ability to use research methods for investigating complex engineering problems, including literature review, experiment design, experimentation, data collection, and analysis and interpretation of results.','Apply research methods including literature review, experimentation, data collection, and result interpretation to investigate complex engineering problems.','Research Methods'],
-    ['PO 6.1','Knowledge of the impacts of engineering applications on society, health and safety, economy, sustainability, and the environment within the scope of UN Sustainable Development Goals.','Demonstrate knowledge of engineering impacts on society, health, safety, sustainability, and the environment within the scope of UN SDGs.','Societal Impact'],
-    ['PO 6.2','Awareness of the legal consequences of engineering solutions.','Show awareness of the legal consequences and responsibilities associated with engineering solutions and decisions.','Legal Awareness'],
-    ['PO 7.1','Knowledge of acting in accordance with engineering professional principles and ethical responsibility.','Demonstrate knowledge of professional engineering principles and the ability to act with ethical responsibility.','Ethics & Professionalism'],
-    ['PO 7.2','Awareness of non-discrimination, impartiality, and inclusivity of diversity.','Show awareness of non-discrimination, impartiality, and the importance of inclusive practice in engineering contexts.','Diversity & Inclusion'],
-    ['PO 8.1','Ability to work effectively as a team member or leader in intra-disciplinary teams in-person, remote, or hybrid.','Work effectively as a member or leader in intra-disciplinary engineering teams across in-person, remote, or hybrid settings.','Disciplinary Teamwork'],
-    ['PO 8.2','Ability to work effectively as a team member or leader in multidisciplinary teams in-person, remote, or hybrid.','Work effectively as a member or leader in multidisciplinary teams, integrating knowledge across disciplines in any work setting.','Multidisciplinary Teamwork'],
-    ['PO 9.1','Ability to communicate effectively on technical topics orally, adapting to audience differences in education, language, and profession.','Communicate effectively on technical topics through oral presentation, adapting to diverse audiences including technical and non-technical listeners.','Oral Comm.'],
-    ['PO 9.2','Ability to communicate effectively on technical topics in writing, adapting to audience differences in education, language, and profession.','Communicate effectively on technical topics through written and visual means, adapting to diverse audiences and purposes.','Written Comm.'],
-    ['PO 10.1','Knowledge of business practices such as project management and economic feasibility analysis.','Demonstrate knowledge of business practices including project management, planning, and economic feasibility analysis.','Project Management'],
-    ['PO 10.2','Awareness of entrepreneurship and innovation.','Show awareness of entrepreneurship, innovation, and the process of translating engineering knowledge into new products and services.','Entrepreneurship'],
-    ['PO 11','Lifelong learning skills including independent and continuous learning, adaptation to new and emerging technologies, and critical thinking about technological change.','Demonstrate lifelong learning skills including independent study, adaptation to emerging technologies, and critical thinking about technological change.','Lifelong Learning']
+    ['PO 1.1',  'Foundational Knowledge',               'Knowledge in mathematics, natural sciences, basic engineering, computational methods, and discipline-specific topics'],
+    ['PO 1.2',  'Knowledge Application',               'Ability to apply knowledge in mathematics, natural sciences, basic engineering, computational methods, and discipline-specific topics to solve complex engineering problems'],
+    ['PO 2',    'Problem Identification & Analysis',   'Ability to identify, formulate, and analyze complex engineering problems using basic science, mathematics, and engineering knowledge while considering relevant UN Sustainable Development Goals'],
+    ['PO 3.1',  'Creative Solution Design',            'Ability to design creative solutions to complex engineering problems'],
+    ['PO 3.2',  'Complex System Design',               'Ability to design complex systems, processes, devices, or products that meet current and future requirements while considering realistic constraints and conditions'],
+    ['PO 4',    'Modern Tools & Techniques',           'Ability to select and use appropriate techniques, resources, and modern engineering and IT tools, including estimation and modeling, for analysis and solution of complex engineering problems, with awareness of their limitations'],
+    ['PO 5',    'Research Methods',                    'Ability to use research methods including literature review, experiment design, data collection, result analysis, and interpretation for investigation of complex engineering problems'],
+    ['PO 6.1',  'Societal & Environmental Impact',     'Knowledge of the impacts of engineering applications on society, health and safety, economy, sustainability, and environment within the scope of UN Sustainable Development Goals'],
+    ['PO 6.2',  'Legal Awareness',                     'Awareness of the legal consequences of engineering solutions'],
+    ['PO 7.1',  'Ethics & Professional Conduct',       'Knowledge of acting in accordance with engineering professional principles and ethical responsibility'],
+    ['PO 7.2',  'Impartiality & Diversity',            'Awareness of acting without discrimination and being inclusive of diversity'],
+    ['PO 8.1',  'Intra-disciplinary Teamwork',         'Ability to work effectively as a team member or leader in intra-disciplinary teams (face-to-face, remote, or hybrid)'],
+    ['PO 8.2',  'Multidisciplinary Teamwork',          'Ability to work effectively as a team member or leader in multidisciplinary teams (face-to-face, remote, or hybrid)'],
+    ['PO 9.1',  'Oral Communication',                  'Ability to communicate effectively orally on technical subjects, taking into account the diverse characteristics of the target audience (education, language, profession, etc.)'],
+    ['PO 9.2',  'Written Communication',               'Ability to communicate effectively in writing on technical subjects, taking into account the diverse characteristics of the target audience (education, language, profession, etc.)'],
+    ['PO 10.1', 'Business & Project Management',       'Knowledge of business practices such as project management and economic feasibility analysis'],
+    ['PO 10.2', 'Entrepreneurship & Innovation',       'Awareness of entrepreneurship and innovation'],
+    ['PO 11',   'Lifelong Learning',                   'Ability to learn independently and continuously, adapt to new and emerging technologies, and think critically about technological changes']
   ],
   [
     {crit:'technical', outs:[
@@ -491,15 +488,21 @@ processOrgfw('CMU-CS', 'ABET (2026 – 2027)',
     {key:'teamwork',label:'Teamwork & Collaboration',short:'Team',max:10,weight:10,color:'#10B981',desc:'Evaluates balanced contribution, collaborative workflow, and effective use of team coordination tools and practices.',customRubric:[{min:9,max:10,label:'Excellent',description:'All members contribute meaningfully.'},{min:7,max:8,label:'Good',description:'Most members contribute.'},{min:4,max:6,label:'Developing',description:'Uneven contributions.'},{min:0,max:3,label:'Insufficient',description:'One or two members did most of the work.'}]}
   ],
   [
-    ['SO-1', 'Ability to identify, formulate, and solve complex engineering problems by applying principles of engineering, science, and mathematics.',                                                                                                                      'Complex Problem Solving',          'Problem Solving'],
-    ['SO-2', 'Ability to apply engineering design to produce solutions that meet specified needs with consideration of public health, safety, and welfare, as well as global, cultural, social, environmental, and economic factors.',                                       'Engineering Design',               'Eng. Design'],
-    ['SO-3', 'Ability to communicate effectively with a range of audiences.',                                                                                                                                                                                              'Effective Communication',          'Communication'],
-    ['SO-4', 'Ability to recognize ethical and professional responsibilities in engineering situations and make informed judgments, which must consider the impact of engineering solutions in global, economic, environmental, and societal contexts.',                     'Ethics & Professional Responsibility', 'Ethics'],
-    ['SO-5', 'Ability to function effectively on a team whose members together provide leadership, create a collaborative environment, establish goals, plan tasks, and meet objectives.',                                                                                  'Teamwork & Leadership',            'Teamwork'],
-    ['SO-6', 'Ability to develop and conduct appropriate experimentation, analyze and interpret data, and use engineering judgment to draw conclusions.',                                                                                                                   'Experimentation & Analysis',       'Experimentation'],
-    ['SO-7', 'Ability to acquire and apply new knowledge as needed, using appropriate learning strategies.',                                                                                                                                                               'Lifelong Learning',                'Lifelong Learning'],
+    ['SO-1', 'Complex Problem Solving',              'Ability to identify, formulate, and solve complex engineering problems by applying principles of engineering, science, and mathematics.'],
+    ['SO-2', 'Engineering Design',                   'Ability to apply engineering design to produce solutions that meet specified needs with consideration of public health, safety, and welfare, as well as global, cultural, social, environmental, and economic factors.'],
+    ['SO-3', 'Effective Communication',              'Ability to communicate effectively with a range of audiences.'],
+    ['SO-4', 'Ethics & Professional Responsibility', 'Ability to recognize ethical and professional responsibilities in engineering situations and make informed judgments, which must consider the impact of engineering solutions in global, economic, environmental, and societal contexts.'],
+    ['SO-5', 'Teamwork & Leadership',                'Ability to function effectively on a team whose members together provide leadership, create a collaborative environment, establish goals, plan tasks, and meet objectives.'],
+    ['SO-6', 'Experimentation & Analysis',           'Ability to develop and conduct appropriate experimentation, analyze and interpret data, and use engineering judgment to draw conclusions.'],
+    ['SO-7', 'Lifelong Learning',                    'Ability to acquire and apply new knowledge as needed, using appropriate learning strategies.'],
   ],
-  [{crit:'problem_solving',outs:[{code:'SO-1',weight:0.6},{code:'SO-6',weight:0.4}]},{crit:'system_design',outs:[{code:'SO-2',weight:0.7},{code:'SO-1',weight:0.3}]},{crit:'implementation_quality',outs:[{code:'SO-6',weight:0.5},{code:'SO-2',weight:0.3},{code:'SO-7',weight:0.2}]},{crit:'communication',outs:[{code:'SO-3',weight:0.7},{code:'SO-4',weight:0.3}]},{crit:'teamwork',outs:[{code:'SO-5',weight:1.0}]}]
+  [
+    {crit:'problem_solving',       outs:[{code:'SO-1',weight:0.6,type:'direct'},{code:'SO-6',weight:0.4,type:'indirect'}]},
+    {crit:'system_design',         outs:[{code:'SO-2',weight:0.7,type:'direct'},{code:'SO-1',weight:0.3,type:'indirect'}]},
+    {crit:'implementation_quality',outs:[{code:'SO-6',weight:0.5,type:'direct'},{code:'SO-2',weight:0.3,type:'indirect'},{code:'SO-7',weight:0.2,type:'indirect'}]},
+    {crit:'communication',         outs:[{code:'SO-3',weight:0.7,type:'direct'},{code:'SO-4',weight:0.3,type:'indirect'}]},
+    {crit:'teamwork',              outs:[{code:'SO-5',weight:1.0,type:'direct'}]}
+  ]
 );
 
 processOrgfw('TEKNOFEST', 'Competition Framework 2026',
@@ -509,8 +512,19 @@ processOrgfw('TEKNOFEST', 'Competition Framework 2026',
     {key:'technical_performance',label:'Technical Performance & Demo',short:'Performance',max:30,weight:30,color:'#EF4444',desc:'Evaluates actual field performance of the system during the competition mission demonstration under real conditions.',customRubric:[{min:27,max:30,label:'Excellent',description:'System performs flawlessly in field conditions.'},{min:21,max:26,label:'Good',description:'System completes primary mission with minor deviations.'},{min:13,max:20,label:'Developing',description:'System partially completes mission.'},{min:0,max:12,label:'Insufficient',description:'System fails to complete primary mission.'}]},
     {key:'team_execution',label:'Team Execution & Presentation',short:'Team',max:15,weight:15,color:'#10B981',desc:'Assesses team coordination, role clarity, and the effectiveness of the presentation delivered during the jury evaluation.',customRubric:[{min:14,max:15,label:'Excellent',description:'Team operates cohesively with clear role distribution.'},{min:11,max:13,label:'Good',description:'Team coordination is evident.'},{min:7,max:10,label:'Developing',description:'Team roles are unclear.'},{min:0,max:6,label:'Insufficient',description:'Poor team coordination.'}]}
   ],
-  [['TC-1','Preliminary Evaluation Report Quality','Produce comprehensive preliminary design documentation.'],['TC-2','Critical Design Maturity','Achieve design maturity through thorough critical design review.'],['TC-3','Field Performance and Jury Presentation','Demonstrate successful field performance under competition conditions.'],['TC-4','General Team Competency','Exhibit strong team coordination and effective collaboration.']],
-  [{crit:'preliminary_report',outs:[{code:'TC-1',weight:1.0}]},{crit:'critical_design',outs:[{code:'TC-2',weight:0.7},{code:'TC-1',weight:0.3}]},{crit:'technical_performance',outs:[{code:'TC-3',weight:0.8},{code:'TC-2',weight:0.2}]},{crit:'team_execution',outs:[{code:'TC-4',weight:0.6},{code:'TC-3',weight:0.4}]}]
+  [
+    ['TC-1', 'Autonomy & Control',         'Aircraft performs autonomous take-off, flight, landing, and target lock-on; manual mode switching results in point deductions per competition rules.'],
+    ['TC-2', 'Mission Performance',        'Successful completion of assigned mission objectives scored on accuracy, autonomous target engagement, and overall flight precision under field conditions.'],
+    ['TC-3', 'Technical Report Quality',   'Preliminary Design Report (PDR) and Critical Design Report (CDR) assessed for completeness, technical rigor, Turkish grammar compliance, and documentation standards.'],
+    ['TC-4', 'Presentation & Communication','Live team presentation evaluated on clarity, depth of technical explanation, and quality of responses to jury and advisory board questions.'],
+    ['TC-5', 'Innovation & Originality',   'Novelty in design, control algorithms, and hardware/software solutions; domestic component use and custom system development are recognized in scoring.'],
+  ],
+  [
+    {crit:'preliminary_report',    outs:[{code:'TC-3',weight:0.7,type:'direct'},{code:'TC-5',weight:0.3,type:'indirect'}]},
+    {crit:'critical_design',       outs:[{code:'TC-3',weight:0.5,type:'direct'},{code:'TC-5',weight:0.2,type:'direct'},{code:'TC-1',weight:0.3,type:'indirect'}]},
+    {crit:'technical_performance', outs:[{code:'TC-2',weight:0.6,type:'direct'},{code:'TC-1',weight:0.4,type:'direct'}]},
+    {crit:'team_execution',        outs:[{code:'TC-4',weight:0.7,type:'direct'},{code:'TC-2',weight:0.3,type:'indirect'}]}
+  ]
 );
 
 processOrgfw('TUBITAK-2204A', 'Research Competition Framework',
@@ -519,8 +533,20 @@ processOrgfw('TUBITAK-2204A', 'Research Competition Framework',
     {key:'scientific_method',label:'Scientific Method & Rigor',short:'Method',max:40,weight:40,color:'#3B82F6',desc:'Assesses rigor of experimental design, hypothesis clarity, control conditions, reproducibility, and statistical validity of results.',customRubric:[{min:35,max:40,label:'Excellent',description:'Hypothesis is clearly stated and testable. Proper controls and adequate sample size.'},{min:27,max:34,label:'Good',description:'Methodology is sound with minor gaps.'},{min:19,max:26,label:'Developing',description:'Basic methodology present but controls weak.'},{min:0,max:18,label:'Insufficient',description:'No clear hypothesis or experimental design.'}]},
     {key:'impact_and_presentation',label:'Impact & Presentation',short:'Impact',max:25,weight:25,color:'#F59E0B',desc:'Evaluates real-world applicability of research findings and the overall quality of the oral and poster presentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Results have clear real-world applicability.'},{min:17,max:21,label:'Good',description:'Potential impact is described.'},{min:12,max:16,label:'Developing',description:'Impact is mentioned but not convincingly argued.'},{min:0,max:11,label:'Insufficient',description:'No discussion of impact.'}]}
   ],
-  [['RC-1','Originality and Creativity','Demonstrate original thinking addressing genuine gaps in scientific literature.'],['RC-2','Scientific Method','Apply rigorous scientific methodology including proper experimental design.'],['RC-3','Results and Recommendations','Present clear, reproducible results with actionable recommendations.'],['RC-4','Applicability and Feasibility','Demonstrate practical applicability for real-world implementation.'],['RC-5','Broader Impact','Articulate the broader societal, environmental, or economic impact.']],
-  [{crit:'originality',outs:[{code:'RC-1',weight:0.7},{code:'RC-4',weight:0.3}]},{crit:'scientific_method',outs:[{code:'RC-2',weight:0.5},{code:'RC-3',weight:0.5}]},{crit:'impact_and_presentation',outs:[{code:'RC-5',weight:0.5},{code:'RC-3',weight:0.3},{code:'RC-4',weight:0.2}]}]
+  [
+    ['RC-1', 'Originality & Creativity',      'Research question addresses a genuine, unstudied gap in scientific literature; approach is independent of textbook procedures and demonstrates student-initiated inquiry rather than replication.'],
+    ['RC-2', 'Scientific Method & Rigor',     'Hypothesis is precisely formulated and testable; experimental design includes appropriate control and variable isolation; sample size is statistically sufficient; results are reproducible and reported with uncertainty bounds.'],
+    ['RC-3', 'Literature Review Quality',     'Background research is comprehensive, citations are current and from peer-reviewed sources, and prior work is critically synthesised to motivate the research question rather than summarised superficially.'],
+    ['RC-4', 'Applicability & Impact',        'Findings address a real-world problem with a credible pathway to practical implementation; potential societal, environmental, or economic benefit is quantified or clearly argued.'],
+    ['RC-5', 'Ethics & Safety Compliance',    'All applicable research ethics protocols are observed (informed consent, animal welfare, chemical/biological hazard procedures); ethical approval documentation is present where required by TÜBİTAK guidelines.'],
+    ['RC-6', 'Comprehension & Synthesis',     'Presenter demonstrates mastery of underlying scientific principles, accurately interprets own data, and provides satisfactory, technically sound answers to jury questions without coaching.'],
+    ['RC-7', 'Design & Scope Clarity',        'Research boundaries are clearly delineated; objectives are specific, measurable, and achievable within the declared timeframe; limitations are acknowledged and their effect on conclusions is discussed.'],
+  ],
+  [
+    {crit:'originality',             outs:[{code:'RC-1',weight:0.6,type:'direct'},{code:'RC-7',weight:0.4,type:'indirect'}]},
+    {crit:'scientific_method',       outs:[{code:'RC-2',weight:0.5,type:'direct'},{code:'RC-3',weight:0.3,type:'direct'},{code:'RC-5',weight:0.2,type:'direct'}]},
+    {crit:'impact_and_presentation', outs:[{code:'RC-4',weight:0.4,type:'direct'},{code:'RC-6',weight:0.4,type:'direct'},{code:'RC-3',weight:0.2,type:'indirect'}]}
+  ]
 );
 
 processOrgfw('IEEE-APSSDC', 'Design Contest Framework',
@@ -529,8 +555,18 @@ processOrgfw('IEEE-APSSDC', 'Design Contest Framework',
     {key:'technical_merit',label:'Technical Merit',short:'Technical',max:40,weight:40,color:'#3B82F6',desc:'Assesses closeness of agreement between simulation and measurement results, and overall RF performance quality.',customRubric:[{min:35,max:40,label:'Excellent',description:'Simulation and measurement results agree closely.'},{min:27,max:34,label:'Good',description:'Solid results with acceptable agreement.'},{min:19,max:26,label:'Developing',description:'Simulation results presented but measurement validation limited.'},{min:0,max:18,label:'Insufficient',description:'No measurement results or significant discrepancy.'}]},
     {key:'application_and_presentation',label:'Application & Presentation',short:'Presentation',max:30,weight:30,color:'#F59E0B',desc:'Evaluates clarity of the proposed real-world application use case and the quality of the overall design presentation.',customRubric:[{min:27,max:30,label:'Excellent',description:'Clear real-world application with compelling use case.'},{min:21,max:26,label:'Good',description:'Application context established.'},{min:13,max:20,label:'Developing',description:'Application mentioned but not developed.'},{min:0,max:12,label:'Insufficient',description:'No clear application.'}]}
   ],
-  [['DC-1','Creativity','Demonstrate novel antenna design concepts.'],['DC-2','Technical Merit','Exhibit strong technical foundations with validated results.'],['DC-3','Practical Application','Address a clear real-world application.'],['DC-4','Educational Value','Show educational merit through clear documentation.']],
-  [{crit:'creativity',outs:[{code:'DC-1',weight:0.7},{code:'DC-4',weight:0.3}]},{crit:'technical_merit',outs:[{code:'DC-2',weight:0.8},{code:'DC-3',weight:0.2}]},{crit:'application_and_presentation',outs:[{code:'DC-3',weight:0.5},{code:'DC-4',weight:0.3},{code:'DC-1',weight:0.2}]}]
+  [
+    ['DC-1', 'Creativity & Innovation',       'Design introduces a novel antenna topology, feeding mechanism, or material application not commonly documented in current literature; innovation is substantiated by comparative analysis against state-of-the-art solutions.'],
+    ['DC-2', 'Technical Merit',               'Simulated and measured antenna parameters (gain, bandwidth, radiation pattern, impedance matching) are in close agreement; RF performance meets or exceeds the specified design requirements for the target application.'],
+    ['DC-3', 'Fabrication & Validation',      'Prototype is cleanly fabricated with dimensional accuracy; measured S-parameters and radiation characteristics are obtained via calibrated vector network analyser and anechoic chamber or comparable measurement setup.'],
+    ['DC-4', 'Practical Application',         'A specific real-world use case (e.g., 5G mmWave, vehicular radar, biomedical implant, IoT sensor) is clearly defined; design trade-offs are directly linked to application constraints such as size, frequency band, or power level.'],
+    ['DC-5', 'Oral Presentation & Q&A',       'Team presents the complete design process — requirements, synthesis, simulation, fabrication, and measurement — in a structured and fluent manner; technical questions from the judging panel are answered accurately and confidently.'],
+  ],
+  [
+    {crit:'creativity',                outs:[{code:'DC-1',weight:0.7,type:'direct'},{code:'DC-4',weight:0.3,type:'indirect'}]},
+    {crit:'technical_merit',           outs:[{code:'DC-2',weight:0.6,type:'direct'},{code:'DC-3',weight:0.4,type:'direct'}]},
+    {crit:'application_and_presentation',outs:[{code:'DC-4',weight:0.4,type:'direct'},{code:'DC-5',weight:0.4,type:'direct'},{code:'DC-1',weight:0.2,type:'indirect'}]}
+  ]
 );
 
 processOrgfw('CANSAT', 'Mission Framework',
@@ -540,14 +576,26 @@ processOrgfw('CANSAT', 'Mission Framework',
     {key:'data_and_documentation',label:'Data Analysis & Documentation',short:'Data',max:25,weight:25,color:'#3B82F6',desc:'Evaluates depth and appropriateness of post-flight data analysis and the overall quality and completeness of written documentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Flight data thoroughly analyzed with appropriate methods.'},{min:17,max:21,label:'Good',description:'Data analysis competent. Post-flight report addresses key findings.'},{min:12,max:16,label:'Developing',description:'Data presented but analysis shallow.'},{min:0,max:11,label:'Insufficient',description:'Raw data dump with no meaningful analysis.'}]},
     {key:'safety_and_recovery',label:'Safety & Recovery',short:'Safety',max:20,weight:20,color:'#10B981',desc:'Assesses adherence to all range safety procedures, descent rate control within specification, and successful CanSat recovery.',customRubric:[{min:18,max:20,label:'Excellent',description:'Recovered intact. Descent rate within spec. All safety procedures followed.'},{min:14,max:17,label:'Good',description:'Recovery successful with minor issues.'},{min:10,max:13,label:'Developing',description:'Recovery partial or descent rate deviates.'},{min:0,max:9,label:'Insufficient',description:'CanSat lost or damaged.'}]}
   ],
-  [['CS-1','Design Constraints Compliance','Meet all specified volume, mass, and structural constraints.'],['CS-2','Primary Mission Execution','Successfully execute primary mission objectives with reliable telemetry.'],['CS-3','Descent Control and Recovery','Achieve controlled descent and successful recovery.'],['CS-4','Safety and Restrictions Compliance','Adhere to all range safety procedures.'],['CS-5','Secondary Mission Originality','Design and execute a creative secondary mission.'],['CS-6','Data Analysis and Documentation Quality','Produce thorough post-flight analysis with clear documentation.']],
-  [{crit:'design_compliance',outs:[{code:'CS-1',weight:0.7},{code:'CS-4',weight:0.3}]},{crit:'mission_execution',outs:[{code:'CS-2',weight:0.5},{code:'CS-5',weight:0.3},{code:'CS-3',weight:0.2}]},{crit:'data_and_documentation',outs:[{code:'CS-6',weight:0.7},{code:'CS-2',weight:0.3}]},{crit:'safety_and_recovery',outs:[{code:'CS-4',weight:0.5},{code:'CS-3',weight:0.5}]}]
+  [
+    ['CS-1', 'Design Constraints Compliance', 'CanSat fits within the prescribed cylindrical envelope (66 mm × 115 mm, ≤ 310 g); all structural, thermal, and power budgets are documented with positive margins and verified against flight hardware.'],
+    ['CS-2', 'Primary Mission Execution',     'Air pressure and air temperature are sampled at ≥ 1 Hz throughout descent; data is stored on-board and simultaneously downlinked to the ground station; post-flight data completeness exceeds 95 % of expected samples.'],
+    ['CS-3', 'Secondary Mission Innovation',  'Team-defined secondary mission demonstrates scientific or engineering creativity (e.g., imaging, atmospheric sensing, attitude determination); mission objective is novel, clearly scoped, and successfully executed in flight.'],
+    ['CS-4', 'Descent Control & Recovery',    'Passive descent system achieves a terminal velocity between 10 m/s and 15 m/s throughout the altitude range; CanSat is recovered intact with no damage to electronics or structure after landing.'],
+    ['CS-5', 'Ground Station & Software',     'Ground station software displays real-time telemetry in engineering units with visual altitude and temperature plots; data is automatically logged to CSV; any reception gaps are flagged and interpolated correctly.'],
+    ['CS-6', 'Data Analysis & Documentation', 'Post-flight report includes altitude profile reconstruction, temperature-altitude correlation, sensor calibration discussion, anomaly root-cause analysis, and quantitative comparison between predicted and measured performance.'],
+    ['CS-7', 'Safety & Range Compliance',     'All range safety rules are followed including pre-flight hardware inspection, parachute deployment verification, launch pad clearance procedures, and post-flight range sweep; no safety violations are recorded by range safety officers.'],
+  ],
+  [
+    {crit:'design_compliance',     outs:[{code:'CS-1',weight:0.7,type:'direct'},{code:'CS-7',weight:0.3,type:'indirect'}]},
+    {crit:'mission_execution',     outs:[{code:'CS-2',weight:0.5,type:'direct'},{code:'CS-3',weight:0.3,type:'direct'},{code:'CS-4',weight:0.2,type:'indirect'}]},
+    {crit:'data_and_documentation',outs:[{code:'CS-6',weight:0.6,type:'direct'},{code:'CS-5',weight:0.4,type:'direct'}]},
+    {crit:'safety_and_recovery',   outs:[{code:'CS-7',weight:0.5,type:'direct'},{code:'CS-4',weight:0.5,type:'direct'}]}
+  ]
 );
 
 out.push(`-- Frameworks`); out.push(fws.join('\n')); out.push('');
 out.push(`-- Framework Outcomes`); out.push(fwOutcomes.join('\n')); out.push('');
 out.push(`-- Framework Criteria`); out.push(fwCriteria.join('\n')); out.push('');
-out.push(`-- Framework Mappings`); out.push(fwMaps.join('\n')); out.push('');
 
 // ═══════════════════════════════════════════════════════════════
 // PERIODS — per-period event timelines, criteria evolution
@@ -954,14 +1002,18 @@ orgs.forEach(o => {
 
     o.mapsData.forEach(m => {
       if (removedKeys.includes(m.critKey)) return;
-      const pmId = uuid(`pmap-${pId}-${m.cId}-${m.oId}`);
       const pcId = pcMap[m.cId]; const poId = poMap[m.oId];
       if (!pcId || !poId) return;
-      let coverageType = 'direct';
+      let coverageType = idx === 0 ? m.coverType : 'direct';
       if (idx >= 2 && random() > 0.5) coverageType = 'indirect';
       else if (idx === 1 && random() > 0.8) coverageType = 'indirect';
-      const pmWeight = m.weight != null ? m.weight : 'NULL';
-      out.push(`INSERT INTO period_criterion_outcome_maps (id, period_id, period_criterion_id, period_outcome_id, coverage_type, weight) VALUES ('${pmId}', '${pId}', '${pcId}', '${poId}', '${coverageType}', ${pmWeight}) ON CONFLICT DO NOTHING;`);
+      const mWeight = m.weight != null ? m.weight : 'NULL';
+      // period_criterion_outcome_maps: snapshot for analytics (uses period_outcome_id)
+      const pmId = uuid(`pmap-${pId}-${m.cId}-${m.oId}`);
+      out.push(`INSERT INTO period_criterion_outcome_maps (id, period_id, period_criterion_id, period_outcome_id, coverage_type, weight) VALUES ('${pmId}', '${pId}', '${pcId}', '${poId}', '${coverageType}', ${mWeight}) ON CONFLICT DO NOTHING;`);
+      // framework_criterion_outcome_maps: authoritative mappings edited on Outcomes page (uses framework_outcome_id)
+      const fmId = uuid(`fcmap-${pId}-${m.cId}-${m.oId}`);
+      out.push(`INSERT INTO framework_criterion_outcome_maps (id, framework_id, period_id, criterion_id, outcome_id, coverage_type, weight) VALUES ('${fmId}', '${fwId}', '${pId}', '${pcId}', '${m.oId}', '${coverageType}', ${mWeight}) ON CONFLICT DO NOTHING;`);
     });
 
     periodData.push({ id: pId, org: o.code, isCur: isCurrent, histIdx: idx, start: d.start, end: d.end, name: d.name, evalDay, evalDays, s: d.s });
