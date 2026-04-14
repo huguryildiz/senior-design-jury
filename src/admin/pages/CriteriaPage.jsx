@@ -381,6 +381,12 @@ export default function CriteriaPage() {
                   {periods.viewPeriodLabel}
                 </div>
               )}
+              {isLocked && (
+                <span className="crt-lock-badge">
+                  <Lock size={11} strokeWidth={2.2} />
+                  Locked
+                </span>
+              )}
               <button
                 className="crt-add-btn"
                 onClick={() => setEditingIndex(-1)}
@@ -606,6 +612,142 @@ export default function CriteriaPage() {
                 })}
               </tbody>
             </table>
+          )}
+          {/* Mobile card list — hidden on desktop via CSS */}
+          {draftCriteria.length > 0 && (
+            <div className="crt-mobile-list">
+              {pageRows.map((criterion, rowIdx) => {
+                const i = (safePage - 1) * pageSize + rowIdx;
+                const rubric = Array.isArray(criterion.rubric) ? criterion.rubric : [];
+                const outcomes = criterion.outcomes || [];
+                const visibleOutcomes = outcomes.slice(0, 4);
+                const overflowCount = outcomes.length - visibleOutcomes.length;
+                const menuKey = `crt-mobile-${i}`;
+                const isMenuOpen = openMenuId === menuKey;
+                const color = criterion.color || CRITERION_COLORS[i % CRITERION_COLORS.length];
+                return (
+                  <div
+                    key={criterion.key || i}
+                    className={`crt-mobile-card${isLocked ? " crt-mobile-card--locked" : ""}`}
+                  >
+                    {/* Header */}
+                    <div className="crt-mobile-card-header">
+                      <span
+                        className="crt-mobile-card-color-dot"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="crt-mobile-card-name">
+                        {criterion.label || criterion.shortLabel || `Criterion ${i + 1}`}
+                      </span>
+                      <span className="crt-mobile-card-pts-badge">
+                        {criterion.max != null ? `${criterion.max} pts` : "—"}
+                      </span>
+                      <FloatingMenu
+                        trigger={
+                          <button
+                            className="crt-mobile-card-menu-btn"
+                            aria-label="Actions"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(isMenuOpen ? null : menuKey);
+                            }}
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                        }
+                        isOpen={isMenuOpen}
+                        onClose={() => setOpenMenuId(null)}
+                        placement="bottom-end"
+                      >
+                        <button
+                          className="floating-menu-item"
+                          onMouseDown={() => { setOpenMenuId(null); setEditingIndex(i); }}
+                        >
+                          <Pencil size={13} strokeWidth={2} />
+                          Edit Criterion
+                        </button>
+                        <button
+                          className="floating-menu-item"
+                          onMouseDown={() => { setOpenMenuId(null); handleDuplicate(i); }}
+                        >
+                          <Copy size={13} strokeWidth={2} />
+                          Duplicate
+                        </button>
+                        <div className="floating-menu-divider" />
+                        <button
+                          className="floating-menu-item"
+                          onMouseDown={() => { setOpenMenuId(null); handleMove(i, -1); }}
+                          disabled={i === 0}
+                          style={i === 0 ? { opacity: 0.4, pointerEvents: "none" } : {}}
+                        >
+                          <MoveUp size={13} strokeWidth={2} />
+                          Move Up
+                        </button>
+                        <button
+                          className="floating-menu-item"
+                          onMouseDown={() => { setOpenMenuId(null); handleMove(i, 1); }}
+                          disabled={i === draftCriteria.length - 1}
+                          style={i === draftCriteria.length - 1 ? { opacity: 0.4, pointerEvents: "none" } : {}}
+                        >
+                          <MoveDown size={13} strokeWidth={2} />
+                          Move Down
+                        </button>
+                        <div className="floating-menu-divider" />
+                        <button
+                          className="floating-menu-item danger"
+                          onMouseDown={() => { setOpenMenuId(null); setDeleteIndex(i); }}
+                        >
+                          <Trash2 size={13} strokeWidth={2} />
+                          Remove
+                        </button>
+                      </FloatingMenu>
+                    </div>
+                    {/* Lock strip */}
+                    {isLocked && (
+                      <div className="crt-mobile-lock-strip">
+                        <Lock size={11} strokeWidth={2.2} />
+                        Weights &amp; bands are read-only
+                      </div>
+                    )}
+                    {/* Rubric band rows */}
+                    {rubric.length > 0 && (
+                      <div className="crt-mobile-bands">
+                        {rubric.map((band, bi) => (
+                          <div
+                            key={bi}
+                            className={`crt-mobile-band-row ${rubricBandClass(band.level || band.label)}`}
+                          >
+                            <span className="crt-mobile-band-name">
+                              {band.level || band.label}
+                            </span>
+                            {bandRangeText(band) && (
+                              <span className="crt-mobile-band-range">
+                                {bandRangeText(band)} pts
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Outcome pills */}
+                    {outcomes.length > 0 && (
+                      <div className="crt-mobile-outcomes">
+                        {visibleOutcomes.map((code) => (
+                          <span key={code} className="crt-mobile-outcome-pill">
+                            {code}
+                          </span>
+                        ))}
+                        {overflowCount > 0 && (
+                          <span className="crt-mobile-outcome-overflow">
+                            +{overflowCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
           {draftCriteria.length > 0 && (
             <Pagination
