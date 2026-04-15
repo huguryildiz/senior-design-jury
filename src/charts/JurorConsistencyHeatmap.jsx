@@ -53,7 +53,7 @@ export function JurorConsistencyHeatmap({ dashboardStats = [], submittedData = [
                 <span
                   style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: c.color, marginRight: 5, verticalAlign: "middle" }}
                 />
-                {c.shortLabel}
+                {c.label}
               </td>
               {groups.map((g) => {
                 const vals = rows

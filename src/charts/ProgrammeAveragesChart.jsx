@@ -45,7 +45,7 @@ export function ProgrammeAveragesChart({ submittedData = [], criteria = [], thre
     const avgRaw = vals.length ? mean(vals) : 0;
     const pct = c.max > 0 ? fmt1((avgRaw / c.max) * 100) : 0;
     const sd = vals.length > 1 ? fmt1((stdDev(vals, true) / c.max) * 100) : 0;
-    return { name: c.shortLabel, pct, sd, color: c.color };
+    return { name: c.label, pct, sd, color: c.color };
   });
 
   const CustomBar = (props) => {

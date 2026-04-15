@@ -2,8 +2,9 @@
 // Outcomes & Mapping page — period-scoped outcome CRUD + criterion mapping.
 // Matches vera-premium-prototype.html mockup.
 
-import { useState } from "react";
-import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, AlertCircle, XCircle, ChevronRight, CheckCircle, AlertTriangle, Circle, Info, Lock } from "lucide-react";
+import { useState, useRef } from "react";
+import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, AlertCircle, XCircle, CheckCircle, AlertTriangle, Circle, Info, Lock } from "lucide-react";
+import { updateFramework, cloneFramework, assignFrameworkToPeriod } from "@/shared/api";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { usePeriodOutcomes } from "../hooks/usePeriodOutcomes";
 import { useToast } from "@/shared/hooks/useToast";
@@ -11,7 +12,6 @@ import FloatingMenu from "@/shared/ui/FloatingMenu";
 import AddOutcomeDrawer from "../drawers/AddOutcomeDrawer";
 import OutcomeDetailDrawer from "../drawers/OutcomeDetailDrawer";
 import Modal from "@/shared/ui/Modal";
-import FrameworkPickerDrawer from "../drawers/FrameworkPickerDrawer";
 import FbAlert from "@/shared/ui/FbAlert";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import Pagination from "@/shared/ui/Pagination";
@@ -236,6 +236,7 @@ export default function OutcomesPage() {
   const isLocked = !!selectedPeriod?.is_locked;
   const frameworkId = selectedPeriod?.framework_id || null;
   const frameworkName = frameworks.find((f) => f.id === frameworkId)?.name || "";
+  const platformFrameworks = frameworks.filter((f) => !f.organization_id);
 
   // ── Data hook ─────────────────────────────────────────────
 
@@ -261,8 +262,11 @@ export default function OutcomesPage() {
   // Panel error
   const [panelError, setPanelError] = useState("");
 
-  // Framework picker drawer
-  const [frameworkDrawerOpen, setFrameworkDrawerOpen] = useState(false);
+  // Inline framework rename
+  const [fwRenaming, setFwRenaming] = useState(false);
+  const [fwRenameVal, setFwRenameVal] = useState("");
+  const [fwRenameSaving, setFwRenameSaving] = useState(false);
+  const fwRenameInputRef = useRef(null);
 
   // ── Derived data ──────────────────────────────────────────
 
@@ -386,6 +390,56 @@ export default function OutcomesPage() {
     setEditDrawerOpen(true);
   };
 
+  // ── Framework rename handlers ─────────────────────────────
+
+  const startFwRename = () => {
+    setFwRenameVal(frameworkName);
+    setFwRenaming(true);
+    setTimeout(() => fwRenameInputRef.current?.select(), 0);
+  };
+
+  const cancelFwRename = () => {
+    setFwRenaming(false);
+    setFwRenameVal("");
+  };
+
+  const saveFwRename = async () => {
+    const trimmed = fwRenameVal.trim();
+    if (!trimmed || trimmed === frameworkName || !frameworkId) {
+      cancelFwRename();
+      return;
+    }
+    setFwRenameSaving(true);
+    try {
+      const sharedWith = allPeriods.filter(
+        (p) => p.framework_id === frameworkId && p.id !== selectedPeriodId
+      );
+      if (sharedWith.length > 0 && organizationId) {
+        // Framework is shared with other periods — clone it so the rename
+        // only affects this period. period_outcomes / mappings are already
+        // period-scoped snapshots, so reassigning framework_id doesn't touch them.
+        const { id: clonedId } = await cloneFramework(frameworkId, trimmed, organizationId);
+        await assignFrameworkToPeriod(selectedPeriodId, clonedId);
+        toast.success("Framework renamed for this period");
+      } else {
+        await updateFramework(frameworkId, { name: trimmed });
+        toast.success("Framework renamed");
+      }
+      onFrameworksChange?.();
+      setFwRenaming(false);
+      setFwRenameVal("");
+    } catch (e) {
+      toast.error(e?.message || "Failed to rename");
+    } finally {
+      setFwRenameSaving(false);
+    }
+  };
+
+  const handleFwRenameKeyDown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); saveFwRename(); }
+    if (e.key === "Escape") { e.preventDefault(); cancelFwRename(); }
+  };
+
   // ── Render ────────────────────────────────────────────────
 
   const noFramework = !adminLoading && !frameworkId;
@@ -419,26 +473,13 @@ export default function OutcomesPage() {
             <div className="vera-es-actions">
               <button
                 className="vera-es-action vera-es-action--primary-fw"
-                onClick={() => setFrameworkDrawerOpen(true)}
+                onClick={() => setAddDrawerOpen(true)}
               >
-                <div className="vera-es-num vera-es-num--fw">1</div>
                 <div className="vera-es-action-text">
                   <div className="vera-es-action-label">Start from an existing framework</div>
-                  <div className="vera-es-action-sub">Clone from a previous period or pick a platform template</div>
+                  <div className="vera-es-action-sub">Pick a platform template or start blank</div>
                 </div>
                 <span className="vera-es-badge vera-es-badge--fw">Recommended</span>
-              </button>
-              <div className="vera-es-divider">or</div>
-              <button
-                className="vera-es-action vera-es-action--secondary"
-                onClick={() => setFrameworkDrawerOpen(true)}
-              >
-                <div className="vera-es-num vera-es-num--secondary">2</div>
-                <div className="vera-es-action-text">
-                  <div className="vera-es-action-label">Create from scratch</div>
-                  <div className="vera-es-action-sub">Start blank and add your own outcomes</div>
-                </div>
-                <span className="vera-es-badge vera-es-badge--secondary">Manual</span>
               </button>
             </div>
             <div className="vera-es-footer">
@@ -522,14 +563,31 @@ export default function OutcomesPage() {
             <div className="card-header">
               <div className="card-title">Programme Outcomes</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <button
-                  className="fw-chip active fw-chip-trigger"
-                  onClick={() => setFrameworkDrawerOpen(true)}
-                >
-                  <BadgeCheck size={13} strokeWidth={1.5} className="fw-chip-icon" />
-                  {frameworkName}
-                  <ChevronRight size={12} strokeWidth={2} style={{ marginLeft: 2, opacity: 0.6 }} />
-                </button>
+                {fwRenaming ? (
+                  <div className="fw-chip-rename-wrap">
+                    <BadgeCheck size={13} strokeWidth={1.5} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                    <input
+                      ref={fwRenameInputRef}
+                      className="fw-chip-rename-input"
+                      value={fwRenameVal}
+                      onChange={(e) => setFwRenameVal(e.target.value)}
+                      onBlur={saveFwRename}
+                      onKeyDown={handleFwRenameKeyDown}
+                      disabled={fwRenameSaving}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    className="fw-chip active fw-chip-trigger"
+                    onClick={startFwRename}
+                    title="Click to rename"
+                  >
+                    <BadgeCheck size={13} strokeWidth={1.5} className="fw-chip-icon" />
+                    {frameworkName}
+                    <Pencil size={11} strokeWidth={2} style={{ marginLeft: 4, opacity: 0.5 }} />
+                  </button>
+                )}
                 {isLocked ? (
                   <span className="acc-lock-badge">
                     <Lock size={11} strokeWidth={2.5} />
@@ -627,6 +685,11 @@ export default function OutcomesPage() {
         open={addDrawerOpen}
         onClose={() => setAddDrawerOpen(false)}
         frameworkName={frameworkName}
+        frameworkId={frameworkId}
+        platformFrameworks={platformFrameworks}
+        organizationId={organizationId}
+        selectedPeriodId={selectedPeriodId}
+        onFrameworksChange={onFrameworksChange}
         criteria={drawerCriteria}
         onSave={handleAddOutcome}
       />
@@ -707,23 +770,6 @@ export default function OutcomesPage() {
           </button>
         </div>
       </Modal>
-      {/* Framework Picker Drawer */}
-      <FrameworkPickerDrawer
-        open={frameworkDrawerOpen}
-        onClose={() => setFrameworkDrawerOpen(false)}
-        frameworkId={frameworkId}
-        frameworkName={frameworkName}
-        frameworks={frameworks}
-        allPeriods={allPeriods}
-        organizationId={organizationId}
-        selectedPeriodId={selectedPeriodId}
-        outcomeCount={totalOutcomes}
-        directCount={directCount}
-        indirectCount={indirectCount}
-        unmappedCount={unmappedCount}
-        onFrameworksChange={onFrameworksChange}
-        hasMappings={fw.mappings.length > 0}
-      />
     </div>
   );
 }

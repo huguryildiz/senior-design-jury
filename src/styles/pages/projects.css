@@ -17,7 +17,8 @@
 #projects-main-table th.col-footer { display: none; }
 #projects-main-table .mobile-rank-ring,
 #projects-main-table .mobile-eyebrow,
-#projects-main-table .members-chips-wrap { display: none; }
+#projects-main-table .members-chips-wrap,
+#projects-main-table .advisor-mobile-line { display: none; }
 
 /* ─── Manage team members modal list ─────────────────────── */
 .manage-student-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px }
@@ -47,14 +48,13 @@
     display: grid;
     grid-template-columns: auto 1fr auto;
     grid-template-areas:
-      "ring title actions"
-      "ring advisor advisor"
+      "ring title   actions"
       "members members members"
-      "footer footer footer";
+      "footer  footer  footer";
     gap: 0 12px;
     width: 100%;
     box-sizing: border-box;
-    background: var(--bg-card);
+    background: linear-gradient(135deg, var(--surface-1) 0%, var(--bg-card) 50%);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     margin-bottom: 12px;
@@ -132,6 +132,9 @@
     font-weight: 600;
   }
 
+  /* Mobile: hide plain-text line, keep JurorBadge advisor block */
+  #projects-main-table .advisor-mobile-line { display: none; }
+
   /* Title cell */
   #projects-main-table td.col-title {
     grid-area: title;
@@ -172,12 +175,15 @@
   #projects-main-table td.col-members {
     grid-area: members;
     padding: 10px 14px 12px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
   }
-  #projects-main-table td.col-members .members-text { display: none; }
-  #projects-main-table td.col-members .members-chips-wrap {
+  #projects-main-table td.col-members .members-chips-wrap { display: none; }
+  #projects-main-table td.col-members .members-text {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px 10px;
   }
   #projects-main-table td.col-members .members-chips-label {
     font-size: 9.5px;
@@ -193,6 +199,13 @@
     min-width: 0;
   }
   #projects-main-table .member-chips-empty {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 13px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
     font-size: 11px;
     color: var(--text-tertiary);
     font-style: italic;
@@ -230,6 +243,11 @@
     border-top: 1px solid var(--border);
     font-size: 10.5px;
     color: var(--text-tertiary);
+    gap: 10px;
+  }
+  #projects-main-table td.col-footer > * {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   #projects-main-table td.col-footer strong {
     color: var(--text-secondary);
@@ -258,4 +276,38 @@
 
   /* Title — tighten text slightly */
   #projects-main-table td:nth-child(2) > div:first-child { font-size: 12px; }
+}
+
+/* Project title — justified for multi-line balance. */
+.proj-title-text {
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+/* Advisor block — two-line compact: eyebrow + JurorBadge row. */
+.proj-advisors {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.proj-advisors-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+.proj-advisors-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.proj-advisors-row .jb-name {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--text-tertiary);
 }

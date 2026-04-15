@@ -119,7 +119,7 @@ export function OutcomeByGroupChart({ dashboardStats = [], criteria = [], thresh
           strokeWidth={1}
         />
         {(criteria || []).map((c) => (
-          <Bar key={c.id} dataKey={c.id} name={c.shortLabel} fill={c.color} radius={[2, 2, 0, 0]} maxBarSize={18} />
+          <Bar key={c.id} dataKey={c.id} name={c.label} fill={c.color} radius={[2, 2, 0, 0]} maxBarSize={18} />
         ))}
         <Legend
           iconType="square"

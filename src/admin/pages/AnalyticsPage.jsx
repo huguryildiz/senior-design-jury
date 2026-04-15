@@ -646,7 +646,7 @@ export default function AnalyticsPage() {
           {criteria.map((c) => (
             <div key={c.id} className="legend-item">
               <div className="legend-dot" style={{ background: c.color }} />
-              {c.shortLabel} ({(c.outcomes || []).join("/")})
+              {c.label} ({(c.outcomes || []).join("/")})
             </div>
           ))}
           <div className="legend-item">
@@ -703,7 +703,7 @@ export default function AnalyticsPage() {
             {criteria.map((c) => (
               <div key={c.id} className="legend-item">
                 <div className="legend-dot" style={{ background: c.color }} />
-                {c.shortLabel} ({(c.outcomes || []).join("/")})
+                {c.label} ({(c.outcomes || []).join("/")})
               </div>
             ))}
           </div>

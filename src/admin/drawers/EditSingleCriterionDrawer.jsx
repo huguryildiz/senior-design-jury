@@ -81,7 +81,7 @@ export default function EditSingleCriterionDrawer({
 
   // ── Period outcomes + mappings (source of truth: period_criterion_outcome_maps)
   const periodId = period?.id || null;
-  const criterionId = !isNew ? criterion?.id || null : null;
+  const criterionId = !isNew ? criterion?.dbId || criterion?.id || null : null;
   const po = usePeriodOutcomes({ periodId });
 
   // Outcome options for the Mapping tab: prefer hook data (period-scoped),

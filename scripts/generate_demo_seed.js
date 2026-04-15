@@ -337,8 +337,6 @@ out.push('');
 // FRAMEWORKS — criteria & outcomes with descriptions
 // ═══════════════════════════════════════════════════════════════
 
-const fws = [], fwOutcomes = [], fwCriteria = [];
-
 function parseRubric(maxScore) {
   let rubric = [];
   if (maxScore >= 25) {
@@ -365,10 +363,12 @@ function simplifiedRubric(maxScore) {
 }
 
 // outcomes format: [[code, label, description], ...]
+// NOTE: This function only collects *template* data on `o`. Per-period
+// framework rows (one per period) are materialised in the period loop,
+// so that renaming one period's framework doesn't affect siblings.
 function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
   const o = orgs.find(x => x.code === orgCode);
   o.frameworkName = fwName;
-  const fwId = uuid('fw-' + orgCode);
   const fwDescMap = {
     'MÜDEK v3.1':                  'MÜDEK accreditation framework aligned with EUR-ACE standards. Evaluates engineering program outcomes across technical competency, design, communication, and teamwork dimensions.',
     'ABET (2026 – 2027)':          'ABET Computing Accreditation Commission framework. Assesses student outcomes in computing knowledge, problem analysis, solution design, communication, and professional ethics.',
@@ -377,32 +377,29 @@ function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
     'Design Contest Framework':    'IEEE AP-S Student Design Contest framework. Evaluates antenna design performance, technical documentation quality, oral presentation, and adherence to contest specifications.',
     'Mission Framework':           'CanSat Competition mission evaluation framework. Assesses satellite container design, mission objective completion, telemetry data quality, and post-flight analysis report.',
   };
-  const fwDesc = fwDescMap[fwName] || '';
-  fws.push(`INSERT INTO frameworks (id, organization_id, name, description) VALUES ('${fwId}', '${o.id}', '${escapeSql(fwName)}', '${escapeSql(fwDesc)}') ON CONFLICT DO NOTHING;`);
-  const oMap = {}; let outOrder = 1; o.outcomesData = [];
+  o.frameworkDesc = fwDescMap[fwName] || '';
+  o.outcomesData = [];
+  let outOrder = 1;
   for (const arr of outcomes) {
-    const [code, lbl, desc] = arr; const oId = uuid(`fw-out-${orgCode}-${code}`); oMap[code] = oId;
-    const descSql = desc ? `'${escapeSql(desc)}'` : 'NULL';
-    o.outcomesData.push({ id: oId, code, label: lbl, desc: desc || null, sortOrder: outOrder });
-    fwOutcomes.push(`INSERT INTO framework_outcomes (id, framework_id, code, label, description, sort_order) VALUES ('${oId}', '${fwId}', '${escapeSql(code)}', '${escapeSql(lbl)}', ${descSql}, ${outOrder++}) ON CONFLICT (id) DO UPDATE SET label=EXCLUDED.label, description=EXCLUDED.description;`);
+    const [code, lbl, desc] = arr;
+    o.outcomesData.push({ code, label: lbl, desc: desc || null, sortOrder: outOrder++ });
   }
-  const cMap = {}; let critOrder = 1; o.criteriaData = [];
+  o.criteriaData = [];
+  let critOrder = 1;
   for (const c of criteria) {
-    const cId = uuid(`fw-crit-${orgCode}-${c.key}`);
-    const rubricJson = c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max);
-    cMap[c.key] = cId; o.criteriaData.push({ id: cId, ...c, sortOrder: critOrder });
-    const cDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
-    fwCriteria.push(`INSERT INTO framework_criteria (id, framework_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${cId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', ${cDescSql}, ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${critOrder++}) ON CONFLICT DO NOTHING;`);
+    o.criteriaData.push({ ...c, sortOrder: critOrder++ });
   }
-  o.critKeyMap = cMap;      // criterion key → framework criterion id
-  o.outcomeCodeMap = oMap;  // outcome code  → framework outcome id
+  // Template mappings — keyed by critKey/outCode strings, resolved to
+  // per-period UUIDs inside the period loop.
   o.mapsData = [];
   for (const m of mappings) {
-    const cId = cMap[m.crit];
     for (const mo of m.outs) {
-      const oId = oMap[mo.code];
-      const coverType = mo.type || 'direct';
-      o.mapsData.push({ cId, oId, weight: mo.weight, critKey: m.crit, outCode: mo.code, coverType });
+      o.mapsData.push({
+        critKey: m.crit,
+        outCode: mo.code,
+        weight: mo.weight,
+        coverType: mo.type || 'direct',
+      });
     }
   }
 }
@@ -607,9 +604,9 @@ processOrgfw('CANSAT', 'Mission Framework',
   ]
 );
 
-out.push(`-- Frameworks`); out.push(fws.join('\n')); out.push('');
-out.push(`-- Framework Outcomes`); out.push(fwOutcomes.join('\n')); out.push('');
-out.push(`-- Framework Criteria`); out.push(fwCriteria.join('\n')); out.push('');
+// Framework-level SQL (frameworks / framework_outcomes / framework_criteria)
+// is emitted per-period inside the period loop below — each period owns its
+// own framework row so renaming one doesn't affect siblings.
 
 // ═══════════════════════════════════════════════════════════════
 // PERIODS — per-period event timelines, criteria evolution
@@ -620,32 +617,32 @@ const periodData = [];
 
 const orgPeriodsDef = {
   'TEDU-EE': [
-    {name:CUR_SEMESTER_LABEL,outcomeName:`MÜDEK-${CUR_SEMESTER_LABEL}`,criteriaName:CUR_SEMESTER_LABEL,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'EE 491/492 Senior Design — 1-Day Poster Evaluation'},
-    {name:'Fall 2025',outcomeName:'MÜDEK-Fall 2025',criteriaName:'Fall 2025',s:'Fall',start:'2026-01-09',end:'2026-01-09',desc:'EE 491/492 Fall Senior Design — 1-Day Poster Day'},
-    {name:'Spring 2025',outcomeName:'MÜDEK-Spring 2025',criteriaName:'Spring 2025',s:'Spring',start:'2025-06-11',end:'2025-06-11',desc:'EE Senior Design Spring — 1-Day Poster Presentations'},
-    {name:'Fall 2024',outcomeName:'MÜDEK-Fall 2024',criteriaName:'Fall 2024',s:'Fall',start:'2025-01-10',end:'2025-01-10',desc:'EE Senior Design Fall — 1-Day Poster Day'}],
+    {name:CUR_SEMESTER_LABEL,frameworkName:`MÜDEK-${CUR_SEMESTER_LABEL}`,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'EE 491/492 Senior Design — 1-Day Poster Evaluation'},
+    {name:'Fall 2025',frameworkName:'MÜDEK-Fall 2025',s:'Fall',start:'2026-01-09',end:'2026-01-09',desc:'EE 491/492 Fall Senior Design — 1-Day Poster Day'},
+    {name:'Spring 2025',frameworkName:'MÜDEK-Spring 2025',s:'Spring',start:'2025-06-11',end:'2025-06-11',desc:'EE Senior Design Spring — 1-Day Poster Presentations'},
+    {name:'Fall 2024',frameworkName:'MÜDEK-Fall 2024',s:'Fall',start:'2025-01-10',end:'2025-01-10',desc:'EE Senior Design Fall — 1-Day Poster Day'}],
   'CMU-CS': [
-    {name:CUR_SEMESTER_LABEL,outcomeName:`ABET-${CUR_SEMESTER_LABEL}`,criteriaName:CUR_SEMESTER_LABEL,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'CS Capstone — 1-Day Demo Day'},
-    {name:'Fall 2025',outcomeName:'ABET-Fall 2025',criteriaName:'Fall 2025',s:'Fall',start:'2025-12-06',end:'2025-12-06',desc:'CS Fall Capstone — 1-Day Demo Day'},
-    {name:'Spring 2025',outcomeName:'ABET-Spring 2025',criteriaName:'Spring 2025',s:'Spring',start:'2025-04-27',end:'2025-04-27',desc:'CS Spring Capstone — 1-Day Demo Day'},
-    {name:'Fall 2024',outcomeName:'ABET-Fall 2024',criteriaName:'Fall 2024',s:'Fall',start:'2024-12-07',end:'2024-12-07',desc:'CS Fall Capstone — 1-Day Demo Day'}],
+    {name:CUR_SEMESTER_LABEL,frameworkName:`ABET-${CUR_SEMESTER_LABEL}`,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'CS Capstone — 1-Day Demo Day'},
+    {name:'Fall 2025',frameworkName:'ABET-Fall 2025',s:'Fall',start:'2025-12-06',end:'2025-12-06',desc:'CS Fall Capstone — 1-Day Demo Day'},
+    {name:'Spring 2025',frameworkName:'ABET-Spring 2025',s:'Spring',start:'2025-04-27',end:'2025-04-27',desc:'CS Spring Capstone — 1-Day Demo Day'},
+    {name:'Fall 2024',frameworkName:'ABET-Fall 2024',s:'Fall',start:'2024-12-07',end:'2024-12-07',desc:'CS Fall Capstone — 1-Day Demo Day'}],
   'TEKNOFEST': [
-    {name:CUR_SEASON_LABEL,outcomeName:`CF-${CUR_YEAR}`,criteriaName:CUR_SEASON_LABEL,s:'Evaluation',start:TODAY,end:TODAY,desc:`TEKNOFEST ${CUR_YEAR} Aviation Competition — 1-Day Finals (Demo)`},
-    {name:'2025 Season',outcomeName:'CF-2025',criteriaName:'2025 Season',s:'Evaluation',start:'2025-07-25',end:'2025-07-27',desc:'TEKNOFEST 2025 Aviation Competition — 3-Day Finals (Jul 25–27)'},
-    {name:'2024 Season',outcomeName:'CF-2024',criteriaName:'2024 Season',s:'Evaluation',start:'2024-07-25',end:'2024-07-27',desc:'TEKNOFEST 2024 Aviation Competition — 3-Day Finals (Jul 25–27)'}],
+    {name:CUR_SEASON_LABEL,frameworkName:`CF-${CUR_YEAR}`,s:'Evaluation',start:TODAY,end:TODAY,desc:`TEKNOFEST ${CUR_YEAR} Aviation Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Season',frameworkName:'CF-2025',s:'Evaluation',start:'2025-07-25',end:'2025-07-27',desc:'TEKNOFEST 2025 Aviation Competition — 3-Day Finals (Jul 25–27)'},
+    {name:'2024 Season',frameworkName:'CF-2024',s:'Evaluation',start:'2024-07-25',end:'2024-07-27',desc:'TEKNOFEST 2024 Aviation Competition — 3-Day Finals (Jul 25–27)'}],
   'TUBITAK-2204A': [
-    {name:CUR_COMP_LABEL,outcomeName:`RCF-${CUR_YEAR}`,criteriaName:CUR_COMP_LABEL,s:'Evaluation',start:TODAY,end:TODAY,desc:`TÜBİTAK 2204-A ${CUR_YEAR} National Science Competition — 1-Day Finals (Demo)`},
-    {name:'2025 Competition',outcomeName:'RCF-2025',criteriaName:'2025 Competition',s:'Evaluation',start:'2025-06-09',end:'2025-06-10',desc:'TÜBİTAK 2204-A 2025 National Science Competition — 2-Day Finals (Jun 9–10)'},
-    {name:'2024 Competition',outcomeName:'RCF-2024',criteriaName:'2024 Competition',s:'Evaluation',start:'2024-06-09',end:'2024-06-10',desc:'TÜBİTAK 2204-A 2024 National Science Competition — 2-Day Finals (Jun 9–10)'}],
+    {name:CUR_COMP_LABEL,frameworkName:`RCF-${CUR_YEAR}`,s:'Evaluation',start:TODAY,end:TODAY,desc:`TÜBİTAK 2204-A ${CUR_YEAR} National Science Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Competition',frameworkName:'RCF-2025',s:'Evaluation',start:'2025-06-09',end:'2025-06-10',desc:'TÜBİTAK 2204-A 2025 National Science Competition — 2-Day Finals (Jun 9–10)'},
+    {name:'2024 Competition',frameworkName:'RCF-2024',s:'Evaluation',start:'2024-06-09',end:'2024-06-10',desc:'TÜBİTAK 2204-A 2024 National Science Competition — 2-Day Finals (Jun 9–10)'}],
   'IEEE-APSSDC': [
-    {name:CUR_CONTEST_LABEL,outcomeName:`DCF-${CUR_YEAR}`,criteriaName:CUR_CONTEST_LABEL,s:'Evaluation',start:TODAY,end:TODAY,desc:`IEEE AP-S Student Design Contest ${CUR_YEAR} — 1-Day Evaluation (Demo)`},
-    {name:'2025 Contest',outcomeName:'DCF-2025',criteriaName:'2025 Contest',s:'Evaluation',start:'2025-07-25',end:'2025-07-26',desc:'IEEE AP-S Student Design Contest 2025 — 2-Day Evaluation (Jul 25–26)'},
-    {name:'2024 Contest',outcomeName:'DCF-2024',criteriaName:'2024 Contest',s:'Evaluation',start:'2024-07-25',end:'2024-07-26',desc:'IEEE AP-S Student Design Contest 2024 — 2-Day Evaluation (Jul 25–26)'}],
+    {name:CUR_CONTEST_LABEL,frameworkName:`DCF-${CUR_YEAR}`,s:'Evaluation',start:TODAY,end:TODAY,desc:`IEEE AP-S Student Design Contest ${CUR_YEAR} — 1-Day Evaluation (Demo)`},
+    {name:'2025 Contest',frameworkName:'DCF-2025',s:'Evaluation',start:'2025-07-25',end:'2025-07-26',desc:'IEEE AP-S Student Design Contest 2025 — 2-Day Evaluation (Jul 25–26)'},
+    {name:'2024 Contest',frameworkName:'DCF-2024',s:'Evaluation',start:'2024-07-25',end:'2024-07-26',desc:'IEEE AP-S Student Design Contest 2024 — 2-Day Evaluation (Jul 25–26)'}],
   'CANSAT': [
-    {name:CUR_SEASON_LABEL,outcomeName:`MF-${CUR_YEAR}`,criteriaName:CUR_SEASON_LABEL,s:'Spring',start:TODAY,end:TODAY,desc:`CanSat ${CUR_YEAR} Launch Competition — 1-Day Finals (Demo)`},
-    {name:'2025 Season',outcomeName:'MF-2025',criteriaName:'2025 Season',s:'Spring',start:'2025-06-24',end:'2025-06-26',desc:'CanSat 2025 Launch Competition — 3-Day Finals (Jun 24–26)'},
-    {name:'2024 Season',outcomeName:'MF-2024',criteriaName:'2024 Season',s:'Spring',start:'2024-06-24',end:'2024-06-26',desc:'CanSat 2024 Launch Competition — 3-Day Finals (Jun 24–26)'},
-    {name:'2027 Season (Draft)',outcomeName:'MF-2027 (Draft)',criteriaName:'2027 Season (Draft)',s:'Spring',start:'2027-06-24',end:'2027-06-26',desc:'CanSat 2027 — Planning Phase',draft:true}],
+    {name:CUR_SEASON_LABEL,frameworkName:`MF-${CUR_YEAR}`,s:'Spring',start:TODAY,end:TODAY,desc:`CanSat ${CUR_YEAR} Launch Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Season',frameworkName:'MF-2025',s:'Spring',start:'2025-06-24',end:'2025-06-26',desc:'CanSat 2025 Launch Competition — 3-Day Finals (Jun 24–26)'},
+    {name:'2024 Season',frameworkName:'MF-2024',s:'Spring',start:'2024-06-24',end:'2024-06-26',desc:'CanSat 2024 Launch Competition — 3-Day Finals (Jun 24–26)'},
+    {name:'2027 Season (Draft)',frameworkName:'MF-2027 (Draft)',s:'Spring',start:'2027-06-24',end:'2027-06-26',desc:'CanSat 2027 — Planning Phase',draft:true}],
 };
 
 // Criteria evolution: idx=0 is NEVER touched (current period preserved exactly)
@@ -1195,7 +1192,6 @@ const criteriaEvolution = {
 const periodCriteriaMap = {};
 
 orgs.forEach(o => {
-  const fwId = uuid('fw-' + o.code);
   const defs = orgPeriodsDef[o.code] || [];
   defs.forEach((d, idx) => {
     const isCurrent = idx === 0 && !d.draft;
@@ -1205,10 +1201,35 @@ orgs.forEach(o => {
     if (isCurrent) evalDays = 1; // Demo resets daily — current period is always 1-day window
     let sn = d.s === 'NULL' ? 'NULL' : `'${d.s}'`;
 
+    // ── Per-period framework ───────────────────────────────────
+    // Each period owns its own framework row so admins can rename it
+    // without affecting sibling periods. Outcomes/criteria are copied
+    // from the org template with period-scoped UUIDs.
+    // Name uses the per-period short label (e.g. "MÜDEK-Spring 2026", "CF-2026").
+    const fwId = uuid(`fw-${o.code}-${idx}`);
+    const fwName = d.frameworkName || `${o.frameworkName} — ${d.name}`;
+    out.push(`INSERT INTO frameworks (id, organization_id, name, description) VALUES ('${fwId}', '${o.id}', '${escapeSql(fwName)}', '${escapeSql(o.frameworkDesc || '')}') ON CONFLICT DO NOTHING;`);
+
+    // framework_outcomes — one set per period framework, keyed by outcome code.
+    const fwOutIdByCode = {};
+    o.outcomesData.forEach(oc => {
+      const oId = uuid(`fw-out-${o.code}-${idx}-${oc.code}`);
+      fwOutIdByCode[oc.code] = oId;
+      const descSql = oc.desc ? `'${escapeSql(oc.desc)}'` : 'NULL';
+      out.push(`INSERT INTO framework_outcomes (id, framework_id, code, label, description, sort_order) VALUES ('${oId}', '${fwId}', '${escapeSql(oc.code)}', '${escapeSql(oc.label)}', ${descSql}, ${oc.sortOrder}) ON CONFLICT (id) DO UPDATE SET label=EXCLUDED.label, description=EXCLUDED.description;`);
+    });
+
     if (isDraft) {
       const draftTs = sqlTs('2026-03-15');
+      // Drafts: emit framework_criteria matching the org template (no per-period evolution applied yet).
+      o.criteriaData.forEach(c => {
+        const fcId = uuid(`fw-crit-${o.code}-${idx}-${c.key}`);
+        const rubricJson = c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max);
+        const cDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
+        out.push(`INSERT INTO framework_criteria (id, framework_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${fcId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', ${cDescSql}, ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
+      });
       out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', '${d.start}', '${d.end}', false, false, false, NULL, NULL, ${draftTs}) ON CONFLICT DO NOTHING;`);
-      return; // draft periods have no criteria, projects, jurors, or tokens
+      return; // draft periods have no period_criteria, projects, jurors, or tokens
     }
 
     const frozenTs = sqlTs(evalDay, -24);
@@ -1224,12 +1245,16 @@ orgs.forEach(o => {
     const evo = (criteriaEvolution[o.code] || {})[idx] || null;
     const removedKeys = evo?.removeCriteria || [];
 
+    // framework_criteria + period_criteria emitted together so labels/weights/rubric stay in sync.
+    const fwCritIdByKey = {};
     const pcMap = {};
     const periodCrits = [];
     o.criteriaData.forEach(c => {
       if (removedKeys.includes(c.key)) return;
+      const fcId = uuid(`fw-crit-${o.code}-${idx}-${c.key}`);
       const pcId = uuid(`pcrit-${pId}-${c.key}`);
-      pcMap[c.id] = pcId;
+      fwCritIdByKey[c.key] = fcId;
+      pcMap[c.key] = pcId;
       let cLabel = evo?.labels?.[c.key] || c.label;
       let cWeight = evo?.weights?.[c.key] ?? c.weight;
       let rubricJson;
@@ -1242,34 +1267,38 @@ orgs.forEach(o => {
       }
       const descText = evo?.descOverrides?.[c.key] || c.desc;
       const pcDescSql = descText ? `'${escapeSql(descText)}'` : 'NULL';
-      out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${c.id}', '${c.key}', '${escapeSql(cLabel)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
+      out.push(`INSERT INTO framework_criteria (id, framework_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${fcId}', '${fwId}', '${c.key}', '${escapeSql(cLabel)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
+      out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${fcId}', '${c.key}', '${escapeSql(cLabel)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
       periodCrits.push({ key: c.key, max: c.max, weight: cWeight, pcId });
     });
     periodCriteriaMap[pId] = periodCrits;
 
     const poMap = {};
     o.outcomesData.forEach(oc => {
-      const poId = uuid(`pout-${pId}-${oc.code}`); poMap[oc.id] = poId;
+      const poId = uuid(`pout-${pId}-${oc.code}`);
+      poMap[oc.code] = poId;
       const descSql = oc.desc ? `'${escapeSql(oc.desc)}'` : 'NULL';
-      out.push(`INSERT INTO period_outcomes (id, period_id, source_outcome_id, code, label, description, sort_order) VALUES ('${poId}', '${pId}', '${oc.id}', '${oc.code}', '${escapeSql(oc.label)}', ${descSql}, ${oc.sortOrder}) ON CONFLICT DO NOTHING;`);
+      out.push(`INSERT INTO period_outcomes (id, period_id, source_outcome_id, code, label, description, sort_order) VALUES ('${poId}', '${pId}', '${fwOutIdByCode[oc.code]}', '${oc.code}', '${escapeSql(oc.label)}', ${descSql}, ${oc.sortOrder}) ON CONFLICT DO NOTHING;`);
     });
 
-    // Build effective maps: use per-period mapsOverride if defined, else fall back to framework defaults
+    // Build effective maps: use per-period mapsOverride if defined, else fall back to template defaults.
+    // Entries are keyed by critKey/outCode strings and resolved against the period-scoped ID maps above.
     const effectiveMaps = evo?.mapsOverride
       ? evo.mapsOverride.flatMap(m => m.outs.map(mo => ({
-          cId: o.critKeyMap[m.crit],
-          oId: o.outcomeCodeMap[mo.code],
-          weight: mo.weight != null ? mo.weight : null,
           critKey: m.crit,
           outCode: mo.code,
+          weight: mo.weight != null ? mo.weight : null,
           coverType: mo.type || 'direct',
         })))
       : o.mapsData;
 
     effectiveMaps.forEach(m => {
       if (removedKeys.includes(m.critKey)) return;
-      const pcId = pcMap[m.cId]; const poId = poMap[m.oId];
-      if (!pcId || !poId) return;
+      const pcId = pcMap[m.critKey];
+      const poId = poMap[m.outCode];
+      const fcId = fwCritIdByKey[m.critKey];
+      const foId = fwOutIdByCode[m.outCode];
+      if (!pcId || !poId || !fcId || !foId) return;
       let coverageType;
       if (evo?.mapsOverride) {
         coverageType = m.coverType; // explicit per-period mapping — use as-is
@@ -1280,11 +1309,11 @@ orgs.forEach(o => {
       }
       const mWeight = m.weight != null ? m.weight : 'NULL';
       // period_criterion_outcome_maps: snapshot for analytics (uses period_outcome_id)
-      const pmId = uuid(`pmap-${pId}-${m.cId}-${m.oId}`);
+      const pmId = uuid(`pmap-${pId}-${m.critKey}-${m.outCode}`);
       out.push(`INSERT INTO period_criterion_outcome_maps (id, period_id, period_criterion_id, period_outcome_id, coverage_type, weight) VALUES ('${pmId}', '${pId}', '${pcId}', '${poId}', '${coverageType}', ${mWeight}) ON CONFLICT DO NOTHING;`);
       // framework_criterion_outcome_maps: authoritative mappings edited on Outcomes page (uses framework_outcome_id)
-      const fmId = uuid(`fcmap-${pId}-${m.cId}-${m.oId}`);
-      out.push(`INSERT INTO framework_criterion_outcome_maps (id, framework_id, period_id, criterion_id, outcome_id, coverage_type, weight) VALUES ('${fmId}', '${fwId}', '${pId}', '${pcId}', '${m.oId}', '${coverageType}', ${mWeight}) ON CONFLICT DO NOTHING;`);
+      const fmId = uuid(`fcmap-${pId}-${m.critKey}-${m.outCode}`);
+      out.push(`INSERT INTO framework_criterion_outcome_maps (id, framework_id, period_id, criterion_id, outcome_id, coverage_type, weight) VALUES ('${fmId}', '${fwId}', '${pId}', '${fcId}', '${foId}', '${coverageType}', ${mWeight}) ON CONFLICT DO NOTHING;`);
     });
 
     periodData.push({ id: pId, org: o.code, isCur: isCurrent, histIdx: idx, start: d.start, end: d.end, name: d.name, evalDay, evalDays, s: d.s });

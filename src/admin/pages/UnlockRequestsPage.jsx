@@ -15,10 +15,13 @@ import { formatDateTime } from "@/shared/lib/dateUtils";
 import {
   CheckCircle2,
   Clock,
-  RefreshCw,
-  ShieldAlert,
   XCircle,
 } from "lucide-react";
+
+function SortIcon({ colKey, sortKey, sortDir }) {
+  if (sortKey !== colKey) return <span className="sort-icon sort-icon-inactive">▲</span>;
+  return <span className="sort-icon sort-icon-active">{sortDir === "asc" ? "▲" : "▼"}</span>;
+}
 
 const TABS = [
   { key: "pending",  label: "Pending",  icon: Clock },
@@ -63,8 +66,21 @@ export default function UnlockRequestsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorBanner, setErrorBanner] = useState("");
 
+  const [sortKey, setSortKey] = useState("created_at");
+  const [sortDir, setSortDir] = useState("desc");
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
 
   const load = useCallback(async (status) => {
     setLoading(true);
@@ -86,12 +102,33 @@ export default function UnlockRequestsPage() {
     setPage(1);
   }, [isSuper, activeTab, load]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const sortedRows = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "organization_name") {
+        cmp = String(a.organization_name || "").localeCompare(String(b.organization_name || ""), "tr", { sensitivity: "base", numeric: true });
+      } else if (sortKey === "period_name") {
+        cmp = String(a.period_name || "").localeCompare(String(b.period_name || ""), "tr", { sensitivity: "base", numeric: true });
+      } else if (sortKey === "requester_name") {
+        cmp = String(a.requester_name || "").localeCompare(String(b.requester_name || ""), "tr", { sensitivity: "base", numeric: true });
+      } else if (sortKey === "created_at") {
+        cmp = Date.parse(a.created_at || "") - Date.parse(b.created_at || "");
+      } else if (sortKey === "status") {
+        cmp = String(a.status || "").localeCompare(String(b.status || ""));
+      } else if (sortKey === "reviewed_at") {
+        cmp = Date.parse(a.reviewed_at || "") - Date.parse(b.reviewed_at || "");
+      }
+      return cmp * dir;
+    });
+  }, [rows, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageRows = useMemo(() => {
     const start = (safePage - 1) * pageSize;
-    return rows.slice(start, start + pageSize);
-  }, [rows, safePage, pageSize]);
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, safePage, pageSize]);
 
   const openResolve = (row, decision) => {
     setResolveTarget({ row, decision });
@@ -142,26 +179,13 @@ export default function UnlockRequestsPage() {
 
   return (
     <div className="page" id="page-unlock-requests">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <div className="page-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <ShieldAlert size={22} strokeWidth={2} />
-            Unlock Requests
-          </div>
-          <div className="page-desc" style={{ marginBottom: 12 }}>
-            Org admins must request approval to unlock a period after evaluations have begun. Review reason, then approve (unlock) or reject (keep locked).
-          </div>
+      <div>
+        <div className="page-title">
+          Unlock Requests
         </div>
-        <button
-          type="button"
-          className="btn btn-outline"
-          onClick={() => load(activeTab)}
-          disabled={loading}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </button>
+        <div className="page-desc" style={{ marginBottom: 12 }}>
+          Org admins must request approval to unlock a period after evaluations have begun. Review reason, then approve (unlock) or reject (keep locked).
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 16 }}>
@@ -216,13 +240,13 @@ export default function UnlockRequestsPage() {
           <table className="organizations-table">
             <thead>
               <tr>
-                <th>Organization</th>
-                <th>Period</th>
-                <th>Requester</th>
+                <th className={`sortable${sortKey === "organization_name" ? " sorted" : ""}`} onClick={() => handleSort("organization_name")}>Organization <SortIcon colKey="organization_name" sortKey={sortKey} sortDir={sortDir} /></th>
+                <th className={`sortable${sortKey === "period_name" ? " sorted" : ""}`} onClick={() => handleSort("period_name")}>Period <SortIcon colKey="period_name" sortKey={sortKey} sortDir={sortDir} /></th>
+                <th className={`sortable${sortKey === "requester_name" ? " sorted" : ""}`} onClick={() => handleSort("requester_name")}>Requester <SortIcon colKey="requester_name" sortKey={sortKey} sortDir={sortDir} /></th>
                 <th>Reason</th>
-                <th>Requested</th>
-                <th>Status</th>
-                {activeTab !== "pending" && <th>Reviewed</th>}
+                <th className={`sortable${sortKey === "created_at" ? " sorted" : ""}`} onClick={() => handleSort("created_at")}>Requested <SortIcon colKey="created_at" sortKey={sortKey} sortDir={sortDir} /></th>
+                <th className={`sortable${sortKey === "status" ? " sorted" : ""}`} onClick={() => handleSort("status")}>Status <SortIcon colKey="status" sortKey={sortKey} sortDir={sortDir} /></th>
+                {activeTab !== "pending" && <th className={`sortable${sortKey === "reviewed_at" ? " sorted" : ""}`} onClick={() => handleSort("reviewed_at")}>Reviewed <SortIcon colKey="reviewed_at" sortKey={sortKey} sortDir={sortDir} /></th>}
                 {activeTab === "pending" && <th style={{ textAlign: "right" }}>Actions</th>}
               </tr>
             </thead>
@@ -292,7 +316,7 @@ export default function UnlockRequestsPage() {
         currentPage={safePage}
         totalPages={totalPages}
         pageSize={pageSize}
-        totalItems={rows.length}
+        totalItems={sortedRows.length}
         onPageChange={setPage}
         onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         itemLabel="requests"

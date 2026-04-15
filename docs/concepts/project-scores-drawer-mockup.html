@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VERA — Project Scores Drawer Mockup</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --bg-page:#f4f7fb; --bg-card:#ffffff; --surface-1:#eef2f8; --surface-2:#e3eaf4;
+  --border:rgba(15,23,42,0.08); --border-strong:rgba(15,23,42,0.13);
+  --text-primary:#111827; --text-secondary:#4b5675; --text-tertiary:#94a3b8;
+  --primary:#4f46e5; --primary-soft:rgba(79,70,229,0.10);
+  --success:#10b981; --success-soft:rgba(16,185,129,0.12);
+  --warning:#f59e0b; --warning-soft:rgba(245,158,11,0.12);
+  --danger:#e11d48;  --danger-soft:rgba(225,29,72,0.10);
+  --info:#0ea5e9;    --info-soft:rgba(14,165,233,0.10);
+  --radius:14px; --radius-sm:10px; --radius-xs:8px;
+  --shadow-drawer:-2px 0 40px rgba(15,23,42,0.10),0 0 80px rgba(15,23,42,0.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg-page);color:var(--text-primary);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── Page shell (dimmed list underneath) ───────────────────── */
+.page{padding:28px 32px; filter:blur(0.5px); pointer-events:none; opacity:.55}
+.page h1{font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 4px}
+.page p{font-size:13px;color:var(--text-secondary);margin:0 0 22px}
+.table-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-row{display:grid;grid-template-columns:1.6fr 1.1fr 0.9fr 0.7fr 44px;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border);font-size:13px;align-items:center}
+.table-row.head{background:var(--surface-1);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-tertiary)}
+.table-row.active{background:linear-gradient(90deg,rgba(79,70,229,0.06),transparent 70%)}
+.proj-title{font-weight:600;color:var(--text-primary)}
+.proj-meta{font-size:11.5px;color:var(--text-tertiary);margin-top:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;font-size:11px;font-weight:600;border-radius:99px;background:var(--surface-1);color:var(--text-secondary);border:1px solid var(--border)}
+.pill.good{background:var(--success-soft);color:var(--success);border-color:transparent}
+.pill.warn{background:var(--warning-soft);color:var(--warning);border-color:transparent}
+.dots{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--text-tertiary)}
+
+/* ── Backdrop + drawer ─────────────────────────────────────── */
+.backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.32);backdrop-filter:blur(2px);z-index:50}
+.drawer{
+  position:fixed;top:0;right:0;height:100vh;width:560px;
+  background:var(--bg-card);
+  border-left:1px solid var(--border);
+  box-shadow:var(--shadow-drawer);
+  display:flex;flex-direction:column;
+  z-index:60;
+  animation:slide .25s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes slide{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.dr-head{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px}
+.dr-head-icon{width:38px;height:38px;border-radius:10px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dr-head-text{flex:1;min-width:0}
+.dr-eyebrow{font-size:10px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px}
+.dr-title{font-size:17px;font-weight:700;letter-spacing:-0.01em;color:var(--text-primary);line-height:1.25;margin:0}
+.dr-subtitle{font-size:12px;color:var(--text-secondary);margin-top:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.dr-subtitle .sep{width:3px;height:3px;border-radius:50%;background:var(--text-tertiary);opacity:.55}
+.dr-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.dr-close:hover{background:var(--surface-1)}
+
+.dr-body{flex:1;overflow-y:auto;padding:18px 22px 22px}
+
+/* KPI strip */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.kpi{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px}
+.kpi-label{font-size:9.5px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.kpi-value{font-size:19px;font-weight:700;color:var(--text-primary);line-height:1;font-family:var(--mono)}
+.kpi-delta{font-size:10.5px;font-weight:600;margin-top:4px;color:var(--text-tertiary)}
+.kpi-delta.up{color:var(--success)}
+
+/* Section */
+.sec{margin-top:6px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:0.7px;text-transform:uppercase;color:var(--text-tertiary)}
+.sec-hint{font-size:11px;color:var(--text-tertiary)}
+
+.crit-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:18px}
+.crit-row{display:grid;grid-template-columns:110px 1fr 56px 70px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.crit-row:last-child{border-bottom:none}
+.crit-name{font-size:12px;font-weight:600;color:var(--text-primary)}
+.crit-group{font-size:10px;color:var(--text-tertiary);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px}
+.bar-track{height:7px;background:var(--surface-2);border-radius:99px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),#7c6bef)}
+.bar-fill.good{background:linear-gradient(90deg,var(--success),#34d399)}
+.bar-fill.warn{background:linear-gradient(90deg,var(--warning),#fbbf24)}
+.crit-score{font-family:var(--mono);font-size:13px;font-weight:700;text-align:right}
+.crit-band{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;text-align:center;letter-spacing:0.3px}
+.crit-band.excel{background:var(--success-soft);color:var(--success)}
+.crit-band.good{background:var(--info-soft);color:var(--info)}
+.crit-band.fair{background:var(--warning-soft);color:var(--warning)}
+
+/* Juror rows */
+.juror-row{display:grid;grid-template-columns:28px 1fr auto auto;gap:12px;align-items:center;padding:11px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px}
+.jur-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);color:var(--primary);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.jur-name{font-size:12.5px;font-weight:600;color:var(--text-primary)}
+.jur-meta{font-size:10.5px;color:var(--text-tertiary);margin-top:2px;display:flex;gap:8px;align-items:center}
+.jur-tag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:0.3px}
+.jur-tag.done{background:var(--success-soft);color:var(--success)}
+.jur-tag.prog{background:var(--info-soft);color:var(--info)}
+.jur-tag.outlier{background:var(--danger-soft);color:var(--danger)}
+.jur-score{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text-primary);min-width:42px;text-align:right}
+
+/* Feedback block */
+.fb{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px}
+.fb-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.fb-name{font-size:11.5px;font-weight:700;color:var(--text-primary)}
+.fb-time{font-size:10px;color:var(--text-tertiary)}
+.fb-text{font-size:12px;color:var(--text-secondary);line-height:1.55;text-align:justify;text-justify:inter-word}
+
+/* Footer */
+.dr-foot{padding:14px 22px;border-top:1px solid var(--border);background:var(--bg-card);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;font-size:12.5px;font-weight:600;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font)}
+.btn:hover{background:var(--surface-1)}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent}
+.btn.primary:hover{background:#4338ca}
+</style>
+</head>
+<body>
+
+<!-- ── Background list (dimmed) ── -->
+<div class="page">
+  <h1>Projects</h1>
+  <p>Showing 24 projects · Spring 2026</p>
+  <div class="table-card">
+    <div class="table-row head">
+      <div>Project</div><div>Advisor</div><div>Jurors</div><div>Score</div><div></div>
+    </div>
+    <div class="table-row">
+      <div><div class="proj-title">Smart Campus Energy Monitor</div><div class="proj-meta">E. Yılmaz · A. Kaya · M. Demir</div></div>
+      <div>Dr. Aslı Karaca</div><div><span class="pill">5 assigned</span></div><div>—</div><div class="dots">⋯</div>
+    </div>
+    <div class="table-row active">
+      <div><div class="proj-title">Assistive Gesture Recognition for Sign Language</div><div class="proj-meta">S. Aydın · B. Çelik · R. Öz · D. Tan</div></div>
+      <div>Prof. Mehmet Koç</div><div><span class="pill good">4/5 done</span></div><div><strong>86.4</strong></div><div class="dots">⋯</div>
+    </div>
+    <div class="table-row">
+      <div><div class="proj-title">Autonomous Warehouse Sorter</div><div class="proj-meta">K. Yurt · L. Berk</div></div>
+      <div>Dr. Cem Arslan</div><div><span class="pill warn">2/5 done</span></div><div>72.1</div><div class="dots">⋯</div>
+    </div>
+    <div class="table-row">
+      <div><div class="proj-title">Medical Image Segmentation Pipeline</div><div class="proj-meta">O. Güneş · T. Deniz</div></div>
+      <div>Dr. Zeynep Pak</div><div><span class="pill">6 assigned</span></div><div>79.8</div><div class="dots">⋯</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Backdrop + Drawer ── -->
+<div class="backdrop"></div>
+
+<aside class="drawer" role="dialog" aria-label="Project scores">
+  <!-- Header -->
+  <div class="dr-head">
+    <div class="dr-head-icon">
+      <!-- bar-chart icon -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    </div>
+    <div class="dr-head-text">
+      <div class="dr-eyebrow">Project Scores</div>
+      <h2 class="dr-title">Assistive Gesture Recognition for Sign Language</h2>
+      <div class="dr-subtitle">
+        <span>Prof. Mehmet Koç</span>
+        <span class="sep"></span>
+        <span>S. Aydın · B. Çelik · R. Öz · D. Tan</span>
+        <span class="sep"></span>
+        <span class="pill">Spring 2026</span>
+      </div>
+    </div>
+    <button class="dr-close" title="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div class="dr-body">
+
+    <!-- KPI row -->
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Final Score</div>
+        <div class="kpi-value">86.4</div>
+        <div class="kpi-delta up">▲ 4.2 vs avg</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Submitted</div>
+        <div class="kpi-value">4<span style="color:var(--text-tertiary);font-size:14px">/5</span></div>
+        <div class="kpi-delta">1 in progress</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Std Dev</div>
+        <div class="kpi-value">3.8</div>
+        <div class="kpi-delta">Low variance</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Rank</div>
+        <div class="kpi-value">#3<span style="color:var(--text-tertiary);font-size:14px">/24</span></div>
+        <div class="kpi-delta up">Top 13%</div>
+      </div>
+    </div>
+
+    <!-- Criterion breakdown -->
+    <div class="sec">
+      <div class="sec-head">
+        <div class="sec-title">Criterion Averages</div>
+        <div class="sec-hint">across 4 submitted reviews</div>
+      </div>
+      <div class="crit-card">
+        <div class="crit-row">
+          <div><div class="crit-name">Problem Definition</div><div class="crit-group">Design</div></div>
+          <div class="bar-track"><div class="bar-fill good" style="width:92%"></div></div>
+          <div class="crit-score">18.4</div>
+          <div class="crit-band excel">Excellent</div>
+        </div>
+        <div class="crit-row">
+          <div><div class="crit-name">Technical Depth</div><div class="crit-group">Design</div></div>
+          <div class="bar-track"><div class="bar-fill good" style="width:88%"></div></div>
+          <div class="crit-score">17.6</div>
+          <div class="crit-band excel">Excellent</div>
+        </div>
+        <div class="crit-row">
+          <div><div class="crit-name">Implementation</div><div class="crit-group">Design</div></div>
+          <div class="bar-track"><div class="bar-fill" style="width:82%"></div></div>
+          <div class="crit-score">16.4</div>
+          <div class="crit-band good">Good</div>
+        </div>
+        <div class="crit-row">
+          <div><div class="crit-name">Presentation</div><div class="crit-group">Delivery</div></div>
+          <div class="bar-track"><div class="bar-fill" style="width:85%"></div></div>
+          <div class="crit-score">17.0</div>
+          <div class="crit-band good">Good</div>
+        </div>
+        <div class="crit-row">
+          <div><div class="crit-name">Q&amp;A Response</div><div class="crit-group">Delivery</div></div>
+          <div class="bar-track"><div class="bar-fill warn" style="width:70%"></div></div>
+          <div class="crit-score">14.0</div>
+          <div class="crit-band fair">Fair</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Juror breakdown -->
+    <div class="sec">
+      <div class="sec-head">
+        <div class="sec-title">Juror Breakdown</div>
+        <div class="sec-hint">5 assigned</div>
+      </div>
+
+      <div class="juror-row">
+        <div class="jur-avatar">AK</div>
+        <div>
+          <div class="jur-name">Dr. Aslı Karaca</div>
+          <div class="jur-meta"><span class="jur-tag done">Submitted</span><span>2h ago</span></div>
+        </div>
+        <div></div>
+        <div class="jur-score">89.0</div>
+      </div>
+
+      <div class="juror-row">
+        <div class="jur-avatar">CE</div>
+        <div>
+          <div class="jur-name">Dr. Cem Erdoğan</div>
+          <div class="jur-meta"><span class="jur-tag done">Submitted</span><span>Yesterday</span></div>
+        </div>
+        <div></div>
+        <div class="jur-score">87.5</div>
+      </div>
+
+      <div class="juror-row">
+        <div class="jur-avatar">MT</div>
+        <div>
+          <div class="jur-name">Prof. Merve Tan</div>
+          <div class="jur-meta"><span class="jur-tag done">Submitted</span><span>Yesterday</span></div>
+        </div>
+        <div></div>
+        <div class="jur-score">85.0</div>
+      </div>
+
+      <div class="juror-row">
+        <div class="jur-avatar" style="background:linear-gradient(135deg,#fee2e2,#fecaca);color:var(--danger)">ÖD</div>
+        <div>
+          <div class="jur-name">Dr. Özge Demir</div>
+          <div class="jur-meta"><span class="jur-tag done">Submitted</span><span class="jur-tag outlier">Outlier</span><span>2d ago</span></div>
+        </div>
+        <div></div>
+        <div class="jur-score">74.0</div>
+      </div>
+
+      <div class="juror-row">
+        <div class="jur-avatar" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd);color:var(--info)">RA</div>
+        <div>
+          <div class="jur-name">Dr. Rıza Aksoy</div>
+          <div class="jur-meta"><span class="jur-tag prog">In progress</span><span>3 of 5 criteria</span></div>
+        </div>
+        <div></div>
+        <div class="jur-score" style="color:var(--text-tertiary)">—</div>
+      </div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="sec" style="margin-top:20px">
+      <div class="sec-head">
+        <div class="sec-title">Juror Feedback</div>
+        <div class="sec-hint">3 comments</div>
+      </div>
+      <div class="fb">
+        <div class="fb-head"><span class="fb-name">Dr. Aslı Karaca</span><span class="fb-time">· 2h ago</span></div>
+        <p class="fb-text">Excellent problem framing and a thoughtful dataset choice. The live demo convincingly handled continuous gestures; recommend extending evaluation to low-light conditions before publication.</p>
+      </div>
+      <div class="fb">
+        <div class="fb-head"><span class="fb-name">Prof. Merve Tan</span><span class="fb-time">· Yesterday</span></div>
+        <p class="fb-text">Strong technical depth. Q&amp;A handling could be sharper — a few edge cases around occlusion were deferred rather than addressed. Consider adding a confusion matrix to the report.</p>
+      </div>
+      <div class="fb">
+        <div class="fb-head"><span class="fb-name">Dr. Özge Demir</span><span class="fb-time">· 2d ago</span></div>
+        <p class="fb-text">Implementation is functional but architectural choices (frame-level vs. sequence models) were not justified. Would have liked to see an ablation comparing the two approaches.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="dr-foot">
+    <button class="btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export PDF
+    </button>
+    <button class="btn primary">
+      Open in Reviews
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </button>
+  </div>
+</aside>
+
+</body>
+</html>

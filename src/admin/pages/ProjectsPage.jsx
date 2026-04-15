@@ -21,6 +21,7 @@ import ProjectScoresDrawer from "../drawers/ProjectScoresDrawer";
 import { downloadTable, generateTableBlob } from "../utils/downloadTable";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 import { avatarGradient, initials } from "@/shared/ui/avatarColor";
+import JurorBadge from "../components/JurorBadge";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
 import { formatDateTime as formatFull } from "@/shared/lib/dateUtils";
@@ -88,20 +89,18 @@ function MemberChips({ members }) {
   const extra = arr.length - visible.length;
   return (
     <span className="member-chips">
-      {visible.map((name, i) => (
-        <span
-          key={name}
-          className="member-chip"
-          style={{ background: avatarGradient(name) }}
-          title={name}
-        >
-          {initials(name)}
-        </span>
+      {visible.map((name) => (
+        <PremiumTooltip key={name} text={name}>
+          <span
+            className="member-chip"
+            style={{ background: avatarGradient(name) }}
+          >
+            {initials(name)}
+          </span>
+        </PremiumTooltip>
       ))}
       {extra > 0 && (
-        <span className="member-chip member-chip-more" title={`${extra} more`}>
-          +{extra}
-        </span>
+        <span className="member-chip member-chip-more">+{extra}</span>
       )}
     </span>
   );
@@ -643,19 +642,25 @@ export default function ProjectsPage() {
                   <span className="mobile-eyebrow">
                     PROJECT{project.group_no != null ? ` · P${project.group_no}` : ""}
                   </span>
-                  <div style={{ fontWeight: 600, lineHeight: 1.35 }}>{project.title}</div>
+                  <div className="proj-title-text">{project.title}</div>
                   {project.advisor && (() => {
                     const advisors = project.advisor.split(",").map((s) => s.trim()).filter(Boolean);
+                    if (!advisors.length) return null;
                     return (
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
-                        <UserRound size={11} style={{ color: "var(--text-quaternary)", flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, color: "var(--text-quaternary)" }}>
-                          {advisors.length === 1
-                            ? <><span>Advisor:</span> {advisors[0]}</>
-                            : <><span>Advisors:</span> {advisors.join(", ")}</>
-                          }
-                        </span>
-                      </div>
+                      <>
+                        <div className="proj-advisors">
+                          <div className="proj-advisors-eyebrow">Advised by</div>
+                          <div className="proj-advisors-row">
+                            {advisors.map((name, i) => (
+                              <JurorBadge key={`${name}-${i}`} name={name} size="sm" nameOnly />
+                            ))}
+                          </div>
+                        </div>
+                        <div className="advisor-mobile-line">
+                          <UserRound size={12} strokeWidth={2} style={{ color: "var(--text-quaternary)", flexShrink: 0 }} />
+                          <span>{advisors.join(", ")}</span>
+                        </div>
+                      </>
                     );
                   })()}
                 </td>

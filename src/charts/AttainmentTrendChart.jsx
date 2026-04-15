@@ -94,7 +94,7 @@ export function AttainmentTrendChart({ trendData = [], semesterOptions = [], sel
             key={c.id}
             type="monotone"
             dataKey={c.id}
-            name={c.shortLabel}
+            name={c.label}
             stroke={c.color}
             strokeWidth={2}
             dot={{ r: 3, fill: c.color }}

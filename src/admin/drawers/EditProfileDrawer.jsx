@@ -256,19 +256,21 @@ export default function EditProfileDrawer({ open, onClose, profile, onSave, onCa
           )}
         </div>
 
-        <div className="fs-field">
-          <label className="fs-field-label">Organization</label>
-          <input
-            className="fs-input"
-            type="text"
-            value={profile?.institution || profile?.organization || ""}
-            disabled
-            style={{ opacity: 0.55, cursor: "not-allowed" }}
-            readOnly
-          />
-        </div>
+        {!isSuper && (
+          <div className="fs-field">
+            <label className="fs-field-label">Organization</label>
+            <input
+              className="fs-input"
+              type="text"
+              value={profile?.institution || profile?.organization || ""}
+              disabled
+              style={{ opacity: 0.55, cursor: "not-allowed" }}
+              readOnly
+            />
+          </div>
+        )}
 
-        {profile?.institution && profile?.organization && (
+        {!isSuper && profile?.institution && profile?.organization && (
           <div className="fs-field">
             <label className="fs-field-label">Program</label>
             <input

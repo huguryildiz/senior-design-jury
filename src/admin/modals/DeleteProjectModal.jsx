@@ -79,16 +79,11 @@ export default function DeleteProjectModal({ open, onClose, project, impact = {}
               {project.group_no != null && (
                 <span className="project-no-badge">P{project.group_no}</span>
               )}
-              <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>
+              <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)", flex: 1, textAlign: "justify", textJustify: "inter-word" }}>
                 {project.title}
               </span>
             </div>
-            {project.advisor && (
-              <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
-                {project.advisor}
-              </div>
-            )}
-            {project.members?.length > 0 && (
+{project.members?.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 <StudentNames names={project.members} />
               </div>

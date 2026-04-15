@@ -46,7 +46,7 @@ export function RubricAchievementChart({ submittedData = [], criteria = [] }) {
     });
     const total = vals.length || 1;
     return {
-      name: c.shortLabel,
+      name: c.label,
       excellent: Math.round((counts.excellent / total) * 100),
       good: Math.round((counts.good / total) * 100),
       developing: Math.round((counts.developing / total) * 100),

@@ -1221,3 +1221,276 @@ textarea.fs-outcome-input{min-height:38px;max-height:120px}
   cursor: not-allowed;
 }
 .fs-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Project Scores Drawer ───────────────────────────────────────────── */
+.psd-body { padding-top: 14px; }
+
+.fs-title-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.psd-submeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+.psd-submeta .psd-sep {
+  width: 3px; height: 3px; border-radius: 50%;
+  background: var(--text-tertiary); opacity: .55;
+}
+.psd-members { color: var(--text-tertiary); }
+.psd-period-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  font-size: 10.5px; font-weight: 600;
+  border-radius: 99px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  margin-left: 2px;
+}
+
+/* KPI strip */
+.psd-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.psd-kpi {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 12px;
+}
+.psd-kpi-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+.psd-kpi-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.psd-kpi-denom {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.psd-kpi-delta {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 6px;
+  color: var(--text-tertiary);
+}
+.psd-kpi-delta.up { color: var(--success, #10b981); }
+.psd-kpi-delta.down { color: var(--danger); }
+
+/* Section blocks */
+.psd-sec { margin-top: 6px; margin-bottom: 18px; }
+.psd-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.psd-sec-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.psd-sec-hint { font-size: 11px; color: var(--text-tertiary); }
+
+/* Criterion card */
+.psd-crit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+}
+.psd-crit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr) 50px 78px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.psd-crit-row:last-child { border-bottom: none; }
+.psd-crit-name-wrap { min-width: 0; }
+.psd-crit-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.psd-crit-group {
+  font-size: 9.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.psd-bar-track {
+  height: 7px;
+  background: var(--surface-2, var(--surface-1));
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+.psd-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+  transition: width .3s ease;
+}
+.psd-bar-fill.good { background: linear-gradient(90deg, var(--success, #10b981), #34d399); }
+.psd-bar-fill.warn { background: linear-gradient(90deg, var(--warning, #f59e0b), #fbbf24); }
+.psd-crit-score {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text-primary);
+}
+.psd-crit-band {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 99px;
+  text-align: center;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.psd-crit-band.excel { background: rgba(16,185,129,0.12); color: var(--success, #10b981); }
+.psd-crit-band.good { background: rgba(14,165,233,0.12); color: var(--info, #0ea5e9); }
+.psd-crit-band.fair { background: rgba(245,158,11,0.14); color: var(--warning, #f59e0b); }
+.psd-crit-band.poor { background: rgba(225,29,72,0.12); color: var(--danger); }
+.psd-crit-band.muted { background: var(--surface-1); color: var(--text-tertiary); }
+
+/* Juror row — uses <JurorBadge /> for identity (same as Jurors page) */
+.psd-juror-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.psd-juror-main { min-width: 0; }
+.psd-juror-tags {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.psd-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.psd-tag.outlier { background: rgba(225,29,72,0.12); color: var(--danger); }
+.psd-juror-score {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 44px;
+  text-align: right;
+}
+.psd-juror-score.muted { color: var(--text-tertiary); }
+
+/* Feedback */
+.psd-fb {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  margin-bottom: 8px;
+}
+.psd-fb-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+  color: var(--text-tertiary);
+}
+.psd-fb-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.psd-fb-text {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+/* Empty states */
+.psd-empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 16px 0;
+  text-align: center;
+}
+.psd-empty-card {
+  background: var(--surface-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+}
+
+/* Responsive */
+@media (max-width: 520px) {
+  .psd-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .psd-crit-row {
+    grid-template-columns: 1fr 40px;
+    row-gap: 6px;
+  }
+  .psd-bar-track { grid-column: 1 / -1; order: 3; }
+  .psd-crit-band { grid-column: 1 / -1; order: 4; justify-self: start; }
+}
+
+/* Team members row — uses canonical .team-member-chip / .team-member-avatar
+   from EntityMeta.jsx + components.css; only layout wrapper here. */
+.psd-advisor {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.psd-members-row {
+  margin-top: 8px;
+}

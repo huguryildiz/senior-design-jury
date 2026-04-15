@@ -51,7 +51,7 @@ export function CoverageMatrix({ criteria = [], outcomes = [] }) {
         <thead>
           <tr>
             <th>Outcome</th>
-            {activeCriteria.map((c) => <th key={c.id}>{c.shortLabel}</th>)}
+            {activeCriteria.map((c) => <th key={c.id}>{c.label}</th>)}
             <th>Coverage</th>
           </tr>
         </thead>

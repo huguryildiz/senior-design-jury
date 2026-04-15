@@ -49,7 +49,7 @@ export function GroupAttainmentHeatmap({ dashboardStats = [], submittedData = []
             <tr key={c.id}>
               <td>
                 <span className="ga-criterion-swatch" style={{ background: c.color }} />
-                {c.shortLabel}
+                {c.label}
               </td>
               {groups.map((g) => {
                 const avgRaw = Number(g.avg?.[c.id] ?? null);

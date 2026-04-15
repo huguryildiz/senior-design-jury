@@ -125,7 +125,8 @@ export function criterionToConfig(row) {
 export function normalizeCriterionFromDb(row) {
   return {
     key:        row.key,
-    id:         row.id,
+    id:         row.key,   // semantic key — matches score row keying in getScores()
+    dbId:       row.id,    // UUID — use for DB FK operations (period_criterion_outcome_maps etc.)
     label:      row.label ?? "",
     shortLabel: row.label || "",
     color:      row.color || "#6B7280",
