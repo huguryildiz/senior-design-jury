@@ -22,8 +22,8 @@
   gap: 14px;
   padding: 14px 18px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(59, 130, 246, 0.02));
-  border: 1px solid rgba(59, 130, 246, 0.10);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02));
+  border: 1px solid rgba(245, 158, 11, 0.18);
   margin-bottom: 24px;
   position: relative;
   overflow: hidden;
@@ -36,16 +36,15 @@
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--accent);
+  background: #f59e0b;
   border-radius: 10px 0 0 10px;
-  opacity: 0.6;
 }
 
 .crt-info-banner-icon {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(245, 158, 11, 0.10);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -54,7 +53,7 @@
 .crt-info-banner-icon svg {
   width: 18px;
   height: 18px;
-  stroke: var(--accent);
+  stroke: var(--warning);
   fill: none;
   stroke-width: 1.8;
 }
@@ -78,8 +77,8 @@
 .crt-info-banner-title .crt-lock-icon {
   width: 13px;
   height: 13px;
-  color: var(--accent);
-  opacity: 0.7;
+  color: var(--warning);
+  opacity: 0.8;
   flex-shrink: 0;
 }
 
@@ -95,12 +94,12 @@
 }
 
 .dark-mode .crt-info-banner {
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.06), rgba(96, 165, 250, 0.02));
-  border-color: rgba(96, 165, 250, 0.12);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.07), rgba(251, 191, 36, 0.02));
+  border-color: rgba(251, 191, 36, 0.20);
 }
 
 .dark-mode .crt-info-banner-icon {
-  background: rgba(96, 165, 250, 0.1);
+  background: rgba(251, 191, 36, 0.10);
 }
 
 /* ── Add button ──────────────────────────────────────────────── */
@@ -934,7 +933,7 @@ textarea.crt-field-input{height:auto;padding:8px 10px}
 
 .crt-budget-card--locked .crt-budget-status{color:var(--warning)}
 
-.crt-budget-bar--locked .crt-budget-segment:not(.crt-budget-segment-remaining){filter:saturate(0.4) sepia(0.8) hue-rotate(5deg);opacity:0.75}
+.crt-budget-bar--locked .crt-budget-segment:not(.crt-budget-segment-remaining){opacity:0.45}
 
 .crt-budget-card--locked{border-color:rgba(217,119,6,0.25)}
 
@@ -1216,12 +1215,28 @@ body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;b
   background: rgba(22,163,74,0.14);
   border-color: rgba(22,163,74,0.28);
 }
+.crt-mapping-pill.indirect {
+  background: var(--warning-soft, rgba(217,119,6,0.08));
+  color: var(--warning);
+  border-color: rgba(217,119,6,0.20);
+}
+.crt-mapping-pill.indirect:hover {
+  background: rgba(217,119,6,0.16);
+  border-color: rgba(217,119,6,0.34);
+}
 .dark-mode .crt-mapping-pill {
   background: rgba(34,197,94,0.14); color: #4ade80;
   border-color: rgba(34,197,94,0.32);
 }
 .dark-mode .crt-mapping-pill:hover {
   background: rgba(34,197,94,0.20);
+}
+.dark-mode .crt-mapping-pill.indirect {
+  background: rgba(251,191,36,0.14); color: #fbbf24;
+  border-color: rgba(251,191,36,0.32);
+}
+.dark-mode .crt-mapping-pill.indirect:hover {
+  background: rgba(251,191,36,0.20);
 }
 .crt-mapping-add {
   padding: 2px 6px; border-radius: 999px;
@@ -1849,10 +1864,21 @@ body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;b
   border-color: rgba(99, 102, 241, 0.30);
 }
 
+.crt-mobile-outcome-pill.indirect {
+  background: var(--warning-soft, rgba(217,119,6,0.08));
+  color: var(--warning);
+  border-color: rgba(217,119,6,0.20);
+}
+.dark-mode .crt-mobile-outcome-pill.indirect {
+  background: rgba(251,191,36,0.14);
+  color: #fbbf24;
+  border-color: rgba(251,191,36,0.32);
+}
+
 /* ── Lock badge (replaces Add button header chip on mobile) ───── */
 
 .crt-lock-badge {
-  display: none; /* shown via media query */
+  display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 4px 11px;
@@ -2032,6 +2058,12 @@ body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;b
   padding: 10px 14px;
   border-top: 1px solid var(--border);
   background: var(--surface-0, var(--bg));
+}
+
+.pcd-card-actions--period {
+  border-top: 1px solid var(--border-subtle, var(--border));
+  background: transparent;
+  padding-top: 8px;
 }
 
 /* ── Card action buttons (ghost) ── */

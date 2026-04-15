@@ -318,11 +318,11 @@ export default function CriteriaPage() {
           <div className="crt-info-banner-body">
             <div className="crt-info-banner-title">
               <Lock size={14} className="crt-lock-icon" />
-              Scores exist for this evaluation period
+              Evaluation in progress — structural fields locked
             </div>
             <div className="crt-info-banner-desc">
-              Structural fields (<strong>weights</strong>, <strong>max scores</strong>) are locked while scores exist.
-              Labels and descriptions remain editable.
+              <strong>Weights</strong> and <strong>rubric bands</strong> cannot be changed while scores exist.
+              Criterion labels and descriptions remain editable.
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ export default function CriteriaPage() {
               {isLocked && (
                 <div className="crt-lock-badge">
                   <Lock size={11} strokeWidth={2.2} />
-                  Locked
+                  Evaluation Active
                 </div>
               )}
               {!isLocked && (
@@ -529,6 +529,12 @@ export default function CriteriaPage() {
                           onChange={(v) => handleWeightChange(i, v)}
                           disabled={isLocked}
                         />
+                        {isLocked && (
+                          <div className="crt-locked-hint">
+                            <Lock size={10} strokeWidth={2} />
+                            Locked while scores exist
+                          </div>
+                        )}
                       </td>
                       <td className="col-rubric" data-label="Rubric Bands">
                         {rubric.length > 0 ? (
@@ -537,8 +543,8 @@ export default function CriteriaPage() {
                               <span
                                 key={bi}
                                 className={`crt-band-pill ${rubricBandClass(band.level || band.label)}`}
-                                onClick={() => openEditor(i, "rubric")}
-                                style={{ cursor: "pointer" }}
+                                onClick={isLocked ? undefined : () => openEditor(i, "rubric")}
+                                style={{ cursor: isLocked ? "default" : "pointer", opacity: isLocked ? 0.65 : 1 }}
                               >
                                 {bandRangeText(band) && (
                                   <span className="crt-band-range">{bandRangeText(band)}</span>
@@ -550,18 +556,28 @@ export default function CriteriaPage() {
                         ) : (
                           <span style={{ fontSize: 11.5, color: "var(--text-quaternary)" }}>No rubric defined</span>
                         )}
+                        {isLocked && (
+                          <div className="crt-locked-hint" style={{ marginTop: 4 }}>
+                            <Lock size={10} strokeWidth={2} />
+                            Bands locked
+                          </div>
+                        )}
                       </td>
                       <td className="col-mapping" data-label="Mapping">
                         <div className="crt-mapping-pills">
-                          {(criterion.outcomes || []).map((code) => (
-                            <span
-                              key={code}
-                              className="crt-mapping-pill"
-                              onClick={() => openEditor(i, "mapping")}
-                            >
-                              {code}
-                            </span>
-                          ))}
+                          {(criterion.outcomes || []).map((code) => {
+                            const isIndirect = criterion.outcomeTypes?.[code] === "indirect";
+                            return (
+                              <span
+                                key={code}
+                                className={`crt-mapping-pill${isIndirect ? " indirect" : ""}`}
+                                onClick={() => openEditor(i, "mapping")}
+                                aria-label={`${code} ${isIndirect ? "indirect" : "direct"} mapping`}
+                              >
+                                {code}
+                              </span>
+                            );
+                          })}
                           <span
                             className="crt-mapping-add"
                             onClick={() => openEditor(i, "mapping")}
@@ -588,6 +604,8 @@ export default function CriteriaPage() {
                             <button
                               className="floating-menu-item"
                               onMouseDown={() => { setOpenMenuId(null); handleDuplicate(i); }}
+                              disabled={isLocked}
+                              style={isLocked ? { opacity: 0.4, pointerEvents: "none" } : {}}
                             >
                               <Copy size={13} strokeWidth={2} />
                               Duplicate
@@ -596,8 +614,8 @@ export default function CriteriaPage() {
                             <button
                               className="floating-menu-item"
                               onMouseDown={() => { setOpenMenuId(null); handleMove(i, -1); }}
-                              disabled={i === 0}
-                              style={i === 0 ? { opacity: 0.4, pointerEvents: "none" } : {}}
+                              disabled={i === 0 || isLocked}
+                              style={(i === 0 || isLocked) ? { opacity: 0.4, pointerEvents: "none" } : {}}
                             >
                               <MoveUp size={13} strokeWidth={2} />
                               Move Up
@@ -605,8 +623,8 @@ export default function CriteriaPage() {
                             <button
                               className="floating-menu-item"
                               onMouseDown={() => { setOpenMenuId(null); handleMove(i, 1); }}
-                              disabled={i === draftCriteria.length - 1}
-                              style={i === draftCriteria.length - 1 ? { opacity: 0.4, pointerEvents: "none" } : {}}
+                              disabled={i === draftCriteria.length - 1 || isLocked}
+                              style={(i === draftCriteria.length - 1 || isLocked) ? { opacity: 0.4, pointerEvents: "none" } : {}}
                             >
                               <MoveDown size={13} strokeWidth={2} />
                               Move Down
@@ -615,6 +633,8 @@ export default function CriteriaPage() {
                             <button
                               className="floating-menu-item danger"
                               onMouseDown={() => { setOpenMenuId(null); setDeleteIndex(i); }}
+                              disabled={isLocked}
+                              style={isLocked ? { opacity: 0.4, pointerEvents: "none" } : {}}
                             >
                               <Trash2 size={13} strokeWidth={2} />
                               Remove
@@ -753,11 +773,17 @@ export default function CriteriaPage() {
                     {/* Outcome pills */}
                     {outcomes.length > 0 && (
                       <div className="crt-mobile-outcomes">
-                        {visibleOutcomes.map((code) => (
-                          <span key={code} className="crt-mobile-outcome-pill">
-                            {code}
-                          </span>
-                        ))}
+                        {visibleOutcomes.map((code) => {
+                          const isIndirect = criterion.outcomeTypes?.[code] === "indirect";
+                          return (
+                            <span
+                              key={code}
+                              className={`crt-mobile-outcome-pill${isIndirect ? " indirect" : ""}`}
+                            >
+                              {code}
+                            </span>
+                          );
+                        })}
                         {overflowCount > 0 && (
                           <span className="crt-mobile-outcome-overflow">
                             +{overflowCount}

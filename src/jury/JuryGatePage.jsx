@@ -43,8 +43,7 @@ async function resolveDemoAliasGrant(token) {
   if (!byCode.length) return null;
 
   const preferred =
-    byCode.find((p) => p?.is_current && !p?.is_locked)
-    || byCode.find((p) => p?.is_current)
+    byCode.find((p) => p?.is_current)
     || byCode[0];
   if (!preferred?.id) return null;
 

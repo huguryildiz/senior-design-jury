@@ -15,7 +15,7 @@ export function buildTokenPeriod(tokenResult) {
 }
 
 export function isEvaluablePeriod(period) {
-  return !!period?.is_current && !period?.is_locked;
+  return !!period?.is_current;
 }
 
 export function listEvaluablePeriods(periods = []) {

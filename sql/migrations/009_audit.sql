@@ -520,6 +520,22 @@ BEGIN
 
   PERFORM public._assert_org_admin(v_org_id);
 
+  -- Guard: org admin cannot unlock a period that already has scores (fairness).
+  -- Super admin bypasses (escape hatch for genuine mistakes).
+  IF NOT COALESCE(p_locked, false)
+     AND NOT public.current_user_is_super_admin()
+     AND EXISTS (
+       SELECT 1 FROM score_sheets ss
+       JOIN projects pr ON pr.id = ss.project_id
+       WHERE pr.period_id = p_period_id
+     )
+  THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'cannot_unlock_period_has_scores'
+    );
+  END IF;
+
   UPDATE periods
   SET is_locked = COALESCE(p_locked, false)
   WHERE id = p_period_id;
@@ -554,7 +570,17 @@ GRANT EXECUTE ON FUNCTION public.rpc_admin_set_period_lock(UUID, BOOLEAN) TO aut
 -- rpc_admin_save_period_criteria
 -- =============================================================================
 -- p_criteria is a JSONB array where each element has:
---   { key, label, shortLabel, color, max, blurb, outcomes: [code,...], rubric: [...] }
+--   { key, label, color, max, blurb, rubric: [...] }
+--
+-- Saves criteria metadata only. Outcome↔criterion mappings are managed
+-- separately via rpc_admin_upsert_period_criterion_outcome_map and
+-- rpc_admin_delete_period_criterion_outcome_map (period_criterion_outcome_maps
+-- is the single source of truth for mapping data).
+--
+-- Criteria are upserted by (period_id, key) so IDs are preserved → existing
+-- period_criterion_outcome_maps rows survive the save via FK. Criteria whose
+-- keys disappear from the payload are deleted (their pcom rows cascade).
+-- Note: renaming a criterion's key deletes+reinserts, dropping its mappings.
 
 CREATE OR REPLACE FUNCTION public.rpc_admin_save_period_criteria(
   p_period_id UUID,
@@ -567,7 +593,6 @@ SET search_path = public, extensions
 AS $$
 DECLARE
   v_org_id       UUID;
-  v_framework_id UUID;
   v_total_max    NUMERIC := 0;
   v_before       JSONB := '{}'::JSONB;
   v_after        JSONB := '{}'::JSONB;
@@ -576,11 +601,7 @@ DECLARE
   v_elem         JSONB;
   v_key          TEXT;
   v_max          NUMERIC;
-  v_crit_id      UUID;
-  v_outcome_id   UUID;
-  v_fw_outcome_id UUID;
-  v_cov_type     TEXT;
-  v_code         TEXT;
+  v_keys         TEXT[] := ARRAY[]::TEXT[];
 BEGIN
   IF p_period_id IS NULL THEN
     RAISE EXCEPTION 'period_id_required';
@@ -589,7 +610,7 @@ BEGIN
     RAISE EXCEPTION 'criteria_must_be_array';
   END IF;
 
-  SELECT organization_id, framework_id INTO v_org_id, v_framework_id
+  SELECT organization_id INTO v_org_id
   FROM periods WHERE id = p_period_id;
   IF v_org_id IS NULL THEN
     RAISE EXCEPTION 'period_not_found';
@@ -611,60 +632,19 @@ BEGIN
     v_total_max := v_total_max + COALESCE((v_elem->>'max')::NUMERIC, 0);
   END LOOP;
 
-  -- Snapshot existing period coverage_type assignments before deleting
-  CREATE TEMP TABLE IF NOT EXISTS _coverage_snapshot (
-    crit_key      TEXT,
-    outcome_code  TEXT,
-    coverage_type TEXT
-  ) ON COMMIT DROP;
-  TRUNCATE _coverage_snapshot;
-
-  INSERT INTO _coverage_snapshot (crit_key, outcome_code, coverage_type)
-  SELECT pc.key, po.code, pcm.coverage_type
-  FROM   period_criterion_outcome_maps pcm
-  JOIN   period_criteria pc ON pc.id = pcm.period_criterion_id
-  JOIN   period_outcomes po ON po.id = pcm.period_outcome_id
-  WHERE  pcm.period_id = p_period_id
-    AND  pcm.coverage_type IS NOT NULL; -- NULL means "not yet assigned"; don't restore those
-
-  -- Snapshot existing framework coverage_type assignments before cascade-delete.
-  -- ON DELETE CASCADE on period_criteria will wipe framework_criterion_outcome_maps,
-  -- so we capture them here to restore after re-insertion.
-  CREATE TEMP TABLE IF NOT EXISTS _fw_coverage_snapshot (
-    crit_key      TEXT,
-    outcome_code  TEXT,
-    coverage_type TEXT
-  ) ON COMMIT DROP;
-  TRUNCATE _fw_coverage_snapshot;
-
-  IF v_framework_id IS NOT NULL THEN
-    INSERT INTO _fw_coverage_snapshot (crit_key, outcome_code, coverage_type)
-    SELECT pc.key, fo.code, fcom.coverage_type
-    FROM   framework_criterion_outcome_maps fcom
-    JOIN   period_criteria pc ON pc.id = fcom.criterion_id
-    JOIN   framework_outcomes fo ON fo.id = fcom.outcome_id
-    WHERE  fcom.period_id = p_period_id;
-  END IF;
-
-  -- Delete existing maps (FK before criteria delete)
-  DELETE FROM period_criterion_outcome_maps WHERE period_id = p_period_id;
-  -- framework_criterion_outcome_maps cascade-deleted by period_criteria delete below
-
-  DELETE FROM period_criteria WHERE period_id = p_period_id;
-
-  -- Insert new criteria
+  -- Upsert each criterion by (period_id, key); preserves id → preserves pcom
   FOR v_elem IN SELECT * FROM jsonb_array_elements(p_criteria) LOOP
     v_key := v_elem->>'key';
     v_max := COALESCE((v_elem->>'max')::NUMERIC, 0);
+    v_keys := v_keys || v_key;
 
     INSERT INTO period_criteria (
-      period_id, key, label, short_label, description,
+      period_id, key, label, description,
       max_score, weight, color, rubric_bands, sort_order
     ) VALUES (
       p_period_id,
       v_key,
       v_elem->>'label',
-      COALESCE(v_elem->>'shortLabel', v_elem->>'label'),
       v_elem->>'blurb',
       v_max,
       CASE WHEN v_total_max > 0 THEN (v_max / v_total_max) * 100 ELSE 0 END,
@@ -672,95 +652,25 @@ BEGIN
       CASE WHEN jsonb_typeof(v_elem->'rubric') = 'array' THEN v_elem->'rubric' ELSE NULL END,
       v_count
     )
-    RETURNING id INTO v_crit_id;
+    ON CONFLICT (period_id, key) DO UPDATE SET
+      label        = EXCLUDED.label,
+      description  = EXCLUDED.description,
+      max_score    = EXCLUDED.max_score,
+      weight       = EXCLUDED.weight,
+      color        = EXCLUDED.color,
+      rubric_bands = EXCLUDED.rubric_bands,
+      sort_order   = EXCLUDED.sort_order;
 
     v_after := v_after || jsonb_build_object(v_key || '_max_score', v_max);
     v_count := v_count + 1;
-
-    -- Insert period outcome maps for this criterion
-    IF jsonb_typeof(v_elem->'outcomes') = 'array' THEN
-      FOR v_code IN SELECT value::TEXT FROM jsonb_array_elements_text(v_elem->'outcomes') LOOP
-        SELECT id INTO v_outcome_id
-        FROM period_outcomes
-        WHERE period_id = p_period_id AND code = v_code
-        LIMIT 1;
-
-        IF v_outcome_id IS NOT NULL THEN
-          INSERT INTO period_criterion_outcome_maps (
-            period_id, period_criterion_id, period_outcome_id
-          ) VALUES (
-            p_period_id, v_crit_id, v_outcome_id
-          )
-          ON CONFLICT DO NOTHING;
-        END IF;
-      END LOOP;
-    END IF;
-
-    -- Insert framework outcome maps for this criterion (authoritative source for admin UI).
-    -- outcomes[] from the criteria payload holds the user's selection from OutcomePillSelector
-    -- (which is populated from framework_outcomes). Preserve coverage_type from snapshot
-    -- so values set via the Outcomes page are not lost.
-    IF v_framework_id IS NOT NULL AND jsonb_typeof(v_elem->'outcomes') = 'array' THEN
-      FOR v_code IN SELECT value::TEXT FROM jsonb_array_elements_text(v_elem->'outcomes') LOOP
-        SELECT id INTO v_fw_outcome_id
-        FROM framework_outcomes
-        WHERE framework_id = v_framework_id AND code = v_code
-        LIMIT 1;
-
-        IF v_fw_outcome_id IS NOT NULL THEN
-          SELECT coverage_type INTO v_cov_type
-          FROM _fw_coverage_snapshot
-          WHERE crit_key = v_key AND outcome_code = v_code;
-
-          INSERT INTO framework_criterion_outcome_maps (
-            framework_id, period_id, criterion_id, outcome_id, coverage_type
-          ) VALUES (
-            v_framework_id, p_period_id, v_crit_id, v_fw_outcome_id,
-            COALESCE(v_cov_type, 'direct')
-          )
-          ON CONFLICT (criterion_id, outcome_id) DO UPDATE
-            SET coverage_type = COALESCE(EXCLUDED.coverage_type, 'direct');
-        END IF;
-      END LOOP;
-    END IF;
   END LOOP;
 
-  -- Restore period coverage_type from snapshot. Matches on criterion key + outcome code;
-  -- if a key or code changed, the JOIN fails and the new map stays NULL (intentional).
-  UPDATE period_criterion_outcome_maps pcm
-  SET    coverage_type = snap.coverage_type
-  FROM   _coverage_snapshot snap
-  JOIN   period_criteria pc2  ON pc2.key  = snap.crit_key    AND pc2.period_id = p_period_id
-  JOIN   period_outcomes po2  ON po2.code = snap.outcome_code AND po2.period_id = p_period_id
-  WHERE  pcm.period_criterion_id = pc2.id
-    AND  pcm.period_outcome_id   = po2.id
-    AND  pcm.period_id           = p_period_id;
+  -- Delete criteria not in the payload (cascade-deletes their pcom + fcom rows)
+  DELETE FROM period_criteria
+  WHERE period_id = p_period_id
+    AND key <> ALL(v_keys);
 
-  -- Restore framework mappings that existed before but were NOT in outcomes[]
-  -- (i.e., mappings added via the Outcomes page to outcomes absent from this
-  -- criterion's own selection). This prevents Outcomes-page edits from being
-  -- silently dropped when criteria are re-saved from the Criteria page.
-  IF v_framework_id IS NOT NULL THEN
-    INSERT INTO framework_criterion_outcome_maps (
-      framework_id, period_id, criterion_id, outcome_id, coverage_type
-    )
-    SELECT
-      v_framework_id,
-      p_period_id,
-      pc2.id,
-      fo2.id,
-      snap.coverage_type
-    FROM _fw_coverage_snapshot snap
-    JOIN period_criteria pc2 ON pc2.key = snap.crit_key AND pc2.period_id = p_period_id
-    JOIN framework_outcomes fo2
-      ON fo2.code = snap.outcome_code AND fo2.framework_id = v_framework_id
-    WHERE NOT EXISTS (
-      SELECT 1 FROM framework_criterion_outcome_maps fcom2
-      WHERE fcom2.criterion_id = pc2.id AND fcom2.outcome_id = fo2.id
-    );
-  END IF;
-
-  -- Collect the inserted rows for the return value
+  -- Collect the resulting rows for return
   SELECT jsonb_agg(to_jsonb(pc.*) ORDER BY pc.sort_order)
   INTO v_inserted
   FROM period_criteria pc
@@ -912,8 +822,7 @@ BEGIN
   SET code          = COALESCE(p_patch->>'code', code),
       label         = COALESCE(p_patch->>'label', label),
       description   = COALESCE(p_patch->>'description', description),
-      sort_order    = COALESCE((p_patch->>'sort_order')::INT, sort_order),
-      coverage_hint = CASE WHEN p_patch ? 'coverage_hint' THEN p_patch->>'coverage_hint' ELSE coverage_hint END
+      sort_order    = COALESCE((p_patch->>'sort_order')::INT, sort_order)
   WHERE id = p_outcome_id
   RETURNING to_jsonb(framework_outcomes.*) INTO v_after;
 
@@ -986,6 +895,305 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_framework_outcome(UUID) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_create_period_outcome
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_create_period_outcome(
+  p_period_id   UUID,
+  p_code        TEXT,
+  p_label       TEXT,
+  p_description TEXT DEFAULT NULL,
+  p_sort_order  INT  DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_org_id  UUID;
+  v_row     JSONB;
+  v_new_id  UUID;
+BEGIN
+  SELECT organization_id INTO v_org_id FROM periods WHERE id = p_period_id;
+  IF v_org_id IS NULL THEN
+    RAISE EXCEPTION 'period_not_found';
+  END IF;
+
+  PERFORM public._assert_org_admin(v_org_id);
+
+  INSERT INTO period_outcomes (period_id, code, label, description, sort_order)
+  VALUES (p_period_id, p_code, p_label, p_description, p_sort_order)
+  RETURNING id, to_jsonb(period_outcomes.*) INTO v_new_id, v_row;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'config.outcome.created',
+    'period_outcomes',
+    v_new_id,
+    'config'::audit_category,
+    'low'::audit_severity,
+    jsonb_build_object('outcome_code', p_code, 'outcome_label', p_label, 'period_id', p_period_id),
+    jsonb_build_object('after', v_row)
+  );
+
+  RETURN v_row;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_create_period_outcome(UUID, TEXT, TEXT, TEXT, INT) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_update_period_outcome
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_update_period_outcome(
+  p_outcome_id UUID,
+  p_patch      JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_org_id UUID;
+  v_before JSONB;
+  v_after  JSONB;
+BEGIN
+  SELECT p.organization_id, to_jsonb(po.*)
+    INTO v_org_id, v_before
+  FROM period_outcomes po
+  JOIN periods p ON p.id = po.period_id
+  WHERE po.id = p_outcome_id;
+
+  IF v_org_id IS NULL THEN
+    RAISE EXCEPTION 'outcome_not_found';
+  END IF;
+
+  PERFORM public._assert_org_admin(v_org_id);
+
+  UPDATE period_outcomes
+  SET code          = COALESCE(p_patch->>'code', code),
+      label         = COALESCE(p_patch->>'label', label),
+      description   = COALESCE(p_patch->>'description', description),
+      sort_order    = COALESCE((p_patch->>'sort_order')::INT, sort_order),
+      coverage_type = CASE WHEN p_patch ? 'coverage_type' THEN p_patch->>'coverage_type' ELSE coverage_type END
+  WHERE id = p_outcome_id
+  RETURNING to_jsonb(period_outcomes.*) INTO v_after;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'config.outcome.updated',
+    'period_outcomes',
+    p_outcome_id,
+    'config'::audit_category,
+    'low'::audit_severity,
+    jsonb_build_object(
+      'outcome_code', v_after->>'code',
+      'outcome_label', v_after->>'label'
+    ),
+    jsonb_build_object('before', v_before, 'after', v_after)
+  );
+
+  RETURN v_after;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_update_period_outcome(UUID, JSONB) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_delete_period_outcome
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_delete_period_outcome(
+  p_outcome_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_org_id UUID;
+  v_before JSONB;
+BEGIN
+  SELECT p.organization_id, to_jsonb(po.*)
+    INTO v_org_id, v_before
+  FROM period_outcomes po
+  JOIN periods p ON p.id = po.period_id
+  WHERE po.id = p_outcome_id;
+
+  IF v_org_id IS NULL THEN
+    RAISE EXCEPTION 'outcome_not_found';
+  END IF;
+
+  PERFORM public._assert_org_admin(v_org_id);
+
+  DELETE FROM period_outcomes WHERE id = p_outcome_id;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'config.outcome.deleted',
+    'period_outcomes',
+    p_outcome_id,
+    'config'::audit_category,
+    'low'::audit_severity,
+    jsonb_build_object(
+      'outcome_code', v_before->>'code',
+      'outcome_label', v_before->>'label'
+    ),
+    jsonb_build_object('before', v_before)
+  );
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_period_outcome(UUID) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_upsert_period_criterion_outcome_map
+-- =============================================================================
+-- Creates or updates a mapping between a period_criterion and a period_outcome.
+-- coverage_type: 'direct' | 'indirect'. On conflict (criterion_id, outcome_id)
+-- updates coverage_type.
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_upsert_period_criterion_outcome_map(
+  p_period_id          UUID,
+  p_period_criterion_id UUID,
+  p_period_outcome_id  UUID,
+  p_coverage_type      TEXT DEFAULT 'direct'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_org_id UUID;
+  v_locked BOOLEAN;
+  v_row    JSONB;
+  v_id     UUID;
+BEGIN
+  IF p_coverage_type NOT IN ('direct', 'indirect') THEN
+    RAISE EXCEPTION 'invalid_coverage_type';
+  END IF;
+
+  SELECT organization_id, is_locked INTO v_org_id, v_locked
+  FROM periods WHERE id = p_period_id;
+  IF v_org_id IS NULL THEN
+    RAISE EXCEPTION 'period_not_found';
+  END IF;
+  IF v_locked THEN
+    RAISE EXCEPTION 'period_locked';
+  END IF;
+
+  PERFORM public._assert_org_admin(v_org_id);
+
+  -- Verify criterion and outcome belong to the same period
+  IF NOT EXISTS (
+    SELECT 1 FROM period_criteria
+    WHERE id = p_period_criterion_id AND period_id = p_period_id
+  ) THEN
+    RAISE EXCEPTION 'criterion_not_in_period';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM period_outcomes
+    WHERE id = p_period_outcome_id AND period_id = p_period_id
+  ) THEN
+    RAISE EXCEPTION 'outcome_not_in_period';
+  END IF;
+
+  INSERT INTO period_criterion_outcome_maps (
+    period_id, period_criterion_id, period_outcome_id, coverage_type
+  ) VALUES (
+    p_period_id, p_period_criterion_id, p_period_outcome_id, p_coverage_type
+  )
+  ON CONFLICT (period_criterion_id, period_outcome_id) DO UPDATE
+    SET coverage_type = EXCLUDED.coverage_type
+  RETURNING id, to_jsonb(period_criterion_outcome_maps.*) INTO v_id, v_row;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'mapping.upsert',
+    'period_criterion_outcome_maps',
+    v_id,
+    'config'::audit_category,
+    'low'::audit_severity,
+    jsonb_build_object(
+      'period_id', p_period_id,
+      'period_criterion_id', p_period_criterion_id,
+      'period_outcome_id', p_period_outcome_id,
+      'coverage_type', p_coverage_type
+    ),
+    jsonb_build_object('after', v_row)
+  );
+
+  RETURN v_row;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_upsert_period_criterion_outcome_map(UUID, UUID, UUID, TEXT) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_delete_period_criterion_outcome_map
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_delete_period_criterion_outcome_map(
+  p_map_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_org_id    UUID;
+  v_period_id UUID;
+  v_locked    BOOLEAN;
+  v_before    JSONB;
+BEGIN
+  SELECT p.organization_id, p.id, p.is_locked, to_jsonb(pcm.*)
+    INTO v_org_id, v_period_id, v_locked, v_before
+  FROM period_criterion_outcome_maps pcm
+  JOIN periods p ON p.id = pcm.period_id
+  WHERE pcm.id = p_map_id;
+
+  IF v_org_id IS NULL THEN
+    RAISE EXCEPTION 'mapping_not_found';
+  END IF;
+  IF v_locked THEN
+    RAISE EXCEPTION 'period_locked';
+  END IF;
+
+  PERFORM public._assert_org_admin(v_org_id);
+
+  DELETE FROM period_criterion_outcome_maps WHERE id = p_map_id;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'mapping.delete',
+    'period_criterion_outcome_maps',
+    p_map_id,
+    'config'::audit_category,
+    'low'::audit_severity,
+    jsonb_build_object(
+      'period_id', v_period_id,
+      'period_criterion_id', v_before->>'period_criterion_id',
+      'period_outcome_id', v_before->>'period_outcome_id'
+    ),
+    jsonb_build_object('before', v_before)
+  );
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_period_criterion_outcome_map(UUID) TO authenticated;
 
 -- =============================================================================
 -- rpc_admin_update_organization

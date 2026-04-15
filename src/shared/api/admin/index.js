@@ -22,6 +22,9 @@ export {
   updatePeriod,
   deletePeriod,
   setEvalLock,
+  requestPeriodUnlock,
+  resolveUnlockRequest,
+  listUnlockRequests,
   updatePeriodCriteriaConfig,
   updatePeriodOutcomeConfig,
   savePeriodCriteria,
@@ -104,10 +107,16 @@ export {
   deleteOutcome,
   listFrameworkCriteria,
   listPeriodCriteriaForMapping,
-  listCriterionOutcomeMappings,
-  upsertCriterionOutcomeMapping,
-  deleteCriterionOutcomeMapping,
 } from "./frameworks";
+
+export {
+  listPeriodCriterionOutcomeMaps,
+  createPeriodOutcome,
+  updatePeriodOutcome,
+  deletePeriodOutcome,
+  upsertPeriodCriterionOutcomeMap,
+  deletePeriodCriterionOutcomeMap,
+} from "./outcomes";
 
 export { sendEntryTokenEmail, sendJurorPinEmail, sendExportReport } from "./notifications";
 

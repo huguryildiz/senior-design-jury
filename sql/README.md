@@ -83,6 +83,22 @@ scoring (`score_sheet_items`) references these snapshots — never the live
 framework rows. This means the framework can be edited without corrupting
 historical scores.
 
+### Criterion↔outcome mapping — source of truth
+
+`period_criterion_outcome_maps` is the **single source of truth** for which
+criteria map to which outcomes for a given period. Both the Outcomes page and
+the Edit Criterion "Mapping" tab in the admin UI write here via
+`rpc_admin_upsert_period_criterion_outcome_map` and
+`rpc_admin_delete_period_criterion_outcome_map`. Analytics, charts, jury
+rubric, and the criterion-enrichment code path (`listPeriodCriteria`) all read
+from this table.
+
+`framework_criterion_outcome_maps` is **template-only**: it holds the default
+mappings copied into a period's `period_criterion_outcome_maps` on first
+snapshot freeze. It is never edited directly after a period is created.
+Editing a mapping for one period does not affect other periods using the same
+framework (e.g., Spring 2026 and Fall 2026 can have different MÜDEK mappings).
+
 ### scores_compat view
 
 `score_sheet_items` is a normalized row-per-criterion model. The `scores_compat`
@@ -118,13 +134,13 @@ sql/
 | 000 | `000_dev_teardown.sql` | **DEV/TEST ONLY** — drops all v1 objects; never run on live prod |
 | 001 | `001_extensions.sql` | `uuid-ossp`, `pgcrypto` |
 | 002 | `002_tables.sql` | All tables, ENUMs (including audit taxonomy), views, indexes in FK dependency order; Realtime publication (7 tables); single-row config tables seeded inline |
-| 003 | `003_helpers_and_triggers.sql` | `current_user_is_super_admin()`, `_assert_super_admin()`, `_assert_org_admin()`, `trigger_set_updated_at()`, `trigger_audit_log()` (with category/severity/actor_type/diff); trigger attachments on all tables |
+| 003 | `003_helpers_and_triggers.sql` | `current_user_is_super_admin()`, `_assert_super_admin()`, `_assert_org_admin()`, `trigger_set_updated_at()`, `trigger_audit_log()` (with category/severity/actor_type/diff); `trigger_auto_lock_period_on_token()` (auto-locks period on first entry_token INSERT); trigger attachments on all tables |
 | 004 | `004_rls.sql` | RLS policies for all tables — including audit no-delete policy and backup storage policies |
-| 005 | `005_rpcs_jury.sql` | Jury RPCs: entry-token validation, authenticate, verify PIN, upsert score, finalize submission, rankings, feedback |
-| 006 | `006_rpcs_admin.sql` | Admin RPCs: jury mgmt, org lifecycle, entry tokens, period config, system config, audit write helpers (`_audit_write`, `rpc_admin_write_audit_event`, `rpc_admin_log_period_lock`), public auth helpers |
+| 005 | `005_rpcs_jury.sql` | Jury RPCs: entry-token validation, authenticate, verify PIN, upsert score (no `is_locked` guard — `is_locked` is a structural-fields freeze, not a scoring block), finalize submission, rankings, feedback |
+| 006 | `006_rpcs_admin.sql` | Admin RPCs: jury mgmt (edit-mode toggle no longer gated by `is_locked`), org lifecycle, entry tokens (incl. `rpc_admin_revoke_entry_token` period-wide revoke), period config, system config, audit write helpers (`_audit_write`, `rpc_admin_write_audit_event`, `rpc_admin_log_period_lock`), public auth helpers |
 | 007 | `007_identity.sql` | `admin_user_sessions` table + RLS; invite-flow RPCs (`rpc_org_admin_cancel_invite`, `rpc_accept_invite`); `rpc_admin_revoke_admin_session` (audited) |
 | 008 | `008_platform.sql` | `platform_settings` + `platform_backups` tables; maintenance, metrics, backup CRUD RPCs; auto-backup + maintenance-countdown cron jobs; seeds platform frameworks (MÜDEK v3.1, ABET 2026–2027) |
-| 009 | `009_audit.sql` | Idempotent backfills (periodName, taxonomy); `rpc_write_auth_failure_event` (anon-callable, rate-limited); hash-chain trigger + `_audit_verify_chain_internal` + `rpc_admin_verify_audit_chain`; anomaly-sweep cron; atomic mutation RPCs (period, framework, org, token, juror edit-mode) |
+| 009 | `009_audit.sql` | Idempotent backfills (periodName, taxonomy); `rpc_write_auth_failure_event` (anon-callable, rate-limited); hash-chain trigger + `_audit_verify_chain_internal` + `rpc_admin_verify_audit_chain`; anomaly-sweep cron; atomic mutation RPCs — `rpc_admin_set_period_lock` rejects unlock from org admins when scores exist (super-admin bypass); period, framework, org, token, juror edit-mode |
 
 > **archive/** contains old incremental patch files for reference only.
 > Never apply them to a fresh database — use the active files above instead.
@@ -242,11 +258,16 @@ Single-row configuration table seeded inline in `002_tables.sql`.
 | `rpc_admin_verify_audit_chain(org_id)` | Verify hash-chain integrity; returns broken-link JSONB array or `[]` |
 | `rpc_admin_set_current_period(period_id)` | Mark a period as current; write audit event |
 | `rpc_admin_set_period_lock(period_id, locked)` | Lock/unlock evaluation period; write audit event |
-| `rpc_admin_save_period_criteria(period_id, criteria)` | Upsert period criteria config (delete + re-insert); write audit event |
+| `rpc_admin_save_period_criteria(period_id, criteria)` | Upsert period criteria metadata by `(period_id, key)`; preserves criterion IDs → `period_criterion_outcome_maps` survive. Criteria whose keys disappear from the payload are deleted (pcom cascades). Writes audit event |
 | `rpc_admin_reorder_period_criteria(period_id, keys)` | Update `sort_order` for existing criteria without deleting rows; safe when `score_sheet_items` exist |
-| `rpc_admin_create_framework_outcome(framework_id, code, label, description, sort_order)` | Create framework outcome; write audit event |
-| `rpc_admin_update_framework_outcome(outcome_id, updates)` | Update framework outcome; write audit event |
-| `rpc_admin_delete_framework_outcome(outcome_id)` | Delete framework outcome; write audit event |
+| `rpc_admin_create_framework_outcome(framework_id, code, label, description, sort_order)` | Create framework-level outcome (template); write audit event |
+| `rpc_admin_update_framework_outcome(outcome_id, updates)` | Update framework-level outcome (template); write audit event |
+| `rpc_admin_delete_framework_outcome(outcome_id)` | Delete framework-level outcome (template); write audit event |
+| `rpc_admin_create_period_outcome(period_id, code, label, description, sort_order)` | Create period-scoped outcome row; write audit event |
+| `rpc_admin_update_period_outcome(outcome_id, updates)` | Update period-scoped outcome (code/label/description/sort); write audit event |
+| `rpc_admin_delete_period_outcome(outcome_id)` | Delete period-scoped outcome (cascades its mappings); write audit event |
+| `rpc_admin_upsert_period_criterion_outcome_map(period_id, period_criterion_id, period_outcome_id, coverage_type)` | Upsert a criterion↔outcome mapping (direct/indirect). Rejects when period is locked. Writes audit event |
+| `rpc_admin_delete_period_criterion_outcome_map(map_id)` | Remove a criterion↔outcome mapping. Rejects when period is locked. Writes audit event |
 | `rpc_admin_update_organization(org_id, updates)` | Update organization fields; write audit event |
 | `rpc_admin_update_member_profile(user_id, display_name, org_id)` | Update member display name; write audit event |
 | `rpc_admin_revoke_entry_token(token_id)` | Revoke entry token; write audit event |

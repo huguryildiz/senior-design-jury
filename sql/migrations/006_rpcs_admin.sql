@@ -88,7 +88,6 @@ AS $$
 DECLARE
   v_org_id        UUID;
   v_is_admin      BOOLEAN;
-  v_period_locked BOOLEAN;
   v_auth_row      juror_period_auth%ROWTYPE;
   v_reason        TEXT;
   v_minutes       INT;
@@ -109,12 +108,6 @@ BEGIN
 
   IF NOT v_is_admin THEN
     RETURN jsonb_build_object('ok', false, 'error_code', 'unauthorized')::JSON;
-  END IF;
-
-  SELECT is_locked INTO v_period_locked FROM periods WHERE id = p_period_id;
-
-  IF COALESCE(v_period_locked, false) THEN
-    RETURN jsonb_build_object('ok', false, 'error_code', 'period_locked')::JSON;
   END IF;
 
   SELECT * INTO v_auth_row
@@ -736,6 +729,319 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_entry_token_revoke(UUID) TO authenticated;
 
+-- =============================================================================
+-- rpc_admin_revoke_entry_token
+-- =============================================================================
+-- Revokes all active (non-revoked) entry tokens for a period by period_id.
+-- Returns JSON: { active_juror_count, revoked_count }
+-- Called by: src/shared/api/admin/tokens.js revokeEntryToken()
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_revoke_entry_token(p_period_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_org_id           UUID;
+  v_is_admin         BOOLEAN;
+  v_revoked_count    INT;
+  v_active_jurors    INT;
+BEGIN
+  SELECT p.organization_id INTO v_org_id
+  FROM periods p
+  WHERE p.id = p_period_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'period_not_found')::JSON;
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1 FROM memberships
+    WHERE user_id = auth.uid()
+      AND (organization_id = v_org_id OR organization_id IS NULL)
+  ) INTO v_is_admin;
+
+  IF NOT v_is_admin THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'unauthorized')::JSON;
+  END IF;
+
+  -- Count active juror sessions before revoking
+  SELECT COUNT(*) INTO v_active_jurors
+  FROM juror_period_auth
+  WHERE period_id = p_period_id
+    AND session_token_hash IS NOT NULL
+    AND final_submitted_at IS NULL
+    AND (session_expires_at IS NULL OR session_expires_at > now());
+
+  -- Revoke all active tokens for this period
+  UPDATE entry_tokens
+  SET is_revoked = true, revoked_at = now()
+  WHERE period_id = p_period_id
+    AND is_revoked = false;
+
+  GET DIAGNOSTICS v_revoked_count = ROW_COUNT;
+
+  INSERT INTO audit_logs (organization_id, user_id, action, resource_type, resource_id, details)
+  VALUES (
+    v_org_id,
+    auth.uid(),
+    'token.revoke',
+    'entry_tokens',
+    p_period_id,
+    jsonb_build_object(
+      'period_id',        p_period_id,
+      'revoked_count',    v_revoked_count,
+      'active_jurors',    v_active_jurors
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok',                true,
+    'active_juror_count', v_active_jurors,
+    'revoked_count',      v_revoked_count
+  )::JSON;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_revoke_entry_token(UUID) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_request_unlock
+-- =============================================================================
+-- Org admin asks super admin to unlock a period that already has scores.
+-- Creates a pending unlock_requests row; super admin resolves via
+-- rpc_super_admin_resolve_unlock. Idempotent per period (unique partial index
+-- enforces one pending request per period at a time).
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_request_unlock(
+  p_period_id UUID,
+  p_reason    TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_org_id       UUID;
+  v_period_name  TEXT;
+  v_is_locked    BOOLEAN;
+  v_is_admin     BOOLEAN;
+  v_has_scores   BOOLEAN;
+  v_request_id   UUID;
+  v_reason       TEXT;
+BEGIN
+  v_reason := btrim(COALESCE(p_reason, ''));
+  IF char_length(v_reason) < 10 THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'reason_too_short')::JSON;
+  END IF;
+
+  SELECT organization_id, name, is_locked
+    INTO v_org_id, v_period_name, v_is_locked
+  FROM periods
+  WHERE id = p_period_id;
+
+  IF v_org_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'period_not_found')::JSON;
+  END IF;
+
+  IF NOT COALESCE(v_is_locked, false) THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'period_not_locked')::JSON;
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1 FROM memberships
+    WHERE user_id = auth.uid()
+      AND (organization_id = v_org_id OR organization_id IS NULL)
+  ) INTO v_is_admin;
+
+  IF NOT v_is_admin THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'unauthorized')::JSON;
+  END IF;
+
+  SELECT EXISTS(
+    SELECT 1 FROM score_sheets ss
+    JOIN projects pr ON pr.id = ss.project_id
+    WHERE pr.period_id = p_period_id
+  ) INTO v_has_scores;
+
+  IF NOT v_has_scores THEN
+    -- No scores yet: client should call rpc_admin_set_period_lock(_, false) directly.
+    RETURN jsonb_build_object('ok', false, 'error_code', 'period_has_no_scores')::JSON;
+  END IF;
+
+  BEGIN
+    INSERT INTO unlock_requests (period_id, organization_id, requested_by, reason)
+    VALUES (p_period_id, v_org_id, auth.uid(), v_reason)
+    RETURNING id INTO v_request_id;
+  EXCEPTION
+    WHEN unique_violation THEN
+      RETURN jsonb_build_object('ok', false, 'error_code', 'pending_request_exists')::JSON;
+  END;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'unlock_request.create',
+    'unlock_requests',
+    v_request_id,
+    'config'::audit_category,
+    'medium'::audit_severity,
+    jsonb_build_object(
+      'period_id',   p_period_id,
+      'period_name', v_period_name,
+      'reason',      v_reason
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok',         true,
+    'request_id', v_request_id
+  )::JSON;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_request_unlock(UUID, TEXT) TO authenticated;
+
+-- =============================================================================
+-- rpc_super_admin_resolve_unlock
+-- =============================================================================
+-- Super admin approves/rejects a pending unlock_requests row.
+-- approved → period.is_locked = false + audit severity=high
+-- rejected → status update only + audit severity=medium
+
+CREATE OR REPLACE FUNCTION public.rpc_super_admin_resolve_unlock(
+  p_request_id UUID,
+  p_decision   TEXT,
+  p_note       TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_request      unlock_requests%ROWTYPE;
+  v_period_name  TEXT;
+  v_severity     audit_severity;
+BEGIN
+  IF NOT public.current_user_is_super_admin() THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'unauthorized')::JSON;
+  END IF;
+
+  IF p_decision NOT IN ('approved', 'rejected') THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'invalid_decision')::JSON;
+  END IF;
+
+  SELECT * INTO v_request
+  FROM unlock_requests
+  WHERE id = p_request_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'request_not_found')::JSON;
+  END IF;
+
+  IF v_request.status <> 'pending' THEN
+    RETURN jsonb_build_object('ok', false, 'error_code', 'request_not_pending')::JSON;
+  END IF;
+
+  SELECT name INTO v_period_name FROM periods WHERE id = v_request.period_id;
+
+  UPDATE unlock_requests
+  SET status      = p_decision,
+      reviewed_by = auth.uid(),
+      reviewed_at = now(),
+      review_note = NULLIF(btrim(COALESCE(p_note, '')), '')
+  WHERE id = p_request_id;
+
+  IF p_decision = 'approved' THEN
+    UPDATE periods SET is_locked = false WHERE id = v_request.period_id;
+    v_severity := 'high'::audit_severity;
+  ELSE
+    v_severity := 'medium'::audit_severity;
+  END IF;
+
+  PERFORM public._audit_write(
+    v_request.organization_id,
+    'unlock_request.resolve',
+    'unlock_requests',
+    p_request_id,
+    'config'::audit_category,
+    v_severity,
+    jsonb_build_object(
+      'period_id',   v_request.period_id,
+      'period_name', v_period_name,
+      'decision',    p_decision,
+      'review_note', NULLIF(btrim(COALESCE(p_note, '')), ''),
+      'requested_by', v_request.requested_by
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok',           true,
+    'request_id',   p_request_id,
+    'decision',     p_decision,
+    'period_id',    v_request.period_id,
+    'organization_id', v_request.organization_id,
+    'requested_by', v_request.requested_by
+  )::JSON;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_super_admin_resolve_unlock(UUID, TEXT, TEXT) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_list_unlock_requests
+-- =============================================================================
+-- Lists unlock requests visible to caller (RLS applies: org admin sees own org,
+-- super admin sees all). Filter by status. Joins period + requester + reviewer
+-- display names. Default: pending only.
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_list_unlock_requests(
+  p_status TEXT DEFAULT 'pending'
+)
+RETURNS JSON
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public, auth
+AS $$
+  SELECT COALESCE(jsonb_agg(row ORDER BY row->>'created_at' DESC), '[]'::jsonb)::JSON
+  FROM (
+    SELECT jsonb_build_object(
+      'id',               ur.id,
+      'period_id',        ur.period_id,
+      'period_name',      p.name,
+      'organization_id',  ur.organization_id,
+      'organization_name', o.name,
+      'requested_by',     ur.requested_by,
+      'requester_name',   rp.display_name,
+      'reason',           ur.reason,
+      'status',           ur.status,
+      'reviewed_by',      ur.reviewed_by,
+      'reviewer_name',    vp.display_name,
+      'reviewed_at',      ur.reviewed_at,
+      'review_note',      ur.review_note,
+      'created_at',       ur.created_at
+    ) AS row
+    FROM unlock_requests ur
+    JOIN periods       p  ON p.id = ur.period_id
+    JOIN organizations o  ON o.id = ur.organization_id
+    LEFT JOIN profiles rp ON rp.id = ur.requested_by
+    LEFT JOIN profiles vp ON vp.id = ur.reviewed_by
+    WHERE (
+      public.current_user_is_super_admin()
+      OR ur.organization_id IN (
+        SELECT organization_id FROM memberships
+        WHERE user_id = auth.uid() AND organization_id IS NOT NULL
+      )
+    )
+    AND (p_status IS NULL OR p_status = 'all' OR ur.status = p_status)
+  ) t;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_list_unlock_requests(TEXT) TO authenticated;
+
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- F) PUBLIC STATS
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -837,10 +1143,10 @@ BEGIN
   END IF;
 
   INSERT INTO period_criteria (
-    period_id, source_criterion_id, key, label, short_label,
+    period_id, source_criterion_id, key, label,
     description, max_score, weight, color, rubric_bands, sort_order
   )
-  SELECT p_period_id, fc.id, fc.key, fc.label, fc.short_label,
+  SELECT p_period_id, fc.id, fc.key, fc.label,
     fc.description, fc.max_score, fc.weight, fc.color, fc.rubric_bands, fc.sort_order
   FROM framework_criteria fc
   WHERE fc.framework_id = v_period.framework_id;
@@ -848,9 +1154,9 @@ BEGIN
   GET DIAGNOSTICS v_criteria_count = ROW_COUNT;
 
   INSERT INTO period_outcomes (
-    period_id, source_outcome_id, code, label, description, sort_order, coverage_hint
+    period_id, source_outcome_id, code, label, description, sort_order
   )
-  SELECT p_period_id, fo.id, fo.code, fo.label, fo.description, fo.sort_order, fo.coverage_hint
+  SELECT p_period_id, fo.id, fo.code, fo.label, fo.description, fo.sort_order
   FROM framework_outcomes fo
   WHERE fo.framework_id = v_period.framework_id;
 
@@ -1761,12 +2067,10 @@ BEGIN
 
   -- 1. Clone the frameworks row
   INSERT INTO frameworks (
-    organization_id, name, description, version,
-    outcome_code_prefix, default_threshold
+    organization_id, name, description, default_threshold
   )
   SELECT
-    p_org_id, p_new_name, description, version,
-    outcome_code_prefix, default_threshold
+    p_org_id, p_new_name, description, default_threshold
   FROM frameworks
   WHERE id = p_framework_id
   RETURNING id INTO v_new_fw_id;
@@ -1777,8 +2081,8 @@ BEGIN
     WHERE framework_id = p_framework_id
     ORDER BY sort_order
   LOOP
-    INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order, coverage_hint)
-    VALUES (v_new_fw_id, r.code, r.label, r.description, r.sort_order, r.coverage_hint)
+    INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order)
+    VALUES (v_new_fw_id, r.code, r.label, r.description, r.sort_order)
     RETURNING id INTO v_new_id;
 
     v_outcome_map := v_outcome_map || jsonb_build_object(r.id::TEXT, v_new_id::TEXT);
@@ -1791,11 +2095,11 @@ BEGIN
     ORDER BY sort_order
   LOOP
     INSERT INTO framework_criteria (
-      framework_id, key, label, short_label, description,
+      framework_id, key, label, description,
       max_score, weight, color, rubric_bands, sort_order
     )
     VALUES (
-      v_new_fw_id, r.key, r.label, r.short_label, r.description,
+      v_new_fw_id, r.key, r.label, r.description,
       r.max_score, r.weight, r.color, r.rubric_bands, r.sort_order
     )
     RETURNING id INTO v_new_id;

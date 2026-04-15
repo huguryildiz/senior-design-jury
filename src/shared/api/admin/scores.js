@@ -32,7 +32,7 @@ export async function getScores(periodId) {
     .from("score_sheets")
     .select(`
       id, juror_id, project_id, period_id, comment, status, created_at, updated_at,
-      items:score_sheet_items(id, score_value, period_criterion_id, period_criteria(key, short_label)),
+      items:score_sheet_items(id, score_value, period_criterion_id, period_criteria(key)),
       project:projects(id, title, members, project_no),
       juror:jurors(id, juror_name, affiliation)
     `)
@@ -364,8 +364,9 @@ export async function getPeriodMaxScore(periodId) {
 
 /**
  * Returns criteria rows for a period snapshot (from period_criteria table),
- * enriched with mapped outcome codes from framework_criterion_outcome_maps
- * (the authoritative source edited on the Outcomes & Mapping page).
+ * enriched with mapped outcome codes from period_criterion_outcome_maps
+ * (the single source of truth edited on the Outcomes & Mapping page and the
+ * Edit Criterion Mapping tab).
  */
 export async function listPeriodCriteria(periodId) {
   const [criteriaRes, mapsRes] = await Promise.all([
@@ -375,8 +376,8 @@ export async function listPeriodCriteria(periodId) {
       .eq("period_id", periodId)
       .order("sort_order"),
     supabase
-      .from("framework_criterion_outcome_maps")
-      .select("criterion_id, coverage_type, framework_outcomes(code)")
+      .from("period_criterion_outcome_maps")
+      .select("period_criterion_id, coverage_type, period_outcomes(code)")
       .eq("period_id", periodId),
   ]);
   if (criteriaRes.error) throw criteriaRes.error;
@@ -387,10 +388,10 @@ export async function listPeriodCriteria(periodId) {
   const codeMap = {};
   const typeMap = {};
   for (const row of mapsRes.data || []) {
-    const code = row.framework_outcomes?.code;
+    const code = row.period_outcomes?.code;
     if (!code) continue;
-    (codeMap[row.criterion_id] ||= []).push(code);
-    (typeMap[row.criterion_id] ||= {})[code] = row.coverage_type ?? "direct";
+    (codeMap[row.period_criterion_id] ||= []).push(code);
+    (typeMap[row.period_criterion_id] ||= {})[code] = row.coverage_type ?? "direct";
   }
 
   return criteria.map((c) => ({

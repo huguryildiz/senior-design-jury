@@ -11,7 +11,7 @@
 //   error        — string | null
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Info, X, Check, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Info, X, Check, CheckCircle2, Lock } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import useShakeOnError from "@/shared/hooks/useShakeOnError";
@@ -19,7 +19,7 @@ import AutoTextarea from "@/shared/ui/AutoTextarea";
 import InlineError from "@/shared/ui/InlineError";
 import FbAlert from "@/shared/ui/FbAlert";
 
-export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria = [], onSave, error }) {
+export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria = [], onSave, error, isLocked = false }) {
   const [code, setCode] = useState("");
   const [shortLabel, setShortLabel] = useState("");
   const [description, setDescription] = useState("");
@@ -87,6 +87,15 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
         </div>
       </div>
       <div className="fs-drawer-body" style={{ padding: "18px 20px" }}>
+        {isLocked && (
+          <div className="fs-alert warning" style={{ marginBottom: 14 }}>
+            <div className="fs-alert-icon"><Lock size={15} /></div>
+            <div className="fs-alert-body">
+              <div className="fs-alert-title">Evaluation active — mappings locked</div>
+              <div className="fs-alert-desc">Criterion mappings and coverage type cannot be changed while scores exist. Labels and descriptions remain editable.</div>
+            </div>
+          </div>
+        )}
         {displayError && (
           <div className="fs-alert danger" style={{ marginBottom: 14 }}>
             <div className="fs-alert-icon"><AlertCircle size={15} /></div>
@@ -164,9 +173,9 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
             {criteria.map((c) => (
               <label
                 key={c.id}
-                className={`acc-drawer-crit-chip${criterionIds.includes(c.id) ? " selected" : ""}`}
-                onClick={() => !saving && toggleCriterion(c.id)}
-                style={{ cursor: saving ? "not-allowed" : "pointer" }}
+                className={`acc-drawer-crit-chip${criterionIds.includes(c.id) ? " selected" : ""}${isLocked ? " disabled" : ""}`}
+                onClick={() => !saving && !isLocked && toggleCriterion(c.id)}
+                style={{ cursor: saving || isLocked ? "not-allowed" : "pointer", opacity: isLocked ? 0.6 : undefined }}
               >
                 <span className="acc-crit-dot" style={{ background: c.color }} />
                 {c.label}
@@ -180,10 +189,11 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
 
         {/* Coverage Type */}
         <div className="acc-detail-section-label" style={{ marginTop: 18 }}>Coverage Type</div>
-        <div className="acc-coverage-type-selector">
+        <div className="acc-coverage-type-selector" style={isLocked ? { opacity: 0.6, pointerEvents: "none" } : undefined}>
           <div
             className={`acc-coverage-type-option${coverageType === "direct" ? " selected cov-direct" : ""}`}
-            onClick={() => !saving && setCoverageType("direct")}
+            onClick={() => !saving && !isLocked && setCoverageType("direct")}
+            style={{ cursor: saving || isLocked ? "not-allowed" : "pointer" }}
           >
             <div className="acc-cov-radio" />
             <div>
@@ -193,7 +203,8 @@ export default function OutcomeDetailDrawer({ open, onClose, outcome, criteria =
           </div>
           <div
             className={`acc-coverage-type-option${coverageType === "indirect" ? " selected cov-indirect" : ""}`}
-            onClick={() => !saving && setCoverageType("indirect")}
+            onClick={() => !saving && !isLocked && setCoverageType("indirect")}
+            style={{ cursor: saving || isLocked ? "not-allowed" : "pointer" }}
           >
             <div className="acc-cov-radio" />
             <div>

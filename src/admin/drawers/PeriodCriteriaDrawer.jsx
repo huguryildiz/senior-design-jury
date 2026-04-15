@@ -29,6 +29,9 @@ export default function PeriodCriteriaDrawer({
   onCopyFromPeriod,
   onEditCriteria,
   onClearCriteria,
+  onRenamePeriod,
+  onClonePeriod,
+  onDeletePeriod,
 }) {
   const [copyPeriodId, setCopyPeriodId] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
@@ -182,6 +185,30 @@ export default function PeriodCriteriaDrawer({
               </button>
             </div>
 
+            {/* Period management buttons */}
+            {(onRenamePeriod || onClonePeriod || onDeletePeriod) && !confirmClear && (
+              <div className="pcd-card-actions pcd-card-actions--period">
+                {onRenamePeriod && (
+                  <button className="pcd-action-btn" onClick={() => { onRenamePeriod(period); onClose(); }}>
+                    <Pencil size={12} strokeWidth={2} /> Rename
+                  </button>
+                )}
+                {onClonePeriod && (
+                  <button className="pcd-action-btn" onClick={() => { onClonePeriod(period); onClose(); }}>
+                    <Copy size={12} strokeWidth={2} /> Clone as new…
+                  </button>
+                )}
+                {onDeletePeriod && (
+                  <button
+                    className="pcd-action-btn pcd-action-btn--danger"
+                    onClick={() => { onDeletePeriod(period); onClose(); }}
+                  >
+                    <Trash2 size={12} strokeWidth={2} /> Remove
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Inline confirm: clear */}
             {confirmClear && (
               <div className="pcd-inline-confirm">
@@ -243,7 +270,7 @@ export default function PeriodCriteriaDrawer({
                 <PlusCircle size={14} strokeWidth={1.75} />
               </div>
               <div className="pcd-template-row-body">
-                <div className="pcd-template-row-name">Start blank</div>
+                <div className="pcd-template-row-name">Create blank criteria</div>
                 <div className="pcd-template-row-desc">Define criteria from scratch</div>
               </div>
             </button>

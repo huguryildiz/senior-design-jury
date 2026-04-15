@@ -519,6 +519,22 @@ CREATE POLICY "entry_tokens_delete" ON entry_tokens FOR DELETE USING (
 );
 
 -- =============================================================================
+-- UNLOCK_REQUESTS
+-- =============================================================================
+-- Org admins see their org's requests; super admin sees all.
+-- INSERT/UPDATE go exclusively through SECURITY DEFINER RPCs (no write policies).
+
+ALTER TABLE unlock_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "unlock_requests_select" ON unlock_requests FOR SELECT USING (
+  current_user_is_super_admin()
+  OR organization_id IN (
+    SELECT organization_id FROM memberships
+    WHERE user_id = auth.uid() AND organization_id IS NOT NULL
+  )
+);
+
+-- =============================================================================
 -- SCORE_SHEETS
 -- =============================================================================
 

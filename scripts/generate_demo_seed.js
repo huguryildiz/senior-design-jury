@@ -27,6 +27,17 @@ function escapeSql(str) { if (!str) return ''; return str.replace(/'/g, "''"); }
 // Script run date — used to anchor current-period dates and 90-day audit spread
 const TODAY = new Date().toISOString().substring(0, 10); // YYYY-MM-DD
 
+// Dynamic current-period labels — computed from NOW so the seed stays current
+const _now = new Date();
+const CUR_YEAR  = _now.getFullYear();
+const CUR_MONTH = _now.getMonth() + 1; // 1–12
+// Spring = Jan–Jun (month < 7), Fall = Jul–Dec (month >= 7)
+const CUR_SEMESTER = CUR_MONTH >= 7 ? 'Fall' : 'Spring';
+const CUR_SEMESTER_LABEL  = `${CUR_SEMESTER} ${CUR_YEAR}`;          // e.g. "Spring 2026"
+const CUR_SEASON_LABEL    = `${CUR_YEAR} Season`;                    // e.g. "2026 Season"
+const CUR_COMP_LABEL      = `${CUR_YEAR} Competition`;               // e.g. "2026 Competition"
+const CUR_CONTEST_LABEL   = `${CUR_YEAR} Contest`;                   // e.g. "2026 Contest"
+
 // Deterministic IP / device helpers — for audit log enrichment
 const IP_POOL = ['85.99.12.41', '213.74.55.108', '10.0.3.17', '77.246.118.22', '193.140.8.5', '88.222.147.93', '172.16.0.44'];
 function randIp() { return pick(IP_POOL); }
@@ -353,14 +364,15 @@ function simplifiedRubric(maxScore) {
   ]).replace(/'/g, "''");
 }
 
-// outcomes format: [[code, label, description, short_label?], ...]
+// outcomes format: [[code, label, description], ...]
 function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
   const o = orgs.find(x => x.code === orgCode);
+  o.frameworkName = fwName;
   const fwId = uuid('fw-' + orgCode);
   const fwDescMap = {
-    'MUDEK v3.1':                  'MÜDEK accreditation framework aligned with EUR-ACE standards. Evaluates engineering program outcomes across technical competency, design, communication, and teamwork dimensions.',
+    'MÜDEK v3.1':                  'MÜDEK accreditation framework aligned with EUR-ACE standards. Evaluates engineering program outcomes across technical competency, design, communication, and teamwork dimensions.',
     'ABET (2026 – 2027)':          'ABET Computing Accreditation Commission framework. Assesses student outcomes in computing knowledge, problem analysis, solution design, communication, and professional ethics.',
-    'Competition Framework 2026':  'TEKNOFEST ulusal teknoloji yarışması değerlendirme çerçevesi. Havacılık ve robotik kategorilerinde teknolojik yenilik, proje fizibilitesi, prototip kalitesi ve takım sunumu esas alınarak değerlendirilir.',
+    'Competition Framework':       'TEKNOFEST ulusal teknoloji yarışması değerlendirme çerçevesi. Havacılık ve robotik kategorilerinde teknolojik yenilik, proje fizibilitesi, prototip kalitesi ve takım sunumu esas alınarak değerlendirilir.',
     'Research Competition Framework': 'TÜBİTAK 2204-A ulusal lise öğrencileri araştırma projeleri yarışması değerlendirme çerçevesi. Bilimsel yöntem, araştırma derinliği, özgünlük ve sözlü savunma kalitesi ölçütlerine göre puanlanır.',
     'Design Contest Framework':    'IEEE AP-S Student Design Contest framework. Evaluates antenna design performance, technical documentation quality, oral presentation, and adherence to contest specifications.',
     'Mission Framework':           'CanSat Competition mission evaluation framework. Assesses satellite container design, mission objective completion, telemetry data quality, and post-flight analysis report.',
@@ -380,8 +392,10 @@ function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
     const rubricJson = c.customRubric ? JSON.stringify(c.customRubric).replace(/'/g, "''") : parseRubric(c.max);
     cMap[c.key] = cId; o.criteriaData.push({ id: cId, ...c, sortOrder: critOrder });
     const cDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
-    fwCriteria.push(`INSERT INTO framework_criteria (id, framework_id, key, label, short_label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${cId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', '${escapeSql(c.short)}', ${cDescSql}, ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${critOrder++}) ON CONFLICT DO NOTHING;`);
+    fwCriteria.push(`INSERT INTO framework_criteria (id, framework_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${cId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', ${cDescSql}, ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${critOrder++}) ON CONFLICT DO NOTHING;`);
   }
+  o.critKeyMap = cMap;      // criterion key → framework criterion id
+  o.outcomeCodeMap = oMap;  // outcome code  → framework outcome id
   o.mapsData = [];
   for (const m of mappings) {
     const cId = cMap[m.crit];
@@ -393,10 +407,10 @@ function processOrgfw(orgCode, fwName, criteria, outcomes, mappings) {
   }
 }
 
-// ── TEDU-EE: MUDEK v3.1 (criteria preserved exactly for Spring 2026 snapshot) ──
-processOrgfw('TEDU-EE', 'MUDEK v3.1',
+// ── TEDU-EE: MÜDEK v3.1 (criteria preserved exactly for Spring 2026 snapshot) ──
+processOrgfw('TEDU-EE', 'MÜDEK v3.1',
   [
-    { key:'technical', label:'Technical Content', short:'Technical', max:30, weight:30, color:'#F59E0B',
+    { key:'technical', label:'Technical Content', max:30, weight:30, color:'#F59E0B',
       desc:'Evaluates the depth, correctness, and originality of the engineering work itself — independent of how well it is communicated. It assesses whether the team has applied appropriate engineering knowledge, justified their design decisions, and demonstrated real technical mastery.',
       customRubric: [
         { min: 27, max: 30, label: 'Excellent', description: 'Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident.' },
@@ -404,7 +418,7 @@ processOrgfw('TEDU-EE', 'MUDEK v3.1',
         { min: 13, max: 20, label: 'Developing', description: 'Problem is stated but motivation or technical justification is insufficient.' },
         { min: 0, max: 12, label: 'Insufficient', description: 'Vague problem definition and unjustified decisions. Superficial technical content.' },
       ] },
-    { key:'design', label:'Written Communication', short:'Written', max:30, weight:30, color:'#22C55E',
+    { key:'design', label:'Written Comms.', max:30, weight:30, color:'#22C55E',
       desc:'Evaluates how effectively the team communicates their project in written and visual form on the poster — including layout, information hierarchy, figure quality, and the clarity of technical content for a mixed audience (engineers and non-engineers alike).',
       customRubric: [
         { min: 27, max: 30, label: 'Excellent', description: 'Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is presented in a way accessible to both technical and non-technical readers.' },
@@ -412,7 +426,7 @@ processOrgfw('TEDU-EE', 'MUDEK v3.1',
         { min: 13, max: 20, label: 'Developing', description: 'Occasional gaps in information flow. Some visuals are missing labels or captions. Technical content is only partially communicated.' },
         { min: 0, max: 12, label: 'Insufficient', description: 'Confusing layout. Low-quality or unlabelled visuals. Technical content is unclear or missing.' },
       ] },
-    { key:'delivery', label:'Oral Communication', short:'Oral', max:30, weight:30, color:'#3B82F6',
+    { key:'delivery', label:'Oral Communication', max:30, weight:30, color:'#3B82F6',
       desc:'Evaluates the team\'s ability to present their work verbally and to respond to questions from jurors with varying technical backgrounds. A key factor is conscious audience adaptation — adjusting depth and vocabulary based on who is asking.',
       customRubric: [
         { min: 27, max: 30, label: 'Excellent', description: 'Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate.' },
@@ -420,7 +434,7 @@ processOrgfw('TEDU-EE', 'MUDEK v3.1',
         { min: 13, max: 20, label: 'Developing', description: 'Understandable but inconsistent. Limited audience adaptation. Time management or Q&A depth needs improvement.' },
         { min: 0, max: 12, label: 'Insufficient', description: 'Unclear or disorganised presentation. Most questions answered incorrectly or not at all.' },
       ] },
-    { key:'teamwork', label:'Teamwork', short:'Teamwork', max:10, weight:10, color:'#EF4444',
+    { key:'teamwork', label:'Teamwork', max:10, weight:10, color:'#EF4444',
       desc:'Evaluates visible evidence of equal and effective team participation during the poster session, as well as the group\'s professional and ethical conduct in interacting with jurors.',
       customRubric: [
         { min: 9, max: 10, label: 'Excellent', description: 'All members participate actively and equally. Professional and ethical conduct observed throughout.' },
@@ -430,24 +444,24 @@ processOrgfw('TEDU-EE', 'MUDEK v3.1',
       ] }
   ],
   [
-    ['PO 1.1',  'Foundational Knowledge',               'Knowledge in mathematics, natural sciences, basic engineering, computational methods, and discipline-specific topics'],
-    ['PO 1.2',  'Knowledge Application',               'Ability to apply knowledge in mathematics, natural sciences, basic engineering, computational methods, and discipline-specific topics to solve complex engineering problems'],
-    ['PO 2',    'Problem Identification & Analysis',   'Ability to identify, formulate, and analyze complex engineering problems using basic science, mathematics, and engineering knowledge while considering relevant UN Sustainable Development Goals'],
-    ['PO 3.1',  'Creative Solution Design',            'Ability to design creative solutions to complex engineering problems'],
-    ['PO 3.2',  'Complex System Design',               'Ability to design complex systems, processes, devices, or products that meet current and future requirements while considering realistic constraints and conditions'],
-    ['PO 4',    'Modern Tools & Techniques',           'Ability to select and use appropriate techniques, resources, and modern engineering and IT tools, including estimation and modeling, for analysis and solution of complex engineering problems, with awareness of their limitations'],
-    ['PO 5',    'Research Methods',                    'Ability to use research methods including literature review, experiment design, data collection, result analysis, and interpretation for investigation of complex engineering problems'],
-    ['PO 6.1',  'Societal & Environmental Impact',     'Knowledge of the impacts of engineering applications on society, health and safety, economy, sustainability, and environment within the scope of UN Sustainable Development Goals'],
-    ['PO 6.2',  'Legal Awareness',                     'Awareness of the legal consequences of engineering solutions'],
-    ['PO 7.1',  'Ethics & Professional Conduct',       'Knowledge of acting in accordance with engineering professional principles and ethical responsibility'],
-    ['PO 7.2',  'Impartiality & Diversity',            'Awareness of acting without discrimination and being inclusive of diversity'],
-    ['PO 8.1',  'Intra-disciplinary Teamwork',         'Ability to work effectively as a team member or leader in intra-disciplinary teams (face-to-face, remote, or hybrid)'],
-    ['PO 8.2',  'Multidisciplinary Teamwork',          'Ability to work effectively as a team member or leader in multidisciplinary teams (face-to-face, remote, or hybrid)'],
-    ['PO 9.1',  'Oral Communication',                  'Ability to communicate effectively orally on technical subjects, taking into account the diverse characteristics of the target audience (education, language, profession, etc.)'],
-    ['PO 9.2',  'Written Communication',               'Ability to communicate effectively in writing on technical subjects, taking into account the diverse characteristics of the target audience (education, language, profession, etc.)'],
-    ['PO 10.1', 'Business & Project Management',       'Knowledge of business practices such as project management and economic feasibility analysis'],
-    ['PO 10.2', 'Entrepreneurship & Innovation',       'Awareness of entrepreneurship and innovation'],
-    ['PO 11',   'Lifelong Learning',                   'Ability to learn independently and continuously, adapt to new and emerging technologies, and think critically about technological changes']
+    ['PO 1.1',  'Basic Knowledge',                    'Knowledge in mathematics, natural sciences, basic engineering, computational methods, and discipline-specific topics'],
+    ['PO 1.2',  'Applied Knowledge',                  'Ability to apply knowledge in mathematics, natural sciences, basic engineering, computational methods, and discipline-specific topics to solve complex engineering problems'],
+    ['PO 2',    'Problem Analysis',                   'Ability to identify, formulate, and analyze complex engineering problems using basic science, mathematics, and engineering knowledge while considering relevant UN Sustainable Development Goals'],
+    ['PO 3.1',  'Creative Design',                    'Ability to design creative solutions to complex engineering problems'],
+    ['PO 3.2',  'Complex Systems',                    'Ability to design complex systems, processes, devices, or products that meet current and future requirements while considering realistic constraints and conditions'],
+    ['PO 4',    'Modern Tools',                       'Ability to select and use appropriate techniques, resources, and modern engineering and IT tools, including estimation and modeling, for analysis and solution of complex engineering problems, with awareness of their limitations'],
+    ['PO 5',    'Research Methods',                   'Ability to use research methods including literature review, experiment design, data collection, result analysis, and interpretation for investigation of complex engineering problems'],
+    ['PO 6.1',  'Societal Impact',                    'Knowledge of the impacts of engineering applications on society, health and safety, economy, sustainability, and environment within the scope of UN Sustainable Development Goals'],
+    ['PO 6.2',  'Legal Awareness',                    'Awareness of the legal consequences of engineering solutions'],
+    ['PO 7.1',  'Professional Ethics',                'Knowledge of acting in accordance with engineering professional principles and ethical responsibility'],
+    ['PO 7.2',  'Impartiality',                       'Awareness of acting without discrimination and being inclusive of diversity'],
+    ['PO 8.1',  'Intra-disciplinary',                 'Ability to work effectively as a team member or leader in intra-disciplinary teams (face-to-face, remote, or hybrid)'],
+    ['PO 8.2',  'Multidisciplinary',                  'Ability to work effectively as a team member or leader in multidisciplinary teams (face-to-face, remote, or hybrid)'],
+    ['PO 9.1',  'Oral Communication',                 'Ability to communicate effectively orally on technical subjects, taking into account the diverse characteristics of the target audience (education, language, profession, etc.)'],
+    ['PO 9.2',  'Written Comms.',                     'Ability to communicate effectively in writing on technical subjects, taking into account the diverse characteristics of the target audience (education, language, profession, etc.)'],
+    ['PO 10.1', 'Project Management',                 'Knowledge of business practices such as project management and economic feasibility analysis'],
+    ['PO 10.2', 'Entrepreneurship',                   'Awareness of entrepreneurship and innovation'],
+    ['PO 11',   'Lifelong Learning',                  'Ability to learn independently and continuously, adapt to new and emerging technologies, and think critically about technological changes']
   ],
   [
     {crit:'technical', outs:[
@@ -481,20 +495,20 @@ processOrgfw('TEDU-EE', 'MUDEK v3.1',
 
 processOrgfw('CMU-CS', 'ABET (2026 – 2027)',
   [
-    {key:'problem_solving',label:'Problem Solving & Analysis',short:'Problem',max:25,weight:25,color:'#EF4444',desc:'Evaluates precision of problem formulation, scope definition, constraint identification, and correctness of the analytical approach.',customRubric:[{min:22,max:25,label:'Excellent',description:'Problem is precisely formulated with clear scope, constraints, and success metrics.'},{min:17,max:21,label:'Good',description:'Problem is well-defined. Minor gaps in constraint handling.'},{min:12,max:16,label:'Developing',description:'Problem statement exists but lacks precision.'},{min:0,max:11,label:'Insufficient',description:'Problem is vaguely defined with significant logical gaps.'}]},
-    {key:'system_design',label:'System Design & Architecture',short:'Design',max:25,weight:25,color:'#3B82F6',desc:'Assesses architectural soundness, modularity, scalability, and justification of design decisions and component boundaries.',customRubric:[{min:22,max:25,label:'Excellent',description:'Architecture is modular, scalable, and well-justified.'},{min:17,max:21,label:'Good',description:'Architecture is sound with clear component boundaries.'},{min:12,max:16,label:'Developing',description:'Basic architecture present but modularity concerns not addressed.'},{min:0,max:11,label:'Insufficient',description:'No clear architecture.'}]},
-    {key:'implementation_quality',label:'Implementation Quality',short:'Impl',max:20,weight:20,color:'#F59E0B',desc:'Evaluates code quality, test coverage, documentation, and adherence to professional software engineering practices.',customRubric:[{min:18,max:20,label:'Excellent',description:'Code is clean, well-tested, and follows best practices.'},{min:14,max:17,label:'Good',description:'Code is readable with adequate test coverage.'},{min:10,max:13,label:'Developing',description:'Code works but lacks tests or consistent style.'},{min:0,max:9,label:'Insufficient',description:'Code is disorganized, untested, or non-functional.'}]},
-    {key:'communication',label:'Communication & Documentation',short:'Comm',max:20,weight:20,color:'#EC4899',desc:'Assesses completeness and clarity of written technical documentation including API references, design docs, and reports.',customRubric:[{min:18,max:20,label:'Excellent',description:'Documentation is thorough and developer-friendly.'},{min:14,max:17,label:'Good',description:'Documentation covers key areas.'},{min:10,max:13,label:'Developing',description:'Documentation exists but is incomplete.'},{min:0,max:9,label:'Insufficient',description:'Little to no documentation.'}]},
-    {key:'teamwork',label:'Teamwork & Collaboration',short:'Team',max:10,weight:10,color:'#10B981',desc:'Evaluates balanced contribution, collaborative workflow, and effective use of team coordination tools and practices.',customRubric:[{min:9,max:10,label:'Excellent',description:'All members contribute meaningfully.'},{min:7,max:8,label:'Good',description:'Most members contribute.'},{min:4,max:6,label:'Developing',description:'Uneven contributions.'},{min:0,max:3,label:'Insufficient',description:'One or two members did most of the work.'}]}
+    {key:'problem_solving',label:'Problem Solving',max:25,weight:25,color:'#EF4444',desc:'Evaluates precision of problem formulation, scope definition, constraint identification, and correctness of the analytical approach.',customRubric:[{min:22,max:25,label:'Excellent',description:'Problem is precisely formulated with clear scope, constraints, and success metrics.'},{min:17,max:21,label:'Good',description:'Problem is well-defined. Minor gaps in constraint handling.'},{min:12,max:16,label:'Developing',description:'Problem statement exists but lacks precision.'},{min:0,max:11,label:'Insufficient',description:'Problem is vaguely defined with significant logical gaps.'}]},
+    {key:'system_design',label:'System Design',max:25,weight:25,color:'#3B82F6',desc:'Assesses architectural soundness, modularity, scalability, and justification of design decisions and component boundaries.',customRubric:[{min:22,max:25,label:'Excellent',description:'Architecture is modular, scalable, and well-justified.'},{min:17,max:21,label:'Good',description:'Architecture is sound with clear component boundaries.'},{min:12,max:16,label:'Developing',description:'Basic architecture present but modularity concerns not addressed.'},{min:0,max:11,label:'Insufficient',description:'No clear architecture.'}]},
+    {key:'implementation_quality',label:'Implementation',max:20,weight:20,color:'#F59E0B',desc:'Evaluates code quality, test coverage, documentation, and adherence to professional software engineering practices.',customRubric:[{min:18,max:20,label:'Excellent',description:'Code is clean, well-tested, and follows best practices.'},{min:14,max:17,label:'Good',description:'Code is readable with adequate test coverage.'},{min:10,max:13,label:'Developing',description:'Code works but lacks tests or consistent style.'},{min:0,max:9,label:'Insufficient',description:'Code is disorganized, untested, or non-functional.'}]},
+    {key:'communication',label:'Documentation',max:20,weight:20,color:'#EC4899',desc:'Assesses completeness and clarity of written technical documentation including API references, design docs, and reports.',customRubric:[{min:18,max:20,label:'Excellent',description:'Documentation is thorough and developer-friendly.'},{min:14,max:17,label:'Good',description:'Documentation covers key areas.'},{min:10,max:13,label:'Developing',description:'Documentation exists but is incomplete.'},{min:0,max:9,label:'Insufficient',description:'Little to no documentation.'}]},
+    {key:'teamwork',label:'Teamwork',max:10,weight:10,color:'#10B981',desc:'Evaluates balanced contribution, collaborative workflow, and effective use of team coordination tools and practices.',customRubric:[{min:9,max:10,label:'Excellent',description:'All members contribute meaningfully.'},{min:7,max:8,label:'Good',description:'Most members contribute.'},{min:4,max:6,label:'Developing',description:'Uneven contributions.'},{min:0,max:3,label:'Insufficient',description:'One or two members did most of the work.'}]}
   ],
   [
-    ['SO-1', 'Complex Problem Solving',              'Ability to identify, formulate, and solve complex engineering problems by applying principles of engineering, science, and mathematics.'],
-    ['SO-2', 'Engineering Design',                   'Ability to apply engineering design to produce solutions that meet specified needs with consideration of public health, safety, and welfare, as well as global, cultural, social, environmental, and economic factors.'],
-    ['SO-3', 'Effective Communication',              'Ability to communicate effectively with a range of audiences.'],
-    ['SO-4', 'Ethics & Professional Responsibility', 'Ability to recognize ethical and professional responsibilities in engineering situations and make informed judgments, which must consider the impact of engineering solutions in global, economic, environmental, and societal contexts.'],
-    ['SO-5', 'Teamwork & Leadership',                'Ability to function effectively on a team whose members together provide leadership, create a collaborative environment, establish goals, plan tasks, and meet objectives.'],
-    ['SO-6', 'Experimentation & Analysis',           'Ability to develop and conduct appropriate experimentation, analyze and interpret data, and use engineering judgment to draw conclusions.'],
-    ['SO-7', 'Lifelong Learning',                    'Ability to acquire and apply new knowledge as needed, using appropriate learning strategies.'],
+    ['SO-1', 'Problem Solving',        'Ability to identify, formulate, and solve complex engineering problems by applying principles of engineering, science, and mathematics.'],
+    ['SO-2', 'Engineering Design',     'Ability to apply engineering design to produce solutions that meet specified needs with consideration of public health, safety, and welfare, as well as global, cultural, social, environmental, and economic factors.'],
+    ['SO-3', 'Effective Comms.',       'Ability to communicate effectively with a range of audiences.'],
+    ['SO-4', 'Ethics & Prof. Resp.',    'Ability to recognize ethical and professional responsibilities in engineering situations and make informed judgments, which must consider the impact of engineering solutions in global, economic, environmental, and societal contexts.'],
+    ['SO-5', 'Teamwork & Lead.',       'Ability to function effectively on a team whose members together provide leadership, create a collaborative environment, establish goals, plan tasks, and meet objectives.'],
+    ['SO-6', 'Experimentation',        'Ability to develop and conduct appropriate experimentation, analyze and interpret data, and use engineering judgment to draw conclusions.'],
+    ['SO-7', 'Lifelong Learning',      'Ability to acquire and apply new knowledge as needed, using appropriate learning strategies.'],
   ],
   [
     {crit:'problem_solving',       outs:[{code:'SO-1',weight:0.6,type:'direct'},{code:'SO-6',weight:0.4,type:'indirect'}]},
@@ -505,19 +519,19 @@ processOrgfw('CMU-CS', 'ABET (2026 – 2027)',
   ]
 );
 
-processOrgfw('TEKNOFEST', 'Competition Framework 2026',
+processOrgfw('TEKNOFEST', 'Competition Framework',
   [
-    {key:'preliminary_report',label:'Preliminary Design Report (ODR)',short:'Report',max:25,weight:25,color:'#6366F1',desc:'Evaluates completeness of the preliminary design report, mission definition clarity, and feasibility of the proposed design.',customRubric:[{min:22,max:25,label:'Excellent',description:'Report is comprehensive with clear mission definition and feasible preliminary design.'},{min:17,max:21,label:'Good',description:'Report covers key design elements with adequate justification.'},{min:12,max:16,label:'Developing',description:'Report structure is present but design rationale is weak.'},{min:0,max:11,label:'Insufficient',description:'Report is incomplete or missing critical sections.'}]},
-    {key:'critical_design',label:'Critical Design Review (KTR)',short:'CDR',max:30,weight:30,color:'#F59E0B',desc:'Assesses design maturity, subsystem integration completeness, and manufacturing readiness at the CDR milestone.',customRubric:[{min:27,max:30,label:'Excellent',description:'Design is mature, manufacturable, and all subsystems well-integrated.'},{min:21,max:26,label:'Good',description:'Design is mostly complete with minor integration gaps.'},{min:13,max:20,label:'Developing',description:'Design shows progress but subsystem integration unclear.'},{min:0,max:12,label:'Insufficient',description:'Design is immature or not viable for manufacturing.'}]},
-    {key:'technical_performance',label:'Technical Performance & Demo',short:'Performance',max:30,weight:30,color:'#EF4444',desc:'Evaluates actual field performance of the system during the competition mission demonstration under real conditions.',customRubric:[{min:27,max:30,label:'Excellent',description:'System performs flawlessly in field conditions.'},{min:21,max:26,label:'Good',description:'System completes primary mission with minor deviations.'},{min:13,max:20,label:'Developing',description:'System partially completes mission.'},{min:0,max:12,label:'Insufficient',description:'System fails to complete primary mission.'}]},
-    {key:'team_execution',label:'Team Execution & Presentation',short:'Team',max:15,weight:15,color:'#10B981',desc:'Assesses team coordination, role clarity, and the effectiveness of the presentation delivered during the jury evaluation.',customRubric:[{min:14,max:15,label:'Excellent',description:'Team operates cohesively with clear role distribution.'},{min:11,max:13,label:'Good',description:'Team coordination is evident.'},{min:7,max:10,label:'Developing',description:'Team roles are unclear.'},{min:0,max:6,label:'Insufficient',description:'Poor team coordination.'}]}
+    {key:'preliminary_report',label:'Design Report (ODR)',max:25,weight:25,color:'#6366F1',desc:'Evaluates completeness of the preliminary design report, mission definition clarity, and feasibility of the proposed design.',customRubric:[{min:22,max:25,label:'Excellent',description:'Report is comprehensive with clear mission definition and feasible preliminary design.'},{min:17,max:21,label:'Good',description:'Report covers key design elements with adequate justification.'},{min:12,max:16,label:'Developing',description:'Report structure is present but design rationale is weak.'},{min:0,max:11,label:'Insufficient',description:'Report is incomplete or missing critical sections.'}]},
+    {key:'critical_design',label:'Design Review (KTR)',max:30,weight:30,color:'#F59E0B',desc:'Assesses design maturity, subsystem integration completeness, and manufacturing readiness at the CDR milestone.',customRubric:[{min:27,max:30,label:'Excellent',description:'Design is mature, manufacturable, and all subsystems well-integrated.'},{min:21,max:26,label:'Good',description:'Design is mostly complete with minor integration gaps.'},{min:13,max:20,label:'Developing',description:'Design shows progress but subsystem integration unclear.'},{min:0,max:12,label:'Insufficient',description:'Design is immature or not viable for manufacturing.'}]},
+    {key:'technical_performance',label:'Performance & Demo',max:30,weight:30,color:'#EF4444',desc:'Evaluates actual field performance of the system during the competition mission demonstration under real conditions.',customRubric:[{min:27,max:30,label:'Excellent',description:'System performs flawlessly in field conditions.'},{min:21,max:26,label:'Good',description:'System completes primary mission with minor deviations.'},{min:13,max:20,label:'Developing',description:'System partially completes mission.'},{min:0,max:12,label:'Insufficient',description:'System fails to complete primary mission.'}]},
+    {key:'team_execution',label:'Team Presentation',max:15,weight:15,color:'#10B981',desc:'Assesses team coordination, role clarity, and the effectiveness of the presentation delivered during the jury evaluation.',customRubric:[{min:14,max:15,label:'Excellent',description:'Team operates cohesively with clear role distribution.'},{min:11,max:13,label:'Good',description:'Team coordination is evident.'},{min:7,max:10,label:'Developing',description:'Team roles are unclear.'},{min:0,max:6,label:'Insufficient',description:'Poor team coordination.'}]}
   ],
   [
     ['TC-1', 'Autonomy & Control',         'Aircraft performs autonomous take-off, flight, landing, and target lock-on; manual mode switching results in point deductions per competition rules.'],
     ['TC-2', 'Mission Performance',        'Successful completion of assigned mission objectives scored on accuracy, autonomous target engagement, and overall flight precision under field conditions.'],
-    ['TC-3', 'Technical Report Quality',   'Preliminary Design Report (PDR) and Critical Design Report (CDR) assessed for completeness, technical rigor, Turkish grammar compliance, and documentation standards.'],
-    ['TC-4', 'Presentation & Communication','Live team presentation evaluated on clarity, depth of technical explanation, and quality of responses to jury and advisory board questions.'],
-    ['TC-5', 'Innovation & Originality',   'Novelty in design, control algorithms, and hardware/software solutions; domestic component use and custom system development are recognized in scoring.'],
+    ['TC-3', 'Tech Report Quality',   'Preliminary Design Report (PDR) and Critical Design Report (CDR) assessed for completeness, technical rigor, Turkish grammar compliance, and documentation standards.'],
+    ['TC-4', 'Pres. & Comms',        'Live team presentation evaluated on clarity, depth of technical explanation, and quality of responses to jury and advisory board questions.'],
+    ['TC-5', 'Innovation & Orig.',   'Novelty in design, control algorithms, and hardware/software solutions; domestic component use and custom system development are recognized in scoring.'],
   ],
   [
     {crit:'preliminary_report',    outs:[{code:'TC-3',weight:0.7,type:'direct'},{code:'TC-5',weight:0.3,type:'indirect'}]},
@@ -529,18 +543,18 @@ processOrgfw('TEKNOFEST', 'Competition Framework 2026',
 
 processOrgfw('TUBITAK-2204A', 'Research Competition Framework',
   [
-    {key:'originality',label:'Originality & Creativity',short:'Originality',max:35,weight:35,color:'#8B5CF6',desc:'Evaluates novelty of the research question, uniqueness of the approach, and significance of the contribution to scientific knowledge.',customRubric:[{min:31,max:35,label:'Excellent',description:'Research question is novel and addresses a genuine gap.'},{min:24,max:30,label:'Good',description:'Research topic has originality with a clear contribution.'},{min:17,max:23,label:'Developing',description:'Topic is relevant but well-trodden.'},{min:0,max:16,label:'Insufficient',description:'No original contribution.'}]},
-    {key:'scientific_method',label:'Scientific Method & Rigor',short:'Method',max:40,weight:40,color:'#3B82F6',desc:'Assesses rigor of experimental design, hypothesis clarity, control conditions, reproducibility, and statistical validity of results.',customRubric:[{min:35,max:40,label:'Excellent',description:'Hypothesis is clearly stated and testable. Proper controls and adequate sample size.'},{min:27,max:34,label:'Good',description:'Methodology is sound with minor gaps.'},{min:19,max:26,label:'Developing',description:'Basic methodology present but controls weak.'},{min:0,max:18,label:'Insufficient',description:'No clear hypothesis or experimental design.'}]},
-    {key:'impact_and_presentation',label:'Impact & Presentation',short:'Impact',max:25,weight:25,color:'#F59E0B',desc:'Evaluates real-world applicability of research findings and the overall quality of the oral and poster presentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Results have clear real-world applicability.'},{min:17,max:21,label:'Good',description:'Potential impact is described.'},{min:12,max:16,label:'Developing',description:'Impact is mentioned but not convincingly argued.'},{min:0,max:11,label:'Insufficient',description:'No discussion of impact.'}]}
+    {key:'originality',label:'Originality',max:35,weight:35,color:'#8B5CF6',desc:'Evaluates novelty of the research question, uniqueness of the approach, and significance of the contribution to scientific knowledge.',customRubric:[{min:31,max:35,label:'Excellent',description:'Research question is novel and addresses a genuine gap.'},{min:24,max:30,label:'Good',description:'Research topic has originality with a clear contribution.'},{min:17,max:23,label:'Developing',description:'Topic is relevant but well-trodden.'},{min:0,max:16,label:'Insufficient',description:'No original contribution.'}]},
+    {key:'scientific_method',label:'Scientific Method',max:40,weight:40,color:'#3B82F6',desc:'Assesses rigor of experimental design, hypothesis clarity, control conditions, reproducibility, and statistical validity of results.',customRubric:[{min:35,max:40,label:'Excellent',description:'Hypothesis is clearly stated and testable. Proper controls and adequate sample size.'},{min:27,max:34,label:'Good',description:'Methodology is sound with minor gaps.'},{min:19,max:26,label:'Developing',description:'Basic methodology present but controls weak.'},{min:0,max:18,label:'Insufficient',description:'No clear hypothesis or experimental design.'}]},
+    {key:'impact_and_presentation',label:'Impact & Pres.',max:25,weight:25,color:'#F59E0B',desc:'Evaluates real-world applicability of research findings and the overall quality of the oral and poster presentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Results have clear real-world applicability.'},{min:17,max:21,label:'Good',description:'Potential impact is described.'},{min:12,max:16,label:'Developing',description:'Impact is mentioned but not convincingly argued.'},{min:0,max:11,label:'Insufficient',description:'No discussion of impact.'}]}
   ],
   [
-    ['RC-1', 'Originality & Creativity',      'Research question addresses a genuine, unstudied gap in scientific literature; approach is independent of textbook procedures and demonstrates student-initiated inquiry rather than replication.'],
-    ['RC-2', 'Scientific Method & Rigor',     'Hypothesis is precisely formulated and testable; experimental design includes appropriate control and variable isolation; sample size is statistically sufficient; results are reproducible and reported with uncertainty bounds.'],
-    ['RC-3', 'Literature Review Quality',     'Background research is comprehensive, citations are current and from peer-reviewed sources, and prior work is critically synthesised to motivate the research question rather than summarised superficially.'],
-    ['RC-4', 'Applicability & Impact',        'Findings address a real-world problem with a credible pathway to practical implementation; potential societal, environmental, or economic benefit is quantified or clearly argued.'],
-    ['RC-5', 'Ethics & Safety Compliance',    'All applicable research ethics protocols are observed (informed consent, animal welfare, chemical/biological hazard procedures); ethical approval documentation is present where required by TÜBİTAK guidelines.'],
-    ['RC-6', 'Comprehension & Synthesis',     'Presenter demonstrates mastery of underlying scientific principles, accurately interprets own data, and provides satisfactory, technically sound answers to jury questions without coaching.'],
-    ['RC-7', 'Design & Scope Clarity',        'Research boundaries are clearly delineated; objectives are specific, measurable, and achievable within the declared timeframe; limitations are acknowledged and their effect on conclusions is discussed.'],
+    ['RC-1', 'Orig. & Creativity',    'Research question addresses a genuine, unstudied gap in scientific literature; approach is independent of textbook procedures and demonstrates student-initiated inquiry rather than replication.'],
+    ['RC-2', 'Scientific Method',     'Hypothesis is precisely formulated and testable; experimental design includes appropriate control and variable isolation; sample size is statistically sufficient; results are reproducible and reported with uncertainty bounds.'],
+    ['RC-3', 'Literature Review',     'Background research is comprehensive, citations are current and from peer-reviewed sources, and prior work is critically synthesised to motivate the research question rather than summarised superficially.'],
+    ['RC-4', 'App. & Impact',         'Findings address a real-world problem with a credible pathway to practical implementation; potential societal, environmental, or economic benefit is quantified or clearly argued.'],
+    ['RC-5', 'Ethics & Safety',       'All applicable research ethics protocols are observed (informed consent, animal welfare, chemical/biological hazard procedures); ethical approval documentation is present where required by TÜBİTAK guidelines.'],
+    ['RC-6', 'Comp. & Synthesis',     'Presenter demonstrates mastery of underlying scientific principles, accurately interprets own data, and provides satisfactory, technically sound answers to jury questions without coaching.'],
+    ['RC-7', 'Scope Clarity',         'Research boundaries are clearly delineated; objectives are specific, measurable, and achievable within the declared timeframe; limitations are acknowledged and their effect on conclusions is discussed.'],
   ],
   [
     {crit:'originality',             outs:[{code:'RC-1',weight:0.6,type:'direct'},{code:'RC-7',weight:0.4,type:'indirect'}]},
@@ -551,16 +565,16 @@ processOrgfw('TUBITAK-2204A', 'Research Competition Framework',
 
 processOrgfw('IEEE-APSSDC', 'Design Contest Framework',
   [
-    {key:'creativity',label:'Creativity & Innovation',short:'Creativity',max:30,weight:30,color:'#EC4899',desc:'Evaluates novelty of the antenna design concept relative to existing literature and current state-of-the-art solutions.',customRubric:[{min:27,max:30,label:'Excellent',description:'Novel topology or technique not commonly seen in literature.'},{min:21,max:26,label:'Good',description:'Design shows originality in at least one dimension.'},{min:13,max:20,label:'Developing',description:'Conventional approaches with minor modifications.'},{min:0,max:12,label:'Insufficient',description:'Direct copy with no meaningful contribution.'}]},
-    {key:'technical_merit',label:'Technical Merit',short:'Technical',max:40,weight:40,color:'#3B82F6',desc:'Assesses closeness of agreement between simulation and measurement results, and overall RF performance quality.',customRubric:[{min:35,max:40,label:'Excellent',description:'Simulation and measurement results agree closely.'},{min:27,max:34,label:'Good',description:'Solid results with acceptable agreement.'},{min:19,max:26,label:'Developing',description:'Simulation results presented but measurement validation limited.'},{min:0,max:18,label:'Insufficient',description:'No measurement results or significant discrepancy.'}]},
-    {key:'application_and_presentation',label:'Application & Presentation',short:'Presentation',max:30,weight:30,color:'#F59E0B',desc:'Evaluates clarity of the proposed real-world application use case and the quality of the overall design presentation.',customRubric:[{min:27,max:30,label:'Excellent',description:'Clear real-world application with compelling use case.'},{min:21,max:26,label:'Good',description:'Application context established.'},{min:13,max:20,label:'Developing',description:'Application mentioned but not developed.'},{min:0,max:12,label:'Insufficient',description:'No clear application.'}]}
+    {key:'creativity',label:'Creativity',max:30,weight:30,color:'#EC4899',desc:'Evaluates novelty of the antenna design concept relative to existing literature and current state-of-the-art solutions.',customRubric:[{min:27,max:30,label:'Excellent',description:'Novel topology or technique not commonly seen in literature.'},{min:21,max:26,label:'Good',description:'Design shows originality in at least one dimension.'},{min:13,max:20,label:'Developing',description:'Conventional approaches with minor modifications.'},{min:0,max:12,label:'Insufficient',description:'Direct copy with no meaningful contribution.'}]},
+    {key:'technical_merit',label:'Technical Merit',max:40,weight:40,color:'#3B82F6',desc:'Assesses closeness of agreement between simulation and measurement results, and overall RF performance quality.',customRubric:[{min:35,max:40,label:'Excellent',description:'Simulation and measurement results agree closely.'},{min:27,max:34,label:'Good',description:'Solid results with acceptable agreement.'},{min:19,max:26,label:'Developing',description:'Simulation results presented but measurement validation limited.'},{min:0,max:18,label:'Insufficient',description:'No measurement results or significant discrepancy.'}]},
+    {key:'application_and_presentation',label:'App. & Presentation',max:30,weight:30,color:'#F59E0B',desc:'Evaluates clarity of the proposed real-world application use case and the quality of the overall design presentation.',customRubric:[{min:27,max:30,label:'Excellent',description:'Clear real-world application with compelling use case.'},{min:21,max:26,label:'Good',description:'Application context established.'},{min:13,max:20,label:'Developing',description:'Application mentioned but not developed.'},{min:0,max:12,label:'Insufficient',description:'No clear application.'}]}
   ],
   [
-    ['DC-1', 'Creativity & Innovation',       'Design introduces a novel antenna topology, feeding mechanism, or material application not commonly documented in current literature; innovation is substantiated by comparative analysis against state-of-the-art solutions.'],
+    ['DC-1', 'Creativity & Innov.',            'Design introduces a novel antenna topology, feeding mechanism, or material application not commonly documented in current literature; innovation is substantiated by comparative analysis against state-of-the-art solutions.'],
     ['DC-2', 'Technical Merit',               'Simulated and measured antenna parameters (gain, bandwidth, radiation pattern, impedance matching) are in close agreement; RF performance meets or exceeds the specified design requirements for the target application.'],
-    ['DC-3', 'Fabrication & Validation',      'Prototype is cleanly fabricated with dimensional accuracy; measured S-parameters and radiation characteristics are obtained via calibrated vector network analyser and anechoic chamber or comparable measurement setup.'],
-    ['DC-4', 'Practical Application',         'A specific real-world use case (e.g., 5G mmWave, vehicular radar, biomedical implant, IoT sensor) is clearly defined; design trade-offs are directly linked to application constraints such as size, frequency band, or power level.'],
-    ['DC-5', 'Oral Presentation & Q&A',       'Team presents the complete design process — requirements, synthesis, simulation, fabrication, and measurement — in a structured and fluent manner; technical questions from the judging panel are answered accurately and confidently.'],
+    ['DC-3', 'Fab. & Validation',              'Prototype is cleanly fabricated with dimensional accuracy; measured S-parameters and radiation characteristics are obtained via calibrated vector network analyser and anechoic chamber or comparable measurement setup.'],
+    ['DC-4', 'Practical App.',                'A specific real-world use case (e.g., 5G mmWave, vehicular radar, biomedical implant, IoT sensor) is clearly defined; design trade-offs are directly linked to application constraints such as size, frequency band, or power level.'],
+    ['DC-5', 'Oral Pres. & Q&A',              'Team presents the complete design process — requirements, synthesis, simulation, fabrication, and measurement — in a structured and fluent manner; technical questions from the judging panel are answered accurately and confidently.'],
   ],
   [
     {crit:'creativity',                outs:[{code:'DC-1',weight:0.7,type:'direct'},{code:'DC-4',weight:0.3,type:'indirect'}]},
@@ -571,19 +585,19 @@ processOrgfw('IEEE-APSSDC', 'Design Contest Framework',
 
 processOrgfw('CANSAT', 'Mission Framework',
   [
-    {key:'design_compliance',label:'Design Constraints Compliance',short:'Compliance',max:20,weight:20,color:'#6366F1',desc:'Evaluates adherence to all specified volume, mass, and structural design constraints, with documented margin analysis.',customRubric:[{min:18,max:20,label:'Excellent',description:'All constraints fully met with documented margin analysis.'},{min:14,max:17,label:'Good',description:'Constraints met with minor deviations.'},{min:10,max:13,label:'Developing',description:'One or more constraints marginally exceeded.'},{min:0,max:9,label:'Insufficient',description:'Multiple constraints violated.'}]},
-    {key:'mission_execution',label:'Mission Execution & Telemetry',short:'Mission',max:35,weight:35,color:'#EF4444',desc:'Assesses successful execution of primary and secondary mission objectives with continuous and reliable telemetry throughout the flight.',customRubric:[{min:31,max:35,label:'Excellent',description:'Primary and secondary missions fully executed. Continuous telemetry.'},{min:24,max:30,label:'Good',description:'Primary mission completed. Minor telemetry gaps.'},{min:17,max:23,label:'Developing',description:'Primary mission partially completed.'},{min:0,max:16,label:'Insufficient',description:'Mission fails to execute.'}]},
-    {key:'data_and_documentation',label:'Data Analysis & Documentation',short:'Data',max:25,weight:25,color:'#3B82F6',desc:'Evaluates depth and appropriateness of post-flight data analysis and the overall quality and completeness of written documentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Flight data thoroughly analyzed with appropriate methods.'},{min:17,max:21,label:'Good',description:'Data analysis competent. Post-flight report addresses key findings.'},{min:12,max:16,label:'Developing',description:'Data presented but analysis shallow.'},{min:0,max:11,label:'Insufficient',description:'Raw data dump with no meaningful analysis.'}]},
-    {key:'safety_and_recovery',label:'Safety & Recovery',short:'Safety',max:20,weight:20,color:'#10B981',desc:'Assesses adherence to all range safety procedures, descent rate control within specification, and successful CanSat recovery.',customRubric:[{min:18,max:20,label:'Excellent',description:'Recovered intact. Descent rate within spec. All safety procedures followed.'},{min:14,max:17,label:'Good',description:'Recovery successful with minor issues.'},{min:10,max:13,label:'Developing',description:'Recovery partial or descent rate deviates.'},{min:0,max:9,label:'Insufficient',description:'CanSat lost or damaged.'}]}
+    {key:'design_compliance',label:'Design Compliance',max:20,weight:20,color:'#6366F1',desc:'Evaluates adherence to all specified volume, mass, and structural design constraints, with documented margin analysis.',customRubric:[{min:18,max:20,label:'Excellent',description:'All constraints fully met with documented margin analysis.'},{min:14,max:17,label:'Good',description:'Constraints met with minor deviations.'},{min:10,max:13,label:'Developing',description:'One or more constraints marginally exceeded.'},{min:0,max:9,label:'Insufficient',description:'Multiple constraints violated.'}]},
+    {key:'mission_execution',label:'Mission & Telemetry',max:35,weight:35,color:'#EF4444',desc:'Assesses successful execution of primary and secondary mission objectives with continuous and reliable telemetry throughout the flight.',customRubric:[{min:31,max:35,label:'Excellent',description:'Primary and secondary missions fully executed. Continuous telemetry.'},{min:24,max:30,label:'Good',description:'Primary mission completed. Minor telemetry gaps.'},{min:17,max:23,label:'Developing',description:'Primary mission partially completed.'},{min:0,max:16,label:'Insufficient',description:'Mission fails to execute.'}]},
+    {key:'data_and_documentation',label:'Data Analysis',max:25,weight:25,color:'#3B82F6',desc:'Evaluates depth and appropriateness of post-flight data analysis and the overall quality and completeness of written documentation.',customRubric:[{min:22,max:25,label:'Excellent',description:'Flight data thoroughly analyzed with appropriate methods.'},{min:17,max:21,label:'Good',description:'Data analysis competent. Post-flight report addresses key findings.'},{min:12,max:16,label:'Developing',description:'Data presented but analysis shallow.'},{min:0,max:11,label:'Insufficient',description:'Raw data dump with no meaningful analysis.'}]},
+    {key:'safety_and_recovery',label:'Safety & Recovery',max:20,weight:20,color:'#10B981',desc:'Assesses adherence to all range safety procedures, descent rate control within specification, and successful CanSat recovery.',customRubric:[{min:18,max:20,label:'Excellent',description:'Recovered intact. Descent rate within spec. All safety procedures followed.'},{min:14,max:17,label:'Good',description:'Recovery successful with minor issues.'},{min:10,max:13,label:'Developing',description:'Recovery partial or descent rate deviates.'},{min:0,max:9,label:'Insufficient',description:'CanSat lost or damaged.'}]}
   ],
   [
-    ['CS-1', 'Design Constraints Compliance', 'CanSat fits within the prescribed cylindrical envelope (66 mm × 115 mm, ≤ 310 g); all structural, thermal, and power budgets are documented with positive margins and verified against flight hardware.'],
-    ['CS-2', 'Primary Mission Execution',     'Air pressure and air temperature are sampled at ≥ 1 Hz throughout descent; data is stored on-board and simultaneously downlinked to the ground station; post-flight data completeness exceeds 95 % of expected samples.'],
-    ['CS-3', 'Secondary Mission Innovation',  'Team-defined secondary mission demonstrates scientific or engineering creativity (e.g., imaging, atmospheric sensing, attitude determination); mission objective is novel, clearly scoped, and successfully executed in flight.'],
-    ['CS-4', 'Descent Control & Recovery',    'Passive descent system achieves a terminal velocity between 10 m/s and 15 m/s throughout the altitude range; CanSat is recovered intact with no damage to electronics or structure after landing.'],
-    ['CS-5', 'Ground Station & Software',     'Ground station software displays real-time telemetry in engineering units with visual altitude and temperature plots; data is automatically logged to CSV; any reception gaps are flagged and interpolated correctly.'],
-    ['CS-6', 'Data Analysis & Documentation', 'Post-flight report includes altitude profile reconstruction, temperature-altitude correlation, sensor calibration discussion, anomaly root-cause analysis, and quantitative comparison between predicted and measured performance.'],
-    ['CS-7', 'Safety & Range Compliance',     'All range safety rules are followed including pre-flight hardware inspection, parachute deployment verification, launch pad clearance procedures, and post-flight range sweep; no safety violations are recorded by range safety officers.'],
+    ['CS-1', 'Design Compliance',             'CanSat fits within the prescribed cylindrical envelope (66 mm × 115 mm, ≤ 310 g); all structural, thermal, and power budgets are documented with positive margins and verified against flight hardware.'],
+    ['CS-2', 'Primary Mission',               'Air pressure and air temperature are sampled at ≥ 1 Hz throughout descent; data is stored on-board and simultaneously downlinked to the ground station; post-flight data completeness exceeds 95 % of expected samples.'],
+    ['CS-3', 'Secondary Mission',             'Team-defined secondary mission demonstrates scientific or engineering creativity (e.g., imaging, atmospheric sensing, attitude determination); mission objective is novel, clearly scoped, and successfully executed in flight.'],
+    ['CS-4', 'Descent & Recovery',            'Passive descent system achieves a terminal velocity between 10 m/s and 15 m/s throughout the altitude range; CanSat is recovered intact with no damage to electronics or structure after landing.'],
+    ['CS-5', 'Ground Station',                'Ground station software displays real-time telemetry in engineering units with visual altitude and temperature plots; data is automatically logged to CSV; any reception gaps are flagged and interpolated correctly.'],
+    ['CS-6', 'Analysis & Docs',               'Post-flight report includes altitude profile reconstruction, temperature-altitude correlation, sensor calibration discussion, anomaly root-cause analysis, and quantitative comparison between predicted and measured performance.'],
+    ['CS-7', 'Range Safety',                  'All range safety rules are followed including pre-flight hardware inspection, parachute deployment verification, launch pad clearance procedures, and post-flight range sweep; no safety violations are recorded by range safety officers.'],
   ],
   [
     {crit:'design_compliance',     outs:[{code:'CS-1',weight:0.7,type:'direct'},{code:'CS-7',weight:0.3,type:'indirect'}]},
@@ -606,32 +620,32 @@ const periodData = [];
 
 const orgPeriodsDef = {
   'TEDU-EE': [
-    {name:'Spring 2026',s:'Spring',start:TODAY,end:TODAY,desc:'EE 491/492 Senior Design — 1-Day Poster Evaluation'},
-    {name:'Fall 2025',s:'Fall',start:'2026-01-09',end:'2026-01-09',desc:'EE 491/492 Fall Senior Design — 1-Day Poster Day'},
-    {name:'Spring 2025',s:'Spring',start:'2025-06-11',end:'2025-06-11',desc:'EE Senior Design Spring — 1-Day Poster Presentations'},
-    {name:'Fall 2024',s:'Fall',start:'2025-01-10',end:'2025-01-10',desc:'EE Senior Design Fall — 1-Day Poster Day'}],
+    {name:CUR_SEMESTER_LABEL,outcomeName:`MÜDEK-${CUR_SEMESTER_LABEL}`,criteriaName:CUR_SEMESTER_LABEL,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'EE 491/492 Senior Design — 1-Day Poster Evaluation'},
+    {name:'Fall 2025',outcomeName:'MÜDEK-Fall 2025',criteriaName:'Fall 2025',s:'Fall',start:'2026-01-09',end:'2026-01-09',desc:'EE 491/492 Fall Senior Design — 1-Day Poster Day'},
+    {name:'Spring 2025',outcomeName:'MÜDEK-Spring 2025',criteriaName:'Spring 2025',s:'Spring',start:'2025-06-11',end:'2025-06-11',desc:'EE Senior Design Spring — 1-Day Poster Presentations'},
+    {name:'Fall 2024',outcomeName:'MÜDEK-Fall 2024',criteriaName:'Fall 2024',s:'Fall',start:'2025-01-10',end:'2025-01-10',desc:'EE Senior Design Fall — 1-Day Poster Day'}],
   'CMU-CS': [
-    {name:'Spring 2026',s:'Spring',start:TODAY,end:TODAY,desc:'CS Capstone — 1-Day Demo Day'},
-    {name:'Fall 2025',s:'Fall',start:'2025-12-06',end:'2025-12-06',desc:'CS Fall Capstone — 1-Day Demo Day'},
-    {name:'Spring 2025',s:'Spring',start:'2025-04-27',end:'2025-04-27',desc:'CS Spring Capstone — 1-Day Demo Day'},
-    {name:'Fall 2024',s:'Fall',start:'2024-12-07',end:'2024-12-07',desc:'CS Fall Capstone — 1-Day Demo Day'}],
+    {name:CUR_SEMESTER_LABEL,outcomeName:`ABET-${CUR_SEMESTER_LABEL}`,criteriaName:CUR_SEMESTER_LABEL,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'CS Capstone — 1-Day Demo Day'},
+    {name:'Fall 2025',outcomeName:'ABET-Fall 2025',criteriaName:'Fall 2025',s:'Fall',start:'2025-12-06',end:'2025-12-06',desc:'CS Fall Capstone — 1-Day Demo Day'},
+    {name:'Spring 2025',outcomeName:'ABET-Spring 2025',criteriaName:'Spring 2025',s:'Spring',start:'2025-04-27',end:'2025-04-27',desc:'CS Spring Capstone — 1-Day Demo Day'},
+    {name:'Fall 2024',outcomeName:'ABET-Fall 2024',criteriaName:'Fall 2024',s:'Fall',start:'2024-12-07',end:'2024-12-07',desc:'CS Fall Capstone — 1-Day Demo Day'}],
   'TEKNOFEST': [
-    {name:'2026 Season',s:'Evaluation',start:TODAY,end:TODAY,desc:'TEKNOFEST 2026 Aviation Competition — 1-Day Finals (Demo)'},
-    {name:'2025 Season',s:'Evaluation',start:'2025-07-25',end:'2025-07-27',desc:'TEKNOFEST 2025 Aviation Competition — 3-Day Finals (Jul 25–27)'},
-    {name:'2024 Season',s:'Evaluation',start:'2024-07-25',end:'2024-07-27',desc:'TEKNOFEST 2024 Aviation Competition — 3-Day Finals (Jul 25–27)'}],
+    {name:CUR_SEASON_LABEL,outcomeName:`CF-${CUR_YEAR}`,criteriaName:CUR_SEASON_LABEL,s:'Evaluation',start:TODAY,end:TODAY,desc:`TEKNOFEST ${CUR_YEAR} Aviation Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Season',outcomeName:'CF-2025',criteriaName:'2025 Season',s:'Evaluation',start:'2025-07-25',end:'2025-07-27',desc:'TEKNOFEST 2025 Aviation Competition — 3-Day Finals (Jul 25–27)'},
+    {name:'2024 Season',outcomeName:'CF-2024',criteriaName:'2024 Season',s:'Evaluation',start:'2024-07-25',end:'2024-07-27',desc:'TEKNOFEST 2024 Aviation Competition — 3-Day Finals (Jul 25–27)'}],
   'TUBITAK-2204A': [
-    {name:'2026 Competition',s:'Evaluation',start:TODAY,end:TODAY,desc:'TÜBİTAK 2204-A 2026 National Science Competition — 1-Day Finals (Demo)'},
-    {name:'2025 Competition',s:'Evaluation',start:'2025-06-09',end:'2025-06-10',desc:'TÜBİTAK 2204-A 2025 National Science Competition — 2-Day Finals (Jun 9–10)'},
-    {name:'2024 Competition',s:'Evaluation',start:'2024-06-09',end:'2024-06-10',desc:'TÜBİTAK 2204-A 2024 National Science Competition — 2-Day Finals (Jun 9–10)'}],
+    {name:CUR_COMP_LABEL,outcomeName:`RCF-${CUR_YEAR}`,criteriaName:CUR_COMP_LABEL,s:'Evaluation',start:TODAY,end:TODAY,desc:`TÜBİTAK 2204-A ${CUR_YEAR} National Science Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Competition',outcomeName:'RCF-2025',criteriaName:'2025 Competition',s:'Evaluation',start:'2025-06-09',end:'2025-06-10',desc:'TÜBİTAK 2204-A 2025 National Science Competition — 2-Day Finals (Jun 9–10)'},
+    {name:'2024 Competition',outcomeName:'RCF-2024',criteriaName:'2024 Competition',s:'Evaluation',start:'2024-06-09',end:'2024-06-10',desc:'TÜBİTAK 2204-A 2024 National Science Competition — 2-Day Finals (Jun 9–10)'}],
   'IEEE-APSSDC': [
-    {name:'2026 Contest',s:'Evaluation',start:TODAY,end:TODAY,desc:'IEEE AP-S Student Design Contest 2026 — 1-Day Evaluation (Demo)'},
-    {name:'2025 Contest',s:'Evaluation',start:'2025-07-25',end:'2025-07-26',desc:'IEEE AP-S Student Design Contest 2025 — 2-Day Evaluation (Jul 25–26)'},
-    {name:'2024 Contest',s:'Evaluation',start:'2024-07-25',end:'2024-07-26',desc:'IEEE AP-S Student Design Contest 2024 — 2-Day Evaluation (Jul 25–26)'}],
+    {name:CUR_CONTEST_LABEL,outcomeName:`DCF-${CUR_YEAR}`,criteriaName:CUR_CONTEST_LABEL,s:'Evaluation',start:TODAY,end:TODAY,desc:`IEEE AP-S Student Design Contest ${CUR_YEAR} — 1-Day Evaluation (Demo)`},
+    {name:'2025 Contest',outcomeName:'DCF-2025',criteriaName:'2025 Contest',s:'Evaluation',start:'2025-07-25',end:'2025-07-26',desc:'IEEE AP-S Student Design Contest 2025 — 2-Day Evaluation (Jul 25–26)'},
+    {name:'2024 Contest',outcomeName:'DCF-2024',criteriaName:'2024 Contest',s:'Evaluation',start:'2024-07-25',end:'2024-07-26',desc:'IEEE AP-S Student Design Contest 2024 — 2-Day Evaluation (Jul 25–26)'}],
   'CANSAT': [
-    {name:'2026 Season',s:'Spring',start:TODAY,end:TODAY,desc:'CanSat 2026 Launch Competition — 1-Day Finals (Demo)'},
-    {name:'2025 Season',s:'Spring',start:'2025-06-24',end:'2025-06-26',desc:'CanSat 2025 Launch Competition — 3-Day Finals (Jun 24–26)'},
-    {name:'2024 Season',s:'Spring',start:'2024-06-24',end:'2024-06-26',desc:'CanSat 2024 Launch Competition — 3-Day Finals (Jun 24–26)'},
-    {name:'2027 Season (Draft)',s:'Spring',start:'2027-06-24',end:'2027-06-26',desc:'CanSat 2027 — Planning Phase',draft:true}],
+    {name:CUR_SEASON_LABEL,outcomeName:`MF-${CUR_YEAR}`,criteriaName:CUR_SEASON_LABEL,s:'Spring',start:TODAY,end:TODAY,desc:`CanSat ${CUR_YEAR} Launch Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Season',outcomeName:'MF-2025',criteriaName:'2025 Season',s:'Spring',start:'2025-06-24',end:'2025-06-26',desc:'CanSat 2025 Launch Competition — 3-Day Finals (Jun 24–26)'},
+    {name:'2024 Season',outcomeName:'MF-2024',criteriaName:'2024 Season',s:'Spring',start:'2024-06-24',end:'2024-06-26',desc:'CanSat 2024 Launch Competition — 3-Day Finals (Jun 24–26)'},
+    {name:'2027 Season (Draft)',outcomeName:'MF-2027 (Draft)',criteriaName:'2027 Season (Draft)',s:'Spring',start:'2027-06-24',end:'2027-06-26',desc:'CanSat 2027 — Planning Phase',draft:true}],
 };
 
 // Criteria evolution: idx=0 is NEVER touched (current period preserved exactly)
@@ -657,8 +671,25 @@ const criteriaEvolution = {
           {min:4,max:6,label:'Developing',description:'Contribution is unbalanced. One or two members appear passive.'},
           {min:0,max:3,label:'Insufficient',description:'Single-person dominance. Remaining members show little involvement.'},
         ],
-      }},
-    2:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report Quality',delivery:'Oral Presentation'},shortLabels:{design:'Report',delivery:'Oral'},
+      },
+      mapsOverride:[
+        {crit:'technical',outs:[
+          {code:'PO 1.2',weight:0.35,type:'direct'},{code:'PO 2',weight:0.30,type:'direct'},
+          {code:'PO 3.1',weight:0.20,type:'direct'},{code:'PO 3.2',weight:0.15,type:'direct'},
+          {code:'PO 1.1',type:'indirect'},{code:'PO 4',type:'indirect'},{code:'PO 5',type:'indirect'},
+        ]},
+        {crit:'design',outs:[
+          {code:'PO 9.2',weight:0.85,type:'direct'},{code:'PO 6.1',weight:0.15,type:'direct'},
+        ]},
+        {crit:'delivery',outs:[
+          {code:'PO 9.1',weight:1.0,type:'direct'},{code:'PO 6.2',type:'indirect'},{code:'PO 10.2',type:'indirect'},
+        ]},
+        {crit:'teamwork',outs:[
+          {code:'PO 8.1',weight:0.5,type:'direct'},{code:'PO 8.2',weight:0.5,type:'direct'},
+          {code:'PO 7.1',type:'indirect'},{code:'PO 7.2',type:'indirect'},{code:'PO 10.1',type:'indirect'},{code:'PO 11',type:'indirect'},
+        ]},
+      ]},
+    2:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report Quality',delivery:'Oral Presentation'},
       descOverrides:{
         technical:'Evaluates engineering problem formulation, design methodology, and application of domain-specific knowledge.',
         design:'Assesses the quality and structure of the written report including references, formatting, and technical clarity.',
@@ -684,8 +715,25 @@ const criteriaEvolution = {
           {min:13,max:20,label:'Developing',description:'Problem statement exists but technical depth is shallow.'},
           {min:0,max:12,label:'Insufficient',description:'Vague problem definition. Design decisions are not supported.'},
         ],
-      }},
-    3:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report',delivery:'Presentation',teamwork:'Team Participation'},shortLabels:{design:'Report',delivery:'Pres.',teamwork:'Team'},
+      },
+      mapsOverride:[
+        {crit:'technical',outs:[
+          {code:'PO 1.2',weight:0.40,type:'direct'},{code:'PO 2',weight:0.35,type:'direct'},
+          {code:'PO 3.1',weight:0.25,type:'direct'},
+          {code:'PO 1.1',type:'indirect'},{code:'PO 5',type:'indirect'},
+        ]},
+        {crit:'design',outs:[
+          {code:'PO 9.2',weight:0.70,type:'direct'},{code:'PO 10.1',weight:0.30,type:'direct'},
+        ]},
+        {crit:'delivery',outs:[
+          {code:'PO 9.1',weight:0.80,type:'direct'},{code:'PO 10.2',weight:0.20,type:'direct'},{code:'PO 6.2',type:'indirect'},
+        ]},
+        {crit:'teamwork',outs:[
+          {code:'PO 8.1',weight:0.5,type:'direct'},{code:'PO 8.2',weight:0.5,type:'direct'},
+          {code:'PO 7.1',type:'indirect'},{code:'PO 11',type:'indirect'},
+        ]},
+      ]},
+    3:{weights:{technical:35,design:25,delivery:25,teamwork:15},labels:{design:'Written Report',delivery:'Presentation',teamwork:'Team Participation'},
       descOverrides:{
         technical:'Assesses the fundamental soundness of the engineering approach and adequacy of technical justification.',
         design:'Evaluates the organization, completeness, and clarity of the written project report.',
@@ -713,7 +761,23 @@ const criteriaEvolution = {
           {min:5,max:7,label:'Developing',description:'Participation is uneven among team members.'},
           {min:0,max:4,label:'Below Standard',description:'Only one member carries the project.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'technical',outs:[
+          {code:'PO 1.2',weight:0.50,type:'direct'},{code:'PO 2',weight:0.50,type:'direct'},
+          {code:'PO 1.1',type:'indirect'},
+        ]},
+        {crit:'design',outs:[
+          {code:'PO 9.2',weight:1.0,type:'direct'},
+        ]},
+        {crit:'delivery',outs:[
+          {code:'PO 9.1',weight:1.0,type:'direct'},
+        ]},
+        {crit:'teamwork',outs:[
+          {code:'PO 8.1',weight:0.5,type:'direct'},{code:'PO 8.2',weight:0.5,type:'direct'},
+          {code:'PO 7.1',type:'indirect'},{code:'PO 11',type:'indirect'},
+        ]},
+      ]},
   },
   'CMU-CS': {
     1:{weights:{problem_solving:25,system_design:25,implementation_quality:18,communication:22,teamwork:10},labels:{communication:'Communication Skills'},
@@ -731,7 +795,22 @@ const criteriaEvolution = {
           {min:10,max:13,label:'Developing',description:'Key ideas are communicated but structure or clarity needs work.'},
           {min:0,max:9,label:'Insufficient',description:'Communication is unclear or poorly organized.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'problem_solving',outs:[
+          {code:'SO-1',weight:0.7,type:'direct'},{code:'SO-6',weight:0.3,type:'direct'},
+        ]},
+        {crit:'system_design',outs:[
+          {code:'SO-2',weight:0.7,type:'direct'},{code:'SO-1',weight:0.3,type:'indirect'},
+        ]},
+        {crit:'implementation_quality',outs:[
+          {code:'SO-6',weight:0.6,type:'direct'},{code:'SO-7',weight:0.4,type:'direct'},
+        ]},
+        {crit:'communication',outs:[
+          {code:'SO-3',weight:0.8,type:'direct'},{code:'SO-4',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'teamwork',outs:[{code:'SO-5',weight:1.0,type:'direct'}]},
+      ]},
     2:{weights:{problem_solving:30,system_design:25,implementation_quality:20,communication:15,teamwork:10},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture'},
       descOverrides:{
         problem_solving:'Assesses analytical rigor, problem decomposition quality, and identification of constraints and edge cases.',
@@ -753,7 +832,24 @@ const criteriaEvolution = {
           {min:12,max:16,label:'Developing',description:'Some structure exists but architectural choices are ad-hoc.'},
           {min:0,max:11,label:'Insufficient',description:'No discernible architecture or design rationale.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'problem_solving',outs:[
+          {code:'SO-1',weight:0.5,type:'direct'},{code:'SO-6',weight:0.3,type:'direct'},{code:'SO-2',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'system_design',outs:[
+          {code:'SO-2',weight:1.0,type:'direct'},
+        ]},
+        {crit:'implementation_quality',outs:[
+          {code:'SO-6',weight:0.7,type:'direct'},{code:'SO-7',weight:0.3,type:'indirect'},
+        ]},
+        {crit:'communication',outs:[
+          {code:'SO-3',weight:0.6,type:'direct'},{code:'SO-4',weight:0.4,type:'direct'},
+        ]},
+        {crit:'teamwork',outs:[
+          {code:'SO-5',weight:0.8,type:'direct'},{code:'SO-7',weight:0.2,type:'indirect'},
+        ]},
+      ]},
     3:{weights:{problem_solving:30,system_design:30,implementation_quality:20,communication:20,teamwork:0},labels:{problem_solving:'Analytical Thinking',system_design:'Software Architecture',communication:'Communication & Collaboration'},removeCriteria:['teamwork'],
       descOverrides:{
         problem_solving:'Evaluates structured problem decomposition, constraint analysis, and the rigor of the proposed solution approach.',
@@ -780,10 +876,24 @@ const criteriaEvolution = {
           {min:10,max:13,label:'Developing',description:'Documentation is sparse. Collaboration is mentioned but not demonstrated.'},
           {min:0,max:9,label:'Insufficient',description:'Little documentation. No evidence of structured collaboration.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'problem_solving',outs:[
+          {code:'SO-1',weight:0.6,type:'direct'},{code:'SO-6',weight:0.4,type:'direct'},
+        ]},
+        {crit:'system_design',outs:[
+          {code:'SO-2',weight:0.8,type:'direct'},{code:'SO-1',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'implementation_quality',outs:[
+          {code:'SO-6',weight:1.0,type:'direct'},
+        ]},
+        {crit:'communication',outs:[
+          {code:'SO-3',weight:1.0,type:'direct'},
+        ]},
+      ]},
   },
   'TEKNOFEST': {
-    1:{labels:{team_execution:'Team Coordination'},
+    1:{weights:{preliminary_report:20,critical_design:30,technical_performance:40,team_execution:10},labels:{team_execution:'Team Coordination'},
       descOverrides:{
         preliminary_report:'Assesses preliminary design report completeness, mission clarity, and feasibility of the proposed concept.',
         critical_design:'Evaluates design maturity, subsystem readiness, and manufacturing feasibility at the CDR milestone.',
@@ -791,13 +901,39 @@ const criteriaEvolution = {
         team_execution:'Evaluates team coordination quality, role assignment clarity, and effectiveness during jury presentation.',
       },
       rubricOverrides:{
+        preliminary_report:[
+          {min:22,max:25,label:'Excellent',description:'Report is thorough with well-reasoned mission definition and a feasible preliminary design.'},
+          {min:17,max:21,label:'Good',description:'Report covers key design elements with adequate technical justification.'},
+          {min:12,max:16,label:'Developing',description:'Report structure is present but design rationale is underdeveloped.'},
+          {min:0,max:11,label:'Insufficient',description:'Report is incomplete or missing critical sections.'},
+        ],
+        technical_performance:[
+          {min:27,max:30,label:'Excellent',description:'System achieves full mission objectives in field conditions with no critical failures.'},
+          {min:21,max:26,label:'Good',description:'Primary mission completed successfully. Minor deviations from planned performance.'},
+          {min:13,max:20,label:'Developing',description:'System partially completes mission. Key objectives only partly achieved.'},
+          {min:0,max:12,label:'Insufficient',description:'System fails to complete the primary mission under field conditions.'},
+        ],
         team_execution:[
           {min:14,max:15,label:'Excellent',description:'Team works as a cohesive unit with clear coordination and mutual support.'},
           {min:11,max:13,label:'Good',description:'Coordination is evident. Roles are generally clear.'},
           {min:7,max:10,label:'Developing',description:'Some coordination gaps. Role overlap or confusion observed.'},
           {min:0,max:6,label:'Insufficient',description:'Team appears disorganized with no clear coordination structure.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'preliminary_report',outs:[
+          {code:'TC-3',weight:0.6,type:'direct'},{code:'TC-5',weight:0.4,type:'direct'},
+        ]},
+        {crit:'critical_design',outs:[
+          {code:'TC-3',weight:0.5,type:'direct'},{code:'TC-1',weight:0.3,type:'direct'},{code:'TC-5',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'technical_performance',outs:[
+          {code:'TC-2',weight:0.7,type:'direct'},{code:'TC-1',weight:0.3,type:'direct'},
+        ]},
+        {crit:'team_execution',outs:[
+          {code:'TC-4',weight:1.0,type:'direct'},
+        ]},
+      ]},
     2:{weights:{preliminary_report:30,critical_design:35,technical_performance:35,team_execution:0},labels:{critical_design:'Design Review',technical_performance:'Field Performance'},removeCriteria:['team_execution'],
       descOverrides:{
         preliminary_report:'Assesses the thoroughness and technical depth of the preliminary design documentation.',
@@ -817,23 +953,57 @@ const criteriaEvolution = {
           {min:13,max:20,label:'Developing',description:'Partial field success. Key objectives only partially achieved.'},
           {min:0,max:12,label:'Insufficient',description:'System fails to perform in field conditions.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'preliminary_report',outs:[
+          {code:'TC-3',weight:0.8,type:'direct'},{code:'TC-5',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'critical_design',outs:[
+          {code:'TC-3',weight:0.6,type:'direct'},{code:'TC-1',weight:0.4,type:'direct'},
+        ]},
+        {crit:'technical_performance',outs:[
+          {code:'TC-2',weight:0.6,type:'direct'},{code:'TC-1',weight:0.3,type:'direct'},{code:'TC-5',weight:0.1,type:'indirect'},
+        ]},
+      ]},
   },
   'TUBITAK-2204A': {
-    1:{labels:{impact_and_presentation:'Presentation & Impact'},
+    1:{weights:{originality:40,scientific_method:35,impact_and_presentation:25},labels:{impact_and_presentation:'Presentation & Impact'},
       descOverrides:{
         originality:'Evaluates the novelty of the research question and uniqueness of the proposed methodology.',
         scientific_method:'Assesses experimental design rigor, hypothesis clarity, and statistical validity of results.',
         impact_and_presentation:'Evaluates presentation quality and the ability to articulate real-world applicability of findings.',
       },
       rubricOverrides:{
+        originality:[
+          {min:31,max:35,label:'Excellent',description:'Research addresses a genuinely unstudied question with a fully student-initiated inquiry approach.'},
+          {min:24,max:30,label:'Good',description:'Research topic is original and the approach demonstrates independent thinking.'},
+          {min:17,max:23,label:'Developing',description:'Topic is relevant but approach closely follows established methods without meaningful variation.'},
+          {min:0,max:16,label:'Insufficient',description:'Research replicates existing work without a novel contribution.'},
+        ],
+        scientific_method:[
+          {min:35,max:40,label:'Excellent',description:'Hypothesis is precisely formulated, controls are appropriate, and results are reproducible.'},
+          {min:27,max:34,label:'Good',description:'Methodology is sound with minor gaps in controls or sample adequacy.'},
+          {min:19,max:26,label:'Developing',description:'Basic methodology is described but controls or statistical validity are weak.'},
+          {min:0,max:18,label:'Insufficient',description:'No discernible experimental design or hypothesis testing.'},
+        ],
         impact_and_presentation:[
           {min:22,max:25,label:'Excellent',description:'Presentation is polished and the real-world impact of results is convincingly argued.'},
           {min:17,max:21,label:'Good',description:'Presentation is clear and impact is discussed with supporting evidence.'},
           {min:12,max:16,label:'Developing',description:'Presentation is adequate but impact claims lack supporting data.'},
           {min:0,max:11,label:'Insufficient',description:'Presentation is weak and no meaningful impact discussion provided.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'originality',outs:[
+          {code:'RC-1',weight:0.5,type:'direct'},{code:'RC-3',weight:0.3,type:'direct'},{code:'RC-7',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'scientific_method',outs:[
+          {code:'RC-2',weight:0.6,type:'direct'},{code:'RC-5',weight:0.4,type:'direct'},
+        ]},
+        {crit:'impact_and_presentation',outs:[
+          {code:'RC-4',weight:0.5,type:'direct'},{code:'RC-6',weight:0.5,type:'direct'},
+        ]},
+      ]},
     2:{weights:{originality:30,scientific_method:45,impact_and_presentation:25},labels:{originality:'Innovation',impact_and_presentation:'Impact Assessment'},
       descOverrides:{
         originality:'Assesses the degree of innovation and how the proposed idea advances beyond existing scientific literature.',
@@ -853,23 +1023,57 @@ const criteriaEvolution = {
           {min:12,max:16,label:'Developing',description:'Impact is mentioned but assessment is vague or unsupported.'},
           {min:0,max:11,label:'Insufficient',description:'No structured impact assessment provided.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'originality',outs:[
+          {code:'RC-1',weight:0.7,type:'direct'},{code:'RC-7',weight:0.3,type:'direct'},
+        ]},
+        {crit:'scientific_method',outs:[
+          {code:'RC-2',weight:0.7,type:'direct'},{code:'RC-3',weight:0.3,type:'direct'},
+        ]},
+        {crit:'impact_and_presentation',outs:[
+          {code:'RC-4',weight:0.6,type:'direct'},{code:'RC-6',weight:0.4,type:'direct'},
+        ]},
+      ]},
   },
   'IEEE-APSSDC': {
-    1:{labels:{application_and_presentation:'Application & Demo'},
+    1:{weights:{creativity:35,technical_merit:40,application_and_presentation:25},labels:{application_and_presentation:'Application & Demo'},
       descOverrides:{
         creativity:'Evaluates novelty of the antenna design concept relative to existing literature and published designs.',
         technical_merit:'Assesses simulation-measurement agreement quality and overall antenna performance metrics.',
         application_and_presentation:'Evaluates the clarity of the proposed real-world use case and the quality of the live demonstration.',
       },
       rubricOverrides:{
+        creativity:[
+          {min:27,max:30,label:'Excellent',description:'Design introduces a genuinely novel topology or technique with clear differentiation from published work.'},
+          {min:21,max:26,label:'Good',description:'Design shows meaningful originality in at least one dimension of the antenna concept.'},
+          {min:13,max:20,label:'Developing',description:'Conventional approach with incremental modifications. Limited differentiation from prior art.'},
+          {min:0,max:12,label:'Insufficient',description:'Direct application of standard designs with no discernible creative contribution.'},
+        ],
+        technical_merit:[
+          {min:35,max:40,label:'Excellent',description:'Simulation and measurement results are in close agreement. RF performance exceeds specifications.'},
+          {min:27,max:34,label:'Good',description:'Results are solid with acceptable sim-measurement correlation and adequate performance.'},
+          {min:19,max:26,label:'Developing',description:'Simulation results presented but measurement validation is limited or inconsistent.'},
+          {min:0,max:18,label:'Insufficient',description:'Significant discrepancies between simulation and measurement or no measured results.'},
+        ],
         application_and_presentation:[
           {min:27,max:30,label:'Excellent',description:'Live demo is compelling and clearly demonstrates a real-world application scenario.'},
           {min:21,max:26,label:'Good',description:'Demo works and application context is well-established.'},
           {min:13,max:20,label:'Developing',description:'Demo is partial or application scenario is not convincing.'},
           {min:0,max:12,label:'Insufficient',description:'No working demo or application context.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'creativity',outs:[
+          {code:'DC-1',weight:0.8,type:'direct'},{code:'DC-3',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'technical_merit',outs:[
+          {code:'DC-2',weight:0.5,type:'direct'},{code:'DC-3',weight:0.5,type:'direct'},
+        ]},
+        {crit:'application_and_presentation',outs:[
+          {code:'DC-4',weight:0.5,type:'direct'},{code:'DC-5',weight:0.5,type:'direct'},
+        ]},
+      ]},
     2:{weights:{creativity:25,technical_merit:45,application_and_presentation:30},labels:{creativity:'Innovation'},
       descOverrides:{
         creativity:'Assesses the degree of design innovation and differentiation from prior art in the antenna domain.',
@@ -889,10 +1093,21 @@ const criteriaEvolution = {
           {min:19,max:26,label:'Developing',description:'Simulation presented but measurement validation is insufficient.'},
           {min:0,max:18,label:'Insufficient',description:'No measurement results or major discrepancies with simulation.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'creativity',outs:[
+          {code:'DC-1',weight:1.0,type:'direct'},
+        ]},
+        {crit:'technical_merit',outs:[
+          {code:'DC-2',weight:0.7,type:'direct'},{code:'DC-3',weight:0.3,type:'indirect'},
+        ]},
+        {crit:'application_and_presentation',outs:[
+          {code:'DC-5',weight:0.6,type:'direct'},{code:'DC-4',weight:0.4,type:'direct'},
+        ]},
+      ]},
   },
   'CANSAT': {
-    1:{labels:{data_and_documentation:'Data Analysis & Reporting'},
+    1:{weights:{design_compliance:15,mission_execution:40,data_and_documentation:25,safety_and_recovery:20},labels:{data_and_documentation:'Data Analysis & Reporting'},
       descOverrides:{
         design_compliance:'Assesses adherence to specified volume, mass, and structural design constraints with margin documentation.',
         mission_execution:'Evaluates primary and secondary mission objective completion with continuous telemetry reliability.',
@@ -900,13 +1115,39 @@ const criteriaEvolution = {
         safety_and_recovery:'Evaluates adherence to range safety procedures and successful CanSat recovery after descent.',
       },
       rubricOverrides:{
+        design_compliance:[
+          {min:18,max:20,label:'Excellent',description:'All volume, mass, and structural constraints satisfied with documented margin analysis.'},
+          {min:14,max:17,label:'Good',description:'Constraints are met with minor deviations within acceptable tolerance.'},
+          {min:10,max:13,label:'Developing',description:'One or more constraints marginally exceeded without documented justification.'},
+          {min:0,max:9,label:'Insufficient',description:'Multiple constraints violated or no verification evidence provided.'},
+        ],
+        mission_execution:[
+          {min:31,max:35,label:'Excellent',description:'Both primary and secondary missions fully executed. Telemetry is continuous and complete throughout flight.'},
+          {min:24,max:30,label:'Good',description:'Primary mission completed. Secondary mission attempted with minor gaps in telemetry.'},
+          {min:17,max:23,label:'Developing',description:'Primary mission partially completed. Significant telemetry gaps or secondary mission not attempted.'},
+          {min:0,max:16,label:'Insufficient',description:'Mission execution failed or no meaningful flight data collected.'},
+        ],
         data_and_documentation:[
           {min:22,max:25,label:'Excellent',description:'Post-flight data is rigorously analyzed and reporting is thorough with clear methodology.'},
           {min:17,max:21,label:'Good',description:'Data analysis addresses key findings. Reporting is organized.'},
           {min:12,max:16,label:'Developing',description:'Data is presented but analysis depth is lacking.'},
           {min:0,max:11,label:'Insufficient',description:'Minimal analysis. Data is raw with no structured reporting.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'design_compliance',outs:[
+          {code:'CS-1',weight:0.8,type:'direct'},{code:'CS-7',weight:0.2,type:'direct'},
+        ]},
+        {crit:'mission_execution',outs:[
+          {code:'CS-2',weight:0.5,type:'direct'},{code:'CS-3',weight:0.3,type:'direct'},{code:'CS-5',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'data_and_documentation',outs:[
+          {code:'CS-6',weight:0.7,type:'direct'},{code:'CS-5',weight:0.3,type:'direct'},
+        ]},
+        {crit:'safety_and_recovery',outs:[
+          {code:'CS-7',weight:0.6,type:'direct'},{code:'CS-4',weight:0.4,type:'direct'},
+        ]},
+      ]},
     2:{weights:{design_compliance:20,mission_execution:40,data_and_documentation:20,safety_and_recovery:20},labels:{design_compliance:'Constraints Verification',mission_execution:'Flight Performance',data_and_documentation:'Data & Reports'},
       descOverrides:{
         design_compliance:'Evaluates constraint verification completeness including mass, volume, and structural margin analysis.',
@@ -933,7 +1174,21 @@ const criteriaEvolution = {
           {min:12,max:16,label:'Developing',description:'Reports exist but analysis is shallow or incomplete.'},
           {min:0,max:11,label:'Insufficient',description:'No meaningful post-flight documentation provided.'},
         ],
-      }},
+      },
+      mapsOverride:[
+        {crit:'design_compliance',outs:[
+          {code:'CS-1',weight:1.0,type:'direct'},
+        ]},
+        {crit:'mission_execution',outs:[
+          {code:'CS-2',weight:0.6,type:'direct'},{code:'CS-3',weight:0.4,type:'direct'},
+        ]},
+        {crit:'data_and_documentation',outs:[
+          {code:'CS-6',weight:0.5,type:'direct'},{code:'CS-5',weight:0.3,type:'direct'},{code:'CS-1',weight:0.2,type:'indirect'},
+        ]},
+        {crit:'safety_and_recovery',outs:[
+          {code:'CS-7',weight:0.7,type:'direct'},{code:'CS-4',weight:0.3,type:'direct'},
+        ]},
+      ]},
   },
 };
 
@@ -976,7 +1231,6 @@ orgs.forEach(o => {
       const pcId = uuid(`pcrit-${pId}-${c.key}`);
       pcMap[c.id] = pcId;
       let cLabel = evo?.labels?.[c.key] || c.label;
-      let cShort = evo?.shortLabels?.[c.key] || c.short;
       let cWeight = evo?.weights?.[c.key] ?? c.weight;
       let rubricJson;
       if (evo?.rubricOverrides?.[c.key]) {
@@ -988,7 +1242,7 @@ orgs.forEach(o => {
       }
       const descText = evo?.descOverrides?.[c.key] || c.desc;
       const pcDescSql = descText ? `'${escapeSql(descText)}'` : 'NULL';
-      out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, short_label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${c.id}', '${c.key}', '${escapeSql(cLabel)}', '${escapeSql(cShort)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
+      out.push(`INSERT INTO period_criteria (id, period_id, source_criterion_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${pcId}', '${pId}', '${c.id}', '${c.key}', '${escapeSql(cLabel)}', ${pcDescSql}, ${c.max}, ${cWeight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
       periodCrits.push({ key: c.key, max: c.max, weight: cWeight, pcId });
     });
     periodCriteriaMap[pId] = periodCrits;
@@ -1000,13 +1254,30 @@ orgs.forEach(o => {
       out.push(`INSERT INTO period_outcomes (id, period_id, source_outcome_id, code, label, description, sort_order) VALUES ('${poId}', '${pId}', '${oc.id}', '${oc.code}', '${escapeSql(oc.label)}', ${descSql}, ${oc.sortOrder}) ON CONFLICT DO NOTHING;`);
     });
 
-    o.mapsData.forEach(m => {
+    // Build effective maps: use per-period mapsOverride if defined, else fall back to framework defaults
+    const effectiveMaps = evo?.mapsOverride
+      ? evo.mapsOverride.flatMap(m => m.outs.map(mo => ({
+          cId: o.critKeyMap[m.crit],
+          oId: o.outcomeCodeMap[mo.code],
+          weight: mo.weight != null ? mo.weight : null,
+          critKey: m.crit,
+          outCode: mo.code,
+          coverType: mo.type || 'direct',
+        })))
+      : o.mapsData;
+
+    effectiveMaps.forEach(m => {
       if (removedKeys.includes(m.critKey)) return;
       const pcId = pcMap[m.cId]; const poId = poMap[m.oId];
       if (!pcId || !poId) return;
-      let coverageType = idx === 0 ? m.coverType : 'direct';
-      if (idx >= 2 && random() > 0.5) coverageType = 'indirect';
-      else if (idx === 1 && random() > 0.8) coverageType = 'indirect';
+      let coverageType;
+      if (evo?.mapsOverride) {
+        coverageType = m.coverType; // explicit per-period mapping — use as-is
+      } else {
+        coverageType = idx === 0 ? m.coverType : 'direct';
+        if (idx >= 2 && random() > 0.5) coverageType = 'indirect';
+        else if (idx === 1 && random() > 0.8) coverageType = 'indirect';
+      }
       const mWeight = m.weight != null ? m.weight : 'NULL';
       // period_criterion_outcome_maps: snapshot for analytics (uses period_outcome_id)
       const pmId = uuid(`pmap-${pId}-${m.cId}-${m.oId}`);
@@ -2689,6 +2960,20 @@ for (const [key, c] of curatedFeedback) {
 }
 
 out.push(`INSERT INTO jury_feedback (period_id, juror_id, rating, comment, is_public, created_at) VALUES\n${fbRows.join(',\n')}\nON CONFLICT (period_id, juror_id) DO NOTHING;`);
+out.push('');
+
+// ═══════════════════════════════════════════════════════════════
+// RESTORE intended is_locked state after trigger side-effects
+// ═══════════════════════════════════════════════════════════════
+// The auto_lock_period_on_token_insert trigger flips periods.is_locked=true
+// whenever entry_tokens are inserted. The seed intentionally keeps the
+// "current" period for each org unlocked so demo users can edit criteria
+// and outcomes. Re-apply that state explicitly and drop the audit rows the
+// trigger wrote as a side-effect (we still write our own curated audit log).
+
+out.push(`-- Restore is_locked=false for current periods after trigger auto-lock`);
+out.push(`UPDATE periods SET is_locked = false WHERE is_current = true;`);
+out.push(`DELETE FROM audit_logs WHERE action = 'period.auto_lock_on_token' AND actor_type = 'system';`);
 out.push('');
 
 // ═══════════════════════════════════════════════════════════════

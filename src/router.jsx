@@ -47,6 +47,7 @@ const EntryControlPage = lazy(() => import("@/admin/pages/EntryControlPage"));
 const PinBlockingPage = lazy(() => import("@/admin/pages/PinBlockingPage"));
 const AuditLogPage = lazy(() => import("@/admin/pages/AuditLogPage"));
 const OrganizationsPage = lazy(() => import("@/admin/pages/OrganizationsPage"));
+const UnlockRequestsPage = lazy(() => import("@/admin/pages/UnlockRequestsPage"));
 const SettingsPage = lazy(() => import("@/admin/pages/SettingsPage"));
 
 // ── Suspense wrapper ──────────────────────────────────────────
@@ -91,8 +92,9 @@ const adminChildRoutes = [
   { path: "entry-control", element: <SuspenseWrap><EntryControlPage /></SuspenseWrap> },
   { path: "pin-blocking",  element: <SuspenseWrap><PinBlockingPage /></SuspenseWrap> },
   { path: "audit-log",     element: <SuspenseWrap><AuditLogPage /></SuspenseWrap> },
-  { path: "organizations", element: <SuspenseWrap><OrganizationsPage /></SuspenseWrap> },
-  { path: "settings",      element: <SuspenseWrap><SettingsPage /></SuspenseWrap> },
+  { path: "organizations",    element: <SuspenseWrap><OrganizationsPage /></SuspenseWrap> },
+  { path: "unlock-requests",  element: <SuspenseWrap><UnlockRequestsPage /></SuspenseWrap> },
+  { path: "settings",         element: <SuspenseWrap><SettingsPage /></SuspenseWrap> },
 ];
 
 // ── Router ────────────────────────────────────────────────────

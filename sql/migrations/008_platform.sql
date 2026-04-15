@@ -1015,7 +1015,9 @@ BEGIN
     'MÜDEK v3.1',
     'MÜDEK engineering accreditation framework — 18 programme outcomes (PO 1.1–11)'
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    name        = EXCLUDED.name,
+    description = EXCLUDED.description;
 
   IF NOT EXISTS (SELECT 1 FROM framework_outcomes WHERE framework_id = v_mudek LIMIT 1) THEN
     INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order) VALUES
@@ -1046,7 +1048,9 @@ BEGIN
     'ABET (2026 – 2027)',
     'ABET EAC Student Outcomes — SO 1 through SO 7 (2026-2027 Criteria)'
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    name        = EXCLUDED.name,
+    description = EXCLUDED.description;
 
   IF NOT EXISTS (SELECT 1 FROM framework_outcomes WHERE framework_id = v_abet LIMIT 1) THEN
     INSERT INTO framework_outcomes (framework_id, code, label, description, sort_order) VALUES
@@ -1061,23 +1065,23 @@ BEGIN
 
   -- ── MÜDEK v3.1 — 4 evaluation criteria ──────────────────────────────────────
   IF NOT EXISTS (SELECT 1 FROM framework_criteria WHERE framework_id = v_mudek LIMIT 1) THEN
-    INSERT INTO framework_criteria (id, framework_id, key, label, short_label, description, max_score, weight, color, rubric_bands, sort_order) VALUES
-      (v_mudek_ct, v_mudek, 'technical', 'Technical Content',     'Technical',
+    INSERT INTO framework_criteria (id, framework_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES
+      (v_mudek_ct, v_mudek, 'technical', 'Technical Content',
        'Evaluates the depth, correctness, and originality of the engineering work itself — independent of how well it is communicated. Assesses whether the team applied appropriate engineering knowledge, justified their design decisions, and demonstrated real technical mastery.',
        30, 30, '#F59E0B',
        '[{"min":27,"max":30,"label":"Excellent","description":"Problem is clearly defined with strong motivation. Design decisions are well-justified with engineering depth. Originality and mastery of relevant tools or methods are evident."},{"min":21,"max":26,"label":"Good","description":"Design is mostly clear and technically justified. Engineering decisions are largely supported."},{"min":13,"max":20,"label":"Developing","description":"Problem is stated but motivation or technical justification is insufficient."},{"min":0,"max":12,"label":"Insufficient","description":"Vague problem definition and unjustified decisions. Superficial technical content."}]',
        1),
-      (v_mudek_cd, v_mudek, 'design',    'Written Communication', 'Written',
+      (v_mudek_cd, v_mudek, 'design',    'Written Communication',
        'Evaluates how effectively the team communicates their project in written and visual form on the poster — including layout, information hierarchy, figure quality, and the clarity of technical content for a mixed audience.',
        30, 30, '#22C55E',
        '[{"min":27,"max":30,"label":"Excellent","description":"Poster layout is intuitive with clear information flow. Visuals are fully labelled and high quality. Technical content is accessible to both technical and non-technical readers."},{"min":21,"max":26,"label":"Good","description":"Layout is mostly logical. Visuals are readable with minor gaps. Technical content is largely clear."},{"min":13,"max":20,"label":"Developing","description":"Occasional gaps in information flow. Some visuals are missing labels or captions. Technical content is only partially communicated."},{"min":0,"max":12,"label":"Insufficient","description":"Confusing layout. Low-quality or unlabelled visuals. Technical content is unclear or missing."}]',
        2),
-      (v_mudek_co, v_mudek, 'delivery',  'Oral Communication',    'Oral',
+      (v_mudek_co, v_mudek, 'delivery',  'Oral Communication',
        'Evaluates the team''s ability to present their work verbally and to respond to questions from jurors with varying technical backgrounds. A key factor is conscious audience adaptation.',
        30, 30, '#3B82F6',
        '[{"min":27,"max":30,"label":"Excellent","description":"Presentation is consciously adapted for both technical and non-technical jury members. Q&A responses are accurate, clear, and audience-appropriate."},{"min":21,"max":26,"label":"Good","description":"Presentation is mostly clear and well-paced. Most questions answered correctly. Audience adaptation is generally evident."},{"min":13,"max":20,"label":"Developing","description":"Understandable but inconsistent. Limited audience adaptation. Time management or Q&A depth needs improvement."},{"min":0,"max":12,"label":"Insufficient","description":"Unclear or disorganised presentation. Most questions answered incorrectly or not at all."}]',
        3),
-      (v_mudek_cw, v_mudek, 'teamwork',  'Teamwork',              'Teamwork',
+      (v_mudek_cw, v_mudek, 'teamwork',  'Teamwork',
        'Evaluates visible evidence of equal and effective team participation during the poster session, as well as the group''s professional and ethical conduct in interacting with jurors.',
        10, 10, '#EF4444',
        '[{"min":9,"max":10,"label":"Excellent","description":"All members participate actively and equally. Professional and ethical conduct observed throughout."},{"min":7,"max":8,"label":"Good","description":"Most members contribute. Minor knowledge gaps. Professionalism mostly observed."},{"min":4,"max":6,"label":"Developing","description":"Uneven participation. Some members are passive or unprepared."},{"min":0,"max":3,"label":"Insufficient","description":"Very low participation or dominated by one person. Lack of professionalism observed."}]',

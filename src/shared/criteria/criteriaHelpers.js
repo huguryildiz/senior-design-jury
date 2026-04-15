@@ -119,15 +119,15 @@ export function criterionToConfig(row) {
 
 /**
  * Normalize a `period_criteria` DB row to the canonical view-model shape.
- * DB row fields: key, label, short_label, max_score, weight, color,
+ * DB row fields: key, label, max_score, weight, color,
  *                description, rubric_bands (JSONB), sort_order
  */
 export function normalizeCriterionFromDb(row) {
   return {
     key:        row.key,
-    id:         row.key,
+    id:         row.id,
     label:      row.label ?? "",
-    shortLabel: row.short_label || row.label || "",
+    shortLabel: row.label || "",
     color:      row.color || "#6B7280",
     max:        Number(row.max_score) || 0,
     weight:     row.weight ?? null,

@@ -474,7 +474,6 @@ SET search_path = public, extensions
 AS $$
 DECLARE
   v_auth_row         juror_period_auth%ROWTYPE;
-  v_period           periods%ROWTYPE;
   v_score_sheet_id   UUID;
   v_score_entry      JSONB;
   v_criterion_id     UUID;
@@ -503,12 +502,6 @@ BEGIN
 
   IF v_auth_row.is_blocked THEN
     RETURN jsonb_build_object('ok', false, 'error_code', 'juror_blocked')::JSON;
-  END IF;
-
-  SELECT * INTO v_period FROM periods WHERE id = p_period_id;
-
-  IF v_period.is_locked THEN
-    RETURN jsonb_build_object('ok', false, 'error_code', 'period_locked')::JSON;
   END IF;
 
   -- Edit window enforcement after final submission

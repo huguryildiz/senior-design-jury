@@ -1,24 +1,25 @@
-// src/admin/hooks/useFrameworkOutcomes.js
-// Data hook for framework-level outcomes, criteria, and criterion-outcome mappings.
-// Powers the OutcomesPage with CRUD operations against framework_outcomes
-// and framework_criterion_outcome_maps tables.
+// src/admin/hooks/usePeriodOutcomes.js
+// Data hook for period-scoped outcomes, criteria, and criterion-outcome mappings.
 //
-// Criteria are loaded from period_criteria (period-scoped) rather than
-// framework_criteria (which is never populated in the current admin flow).
+// period_criterion_outcome_maps is the single source of truth for which
+// criteria map to which outcomes. Each period owns independent mappings;
+// changes here do not leak to other periods even if they share a framework.
+//
+// Powers OutcomesPage CRUD and the Edit Criterion drawer's Mapping tab.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  listOutcomes,
-  createOutcome,
-  updateOutcome,
-  deleteOutcome,
+  listPeriodOutcomes,
   listPeriodCriteriaForMapping,
-  listCriterionOutcomeMappings,
-  upsertCriterionOutcomeMapping,
-  deleteCriterionOutcomeMapping,
+  listPeriodCriterionOutcomeMaps,
+  createPeriodOutcome,
+  updatePeriodOutcome,
+  deletePeriodOutcome,
+  upsertPeriodCriterionOutcomeMap,
+  deletePeriodCriterionOutcomeMap,
 } from "@/shared/api";
 
-export function useFrameworkOutcomes({ frameworkId, periodId }) {
+export function usePeriodOutcomes({ periodId }) {
   const [outcomes, setOutcomes] = useState([]);
   const [criteria, setCriteria] = useState([]);
   const [mappings, setMappings] = useState([]);
@@ -34,7 +35,7 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
   // ── Load all data ──────────────────────────────────────────
 
   const loadAll = useCallback(async () => {
-    if (!frameworkId || !periodId) {
+    if (!periodId) {
       setOutcomes([]);
       setCriteria([]);
       setMappings([]);
@@ -44,9 +45,9 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
     setError(null);
     try {
       const [o, c, m] = await Promise.all([
-        listOutcomes(frameworkId),
+        listPeriodOutcomes(periodId),
         listPeriodCriteriaForMapping(periodId),
-        listCriterionOutcomeMappings(frameworkId, periodId),
+        listPeriodCriterionOutcomeMaps(periodId),
       ]);
       if (!mountedRef.current) return;
       setOutcomes(o);
@@ -58,7 +59,7 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [frameworkId, periodId]);
+  }, [periodId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -66,10 +67,10 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
 
   const getCoverage = useCallback(
     (outcomeId) => {
-      const maps = mappings.filter((m) => m.outcome_id === outcomeId);
+      const maps = mappings.filter((m) => m.period_outcome_id === outcomeId);
       if (maps.length === 0) {
         const outcome = outcomes.find((o) => o.id === outcomeId);
-        return outcome?.coverage_hint === "indirect" ? "indirect" : "none";
+        return outcome?.coverage_type ?? "none";
       }
       if (maps.some((m) => m.coverage_type === "direct")) return "direct";
       return "indirect";
@@ -80,9 +81,9 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
   const getMappedCriteria = useCallback(
     (outcomeId) => {
       return mappings
-        .filter((m) => m.outcome_id === outcomeId)
+        .filter((m) => m.period_outcome_id === outcomeId)
         .map((m) => {
-          const crit = criteria.find((c) => c.id === m.criterion_id);
+          const crit = criteria.find((c) => c.id === m.period_criterion_id);
           return crit ? { ...crit, mappingId: m.id, coverageType: m.coverage_type } : null;
         })
         .filter(Boolean);
@@ -90,29 +91,40 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
     [mappings, criteria]
   );
 
+  const getMappedOutcomes = useCallback(
+    (criterionId) => {
+      return mappings
+        .filter((m) => m.period_criterion_id === criterionId)
+        .map((m) => {
+          const out = outcomes.find((o) => o.id === m.period_outcome_id);
+          return out ? { ...out, mappingId: m.id, coverageType: m.coverage_type } : null;
+        })
+        .filter(Boolean);
+    },
+    [mappings, outcomes]
+  );
+
   // ── CRUD: Outcomes ─────────────────────────────────────────
 
   const addOutcome = useCallback(
-    async ({ code, shortLabel, description, criterionIds = [] }) => {
+    async ({ code, shortLabel, description, criterionIds = [], coverageType = "direct" }) => {
       const maxSort = outcomes.reduce((max, o) => Math.max(max, o.sort_order ?? 0), 0);
-      const newOutcome = await createOutcome({
-        framework_id: frameworkId,
+      const newOutcome = await createPeriodOutcome({
+        period_id: periodId,
         code,
         label: shortLabel,
         description: description || null,
         sort_order: maxSort + 1,
       });
 
-      // Create direct mappings for selected criteria
       if (criterionIds.length > 0) {
         await Promise.all(
           criterionIds.map((critId) =>
-            upsertCriterionOutcomeMapping({
-              framework_id: frameworkId,
+            upsertPeriodCriterionOutcomeMap({
               period_id: periodId,
-              criterion_id: critId,
-              outcome_id: newOutcome.id,
-              coverage_type: "direct",
+              period_criterion_id: critId,
+              period_outcome_id: newOutcome.id,
+              coverage_type: coverageType,
             })
           )
         );
@@ -121,46 +133,46 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
       await loadAll();
       return newOutcome;
     },
-    [frameworkId, outcomes, loadAll]
+    [periodId, outcomes, loadAll]
   );
 
   const editOutcome = useCallback(
     async (outcomeId, { code, label, description, criterionIds = [], coverageType = "direct" }) => {
-      // coverage_hint persists "indirect" for unmapped outcomes; cleared when criteria are selected
-      const coverage_hint = criterionIds.length === 0 && coverageType === "indirect" ? "indirect" : null;
-
-      // Update the outcome row
-      await updateOutcome(outcomeId, {
+      await updatePeriodOutcome(outcomeId, {
         ...(code !== undefined && { code }),
         label,
         description: description || null,
-        coverage_hint,
+        // Persist "indirect" on the outcome row when no criteria are mapped so
+        // getCoverage can distinguish "indirect (no criteria)" from "not mapped".
+        // Clearing to null when criteria exist (mappings govern) or when direct+no-criteria
+        // (still "not mapped" semantically).
+        coverage_type: (criterionIds.length === 0 && coverageType === "indirect") ? "indirect" : null,
       });
 
-      // Sync mappings: remove old, add new
-      const currentMaps = mappings.filter((m) => m.outcome_id === outcomeId);
-      const currentCritIds = currentMaps.map((m) => m.criterion_id);
+      const currentMaps = mappings.filter((m) => m.period_outcome_id === outcomeId);
+      const currentCritIds = currentMaps.map((m) => m.period_criterion_id);
 
-      const toRemove = currentMaps.filter((m) => !criterionIds.includes(m.criterion_id));
+      const toRemove = currentMaps.filter((m) => !criterionIds.includes(m.period_criterion_id));
       const toAdd = criterionIds.filter((id) => !currentCritIds.includes(id));
       const toUpdate = currentMaps.filter(
-        (m) => criterionIds.includes(m.criterion_id) && m.coverage_type !== coverageType
+        (m) => criterionIds.includes(m.period_criterion_id) && m.coverage_type !== coverageType
       );
 
       await Promise.all([
-        ...toRemove.map((m) => deleteCriterionOutcomeMapping(m.id)),
+        ...toRemove.map((m) => deletePeriodCriterionOutcomeMap(m.id)),
         ...toAdd.map((critId) =>
-          upsertCriterionOutcomeMapping({
-            framework_id: frameworkId,
+          upsertPeriodCriterionOutcomeMap({
             period_id: periodId,
-            criterion_id: critId,
-            outcome_id: outcomeId,
+            period_criterion_id: critId,
+            period_outcome_id: outcomeId,
             coverage_type: coverageType,
           })
         ),
         ...toUpdate.map((m) =>
-          upsertCriterionOutcomeMapping({
-            ...m,
+          upsertPeriodCriterionOutcomeMap({
+            period_id: periodId,
+            period_criterion_id: m.period_criterion_id,
+            period_outcome_id: m.period_outcome_id,
             coverage_type: coverageType,
           })
         ),
@@ -168,12 +180,12 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
 
       await loadAll();
     },
-    [frameworkId, periodId, mappings, loadAll]
+    [periodId, mappings, loadAll]
   );
 
   const removeOutcome = useCallback(
     async (outcomeId) => {
-      await deleteOutcome(outcomeId);
+      await deletePeriodOutcome(outcomeId);
       await loadAll();
     },
     [loadAll]
@@ -183,25 +195,24 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
 
   const addMapping = useCallback(
     async (criterionId, outcomeId, coverageType = "direct") => {
-      await upsertCriterionOutcomeMapping({
-        framework_id: frameworkId,
+      await upsertPeriodCriterionOutcomeMap({
         period_id: periodId,
-        criterion_id: criterionId,
-        outcome_id: outcomeId,
+        period_criterion_id: criterionId,
+        period_outcome_id: outcomeId,
         coverage_type: coverageType,
       });
       await loadAll();
     },
-    [frameworkId, periodId, loadAll]
+    [periodId, loadAll]
   );
 
   const removeMapping = useCallback(
     async (criterionId, outcomeId) => {
       const map = mappings.find(
-        (m) => m.criterion_id === criterionId && m.outcome_id === outcomeId
+        (m) => m.period_criterion_id === criterionId && m.period_outcome_id === outcomeId
       );
       if (map) {
-        await deleteCriterionOutcomeMapping(map.id);
+        await deletePeriodCriterionOutcomeMap(map.id);
         await loadAll();
       }
     },
@@ -212,31 +223,24 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
 
   const cycleCoverage = useCallback(
     async (outcomeId) => {
-      const maps = mappings.filter((m) => m.outcome_id === outcomeId);
+      const maps = mappings.filter((m) => m.period_outcome_id === outcomeId);
 
-      if (maps.length === 0) {
-        // No criterion mappings — cycle none ↔ indirect via coverage_hint on the outcome row
-        const outcome = outcomes.find((o) => o.id === outcomeId);
-        const newHint = outcome?.coverage_hint === "indirect" ? null : "indirect";
-        await updateOutcome(outcomeId, { coverage_hint: newHint });
-        await loadAll();
-        return newHint === "indirect" ? "indirect" : "none";
-      }
+      if (maps.length === 0) return "none";
 
-      // If all mappings are indirect → cycle to none (remove all)
       if (maps.every((m) => m.coverage_type === "indirect")) {
-        await Promise.all(maps.map((m) => deleteCriterionOutcomeMapping(m.id)));
+        await Promise.all(maps.map((m) => deletePeriodCriterionOutcomeMap(m.id)));
         await loadAll();
         return "none";
       }
 
-      // If has direct mappings → cycle all to indirect
       await Promise.all(
         maps
           .filter((m) => m.coverage_type === "direct")
           .map((m) =>
-            upsertCriterionOutcomeMapping({
-              ...m,
+            upsertPeriodCriterionOutcomeMap({
+              period_id: periodId,
+              period_criterion_id: m.period_criterion_id,
+              period_outcome_id: m.period_outcome_id,
               coverage_type: "indirect",
             })
           )
@@ -244,7 +248,7 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
       await loadAll();
       return "indirect";
     },
-    [mappings, outcomes, loadAll]
+    [periodId, mappings, loadAll]
   );
 
   return {
@@ -256,6 +260,7 @@ export function useFrameworkOutcomes({ frameworkId, periodId }) {
     loadAll,
     getCoverage,
     getMappedCriteria,
+    getMappedOutcomes,
     addOutcome,
     editOutcome,
     removeOutcome,

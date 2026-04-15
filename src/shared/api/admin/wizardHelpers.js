@@ -37,10 +37,10 @@ export async function applyStandardFramework(organizationId) {
     sortOrder++;
   }
 
-  // Note: criterion-outcome mappings are created when period criteria are saved
-  // via savePeriodCriteria() — each criterion's outcomes[] array defines the links.
-  // Framework-level mappings require framework_criteria rows which are created
-  // when a period snapshot is frozen from this framework.
+  // Note: criterion↔outcome mappings now live in period_criterion_outcome_maps
+  // (period-scoped). They are copied from framework_criterion_outcome_maps on
+  // period snapshot freeze, then edited per-period via the Outcomes page or
+  // the Edit Criterion Mapping tab.
 
   return { framework, outcomeMap };
 }

@@ -33,6 +33,7 @@ import {
   Clock3,
   Download,
   Link,
+  Lock,
   QrCode,
   RefreshCw,
   Send,
@@ -185,6 +186,7 @@ export default function EntryControlPage() {
   const [showTokenDetail, setShowTokenDetail] = useState(false);
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [lockWarnOpen, setLockWarnOpen] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [historySortKey, setHistorySortKey] = useState("created_at");
@@ -291,8 +293,20 @@ export default function EntryControlPage() {
     setRawToken("demo-token-" + (periodId || "").slice(0, 8));
   }, [isDemoMode, status, rawToken, periodId]);
 
+  const willLockPeriod = !selectedPeriod?.is_locked;
+
+  function handleGenerateClick() {
+    if (!periodId) return;
+    if (willLockPeriod) {
+      setLockWarnOpen(true);
+      return;
+    }
+    handleGenerate();
+  }
+
   async function handleGenerate() {
     if (!periodId) return;
+    setLockWarnOpen(false);
     setRegenerating(true);
     setError("");
     setRawToken("");
@@ -785,7 +799,7 @@ export default function EntryControlPage() {
               Jurors will lose entry after expiration. Extend now to ensure uninterrupted access.
             </div>
           </div>
-          <button className="ec-expiry-banner-action" onClick={handleGenerate} disabled={isBusy}>
+          <button className="ec-expiry-banner-action" onClick={handleGenerateClick} disabled={isBusy}>
             Extend 24 hours
           </button>
         </div>
@@ -930,7 +944,7 @@ export default function EntryControlPage() {
                 {copied ? "Copied!" : "Copy Link"}
               </button>
             )}
-            <button className="btn btn-outline btn-sm" onClick={handleGenerate} disabled={isBusy}>
+            <button className="btn btn-outline btn-sm" onClick={handleGenerateClick} disabled={isBusy}>
               <RefreshCw size={12} className={regenerating ? "ec-spin" : ""} />
               {regenerating ? "Generating…" : (hasToken ? "Regenerate" : "Generate QR")}
             </button>
@@ -1174,6 +1188,50 @@ export default function EntryControlPage() {
         onCancel={() => setRevokeModalOpen(false)}
         onConfirm={handleRevoke}
       />
+
+      <Modal
+        open={lockWarnOpen}
+        onClose={() => { if (!regenerating) setLockWarnOpen(false); }}
+        size="sm"
+        centered
+      >
+        <div className="fs-modal-header">
+          <div className="fs-modal-icon warning">
+            <Lock size={22} strokeWidth={2} />
+          </div>
+          <div className="fs-title" style={{ textAlign: "center" }}>Generate QR &amp; lock period?</div>
+          <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
+            Publishing the QR marks <strong style={{ color: "var(--text-primary)" }}>{periodName || "this period"}</strong> as live.
+          </div>
+        </div>
+        <div className="fs-modal-body" style={{ paddingTop: 2 }}>
+          <FbAlert variant="warning" title="Structural fields will be locked">
+            Criterion weights, rubric bands, outcome mappings and coverage types cannot change while the QR is active — this keeps every juror on the same rubric. Labels and descriptions stay editable. You can unlock from the Periods page if you need to adjust something later.
+          </FbAlert>
+        </div>
+        <div className="fs-modal-footer" style={{ justifyContent: "center", background: "transparent", borderTop: "none", paddingTop: 0 }}>
+          <button
+            type="button"
+            className="fs-btn fs-btn-secondary"
+            onClick={() => setLockWarnOpen(false)}
+            disabled={regenerating}
+            style={{ flex: 1 }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="fs-btn fs-btn-primary"
+            onClick={handleGenerate}
+            disabled={regenerating}
+            style={{ flex: 1 }}
+          >
+            <AsyncButtonContent loading={regenerating} loadingText="Generating…">
+              Generate &amp; lock
+            </AsyncButtonContent>
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={sendModalOpen} onClose={() => setSendModalOpen(false)} size="md">
         <div className="fs-modal-header">

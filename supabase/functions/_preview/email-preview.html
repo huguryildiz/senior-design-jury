@@ -27,6 +27,9 @@
     <button onclick="show('invite', this)">Org Admin Invite</button>
     <button onclick="show('submitted', this)">Application Submitted</button>
     <button onclick="show('scoreedit', this)">Score Edit Request</button>
+    <button onclick="show('unlockRequested', this)">Unlock Requested</button>
+    <button onclick="show('unlockApproved', this)">Unlock Approved</button>
+    <button onclick="show('unlockRejected', this)">Unlock Rejected</button>
   </nav>
   <div id="preview"></div>
 
@@ -482,19 +485,130 @@
         </table>`;
     }
 
+    function unlockRequestedTpl() {
+      const requesterName  = "Dr. Elif Yıldız";
+      const periodName     = "Spring 2026";
+      const orgName        = "TED University — Electrical & Electronics Engineering";
+      const reason         = "Criterion 3 label had a typo that misleads jurors. We need to fix the wording and re-generate the QR before finalising the rankings.";
+      const reviewUrl      = "https://vera-eval.app/admin/unlock-requests";
+
+      return `
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f0f1a; padding:40px 0;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+              <tr><td style="background:linear-gradient(90deg,#d97706,#f59e0b,#d97706); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+              <tr><td align="center" style="padding:40px 40px 20px;">
+                <img src="https://vera-eval.app/vera_logo_dark.png" alt="VERA" width="120" style="display:block; border:0;" />
+              </td></tr>
+              <tr><td align="center" style="padding:8px 48px 12px;">
+                <h1 style="margin:0; font-size:25px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">Period Unlock Request</h1>
+              </td></tr>
+              <tr><td align="center" style="padding:0 48px 20px;">
+                <p style="margin:0; font-size:15px; line-height:1.7; color:#a0aec0;">An org admin has requested to unlock a period that already has evaluation scores.</p>
+              </td></tr>
+              <tr><td style="padding:0 48px 8px;">
+                <div style="padding:16px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
+                  <p style="margin:0 0 4px; font-size:18px; font-weight:700; color:#ffffff;">${requesterName}</p>
+                  <p style="margin:0 0 12px; font-size:13px; color:#a78bfa;">${orgName}</p>
+                  <p style="margin:0; font-size:13px; color:#718096;">Period: <strong style="color:#a0aec0;">${periodName}</strong></p>
+                </div>
+                <p style="margin:14px 0 0; padding:12px 14px; font-size:13px; line-height:1.6; color:#cbd5e1; background:rgba(255,255,255,0.04); border-left:3px solid #a78bfa; border-radius:6px;">
+                  <strong style="color:#f1f5f9;">Reason:</strong> ${reason}
+                </p>
+              </td></tr>
+              <tr><td style="padding:10px 48px 20px;">
+                <p style="margin:0; font-size:12px; line-height:1.6; color:#4a5568;">Approving an unlock bypasses the fairness guard. Existing scores remain but may become inconsistent if structural fields (weights, rubric bands, outcome mappings) are changed.</p>
+              </td></tr>
+              <tr><td align="center" style="padding:4px 48px 28px;">
+                <a href="${reviewUrl}" style="display:inline-block; background:linear-gradient(135deg,#6c47ff,#a78bfa); color:#ffffff; text-decoration:none; font-size:16px; font-weight:600; padding:14px 36px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 20px rgba(108,71,255,0.45);">Review Request &rarr;</a>
+              </td></tr>
+              <tr><td style="padding:0 48px;"><div style="border-top:1px solid rgba(255,255,255,0.08); font-size:0;">&nbsp;</div></td></tr>
+              <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 VERA. All rights reserved.</p></td></tr>
+              <tr><td style="background:linear-gradient(90deg,#d97706,#f59e0b,#d97706); height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+        </table>`;
+    }
+
+    function unlockResolvedTpl(decision) {
+      const isApproved   = decision === "approved";
+      const periodName   = "Spring 2026";
+      const orgName      = "TED University — Electrical & Electronics Engineering";
+      const reviewNote   = isApproved
+        ? "Approved — please apply the label fix and re-generate the QR code. Existing scores are unaffected."
+        : "Rejected — the change you described would adjust criterion weights, which invalidates the scores already submitted. Correct the label after the evaluation closes.";
+
+      const accent       = isApproved ? "#4ade80" : "#f87171";
+      const accentBand   = isApproved
+        ? "linear-gradient(90deg,#16a34a,#4ade80,#16a34a)"
+        : "linear-gradient(90deg,#dc2626,#f87171,#dc2626)";
+      const title        = isApproved ? "Unlock Approved" : "Unlock Rejected";
+      const intro        = isApproved
+        ? "Your unlock request has been approved."
+        : "Your unlock request has been rejected.";
+      const decisionPill = isApproved ? "APPROVED" : "REJECTED";
+      const ctaBlock = isApproved
+        ? `<tr><td align="center" style="padding:4px 48px 28px;">
+             <a href="https://vera-eval.app/admin/periods" style="display:inline-block; background:linear-gradient(135deg,#6c47ff,#a78bfa); color:#ffffff; text-decoration:none; font-size:16px; font-weight:600; padding:14px 36px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 20px rgba(108,71,255,0.45);">Open Periods &rarr;</a>
+           </td></tr>`
+        : "";
+
+      return `
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0f0f1a; padding:40px 0;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+              <tr><td style="background:${accentBand}; height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+              <tr><td align="center" style="padding:40px 40px 20px;">
+                <img src="https://vera-eval.app/vera_logo_dark.png" alt="VERA" width="120" style="display:block; border:0;" />
+              </td></tr>
+              <tr><td align="center" style="padding:8px 48px 12px;">
+                <h1 style="margin:0; font-size:25px; font-weight:700; color:#ffffff; letter-spacing:-0.5px;">${title}</h1>
+              </td></tr>
+              <tr><td align="center" style="padding:0 48px 20px;">
+                <p style="margin:0; font-size:15px; line-height:1.7; color:#a0aec0;">${intro}</p>
+              </td></tr>
+              <tr><td style="padding:0 48px 8px;">
+                <div style="padding:16px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
+                  <p style="margin:0 0 6px; font-size:11px; line-height:1.3; letter-spacing:1.2px; font-weight:700; color:${accent};">${decisionPill}</p>
+                  <p style="margin:0 0 4px; font-size:18px; font-weight:700; color:#ffffff;">${periodName}</p>
+                  <p style="margin:0; font-size:13px; color:#718096;">${orgName}</p>
+                </div>
+                <p style="margin:14px 0 0; padding:12px 14px; font-size:13px; line-height:1.6; color:#cbd5e1; background:rgba(255,255,255,0.04); border-left:3px solid #a78bfa; border-radius:6px;">
+                  <strong style="color:#f1f5f9;">Review note:</strong> ${reviewNote}
+                </p>
+              </td></tr>
+              <tr><td style="padding:14px 48px 20px;">
+                <p style="margin:0; font-size:12px; line-height:1.6; color:#4a5568;">${
+                  isApproved
+                    ? "The period is now unlocked. Labels and descriptions can be edited; structural fields remain read-only until the next QR is generated. Re-generate the QR code to re-freeze the rubric when you are done."
+                    : "The period stays locked. If you still need to unlock, submit a new request with additional context."
+                }</p>
+              </td></tr>
+              ${ctaBlock}
+              <tr><td style="padding:0 48px;"><div style="border-top:1px solid rgba(255,255,255,0.08); font-size:0;">&nbsp;</div></td></tr>
+              <tr><td align="center" style="padding:16px 48px 30px;"><p style="margin:0; font-size:12px; color:#4a5568; line-height:1.6;">&copy; 2026 VERA. All rights reserved.</p></td></tr>
+              <tr><td style="background:${accentBand}; height:4px; font-size:0; line-height:0;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+        </table>`;
+    }
+
     const templates = {
-      reset:       tpl("Reset Password",       "There is a password reset request for your VERA account.",        "Use the button below to create your new password.",                                          "Reset Password"),
-      changed:     tpl("Password Changed",     "Your VERA account password was successfully updated.",            "If you did not make this change, please contact support immediately.",                     "Go to VERA"),
-      approved:    tpl("Application Approved", "Your VERA admin application has been approved.",                  "You can now sign in to your account and start managing your organization.",               "Sign In"),
-      rejected:    tpl("Application Update",   "Unfortunately, your VERA admin application was not approved.",    "If you think this is a mistake, please reach out to the platform administrator.",         "Contact Support"),
-      pin:         pinTpl(),
-      token:       tokenTpl(),
-      export:      exportTpl(),
-      maintenance: maintenanceTpl(),
-      pinreset:    pinResetTpl(),
-      invite:      inviteTpl(),
-      submitted:   submittedTpl(),
-      scoreedit:   scoreEditTpl(),
+      reset:           tpl("Reset Password",       "There is a password reset request for your VERA account.",        "Use the button below to create your new password.",                                          "Reset Password"),
+      changed:         tpl("Password Changed",     "Your VERA account password was successfully updated.",            "If you did not make this change, please contact support immediately.",                     "Go to VERA"),
+      approved:        tpl("Application Approved", "Your VERA admin application has been approved.",                  "You can now sign in to your account and start managing your organization.",               "Sign In"),
+      rejected:        tpl("Application Update",   "Unfortunately, your VERA admin application was not approved.",    "If you think this is a mistake, please reach out to the platform administrator.",         "Contact Support"),
+      pin:             pinTpl(),
+      token:           tokenTpl(),
+      export:          exportTpl(),
+      maintenance:     maintenanceTpl(),
+      pinreset:        pinResetTpl(),
+      invite:          inviteTpl(),
+      submitted:       submittedTpl(),
+      scoreedit:       scoreEditTpl(),
+      unlockRequested: unlockRequestedTpl(),
+      unlockApproved:  unlockResolvedTpl("approved"),
+      unlockRejected:  unlockResolvedTpl("rejected"),
     };
 
     function show(key, btn) {

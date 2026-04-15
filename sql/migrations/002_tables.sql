@@ -89,7 +89,6 @@ CREATE TABLE framework_outcomes (
   label          TEXT NOT NULL,
   description    TEXT,
   sort_order     INT DEFAULT 0,
-  coverage_hint  TEXT CHECK (coverage_hint IN ('indirect')),
   created_at     TIMESTAMPTZ DEFAULT now(),
   UNIQUE(framework_id, code)
 );
@@ -103,7 +102,6 @@ CREATE TABLE framework_criteria (
   framework_id UUID NOT NULL REFERENCES frameworks(id) ON DELETE CASCADE,
   key          TEXT NOT NULL,
   label        TEXT NOT NULL,
-  short_label  TEXT,
   description  TEXT,
   max_score    NUMERIC NOT NULL,
   weight       NUMERIC NOT NULL,
@@ -243,6 +241,32 @@ CREATE TABLE entry_tokens (
 CREATE INDEX idx_entry_tokens_token_hash ON entry_tokens (token_hash);
 
 -- =============================================================================
+-- 13b. UNLOCK_REQUESTS
+-- =============================================================================
+-- Org admin cannot directly unlock a period that already has scores (fairness).
+-- Super admin approval is required — this table holds pending/decided requests.
+
+CREATE TABLE unlock_requests (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  period_id       UUID NOT NULL REFERENCES periods(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  requested_by    UUID NOT NULL REFERENCES profiles(id),
+  reason          TEXT NOT NULL CHECK (length(btrim(reason)) >= 10),
+  status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by     UUID REFERENCES profiles(id),
+  reviewed_at     TIMESTAMPTZ,
+  review_note     TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_unlock_requests_org_status ON unlock_requests (organization_id, status);
+CREATE INDEX idx_unlock_requests_period ON unlock_requests (period_id);
+-- One pending request per period at a time
+CREATE UNIQUE INDEX idx_unlock_requests_one_pending_per_period
+  ON unlock_requests (period_id) WHERE status = 'pending';
+
+-- =============================================================================
 -- 14. AUDIT TAXONOMY TYPES
 -- =============================================================================
 -- Defined here (before audit_logs) so the table can reference them directly.
@@ -304,7 +328,6 @@ CREATE TABLE period_criteria (
   source_criterion_id UUID,
   key                 TEXT NOT NULL,
   label               TEXT NOT NULL,
-  short_label         TEXT,
   description         TEXT,
   max_score           NUMERIC NOT NULL,
   weight              NUMERIC NOT NULL,
@@ -325,8 +348,8 @@ CREATE TABLE period_outcomes (
   code              TEXT NOT NULL,
   label             TEXT NOT NULL,
   description       TEXT,
+  coverage_type     TEXT CHECK (coverage_type IN ('direct', 'indirect')),
   sort_order        INT DEFAULT 0,
-  coverage_hint     TEXT CHECK (coverage_hint IN ('indirect')),
   UNIQUE(period_id, code)
 );
 

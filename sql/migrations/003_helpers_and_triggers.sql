@@ -219,6 +219,10 @@ BEGIN
   ELSIF TG_TABLE_NAME = 'admin_invites' THEN
     v_org_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.org_id ELSE NEW.org_id END;
 
+  ELSIF TG_TABLE_NAME = 'unlock_requests' THEN
+    v_org_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.organization_id
+                                            ELSE NEW.organization_id END;
+
   ELSIF TG_TABLE_NAME IN ('profiles', 'security_policy') THEN
     v_org_id := NULL;
 
@@ -305,3 +309,73 @@ DROP TRIGGER IF EXISTS audit_log_trigger ON security_policy;
 CREATE TRIGGER audit_log_trigger
   AFTER INSERT OR UPDATE OR DELETE ON security_policy
   FOR EACH ROW EXECUTE FUNCTION trigger_audit_log();
+
+CREATE TRIGGER audit_log_trigger
+  AFTER INSERT OR UPDATE OR DELETE ON unlock_requests
+  FOR EACH ROW EXECUTE FUNCTION trigger_audit_log();
+
+-- =============================================================================
+-- TRIGGER FUNCTION: trigger_auto_lock_period_on_token
+-- =============================================================================
+-- Fairness guard: the moment an admin generates the first QR entry token for
+-- a period, that period transitions from "setup" to "published". From then on
+-- structural fields (criterion weights, rubric bands, outcome mappings,
+-- coverage types) must not change, otherwise jurors arriving at different
+-- times could score the same project against different rubrics.
+--
+-- Trigger sets periods.is_locked = true on first entry_token INSERT.
+-- Idempotent: no-op if period is already locked. Writes an audit log entry
+-- (category='config', severity='medium', actor_type='system').
+-- Manual unlock via rpc_admin_set_period_lock stays available.
+
+CREATE OR REPLACE FUNCTION public.trigger_auto_lock_period_on_token()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_was_locked  BOOLEAN;
+  v_period_name TEXT;
+  v_org_id      UUID;
+BEGIN
+  SELECT is_locked, name, organization_id
+    INTO v_was_locked, v_period_name, v_org_id
+  FROM periods
+  WHERE id = NEW.period_id;
+
+  -- Already locked → no-op (keeps trigger idempotent across regenerates)
+  IF COALESCE(v_was_locked, false) THEN
+    RETURN NEW;
+  END IF;
+
+  UPDATE periods
+     SET is_locked = true
+   WHERE id = NEW.period_id;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'period.auto_lock_on_token',
+    'periods',
+    NEW.period_id,
+    'config'::audit_category,
+    'medium'::audit_severity,
+    jsonb_build_object(
+      'trigger',     'entry_token_insert',
+      'token_id',    NEW.id,
+      'period_name', v_period_name
+    ),
+    jsonb_build_object(
+      'before', jsonb_build_object('is_locked', false),
+      'after',  jsonb_build_object('is_locked', true)
+    ),
+    'system'::audit_actor_type
+  );
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER auto_lock_period_on_token_insert
+  AFTER INSERT ON entry_tokens
+  FOR EACH ROW EXECUTE FUNCTION trigger_auto_lock_period_on_token();

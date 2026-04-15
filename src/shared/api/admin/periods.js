@@ -8,6 +8,7 @@
 // ============================================================
 
 import { supabase } from "../core/client";
+import { invokeEdgeFunction } from "../core/invokeEdgeFunction";
 
 export async function listPeriods(organizationId) {
   const { data, error } = await supabase
@@ -93,11 +94,139 @@ export async function deletePeriod(id) {
 
 export async function setEvalLock(periodId, enabled) {
   // Period update + audit event are atomic inside rpc_admin_set_period_lock.
-  const { error } = await supabase.rpc("rpc_admin_set_period_lock", {
+  // When caller is org admin and scores exist, the RPC returns ok=false with
+  // error_code='cannot_unlock_period_has_scores' — caller should route to
+  // requestPeriodUnlock() in that case.
+  const { data, error } = await supabase.rpc("rpc_admin_set_period_lock", {
     p_period_id: periodId,
     p_locked: !!enabled,
   });
   if (error) throw error;
+  return data;
+}
+
+/**
+ * Creates a pending unlock request for a locked period that already has scores.
+ * Org admin calls this when direct unlock is blocked. Super admin receives an
+ * email notification. Idempotent per period via unique partial index on
+ * (period_id) WHERE status='pending'.
+ *
+ * @param {string} periodId
+ * @param {string} reason — minimum 10 chars (server-enforced)
+ * @returns {{ ok: boolean, request_id?: string, error_code?: string }}
+ */
+export async function requestPeriodUnlock(periodId, reason) {
+  if (!periodId) throw new Error("requestPeriodUnlock: periodId required");
+  const { data, error } = await supabase.rpc("rpc_admin_request_unlock", {
+    p_period_id: periodId,
+    p_reason: reason || "",
+  });
+  if (error) throw error;
+  if (!data?.ok) return data;
+
+  // Fire-and-forget email notification (failures are logged server-side).
+  try {
+    const [{ data: period }, { data: org }, { data: profile }] = await Promise.all([
+      supabase.from("periods").select("id, name, organization_id").eq("id", periodId).single(),
+      supabase.from("periods").select("organizations(name)").eq("id", periodId).single(),
+      supabase.auth.getUser(),
+    ]);
+    const userId = profile?.user?.id;
+    const displayRes = userId
+      ? await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle()
+      : { data: null };
+
+    await invokeEdgeFunction("notify-unlock-request", {
+      body: {
+        type: "request_submitted",
+        request_id: data.request_id,
+        period_id: period?.id || periodId,
+        period_name: period?.name || null,
+        organization_id: period?.organization_id || null,
+        organization_name: org?.organizations?.name || null,
+        requester_user_id: userId || null,
+        requester_name: displayRes?.data?.display_name || null,
+        reason,
+      },
+    });
+  } catch (notifyErr) {
+    console.error("notify-unlock-request (submitted) failed:", notifyErr?.message);
+  }
+
+  return data;
+}
+
+/**
+ * Super admin approves or rejects a pending unlock request.
+ * On approve: period.is_locked=false, requester receives "approved" email.
+ * On reject: status updated, requester receives "rejected" email.
+ *
+ * @param {string} requestId
+ * @param {"approved" | "rejected"} decision
+ * @param {string} [note]
+ * @returns {{ ok: boolean, decision?: string, error_code?: string }}
+ */
+export async function resolveUnlockRequest(requestId, decision, note) {
+  if (!requestId) throw new Error("resolveUnlockRequest: requestId required");
+  if (!["approved", "rejected"].includes(decision)) {
+    throw new Error("resolveUnlockRequest: decision must be 'approved' or 'rejected'");
+  }
+  const { data, error } = await supabase.rpc("rpc_super_admin_resolve_unlock", {
+    p_request_id: requestId,
+    p_decision: decision,
+    p_note: note || null,
+  });
+  if (error) throw error;
+  if (!data?.ok) return data;
+
+  // Fire-and-forget email notification to the original requester.
+  try {
+    const [{ data: period }, { data: org }, requesterRes] = await Promise.all([
+      supabase.from("periods").select("name").eq("id", data.period_id).maybeSingle(),
+      supabase.from("organizations").select("name").eq("id", data.organization_id).maybeSingle(),
+      data.requested_by
+        ? supabase.from("profiles").select("display_name").eq("id", data.requested_by).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    await invokeEdgeFunction("notify-unlock-request", {
+      body: {
+        type: "request_resolved",
+        request_id: requestId,
+        period_id: data.period_id,
+        period_name: period?.name || null,
+        organization_id: data.organization_id,
+        organization_name: org?.name || null,
+        requester_user_id: data.requested_by,
+        requester_name: requesterRes?.data?.display_name || null,
+        decision,
+        review_note: note || null,
+      },
+    });
+  } catch (notifyErr) {
+    console.error("notify-unlock-request (resolved) failed:", notifyErr?.message);
+  }
+
+  return data;
+}
+
+/**
+ * Lists unlock requests visible to caller (RLS enforced).
+ * Org admin sees only their org; super admin sees all.
+ *
+ * @param {"pending" | "approved" | "rejected" | "all"} [status="pending"]
+ * @returns {Array<{
+ *   id, period_id, period_name, organization_id, organization_name,
+ *   requested_by, requester_name, reason, status,
+ *   reviewed_by, reviewer_name, reviewed_at, review_note, created_at
+ * }>}
+ */
+export async function listUnlockRequests(status = "pending") {
+  const { data, error } = await supabase.rpc("rpc_admin_list_unlock_requests", {
+    p_status: status,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
 }
 
 /** @deprecated — does nothing useful; `criteria_config` column does not exist on periods. Use savePeriodCriteria instead. */
@@ -178,7 +307,7 @@ export async function listPeriodStats(organizationId) {
   ] = await Promise.all([
     supabase.from("projects").select("period_id").in("period_id", periodIds),
     supabase.from("juror_period_auth").select("period_id").in("period_id", periodIds),
-    supabase.from("period_criteria").select("period_id, label, short_label, sort_order").in("period_id", periodIds).order("sort_order"),
+    supabase.from("period_criteria").select("period_id, label, sort_order").in("period_id", periodIds).order("sort_order"),
     supabase.from("score_sheets").select("period_id, status").in("period_id", periodIds),
   ]);
 
@@ -209,7 +338,7 @@ export async function listPeriodStats(organizationId) {
   for (const criterion of (criteria || [])) {
     const s = stats[criterion.period_id];
     s.criteriaCount += 1;
-    s.criteriaLabels.push(criterion.short_label || criterion.label);
+    s.criteriaLabels.push(criterion.label);
   }
 
   // Calculate progress for each period

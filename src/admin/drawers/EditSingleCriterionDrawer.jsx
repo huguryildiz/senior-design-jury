@@ -21,6 +21,7 @@ import {
 } from "../criteria/criteriaFormHelpers";
 import OutcomePillSelector from "../criteria/OutcomePillSelector";
 import RubricBandEditor from "../criteria/RubricBandEditor";
+import { usePeriodOutcomes } from "../hooks/usePeriodOutcomes";
 
 export default function EditSingleCriterionDrawer({
   open,
@@ -78,16 +79,67 @@ export default function EditSingleCriterionDrawer({
   const newTotal = otherTotal + currentMax;
   const available = 100 - otherTotal;
 
-  // ── Outcome helpers ─────────────────────────────────────────
-  const outcomeCodes = useMemo(
-    () => new Set((outcomeConfig || []).map((o) => o.code)),
-    [outcomeConfig]
+  // ── Period outcomes + mappings (source of truth: period_criterion_outcome_maps)
+  const periodId = period?.id || null;
+  const criterionId = !isNew ? criterion?.id || null : null;
+  const po = usePeriodOutcomes({ periodId });
+
+  // Outcome options for the Mapping tab: prefer hook data (period-scoped),
+  // fall back to parent's outcomeConfig (framework-level) when the hook
+  // hasn't loaded yet or a non-frozen period is being edited.
+  const outcomeOptions = useMemo(() => {
+    if (po.outcomes && po.outcomes.length > 0) {
+      return po.outcomes.map((o) => ({
+        id: o.id,
+        code: o.code,
+        desc_en: o.label || o.description || "",
+        desc_tr: o.description || "",
+      }));
+    }
+    return outcomeConfig || [];
+  }, [po.outcomes, outcomeConfig]);
+
+  // Currently-mapped outcome codes for this criterion (from pcom).
+  const mappedCodes = useMemo(() => {
+    if (!criterionId || !po.mappings) return [];
+    const outcomeById = new Map(po.outcomes.map((o) => [o.id, o.code]));
+    return po.mappings
+      .filter((m) => m.period_criterion_id === criterionId)
+      .map((m) => outcomeById.get(m.period_outcome_id))
+      .filter(Boolean);
+  }, [criterionId, po.mappings, po.outcomes]);
+
+  const outcomeIdByCode = useMemo(
+    () => new Map(po.outcomes.map((o) => [o.code, o.id])),
+    [po.outcomes]
   );
-  const sanitizeOutcomes = useCallback(
-    (sel = []) =>
-      Array.isArray(sel) ? sel.filter((c) => outcomeCodes.has(c)) : [],
-    [outcomeCodes]
-  );
+
+  // Toggle mapping by diffing current vs next code list.
+  const [mappingBusy, setMappingBusy] = useState(false);
+  const handleMappingChange = useCallback(async (nextCodes) => {
+    if (!periodId || !criterionId || mappingBusy) return;
+    const current = new Set(mappedCodes);
+    const next = new Set(nextCodes);
+    const toAdd = [...next].filter((c) => !current.has(c));
+    const toRemove = [...current].filter((c) => !next.has(c));
+    if (toAdd.length === 0 && toRemove.length === 0) return;
+    setMappingBusy(true);
+    try {
+      for (const code of toAdd) {
+        const outcomeId = outcomeIdByCode.get(code);
+        if (outcomeId) await po.addMapping(criterionId, outcomeId, "direct");
+      }
+      for (const code of toRemove) {
+        const outcomeId = outcomeIdByCode.get(code);
+        if (outcomeId) await po.removeMapping(criterionId, outcomeId);
+      }
+    } finally {
+      setMappingBusy(false);
+    }
+  }, [periodId, criterionId, mappingBusy, mappedCodes, outcomeIdByCode, po]);
+
+  // Legacy sanitizer kept for disposable-draft check compatibility.
+  const sanitizeOutcomes = useCallback(() => mappedCodes, [mappedCodes]);
 
   // ── Validation ──────────────────────────────────────────────
   const allRows = useMemo(() => {
@@ -198,9 +250,11 @@ export default function EditSingleCriterionDrawer({
         row.rubric,
         Number(row.max)
       );
+      // Outcome mappings are managed separately via period_criterion_outcome_maps
+      // RPCs. Criteria payload carries metadata only.
       const config = criterionToConfig({
         ...row,
-        outcomes: sanitizeOutcomes(row.outcomes),
+        outcomes: [],
         rubric: boundedRubric,
       });
 
@@ -226,7 +280,6 @@ export default function EditSingleCriterionDrawer({
     fieldErrors,
     rubricErrors,
     row,
-    sanitizeOutcomes,
     isNew,
     criteriaConfig,
     editIndex,
@@ -300,7 +353,7 @@ export default function EditSingleCriterionDrawer({
           type="button"
         >
           Mapping
-          <span className="crt-drawer-tab-badge">{sanitizeOutcomes(row.outcomes).length}</span>
+          <span className="crt-drawer-tab-badge">{mappedCodes.length}</span>
         </button>
       </div>
 
@@ -497,12 +550,16 @@ export default function EditSingleCriterionDrawer({
         {/* Mapping Tab */}
         {activeTab === "mapping" && (
           <div className="crt-tab-panel">
-            {(outcomeConfig || []).length > 0 ? (
+            {isNew ? (
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", padding: "20px 0" }}>
+                Save the criterion first to configure outcome mappings.
+              </div>
+            ) : outcomeOptions.length > 0 ? (
               <OutcomePillSelector
-                selected={sanitizeOutcomes(row.outcomes)}
-                outcomeConfig={outcomeConfig}
-                onChange={(next) => setField("outcomes", next)}
-                disabled={fullyLocked}
+                selected={mappedCodes}
+                outcomeConfig={outcomeOptions}
+                onChange={handleMappingChange}
+                disabled={fullyLocked || mappingBusy}
               />
             ) : (
               <div style={{ fontSize: 12, color: "var(--text-tertiary)", padding: "20px 0" }}>

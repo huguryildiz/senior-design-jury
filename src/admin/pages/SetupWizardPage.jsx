@@ -13,6 +13,9 @@ import {
   createJuror,
   createProject,
   generateEntryToken,
+  listPeriodOutcomes,
+  listPeriodCriteriaForMapping,
+  upsertPeriodCriterionOutcomeMap,
 } from "@/shared/api";
 import { applyStandardFramework } from "@/shared/api/admin/wizardHelpers";
 import { CRITERIA, OUTCOME_DEFINITIONS } from "@/shared/constants";
@@ -183,8 +186,8 @@ function StepWelcome({ onContinue, onSkip }) {
 // ============================================================
 // Step 2: Create Evaluation Period
 // ============================================================
-function StepCreatePeriod({ onContinue, onSkip, onBack, loading }) {
-  const { toast } = useToast();
+function StepCreatePeriod({ onContinue, onSkip, onBack }) {
+  const toast = useToast();
   const { activeOrganization, fetchData } = useAdminContext();
   const [formData, setFormData] = useState({
     periodName: getSuggestedSeason(),
@@ -192,16 +195,22 @@ function StepCreatePeriod({ onContinue, onSkip, onBack, loading }) {
     startDate: "",
     endDate: "",
   });
+  const [saving, setSaving] = useState(false);
 
   const handleCreate = async () => {
     if (!formData.periodName.trim()) {
       toast.error("Period name is required");
       return;
     }
+    if (!activeOrganization?.id) {
+      toast.error("No organization selected. Please select an organization first.");
+      return;
+    }
 
+    setSaving(true);
     try {
       const result = await createPeriod({
-        organization_id: activeOrganization?.id,
+        organizationId: activeOrganization.id,
         name: formData.periodName,
         description: formData.description || null,
         start_date: formData.startDate || null,
@@ -209,10 +218,12 @@ function StepCreatePeriod({ onContinue, onSkip, onBack, loading }) {
       });
 
       toast.success("Period created");
-      await fetchData();
+      try { await fetchData(); } catch { /* non-fatal */ }
       onContinue(result.id);
     } catch (err) {
-      toast.error("Failed to create period: " + err.message);
+      toast.error("Failed to create period: " + (err?.message || String(err)));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -286,9 +297,9 @@ function StepCreatePeriod({ onContinue, onSkip, onBack, loading }) {
         <button
           className="sw-btn sw-btn-primary"
           onClick={handleCreate}
-          disabled={loading}
+          disabled={saving}
         >
-          Create Period & Continue <ArrowRight size={16} />
+          {saving ? "Creating…" : <>Create Period & Continue <ArrowRight size={16} /></>}
         </button>
       </div>
 
@@ -310,7 +321,7 @@ function StepCreatePeriod({ onContinue, onSkip, onBack, loading }) {
 // Step 3: Evaluation Criteria
 // ============================================================
 function StepCriteria({ periodId, onContinue, onSkip, onBack, loading }) {
-  const { toast } = useToast();
+  const toast = useToast();
   const { fetchData } = useAdminContext();
 
   const handleApplyTemplate = async () => {
@@ -322,6 +333,35 @@ function StepCriteria({ periodId, onContinue, onSkip, onBack, loading }) {
     try {
       const payload = buildCriteriaPayload();
       await savePeriodCriteria(periodId, payload);
+
+      // Criterion↔outcome mappings live in period_criterion_outcome_maps now.
+      // Create them explicitly after criteria save — the save RPC only writes
+      // criterion metadata.
+      const [periodOutcomes, periodCriteria] = await Promise.all([
+        listPeriodOutcomes(periodId),
+        listPeriodCriteriaForMapping(periodId),
+      ]);
+      const outcomeIdByCode = new Map(periodOutcomes.map((o) => [o.code, o.id]));
+      const criterionIdByKey = new Map(periodCriteria.map((c) => [c.key, c.id]));
+      for (const c of payload) {
+        const critId = criterionIdByKey.get(c.key);
+        if (!critId || !Array.isArray(c.outcomes)) continue;
+        for (const code of c.outcomes) {
+          const outcomeId = outcomeIdByCode.get(code);
+          if (!outcomeId) continue;
+          try {
+            await upsertPeriodCriterionOutcomeMap({
+              period_id: periodId,
+              period_criterion_id: critId,
+              period_outcome_id: outcomeId,
+              coverage_type: "direct",
+            });
+          } catch {
+            // Non-fatal: continue with remaining mappings.
+          }
+        }
+      }
+
       toast.success("Criteria applied");
       await fetchData();
       onContinue();
@@ -435,7 +475,7 @@ function StepCriteria({ periodId, onContinue, onSkip, onBack, loading }) {
 // Step 4: Outcomes & Mapping
 // ============================================================
 function StepOutcomes({ onContinue, onSkip, onBack, loading }) {
-  const { toast } = useToast();
+  const toast = useToast();
   const { activeOrganization, reloadFrameworks } = useAdminContext();
 
   const handleApplyStandard = async () => {
@@ -543,7 +583,7 @@ function StepOutcomes({ onContinue, onSkip, onBack, loading }) {
 // Step 5: Add Jurors
 // ============================================================
 function StepJurors({ periodId, onContinue, onSkip, onBack, loading }) {
-  const { toast } = useToast();
+  const toast = useToast();
   const { activeOrganization, fetchData } = useAdminContext();
   const [rows, setRows] = useState([{ name: "", affiliation: "", email: "" }]);
 
@@ -686,7 +726,7 @@ function StepJurors({ periodId, onContinue, onSkip, onBack, loading }) {
 // Step 6: Add Projects
 // ============================================================
 function StepProjects({ periodId, onContinue, onSkip, onBack, loading }) {
-  const { toast } = useToast();
+  const toast = useToast();
   const { activeOrganization, fetchData } = useAdminContext();
   const [rows, setRows] = useState([
     { title: "", advisor: "", teamMembers: [] },
@@ -830,7 +870,7 @@ function StepProjects({ periodId, onContinue, onSkip, onBack, loading }) {
 // Step 7: Review & Launch
 // ============================================================
 function StepReview({ periodId, onComplete, onBack, loading }) {
-  const { toast } = useToast();
+  const toast = useToast();
   const {
     selectedPeriod,
     criteriaConfig,

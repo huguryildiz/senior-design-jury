@@ -12,7 +12,18 @@ import FbAlert from "@/shared/ui/FbAlert";
 import AddEditPeriodDrawer from "../drawers/AddEditPeriodDrawer";
 import PeriodCriteriaDrawer from "../drawers/PeriodCriteriaDrawer";
 import { FilterButton } from "@/shared/ui/FilterButton.jsx";
-import { setEvalLock, deletePeriod, listPeriodCriteria, savePeriodCriteria, listPeriodStats } from "@/shared/api";
+import {
+  setEvalLock,
+  deletePeriod,
+  listPeriodCriteria,
+  savePeriodCriteria,
+  listPeriodStats,
+  requestPeriodUnlock,
+  listUnlockRequests,
+  cloneFramework,
+  assignFrameworkToPeriod,
+  freezePeriodSnapshot,
+} from "@/shared/api";
 import { getActiveCriteria } from "@/shared/criteria/criteriaHelpers";
 import {
   Lock,
@@ -37,6 +48,7 @@ import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import SetCurrentPeriodModal from "../modals/SetCurrentPeriodModal";
 import UnlockPeriodModal from "../modals/UnlockPeriodModal";
 import LockPeriodModal from "../modals/LockPeriodModal";
+import RequestUnlockModal from "../modals/RequestUnlockModal";
 import DeletePeriodModal from "../modals/DeletePeriodModal";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
 import Pagination from "@/shared/ui/Pagination";
@@ -225,6 +237,12 @@ export default function PeriodsPage() {
   // Unlock period modal
   const [unlockTarget, setUnlockTarget] = useState(null);
 
+  // Request-unlock modal (org admin asks super admin to unlock)
+  const [requestUnlockTarget, setRequestUnlockTarget] = useState(null);
+
+  // Map of period_id → pending unlock_requests row (refreshed after actions)
+  const [pendingRequests, setPendingRequests] = useState({});
+
   // Lock period confirmation dialog (lock-only, with typed confirmation)
   const [lockTarget, setLockTarget] = useState(null);
 
@@ -257,6 +275,24 @@ export default function PeriodsPage() {
       .then(setPeriodStats)
       .catch(() => {}); // Non-fatal — columns show "—" on failure
   }, [organizationId, periodList.length]);
+
+  // Load pending unlock requests (map by period_id for O(1) lookup)
+  const reloadPendingRequests = useCallback(async () => {
+    try {
+      const rows = await listUnlockRequests("pending");
+      const map = {};
+      for (const r of rows || []) {
+        if (r?.period_id) map[r.period_id] = r;
+      }
+      setPendingRequests(map);
+    } catch {
+      // Non-fatal — direct unlock still attempts and server guard enforces correctness
+    }
+  }, []);
+
+  useEffect(() => {
+    reloadPendingRequests();
+  }, [reloadPendingRequests, periodList.length]);
 
   // Derived stats
   const totalPeriods = periodList.length;
@@ -350,10 +386,33 @@ export default function PeriodsPage() {
 
   async function handleUnlockPeriod() {
     if (!unlockTarget) return;
-    await setEvalLock(unlockTarget.id, false);
-    periods.applyPeriodPatch({ id: unlockTarget.id, is_locked: false });
-    _toast.success(`${unlockTarget.name || "Period"} unlocked — scoring re-enabled.`);
+    const target = unlockTarget;
+    const result = await setEvalLock(target.id, false);
+    // Server guards org admin from unlocking a period with scores.
+    // Route them into the request-unlock flow instead.
+    if (result && result.ok === false) {
+      if (result.error_code === "cannot_unlock_period_has_scores") {
+        setUnlockTarget(null);
+        setRequestUnlockTarget(target);
+        return;
+      }
+      _toast.error(`Could not unlock ${target.name || "period"}.`);
+      setUnlockTarget(null);
+      return;
+    }
+    periods.applyPeriodPatch({ id: target.id, is_locked: false });
+    _toast.success(`${target.name || "Period"} unlocked — scoring re-enabled.`);
     setUnlockTarget(null);
+  }
+
+  async function handleRequestUnlock(reason) {
+    if (!requestUnlockTarget) return { ok: false };
+    const result = await requestPeriodUnlock(requestUnlockTarget.id, reason);
+    if (result?.ok) {
+      _toast.success(`Unlock request submitted for ${requestUnlockTarget.name || "period"}.`);
+      reloadPendingRequests();
+    }
+    return result;
   }
 
   async function handleDeletePeriodViaModal() {
@@ -377,6 +436,23 @@ export default function PeriodsPage() {
       });
       if (result && !result.ok && result.fieldErrors?.name) {
         throw new Error(result.fieldErrors.name);
+      }
+      // If a new framework was selected (or framework changed), clone + assign + freeze
+      if (data.frameworkId && data.frameworkId !== periodDrawerTarget.framework_id) {
+        try {
+          const autoName = `${data.name} Framework`;
+          const { id: clonedId } = await cloneFramework(data.frameworkId, autoName, organizationId);
+          await assignFrameworkToPeriod(periodDrawerTarget.id, clonedId);
+          periods.applyPeriodPatch({ id: periodDrawerTarget.id, framework_id: clonedId });
+          try {
+            await freezePeriodSnapshot(periodDrawerTarget.id);
+          } catch {
+            // Non-fatal: jury flow will freeze lazily on first load
+          }
+        } catch {
+          // Non-fatal: period was updated, framework assignment failed
+          // User can assign from Outcomes page
+        }
       }
     } else {
       const result = await periods.handleCreatePeriod({
@@ -826,7 +902,12 @@ export default function PeriodsPage() {
 
                       {/* Danger zone */}
                       <div className="floating-menu-divider" />
-                      {period.is_locked ? (
+                      {period.is_locked && pendingRequests[period.id] ? (
+                        <button className="floating-menu-item" disabled>
+                          <LockOpen size={13} />
+                          Unlock Requested — awaiting super admin
+                        </button>
+                      ) : period.is_locked ? (
                         <button
                           className="floating-menu-item"
                           onMouseDown={() => { setOpenMenuId(null); setUnlockTarget(period); }}
@@ -904,6 +985,13 @@ export default function PeriodsPage() {
         period={lockTarget}
         onLock={handleLockPeriod}
       />
+      {/* Request-unlock modal (org admin → super admin approval) */}
+      <RequestUnlockModal
+        open={!!requestUnlockTarget}
+        onClose={() => setRequestUnlockTarget(null)}
+        period={requestUnlockTarget}
+        onRequest={handleRequestUnlock}
+      />
       {/* Add / Edit period drawer */}
       <AddEditPeriodDrawer
         open={periodDrawerOpen}
@@ -913,6 +1001,7 @@ export default function PeriodsPage() {
         allPeriods={periodList}
         frameworks={frameworks}
         onNavigateToCriteria={() => onNavigate?.("criteria")}
+        onNavigateToOutcomes={() => onNavigate?.("outcomes")}
       />
       {/* Criteria summary drawer */}
       <PeriodCriteriaDrawer
@@ -926,6 +1015,8 @@ export default function PeriodsPage() {
         onCopyFromPeriod={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
         onEditCriteria={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
         onClearCriteria={() => { setCriteriaDrawerOpen(false); onNavigate?.("criteria"); }}
+        onRenamePeriod={(p) => { setCriteriaDrawerOpen(false); openEditDrawer(p); }}
+        onDeletePeriod={(p) => { setCriteriaDrawerOpen(false); setDeletePeriodTarget(p); }}
       />
     </div>
   );

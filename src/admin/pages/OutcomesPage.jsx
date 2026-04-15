@@ -1,11 +1,11 @@
 // src/admin/pages/OutcomesPage.jsx
-// Outcomes & Mapping page — framework-level outcome CRUD + criterion mapping.
+// Outcomes & Mapping page — period-scoped outcome CRUD + criterion mapping.
 // Matches vera-premium-prototype.html mockup.
 
 import { useState } from "react";
-import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, AlertCircle, XCircle, ChevronRight, CheckCircle, AlertTriangle, Circle, Info } from "lucide-react";
+import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, AlertCircle, XCircle, ChevronRight, CheckCircle, AlertTriangle, Circle, Info, Lock } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
-import { useFrameworkOutcomes } from "../hooks/useFrameworkOutcomes";
+import { usePeriodOutcomes } from "../hooks/usePeriodOutcomes";
 import { useToast } from "@/shared/hooks/useToast";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
 import AddOutcomeDrawer from "../drawers/AddOutcomeDrawer";
@@ -88,6 +88,7 @@ function OutcomeRow({
   onCycleCoverage,
   openMenuId,
   setOpenMenuId,
+  isLocked,
 }) {
   const menuKey = `acc-row-${outcome.id}`;
   const isMenuOpen = openMenuId === menuKey;
@@ -128,24 +129,28 @@ function OutcomeRow({
           {mappedCriteria.map((c) => (
             <span key={c.id} className="acc-chip">
               <span className="acc-crit-dot" style={{ background: c.color || "var(--accent)" }} />
-              {c.short_label || c.label}
-              <span
-                className="acc-chip-x"
-                onClick={(e) => { e.stopPropagation(); onRemoveChip(c.id, outcome.id); }}
-              >
-                <XCircle size={12} strokeWidth={2.5} />
-              </span>
+              {c.label}
+              {!isLocked && (
+                <span
+                  className="acc-chip-x"
+                  onClick={(e) => { e.stopPropagation(); onRemoveChip(c.id, outcome.id); }}
+                >
+                  <XCircle size={12} strokeWidth={2.5} />
+                </span>
+              )}
             </span>
           ))}
           {coverage === "indirect" && !hasMappings && (
             <span style={{ fontSize: 10.5, color: "var(--text-quaternary)", fontWeight: 500 }}>Indirect coverage</span>
           )}
-          <button
-            className="acc-chip-add"
-            onClick={(e) => { e.stopPropagation(); onAddMapping(outcome); }}
-          >
-            +{!hasMappings && coverage !== "indirect" ? " Map criterion" : ""}
-          </button>
+          {!isLocked && (
+            <button
+              className="acc-chip-add"
+              onClick={(e) => { e.stopPropagation(); onAddMapping(outcome); }}
+            >
+              +{!hasMappings && coverage !== "indirect" ? " Map criterion" : ""}
+            </button>
+          )}
         </div>
       </td>
 
@@ -155,8 +160,9 @@ function OutcomeRow({
           className={coverageBadgeClass(coverage)}
           onClick={(e) => {
             e.stopPropagation();
-            if (coverage !== "direct") onCycleCoverage(outcome.id);
+            if (!isLocked && coverage !== "direct") onCycleCoverage(outcome.id);
           }}
+          style={isLocked ? { cursor: "default", opacity: 0.75 } : {}}
         >
           <span className="acc-cov-dot" />
           {coverageLabel(coverage)}
@@ -188,7 +194,9 @@ function OutcomeRow({
             </button>
             <button
               className="floating-menu-item"
-              onMouseDown={(e) => { e.stopPropagation(); setOpenMenuId(null); onDuplicate(outcome); }}
+              onMouseDown={(e) => { e.stopPropagation(); setOpenMenuId(null); if (!isLocked) onDuplicate(outcome); }}
+              disabled={isLocked}
+              style={isLocked ? { opacity: 0.4, pointerEvents: "none" } : {}}
             >
               <Copy size={13} strokeWidth={2} />
               Duplicate
@@ -196,7 +204,9 @@ function OutcomeRow({
             <div className="floating-menu-divider" />
             <button
               className="floating-menu-item danger"
-              onMouseDown={(e) => { e.stopPropagation(); setOpenMenuId(null); onDelete(outcome); }}
+              onMouseDown={(e) => { e.stopPropagation(); setOpenMenuId(null); if (!isLocked) onDelete(outcome); }}
+              disabled={isLocked}
+              style={isLocked ? { opacity: 0.4, pointerEvents: "none" } : {}}
             >
               <Trash2 size={13} strokeWidth={2} />
               Remove Outcome
@@ -217,17 +227,19 @@ export default function OutcomesPage() {
     selectedPeriodId,
     selectedPeriod,
     frameworks = [],
+    semesterOptions: allPeriods = [],
     onFrameworksChange,
     loading: adminLoading,
   } = useAdminContext();
 
   const toast = useToast();
+  const isLocked = !!selectedPeriod?.is_locked;
   const frameworkId = selectedPeriod?.framework_id || null;
   const frameworkName = frameworks.find((f) => f.id === frameworkId)?.name || "";
 
   // ── Data hook ─────────────────────────────────────────────
 
-  const fw = useFrameworkOutcomes({ frameworkId, periodId: selectedPeriodId });
+  const fw = usePeriodOutcomes({ periodId: selectedPeriodId });
 
   // ── Local UI state ────────────────────────────────────────
 
@@ -273,7 +285,7 @@ export default function OutcomesPage() {
 
   const drawerCriteria = fw.criteria.map((c) => ({
     id: c.id,
-    label: c.label || c.short_label,
+    label: c.label,
     color: c.color || "var(--accent)",
   }));
 
@@ -437,6 +449,22 @@ export default function OutcomesPage() {
         </div>
       ) : (
         <>
+          {/* Lock banner */}
+          {isLocked && (
+            <div className="acc-lock-banner">
+              <div className="acc-lock-banner-icon">
+                <Lock size={16} strokeWidth={2} />
+              </div>
+              <div className="acc-lock-banner-body">
+                <div className="acc-lock-banner-title">Evaluation in progress — structural fields locked</div>
+                <div className="acc-lock-banner-desc">
+                  Criterion mappings and coverage types cannot be changed while scores exist.
+                  Outcome labels and descriptions remain editable.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* KPI strip */}
           <div className="scores-kpi-strip">
             <div className="scores-kpi-item">
@@ -490,7 +518,7 @@ export default function OutcomesPage() {
           )}
 
           {/* Outcomes table card */}
-          <div className="card">
+          <div className={`card acc-table-card${isLocked ? " locked-card" : ""}`}>
             <div className="card-header">
               <div className="card-title">Programme Outcomes</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -502,13 +530,20 @@ export default function OutcomesPage() {
                   {frameworkName}
                   <ChevronRight size={12} strokeWidth={2} style={{ marginLeft: 2, opacity: 0.6 }} />
                 </button>
-                <button
-                  className="btn btn-primary btn-sm"
-                  style={{ width: "auto", padding: "6px 14px", fontSize: 12, background: "var(--accent)", boxShadow: "none" }}
-                  onClick={() => setAddDrawerOpen(true)}
-                >
-                  + Add Outcome
-                </button>
+                {isLocked ? (
+                  <span className="acc-lock-badge">
+                    <Lock size={11} strokeWidth={2.5} />
+                    Evaluation Active
+                  </span>
+                ) : (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ width: "auto", padding: "6px 14px", fontSize: 12, background: "var(--accent)", boxShadow: "none" }}
+                    onClick={() => setAddDrawerOpen(true)}
+                  >
+                    + Add Outcome
+                  </button>
+                )}
               </div>
             </div>
             <div className="table-wrap" style={{ border: "none", overflow: "visible" }}>
@@ -552,6 +587,7 @@ export default function OutcomesPage() {
                         onCycleCoverage={handleCycleCoverage}
                         openMenuId={openMenuId}
                         setOpenMenuId={setOpenMenuId}
+                        isLocked={isLocked}
                       />
                     ))}
                   </tbody>
@@ -601,6 +637,7 @@ export default function OutcomesPage() {
         outcome={editingOutcome}
         criteria={drawerCriteria}
         onSave={handleEditOutcome}
+        isLocked={isLocked}
       />
       {/* Delete Confirm */}
       <Modal
@@ -677,6 +714,7 @@ export default function OutcomesPage() {
         frameworkId={frameworkId}
         frameworkName={frameworkName}
         frameworks={frameworks}
+        allPeriods={allPeriods}
         organizationId={organizationId}
         selectedPeriodId={selectedPeriodId}
         outcomeCount={totalOutcomes}

@@ -35,8 +35,8 @@ function makeState(overrides = {}) {
       { project_id: "p3", title: "Project Gamma", members: "E, F" },
     ],
     effectiveCriteria: [
-      { id: "technical", label: "Technical", short_label: "Tech", max: 30 },
-      { id: "written", label: "Written", short_label: "Written", max: 30 },
+      { id: "technical", label: "Technical", max: 30 },
+      { id: "written", label: "Written", max: 30 },
     ],
     scores: {},
     doneScores: {},

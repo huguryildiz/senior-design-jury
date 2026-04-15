@@ -19,6 +19,7 @@ import {
   Copy,
   BarChart2,
   ChevronRight,
+  BadgeCheck,
   Icon,
 } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
@@ -48,6 +49,7 @@ export default function AddEditPeriodDrawer({
   allPeriods = [],
   frameworks = [],
   onNavigateToCriteria,
+  onNavigateToOutcomes,
 }) {
   const isEdit = !!period;
 
@@ -113,6 +115,8 @@ export default function AddEditPeriodDrawer({
       .filter((p) => p.id !== period?.id)
       .map((p) => ({ value: p.id, label: p.name })),
   ];
+
+  const platformChips = frameworks.filter((f) => !f.organization_id);
 
   const handleSave = async () => {
     if (!formName.trim() || nameError) return;
@@ -306,6 +310,40 @@ export default function AddEditPeriodDrawer({
               <label className="fs-field-label">
                 Framework <span className="fs-field-opt">(optional)</span>
               </label>
+
+              {/* Platform template cards */}
+              {platformChips.length > 0 && (
+                <div className="fw-template-cards">
+                  {platformChips.map((fw) => (
+                    <button
+                      key={fw.id}
+                      type="button"
+                      className={["fw-template-card", formFrameworkId === fw.id ? "active" : ""].filter(Boolean).join(" ")}
+                      onClick={() => {
+                        if (formFrameworkId === fw.id) {
+                          setFormFrameworkId(null);
+                          setFormFrameworkName("");
+                        } else {
+                          setFormFrameworkId(fw.id);
+                          setFormFrameworkName(fw.name);
+                        }
+                      }}
+                      disabled={saving}
+                    >
+                      <div className="fw-template-card-icon">
+                        <BadgeCheck size={20} strokeWidth={1.75} />
+                      </div>
+                      <div className="fw-template-card-body">
+                        <div className="fw-template-card-name">{fw.name}</div>
+                        {fw.description && (
+                          <div className="fw-template-card-desc">{fw.description}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <div
                   style={{
@@ -327,7 +365,7 @@ export default function AddEditPeriodDrawer({
                   onClick={() => setFwPickerOpen(true)}
                   disabled={saving}
                 >
-                  {formFrameworkName ? "Change" : "Select…"}
+                  More…
                 </button>
                 {formFrameworkName && (
                   <button
@@ -406,6 +444,112 @@ export default function AddEditPeriodDrawer({
           </div>
         )}
 
+        {/* ── EDIT MODE: FRAMEWORK ── */}
+        {isEdit && (
+          <div className="fs-section">
+            <div className="fs-section-header">
+              <div className="fs-section-title">Framework</div>
+            </div>
+            {countsLoading ? (
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", padding: "8px 0" }}>Loading…</div>
+            ) : counts?.score_count > 0 ? (
+              <>
+                <div className="fs-alert warning">
+                  <div className="fs-alert-icon"><AlertCircle size={15} /></div>
+                  <div className="fs-alert-body">
+                    Framework is locked — scores have been recorded. Manage outcome mappings from the Outcomes page.
+                  </div>
+                </div>
+                <div className="fw-display-row">
+                  <Lock size={13} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                  <span className="fw-display-name">{formFrameworkName || "No framework assigned"}</span>
+                </div>
+                {onNavigateToOutcomes && (
+                  <button
+                    type="button"
+                    className="fw-advanced-btn"
+                    onClick={() => { onClose(); onNavigateToOutcomes(); }}
+                  >
+                    Manage in Outcomes →
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                {platformChips.length > 0 && (
+                  <div className="fw-template-cards">
+                    {platformChips.map((fw) => (
+                      <button
+                        key={fw.id}
+                        type="button"
+                        className={["fw-template-card", formFrameworkId === fw.id ? "active" : ""].filter(Boolean).join(" ")}
+                        onClick={() => {
+                          if (formFrameworkId === fw.id) {
+                            setFormFrameworkId(null);
+                            setFormFrameworkName("");
+                          } else {
+                            setFormFrameworkId(fw.id);
+                            setFormFrameworkName(fw.name);
+                          }
+                        }}
+                        disabled={saving}
+                      >
+                        <div className="fw-template-card-icon">
+                          <BadgeCheck size={20} strokeWidth={1.75} />
+                        </div>
+                        <div className="fw-template-card-body">
+                          <div className="fw-template-card-name">{fw.name}</div>
+                          {fw.description && (
+                            <div className="fw-template-card-desc">{fw.description}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: "9px 12px",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-1)",
+                      fontSize: 13,
+                      color: formFrameworkName ? "var(--text-primary)" : "var(--text-tertiary)",
+                    }}
+                  >
+                    {formFrameworkName || "— Select or add later from Outcomes page —"}
+                  </div>
+                  <button
+                    type="button"
+                    className="fs-btn fs-btn-secondary"
+                    style={{ flexShrink: 0, fontSize: 12, padding: "6px 12px" }}
+                    onClick={() => setFwPickerOpen(true)}
+                    disabled={saving}
+                  >
+                    More…
+                  </button>
+                  {formFrameworkName && (
+                    <button
+                      type="button"
+                      className="fs-btn fs-btn-secondary"
+                      style={{ flexShrink: 0, fontSize: 12, padding: "6px 10px", color: "var(--text-tertiary)" }}
+                      onClick={() => { setFormFrameworkId(null); setFormFrameworkName(""); }}
+                      disabled={saving}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <div className="fs-field-helper hint" style={{ marginTop: 6 }}>
+                  The selected framework will be cloned for this period.
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* ── EDIT MODE: SCORING CRITERIA ── */}
         {isEdit && (
           <div className="fs-section">
@@ -442,7 +586,7 @@ export default function AddEditPeriodDrawer({
                     }}
                   >
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.color || "var(--border)", flexShrink: 0 }} />
-                    {c.label || c.short_label || c.id}
+                    {c.label || c.id}
                   </span>
                 ))}
               </div>

@@ -19,7 +19,7 @@
 import { useState } from "react";
 import {
   BadgeCheck, Copy, Pencil, Trash2,
-  PlusCircle, X, AlertCircle, ChevronDown,
+  X, AlertCircle, ChevronDown,
 } from "lucide-react";
 import Drawer from "@/shared/ui/Drawer";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
@@ -28,7 +28,6 @@ import { useToast } from "@/shared/hooks/useToast";
 import {
   cloneFramework,
   assignFrameworkToPeriod,
-  createFramework,
   updateFramework,
   deleteFramework,
 } from "@/shared/api";
@@ -39,6 +38,7 @@ export default function FrameworkPickerDrawer({
   frameworkId,
   frameworkName,
   frameworks = [],
+  allPeriods = [],
   organizationId,
   selectedPeriodId,
   outcomeCount = 0,
@@ -77,15 +77,18 @@ export default function FrameworkPickerDrawer({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // ── Create blank framework ────────────────────────────────────
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createDesc, setCreateDesc] = useState("");
-  const [creating, setCreating] = useState(false);
-
   // ── Derived ──────────────────────────────────────────────────
   const orgFrameworks = frameworks.filter((f) => f.organization_id && f.id !== frameworkId);
   const platformFrameworks = frameworks.filter((f) => !f.organization_id);
+
+  // Build { framework_id → "Period A · Period B" } — collects all periods that use this framework
+  const periodByFrameworkId = allPeriods.reduce((acc, p) => {
+    if (!p.framework_id) return acc;
+    const label = p.name || p.period_name || "";
+    if (!label) return acc;
+    acc[p.framework_id] = acc[p.framework_id] ? `${acc[p.framework_id]} · ${label}` : label;
+    return acc;
+  }, {});
   const isDupeName = (name) =>
     name.trim().length > 0 &&
     frameworks.some((f) => f.name.trim().toLowerCase() === name.trim().toLowerCase());
@@ -169,31 +172,6 @@ export default function FrameworkPickerDrawer({
     }
   };
 
-  const handleCreate = async () => {
-    if (!createName.trim() || !organizationId) return;
-    setCreating(true);
-    try {
-      const created = await createFramework({
-        organization_id: organizationId,
-        name: createName.trim(),
-        description: createDesc.trim() || null,
-      });
-      if (selectedPeriodId && created?.id) {
-        await assignFrameworkToPeriod(selectedPeriodId, created.id);
-      }
-      toast.success("Framework created");
-      setCreateOpen(false);
-      setCreateName("");
-      setCreateDesc("");
-      onFrameworksChange?.();
-      handleClose();
-    } catch (e) {
-      toast.error(e?.message || "Failed to create");
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleDeleteLibraryFw = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -223,9 +201,6 @@ export default function FrameworkPickerDrawer({
     setRemoveConfirmOpen(false);
     setChangeConfirmOpen(false);
     setPendingTarget(null);
-    setCreateOpen(false);
-    setCreateName("");
-    setCreateDesc("");
     setPickerOpen(false);
     setSelectedFwId(null);
     onClose();
@@ -387,12 +362,61 @@ export default function FrameworkPickerDrawer({
             </div>
           )}
 
-          {/* ── Section 2: Clone from existing (Previous Periods + Starter Templates) ── */}
-          {(orgFrameworks.length > 0 || platformFrameworks.length > 0) && (
-            <div className="fpd-section">
-              <div className="fpd-section-label">Clone from Existing</div>
+          {/* ── Section 1b: Default Templates ── */}
+          <div className="fpd-section">
+            <div className="fpd-section-label">Default Template</div>
+            {changeConfirmOpen && !pendingTarget?.organization_id ? (
+              <div className="fs-confirm-panel">
+                <p className="fs-confirm-msg">
+                  All outcome mappings for this period will be deleted. Are you sure you want to continue?
+                </p>
+                <div className="fs-confirm-btns">
+                  <button
+                    className="fs-confirm-cancel"
+                    onClick={() => { setChangeConfirmOpen(false); setPendingTarget(null); }}
+                    disabled={changingFw}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="fs-confirm-action"
+                    onClick={() => execCloneAndUse()}
+                    disabled={changingFw}
+                  >
+                    <AsyncButtonContent loading={changingFw}>Change</AsyncButtonContent>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="fw-template-cards">
+                {platformFrameworks.map((fw) => (
+                  <button
+                    key={fw.id}
+                    type="button"
+                    className="fw-template-card"
+                    onClick={() => handleCloneAndUse(fw)}
+                    disabled={changingFw}
+                  >
+                    <div className="fw-template-card-icon">
+                      <BadgeCheck size={20} strokeWidth={1.75} />
+                    </div>
+                    <div className="fw-template-card-body">
+                      <div className="fw-template-card-name">{fw.name}</div>
+                      {fw.description && (
+                        <div className="fw-template-card-desc">{fw.description}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-              {changeConfirmOpen ? (
+          {/* ── Section 2: Copy from Another Period── */}
+          {orgFrameworks.length > 0 && (
+            <div className="fpd-section">
+              <div className="fpd-section-label">Copy from Another Period</div>
+              {changeConfirmOpen && pendingTarget?.organization_id ? (
                 <div className="fs-confirm-panel">
                   <p className="fs-confirm-msg">
                     All outcome mappings for this period will be deleted. Are you sure you want to continue?
@@ -436,56 +460,47 @@ export default function FrameworkPickerDrawer({
                     onClick={() => setPickerOpen((v) => !v)}
                     disabled={changingFw}
                   >
-                    <span className={selectedFwId ? "fpd-picker-trigger-label" : "fpd-picker-trigger-label placeholder"}>
-                      {selectedFwId
-                        ? [...orgFrameworks, ...platformFrameworks].find((f) => f.id === selectedFwId)?.name
-                        : "Select a framework…"}
-                    </span>
+                    {selectedFwId ? (() => {
+                      const selFw = orgFrameworks.find((f) => f.id === selectedFwId);
+                      const selPeriod = periodByFrameworkId[selectedFwId];
+                      return (
+                        <span className="fpd-picker-trigger-label">
+                          <span className="fpd-picker-trigger-name">{selFw?.name}</span>
+                          <span className={["fpd-picker-period-tag", !selPeriod ? "unassigned" : ""].filter(Boolean).join(" ")}>
+                            {selPeriod || "—"}
+                          </span>
+                        </span>
+                      );
+                    })() : (
+                      <span className="fpd-picker-trigger-label placeholder">Select a framework…</span>
+                    )}
                     <ChevronDown size={14} strokeWidth={2} />
                   </button>
 
                   {pickerOpen && (
                     <div className="fpd-picker-dropdown">
-                      {orgFrameworks.length > 0 && (
-                        <>
-                          <div className="fpd-picker-group-label">Previous Periods</div>
-                          {orgFrameworks.map((fw) => (
-                            <div
-                              key={fw.id}
-                              className={["fpd-picker-option", selectedFwId === fw.id ? "selected" : ""].filter(Boolean).join(" ")}
-                              onClick={() => { setSelectedFwId(fw.id); setPickerOpen(false); }}
+                      {orgFrameworks.map((fw) => {
+                        const periodLabel = periodByFrameworkId[fw.id] || "—";
+                        return (
+                          <div
+                            key={fw.id}
+                            className={["fpd-picker-option", selectedFwId === fw.id ? "selected" : ""].filter(Boolean).join(" ")}
+                            onClick={() => { setSelectedFwId(fw.id); setPickerOpen(false); }}
+                          >
+                            <span className="fpd-picker-option-name">
+                              {fw.name}
+                              <span className={["fpd-picker-period-tag", !periodByFrameworkId[fw.id] ? "unassigned" : ""].filter(Boolean).join(" ")}>{periodLabel}</span>
+                            </span>
+                            <button
+                              className="fpd-picker-delete-btn"
+                              onClick={(e) => { e.stopPropagation(); setPickerOpen(false); setDeleteTarget(fw); }}
+                              aria-label={`Delete ${fw.name}`}
                             >
-                              <span className="fpd-picker-option-name">{fw.name}</span>
-                              <button
-                                className="fpd-picker-delete-btn"
-                                onClick={(e) => { e.stopPropagation(); setPickerOpen(false); setDeleteTarget(fw); }}
-                                aria-label={`Delete ${fw.name}`}
-                              >
-                                <Trash2 size={12} strokeWidth={2} />
-                              </button>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                      {platformFrameworks.length > 0 && (
-                        <>
-                          <div className="fpd-picker-group-label">Starter Templates</div>
-                          {platformFrameworks.map((fw) => (
-                            <div
-                              key={fw.id}
-                              className={["fpd-picker-option", selectedFwId === fw.id ? "selected" : ""].filter(Boolean).join(" ")}
-                              onClick={() => { setSelectedFwId(fw.id); setPickerOpen(false); }}
-                            >
-                              <span className="fpd-picker-option-name">
-                                {fw.name}
-                                {fw.description && (
-                                  <span className="fpd-picker-option-desc">{fw.description}</span>
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </>
-                      )}
+                              <Trash2 size={12} strokeWidth={2} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -493,13 +508,13 @@ export default function FrameworkPickerDrawer({
                 <button
                   className="fpd-clone-use-btn"
                   onClick={() => {
-                    const fw = [...orgFrameworks, ...platformFrameworks].find((f) => f.id === selectedFwId);
+                    const fw = orgFrameworks.find((f) => f.id === selectedFwId);
                     if (fw) handleCloneAndUse(fw);
                   }}
                   disabled={!selectedFwId || changingFw}
                 >
                   <AsyncButtonContent loading={changingFw}>
-                    Clone &amp; Use
+                    Copy &amp; Use
                   </AsyncButtonContent>
                 </button>
               </div>
@@ -507,58 +522,6 @@ export default function FrameworkPickerDrawer({
             </div>
           )}
 
-          {/* ── Create blank ── */}
-          <div className="fpd-section">
-            <div className="fpd-section-label">Create from Scratch</div>
-            {!createOpen ? (
-              <button className="fpd-create-blank-btn" onClick={() => setCreateOpen(true)}>
-                <PlusCircle size={14} strokeWidth={2} />
-                Create blank framework
-              </button>
-            ) : (
-              <div className="fpd-inline-form">
-                <div className="fpd-field-label">Framework name <span style={{color:"var(--danger)"}}>*</span></div>
-                <input
-                  className="fs-input"
-                  placeholder="e. g., ABET, Custom"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  autoFocus
-                  disabled={creating}
-                />
-                <div className="fpd-field-label" style={{ marginTop: 10 }}>Description <span style={{fontWeight:500,color:"var(--text-quaternary)"}}>(optional)</span></div>
-                <textarea
-                  className="fs-input"
-                  placeholder="Short description of this framework…"
-                  value={createDesc}
-                  onChange={(e) => setCreateDesc(e.target.value)}
-                  rows={2}
-                  disabled={creating}
-                  style={{ marginTop: 4, resize: "vertical" }}
-                />
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button
-                    className="fs-btn fs-btn-secondary"
-                    onClick={() => {
-                      setCreateOpen(false);
-                      setCreateName("");
-                      setCreateDesc("");
-                    }}
-                    disabled={creating}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="fs-btn fs-btn-primary"
-                    onClick={handleCreate}
-                    disabled={!createName.trim() || creating}
-                  >
-                    <AsyncButtonContent loading={creating}>Create &amp; Use</AsyncButtonContent>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Footer */}

@@ -19,9 +19,9 @@ import {
   setEvalLock,
   listPeriodCriteria,
   listPeriodOutcomes,
-  listOutcomes,
   cloneFramework,
   assignFrameworkToPeriod,
+  freezePeriodSnapshot,
 } from "../../shared/api";
 import { getActiveCriteria } from "../../shared/criteria/criteriaHelpers";
 import { sortPeriodsByStartDateDesc } from "../../shared/periodSort";
@@ -118,10 +118,9 @@ export function useManagePeriods({
     let alive = true;
     (async () => {
       try {
-        const frameworkId = viewPeriod?.framework_id || null;
         const [criteriaRows, outcomeRows] = await Promise.all([
           listPeriodCriteria(viewPeriodId),
-          frameworkId ? listOutcomes(frameworkId) : Promise.resolve([]),
+          listPeriodOutcomes(viewPeriodId),
         ]);
         if (!alive) return;
         const active = getActiveCriteria(criteriaRows);
@@ -249,7 +248,10 @@ export function useManagePeriods({
     try {
       const created = await createPeriod({ ...payload, organizationId });
 
-      // If a framework was selected, clone it and assign to the new period
+      // If a framework was selected, clone it, assign to the new period, and
+      // freeze the snapshot so period_outcomes + period_criterion_outcome_maps
+      // are populated. This makes the Outcomes/Mapping editors work immediately
+      // on the period without a second jury-flow trigger.
       let assignedFrameworkId = null;
       if (payload.frameworkId && created?.id) {
         try {
@@ -257,6 +259,11 @@ export function useManagePeriods({
           const { id: clonedId } = await cloneFramework(payload.frameworkId, autoName, organizationId);
           await assignFrameworkToPeriod(created.id, clonedId);
           assignedFrameworkId = clonedId;
+          try {
+            await freezePeriodSnapshot(created.id);
+          } catch {
+            // Non-fatal: jury flow will freeze lazily on first load.
+          }
         } catch {
           // Non-fatal: period was created, framework assignment failed
           // User can assign from Outcomes page

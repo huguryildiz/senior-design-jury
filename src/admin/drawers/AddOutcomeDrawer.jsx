@@ -59,7 +59,7 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
 
   const displayError = saveError || error;
   const saveBtnRef = useShakeOnError(displayError);
-  const canSave = form.code.trim() && form.shortLabel.trim() && form.shortLabel.trim().length <= 25;
+  const canSave = form.code.trim() && form.shortLabel.trim();
 
   return (
     <Drawer open={open} onClose={onClose}>
@@ -98,7 +98,7 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
               <input
                 className="fs-input"
                 type="text"
-                placeholder="e.g. PÇ-5"
+                placeholder="e.g., PO-5"
                 value={form.code}
                 onChange={(e) => set("code", e.target.value)}
                 disabled={saving}
@@ -109,33 +109,19 @@ export default function AddOutcomeDrawer({ open, onClose, frameworkName = "", cr
               </div>
             </div>
             <div className="fs-field">
-              <label className="fs-field-label">Short Label <span className="fs-field-req">*</span></label>
-              {(() => {
-                const slLen  = (form.shortLabel || "").trim().length;
-                const slOver = slLen > 25;
-                return (
-                  <>
-                    <input
-                      className={["fs-input", slOver && "error"].filter(Boolean).join(" ")}
-                      style={{ textTransform: "capitalize", marginTop: 2 }}
-                      placeholder="e.g., Problem Solving"
-                      value={form.shortLabel}
-                      onChange={(e) => set("shortLabel", e.target.value)}
-                      disabled={saving}
-                      maxLength={30}
-                    />
-                    <div className="fs-field-helper" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10.5px" }}>
-                      {slOver
-                        ? <span style={{ color: "var(--danger)" }}>Max 25 characters</span>
-                        : <span className="hint">Shown in table rows</span>
-                      }
-                      <span style={{ color: slOver ? "var(--danger)" : "var(--text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
-                        {slLen}/25 characters
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
+              <label className="fs-field-label">Label <span className="fs-field-req">*</span></label>
+              <input
+                className="fs-input"
+                type="text"
+                placeholder="e.g., Engineering Knowledge"
+                value={form.shortLabel}
+                onChange={(e) => set("shortLabel", e.target.value)}
+                disabled={saving}
+                maxLength={25}
+              />
+              <div className="fs-field-helper hint" style={{ fontSize: "10.5px" }}>
+                Short name shown in charts and tables ({25 - form.shortLabel.length} chars left)
+              </div>
             </div>
           </div>
         </div>
