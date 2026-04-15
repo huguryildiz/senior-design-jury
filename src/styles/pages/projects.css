@@ -12,12 +12,22 @@
   font-feature-settings: normal;
 }
 
+/* ─── Mobile-only elements are hidden on desktop / landscape ── */
+#projects-main-table td.col-footer,
+#projects-main-table th.col-footer { display: none; }
+#projects-main-table .mobile-rank-ring,
+#projects-main-table .mobile-eyebrow,
+#projects-main-table .members-chips-wrap { display: none; }
+
 /* ─── Manage team members modal list ─────────────────────── */
 .manage-student-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px }
 .manage-student-row .modal-input { flex: 1 }
 
-/* ─── Portrait card layout (≤ 768px portrait) ────────────────
-   Each table row becomes a stacked card.
+/* ─── Portrait card layout (≤ 768px portrait) ─────────────────
+   Each table row becomes a Ranked Hero card:
+   - Hero: rank ring · title + eyebrow · kebab
+   - Body: advisor · avatar chip stack
+   - Footer: members · evaluations · timestamp
    ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) and (orientation: portrait) {
   #page-projects .table-wrap {
@@ -32,92 +42,204 @@
   #projects-main-table thead { display: none !important; }
   #projects-main-table tbody { display: block; width: 100%; }
 
-  /* Card container */
+  /* Card container — CSS Grid with named areas */
   #projects-main-table tbody tr {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "ring title actions"
+      "ring advisor advisor"
+      "members members members"
+      "footer footer footer";
+    gap: 0 12px;
     width: 100%;
     box-sizing: border-box;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    margin-bottom: 10px;
-    padding: 14px 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    transition: box-shadow 0.15s, border-color 0.15s;
+    margin-bottom: 12px;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: box-shadow .15s, border-color .15s;
     cursor: pointer;
+    overflow: hidden;
   }
   #projects-main-table tbody tr:hover {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.10);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
   }
 
-  /* Base cell reset */
+  /* Cells: strip defaults */
   #projects-main-table td {
     display: block;
     border-bottom: none;
     padding: 0;
     box-sizing: border-box;
   }
+  /* Hide desktop data-label micro-labels — this layout has explicit structure */
+  #projects-main-table td[data-label]::before { content: none; }
 
-  /* data-label micro-labels */
-  #projects-main-table td[data-label]::before {
-    content: attr(data-label);
+  /* Rank ring cell (No) */
+  #projects-main-table td.col-no {
+    grid-area: ring;
+    padding: 14px 0 14px 14px;
+    align-self: center;
+    z-index: 1;
+    text-align: left !important;
+  }
+  #projects-main-table td.col-no .project-no-badge { display: none; }
+  #projects-main-table .mobile-rank-ring {
     display: block;
-    font-size: 8.5px;
+    width: 48px;
+    height: 48px;
+  }
+  #projects-main-table .mobile-rank-ring-fill {
+    position: relative;
+    display: block;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring, var(--text-tertiary)) var(--pct, 0deg), var(--border) 0);
+  }
+  #projects-main-table .mobile-rank-ring-fill::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    background: var(--bg-card);
+    border-radius: 50%;
+  }
+  #projects-main-table .mobile-rank-ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 1;
+  }
+  #projects-main-table .mobile-rank-ring-num {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ring, var(--text-tertiary));
+  }
+  #projects-main-table .mobile-rank-ring-lbl {
+    font-size: 7px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+    font-weight: 600;
+  }
+
+  /* Title cell */
+  #projects-main-table td.col-title {
+    grid-area: title;
+    padding: 14px 0 0 0;
+    min-width: 0;
+    z-index: 1;
+  }
+  #projects-main-table td.col-title > div:first-of-type {
+    font-size: 13.5px;
+    font-weight: 650;
+    line-height: 1.3;
+    letter-spacing: -0.2px;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  #projects-main-table .mobile-eyebrow {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.6px;
+    margin-bottom: 2px;
+  }
+
+  /* Actions (kebab) cell — top-right */
+  #projects-main-table td.col-actions {
+    grid-area: actions;
+    padding: 12px 12px 0 0;
+    align-self: start;
+    text-align: right !important;
+    z-index: 1;
+  }
+
+  /* Members cell — hide text, show chips */
+  #projects-main-table td.col-members {
+    grid-area: members;
+    padding: 10px 14px 12px;
+  }
+  #projects-main-table td.col-members .members-text { display: none; }
+  #projects-main-table td.col-members .members-chips-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #projects-main-table td.col-members .members-chips-label {
+    font-size: 9.5px;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     color: var(--text-tertiary);
     font-weight: 600;
-    margin-bottom: 2px;
+    flex-shrink: 0;
   }
-
-  /* Row 1: No (badge, auto) + Title (flex:1) */
-  #projects-main-table td:nth-child(1) {
-    flex: 0 0 auto;
-    order: 1;
-    padding-right: 12px;
-    align-self: flex-start;
-  }
-  #projects-main-table td:nth-child(2) {
-    flex: 1 1 0;
+  #projects-main-table .member-chips {
+    display: flex;
+    align-items: center;
     min-width: 0;
-    order: 2;
-    padding-bottom: 10px;
+  }
+  #projects-main-table .member-chips-empty {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-style: italic;
+  }
+  #projects-main-table .member-chip {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-card);
+    margin-left: -6px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    flex-shrink: 0;
+  }
+  #projects-main-table .member-chip:first-child { margin-left: 0; }
+  #projects-main-table .member-chip-more {
+    background: var(--surface-1) !important;
+    color: var(--text-secondary);
+    font-size: 10px;
   }
 
-  /* Row 2: Team Members (full width) */
-  #projects-main-table td.col-members {
-    flex: 0 0 100%;
-    order: 3;
-    padding: 8px 0;
+  /* Footer cell — show on mobile */
+  #projects-main-table td.col-footer {
+    grid-area: footer;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--surface-1);
     border-top: 1px solid var(--border);
+    font-size: 10.5px;
+    color: var(--text-tertiary);
+  }
+  #projects-main-table td.col-footer strong {
+    color: var(--text-secondary);
+    font-weight: 600;
   }
 
-  /* Row 3: Avg Score (flex:1) + Last Updated (auto) */
-  #projects-main-table td.avg-score-cell {
-    flex: 1 1 auto;
-    order: 4;
-    padding-top: 8px;
-    text-align: left !important;
-  }
-  #projects-main-table td.col-updated {
-    flex: 0 0 auto;
-    order: 5;
-    padding-top: 8px;
-    text-align: right;
-  }
-
-  /* Row 4: Actions (full width, right-aligned) */
-  #projects-main-table td.col-actions {
-    flex: 0 0 100%;
-    order: 6;
-    padding-top: 10px;
-    text-align: right !important;
-    border-top: 1px solid var(--border);
-    margin-top: 4px;
-  }
+  /* Hide cells that are no longer used directly on mobile (avg + updated columns)
+     — their data is represented by the rank ring and footer */
+  #projects-main-table td.avg-score-cell,
+  #projects-main-table td.col-updated { display: none; }
 }
 
 /* ─── Landscape compact ───────────────────────────────────────
