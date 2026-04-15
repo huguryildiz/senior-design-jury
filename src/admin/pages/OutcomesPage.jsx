@@ -237,7 +237,7 @@ export default function OutcomesPage() {
   const toast = useToast();
   const isLocked = !!selectedPeriod?.is_locked;
   const frameworkId = selectedPeriod?.framework_id || null;
-  const frameworkName = frameworks.find((f) => f.id === frameworkId)?.name || "";
+  const savedFrameworkName = frameworks.find((f) => f.id === frameworkId)?.name || "";
   // Only show accreditation frameworks (MÜDEK/ABET) in the "no framework" picker —
   // VERA Standard belongs to the Criteria page, not here.
   const isAccreditationFramework = (fw) => /MÜDEK|ABET/i.test(fw.name);
@@ -261,6 +261,11 @@ export default function OutcomesPage() {
   // ── Data hook ─────────────────────────────────────────────
 
   const fw = usePeriodOutcomes({ periodId: selectedPeriodId });
+
+  // Effective framework name reflects any queued rename in the draft so the
+  // UI updates instantly without hitting the DB.
+  const frameworkName =
+    fw.pendingFrameworkName !== undefined ? fw.pendingFrameworkName : savedFrameworkName;
 
   // ── Local UI state ────────────────────────────────────────
 
@@ -306,9 +311,15 @@ export default function OutcomesPage() {
     try {
       const newFw = await createFramework({ name: "Custom Outcome", organization_id: organizationId });
       await assignFrameworkToPeriod(selectedPeriodId, newFw.id);
-      await fetchData?.();
+      // Force-refreeze so any stale period_outcomes from a previously
+      // assigned framework are wiped — a blank framework has no outcomes,
+      // so the snapshot lands empty.
+      await freezePeriodSnapshot(selectedPeriodId, true);
+      await Promise.all([fetchData?.(), fw.loadAll()]);
       onFrameworksChange?.();
-      toast.success("Blank outcome set created");
+      // Route through the confirm banner like clone flows: Save acknowledges,
+      // Discard unassigns. Keeps the UX identical regardless of entry path.
+      setPendingConfirm({ fwId: newFw.id, name: "Custom Outcome" });
     } catch (e) {
       toast.error(e?.message || "Failed to create outcome set");
     } finally {
@@ -513,36 +524,16 @@ export default function OutcomesPage() {
     setFwRenameVal("");
   };
 
-  const saveFwRename = async () => {
+  // Queue the rename in the draft; no RPC runs until Save Changes.
+  const saveFwRename = () => {
     const trimmed = fwRenameVal.trim();
     if (!trimmed || trimmed === frameworkName || !frameworkId) {
       cancelFwRename();
       return;
     }
-    setFwRenameSaving(true);
-    try {
-      const sharedWith = allPeriods.filter(
-        (p) => p.framework_id === frameworkId && p.id !== selectedPeriodId
-      );
-      if (sharedWith.length > 0 && organizationId) {
-        // Framework is shared with other periods — clone it so the rename
-        // only affects this period. period_outcomes / mappings are already
-        // period-scoped snapshots, so reassigning framework_id doesn't touch them.
-        const { id: clonedId } = await cloneFramework(frameworkId, trimmed, organizationId);
-        await assignFrameworkToPeriod(selectedPeriodId, clonedId);
-        toast.success("Outcomes renamed for this period");
-      } else {
-        await updateFramework(frameworkId, { name: trimmed });
-        toast.success("Outcomes renamed");
-      }
-      onFrameworksChange?.();
-      setFwRenaming(false);
-      setFwRenameVal("");
-    } catch (e) {
-      toast.error(e?.message || "Failed to rename");
-    } finally {
-      setFwRenameSaving(false);
-    }
+    fw.setPendingFrameworkName(trimmed);
+    setFwRenaming(false);
+    setFwRenameVal("");
   };
 
   const handleFwRenameKeyDown = (e) => {
@@ -554,19 +545,57 @@ export default function OutcomesPage() {
 
   const handleSaveDraft = async () => {
     try {
+      // Unassign supersedes all other edits — if the user queued it, the
+      // framework goes away and everything else is moot.
+      if (fw.pendingUnassign) {
+        await assignFrameworkToPeriod(selectedPeriodId, null);
+        await Promise.all([fetchData?.(), fw.loadAll()]);
+        onFrameworksChange?.();
+        setPendingConfirm(null);
+        toast.success("Outcomes removed from this period");
+        return;
+      }
+
+      // Framework import (pendingConfirm) — the clone+assign RPCs already
+      // ran when the user clicked the import item; Save just acknowledges.
       if (pendingConfirm) {
         setPendingConfirm(null);
-        toast.success(`"${pendingConfirm.name}" framework applied`);
-      } else {
-        await fw.commitDraft();
-        toast.success("Outcomes saved");
       }
+
+      // Outcome/mapping diffs.
+      if (fw.itemsDirty) {
+        await fw.commitDraft();
+      }
+
+      // Framework rename — clone-if-shared or update-in-place.
+      if (fw.pendingFrameworkName !== undefined && frameworkId) {
+        const trimmed = fw.pendingFrameworkName;
+        const sharedWith = allPeriods.filter(
+          (p) => p.framework_id === frameworkId && p.id !== selectedPeriodId
+        );
+        if (sharedWith.length > 0 && organizationId) {
+          const { id: clonedId } = await cloneFramework(frameworkId, trimmed, organizationId);
+          await assignFrameworkToPeriod(selectedPeriodId, clonedId);
+        } else {
+          await updateFramework(frameworkId, { name: trimmed });
+        }
+        await fetchData?.();
+        onFrameworksChange?.();
+        fw.setPendingFrameworkName(undefined);
+      }
+
+      toast.success("Outcomes saved");
     } catch (e) {
       toast.error(e?.message || "Failed to save outcomes");
     }
   };
 
   const handleDiscardDraft = async () => {
+    // Reset any draft-only intents first — this is a no-op on the server.
+    fw.discardDraft();
+
+    // A freshly-imported framework already hit the server; rolling back that
+    // commit means unassigning it and reloading.
     if (pendingConfirm) {
       setCloningFw(true);
       try {
@@ -579,26 +608,17 @@ export default function OutcomesPage() {
       } finally {
         setCloningFw(false);
       }
-    } else {
-      fw.discardDraft();
     }
   };
 
   // ── Unassign framework handler ─────────────────────────────
+  // Queues the unassign in the draft — the RPC runs only when the user clicks
+  // Save Changes. Discard reverts to the current framework without a request.
 
-  const handleUnassignFramework = async () => {
-    setUnassignFwSubmitting(true);
-    try {
-      await assignFrameworkToPeriod(selectedPeriodId, null);
-      await Promise.all([fetchData?.(), onFrameworksChange?.(), fw.loadAll()]);
-      setUnassignFwOpen(false);
-      setUnassignFwConfirmText("");
-      toast.success("Outcomes removed from this period");
-    } catch (e) {
-      toast.error(e?.message || "Failed to remove outcomes");
-    } finally {
-      setUnassignFwSubmitting(false);
-    }
+  const handleUnassignFramework = () => {
+    fw.markUnassign();
+    setUnassignFwOpen(false);
+    setUnassignFwConfirmText("");
   };
 
   // ── Render ────────────────────────────────────────────────

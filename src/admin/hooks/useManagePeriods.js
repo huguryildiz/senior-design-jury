@@ -13,6 +13,7 @@ import {
   setCurrentPeriod,
   createPeriod,
   updatePeriod,
+  duplicatePeriod,
   savePeriodCriteria,
   reorderPeriodCriteria,
   deletePeriod,
@@ -22,6 +23,7 @@ import {
   cloneFramework,
   assignFrameworkToPeriod,
   freezePeriodSnapshot,
+  setPeriodCriteriaName,
 } from "../../shared/api";
 import { getActiveCriteria } from "../../shared/criteria/criteriaHelpers";
 import { sortPeriodsByStartDateDesc } from "../../shared/periodSort";
@@ -112,6 +114,13 @@ export function useManagePeriods({
   const [savedCriteria, setSavedCriteria] = useState([]);
   const [draftCriteria, setDraftCriteria] = useState([]);
 
+  // ── Draft meta (period-scoped rename + clear-all intent) ──
+  // `pendingCriteriaName` is undefined when no rename is queued; a string or
+  // null reflects the pending value. `pendingClearAll` signals that the user
+  // asked to wipe all criteria + criteria_name on the next save.
+  const [pendingCriteriaName, setPendingCriteriaNameState] = useState(undefined);
+  const [pendingClearAll, setPendingClearAll] = useState(false);
+
   // Criteria reload — only when the period itself changes (not framework).
   // framework_id changes must NOT reset draftCriteria: the user may have an
   // unsaved draft (e.g. VERA Standard template applied via updateDraft) that
@@ -121,6 +130,8 @@ export function useManagePeriods({
       setCriteriaConfig([]);
       setSavedCriteria([]);
       setDraftCriteria([]);
+      setPendingCriteriaNameState(undefined);
+      setPendingClearAll(false);
       return;
     }
     let alive = true;
@@ -134,12 +145,30 @@ export function useManagePeriods({
         // Restore unsaved draft from sessionStorage if it exists; otherwise
         // start with the DB snapshot as the draft.
         const scratch = getCriteriaScratch(viewPeriodId);
-        setDraftCriteria(scratch ?? structuredClone(active));
+        if (scratch?.pendingClearAll) {
+          setDraftCriteria([]);
+          setPendingClearAll(true);
+          setPendingCriteriaNameState(
+            Object.prototype.hasOwnProperty.call(scratch, "pendingCriteriaName")
+              ? scratch.pendingCriteriaName
+              : undefined
+          );
+        } else {
+          setDraftCriteria(scratch?.items ?? structuredClone(active));
+          setPendingClearAll(false);
+          setPendingCriteriaNameState(
+            scratch && Object.prototype.hasOwnProperty.call(scratch, "pendingCriteriaName")
+              ? scratch.pendingCriteriaName
+              : undefined
+          );
+        }
       } catch {
         if (alive) {
           setCriteriaConfig([]);
           setSavedCriteria([]);
           setDraftCriteria([]);
+          setPendingCriteriaNameState(undefined);
+          setPendingClearAll(false);
         }
       }
     })();
@@ -152,13 +181,17 @@ export function useManagePeriods({
   // prevents wiping the scratch before the async DB fetch runs.
   useEffect(() => {
     if (!viewPeriodId) return;
-    const isDirty = JSON.stringify(draftCriteria) !== JSON.stringify(savedCriteria);
-    if (isDirty) {
-      setCriteriaScratch(viewPeriodId, draftCriteria);
+    const itemsDirty = JSON.stringify(draftCriteria) !== JSON.stringify(savedCriteria);
+    const metaDirty = pendingCriteriaName !== undefined || pendingClearAll;
+    if (itemsDirty || metaDirty) {
+      const payload = { items: draftCriteria };
+      if (pendingCriteriaName !== undefined) payload.pendingCriteriaName = pendingCriteriaName;
+      if (pendingClearAll) payload.pendingClearAll = true;
+      setCriteriaScratch(viewPeriodId, payload);
     } else if (savedCriteria.length > 0) {
       clearCriteriaScratch(viewPeriodId);
     }
-  }, [draftCriteria, savedCriteria, viewPeriodId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [draftCriteria, savedCriteria, pendingCriteriaName, pendingClearAll, viewPeriodId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Outcomes reload — re-runs when period changes OR when a framework is
   // assigned (framework_id change means new outcomes are now available).
@@ -453,9 +486,14 @@ export function useManagePeriods({
   };
 
   // ── Draft/commit functions for criteria ────────────────────────────────
-  const isDraftDirty = useMemo(
+  const itemsDirty = useMemo(
     () => JSON.stringify(draftCriteria) !== JSON.stringify(savedCriteria),
     [draftCriteria, savedCriteria]
+  );
+
+  const isDraftDirty = useMemo(
+    () => itemsDirty || pendingCriteriaName !== undefined || pendingClearAll,
+    [itemsDirty, pendingCriteriaName, pendingClearAll]
   );
 
   const draftTotal = useMemo(
@@ -463,31 +501,55 @@ export function useManagePeriods({
     [draftCriteria]
   );
 
-  const canSaveDraft = isDraftDirty && draftTotal === 100;
+  // Save allowed when:
+  //  - clearing all → always OK
+  //  - only meta changes and no items → always OK (rename alone is valid even if period has no criteria yet)
+  //  - items dirty → weights must total exactly 100
+  const canSaveDraft = useMemo(() => {
+    if (!isDraftDirty) return false;
+    if (pendingClearAll) return true;
+    if (!itemsDirty) return true; // meta-only change
+    return draftTotal === 100;
+  }, [isDraftDirty, pendingClearAll, itemsDirty, draftTotal]);
 
   // True when the draft differs from saved only by position (keys and content identical).
   // In this case we can use the lightweight reorder RPC instead of the full delete+insert RPC,
   // which is safe even when score_sheet_items exist for the period.
   const isOrderOnly = useMemo(() => {
-    if (!isDraftDirty || draftCriteria.length !== savedCriteria.length) return false;
+    if (!itemsDirty || draftCriteria.length !== savedCriteria.length) return false;
     const sortByKey = (arr) => [...arr].sort((a, b) => a.key.localeCompare(b.key));
     return JSON.stringify(sortByKey(draftCriteria)) === JSON.stringify(sortByKey(savedCriteria));
-  }, [isDraftDirty, draftCriteria, savedCriteria]);
+  }, [itemsDirty, draftCriteria, savedCriteria]);
 
   const commitDraft = useCallback(async () => {
     if (!viewPeriodId || !canSaveDraft) return;
     incLoading();
     try {
-      if (isOrderOnly) {
-        await reorderPeriodCriteria(viewPeriodId, draftCriteria.map((c) => c.key));
+      if (pendingClearAll) {
+        // Destructive clear — wipe items + criteria_name.
+        await savePeriodCriteria(viewPeriodId, []);
+        await setPeriodCriteriaName(viewPeriodId, null);
+        applyPeriodPatch({ id: viewPeriodId, criteria_name: null });
       } else {
-        await savePeriodCriteria(viewPeriodId, draftCriteria);
+        if (itemsDirty) {
+          if (isOrderOnly) {
+            await reorderPeriodCriteria(viewPeriodId, draftCriteria.map((c) => c.key));
+          } else {
+            await savePeriodCriteria(viewPeriodId, draftCriteria);
+          }
+        }
+        if (pendingCriteriaName !== undefined) {
+          await setPeriodCriteriaName(viewPeriodId, pendingCriteriaName);
+          applyPeriodPatch({ id: viewPeriodId, criteria_name: pendingCriteriaName });
+        }
       }
       const rows = await listPeriodCriteria(viewPeriodId);
       const fresh = getActiveCriteria(rows);
       setCriteriaConfig(fresh);
       setSavedCriteria(fresh);
       setDraftCriteria(structuredClone(fresh));
+      setPendingCriteriaNameState(undefined);
+      setPendingClearAll(false);
       clearCriteriaScratch(viewPeriodId);
       setMessage("Criteria saved successfully.");
     } catch (e) {
@@ -507,15 +569,36 @@ export function useManagePeriods({
     } finally {
       decLoading();
     }
-  }, [viewPeriodId, canSaveDraft, isOrderOnly, draftCriteria]);
+  }, [viewPeriodId, canSaveDraft, isOrderOnly, itemsDirty, draftCriteria, pendingCriteriaName, pendingClearAll, applyPeriodPatch]);
 
   const discardDraft = useCallback(() => {
     clearCriteriaScratch(viewPeriodId);
     setDraftCriteria(structuredClone(savedCriteria));
+    setPendingCriteriaNameState(undefined);
+    setPendingClearAll(false);
   }, [savedCriteria, viewPeriodId]);
 
   const updateDraft = useCallback((newDraft) => {
     setDraftCriteria(newDraft);
+    // If user re-populates criteria after marking clear-all, cancel the clear.
+    if (newDraft.length > 0) setPendingClearAll(false);
+  }, []);
+
+  // Queue a rename to be applied on the next commitDraft. Pass the new name,
+  // or `null` to clear the criteria_name column. No RPC is fired here.
+  // Setting a non-empty name cancels any pending clear-all — the user has
+  // decided to re-initialize setup rather than wipe the period.
+  const setPendingCriteriaName = useCallback((name) => {
+    setPendingCriteriaNameState(name);
+    if (name) setPendingClearAll(false);
+  }, []);
+
+  // Mark "clear all" intent — draft items are wiped locally; commit will run
+  // the destructive RPCs. Any queued rename is dropped.
+  const markClearAll = useCallback(() => {
+    setPendingClearAll(true);
+    setDraftCriteria([]);
+    setPendingCriteriaNameState(undefined);
   }, []);
 
   // Sync both savedCriteria and draftCriteria to the given value (e.g. after a
@@ -523,8 +606,30 @@ export function useManagePeriods({
   const applySavedCriteria = useCallback((criteria) => {
     setSavedCriteria(criteria);
     setDraftCriteria(structuredClone(criteria));
+    setPendingCriteriaNameState(undefined);
+    setPendingClearAll(false);
     clearCriteriaScratch(viewPeriodId);
   }, [viewPeriodId]);
+
+  const handleDuplicatePeriod = async (periodId) => {
+    if (!periodId) return { ok: false };
+    setMessage("");
+    clearPanelError("period");
+    const src = periodList.find((p) => p.id === periodId);
+    incLoading();
+    try {
+      const newId = await duplicatePeriod(periodId);
+      await refreshPeriods();
+      const label = src?.name ? `"${src.name}"` : "period";
+      setMessage(`Duplicated ${label} — new period ready to configure.`);
+      return { ok: true, id: newId };
+    } catch (e) {
+      setPanelError("period", e?.message || "Could not duplicate period. Try again.");
+      return { ok: false };
+    } finally {
+      decLoading();
+    }
+  };
 
   const handleDeletePeriod = async (periodId) => {
     if (!periodId) return;
@@ -603,12 +708,16 @@ export function useManagePeriods({
     outcomeConfig,
     draftCriteria,
     savedCriteria,
+    pendingCriteriaName,
+    pendingClearAll,
     isDraftDirty,
     draftTotal,
     canSaveDraft,
     commitDraft,
     discardDraft,
     updateDraft,
+    setPendingCriteriaName,
+    markClearAll,
     applySavedCriteria,
     applyPeriodPatch,
     removePeriod,
@@ -617,6 +726,7 @@ export function useManagePeriods({
     handleSetCurrentPeriod,
     handleCreatePeriod,
     handleUpdatePeriod,
+    handleDuplicatePeriod,
     handleUpdateCriteriaConfig,
     handleUpdateOutcomeConfig,
     handleDeletePeriod,

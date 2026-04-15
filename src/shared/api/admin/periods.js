@@ -115,6 +115,14 @@ export async function deletePeriod(id) {
   if (error) throw error;
 }
 
+export async function duplicatePeriod(sourcePeriodId) {
+  const { data, error } = await supabase.rpc("rpc_admin_duplicate_period", {
+    p_source_period_id: sourcePeriodId,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function setEvalLock(periodId, enabled) {
   // Period update + audit event are atomic inside rpc_admin_set_period_lock.
   // When caller is org admin and scores exist, the RPC returns ok=false with

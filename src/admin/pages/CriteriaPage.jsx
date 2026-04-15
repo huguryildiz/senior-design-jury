@@ -156,9 +156,19 @@ export default function CriteriaPage() {
   const isLocked = !!(viewPeriod?.is_locked);
   const [saving, setSaving] = useState(false);
 
-  // Scratch mode: derived from DB. True when criteria setup has been initiated
-  // (criteria_name is set on the period) or criteria already exist in the draft.
-  const scratchMode = !!(viewPeriod?.criteria_name) || draftCriteria.length > 0;
+  // Effective criteria_name accounts for any draft rename queued in the hook.
+  // `pendingCriteriaName === undefined` → no change; otherwise use the pending
+  // value (which may be null, meaning "cleared on next save").
+  const pendingCriteriaName = periods.pendingCriteriaName;
+  const effectiveCriteriaName =
+    pendingCriteriaName !== undefined ? pendingCriteriaName : viewPeriod?.criteria_name;
+
+  // Scratch mode: setup has been initiated once the period has a criteria_name
+  // (or draft name), draft items exist, or draft rename is queued. A pending
+  // clear-all forces the empty state back so the user can pick a starting point.
+  const scratchMode =
+    !periods.pendingClearAll &&
+    (!!effectiveCriteriaName || draftCriteria.length > 0);
 
   const totalPages = Math.max(1, Math.ceil(draftCriteria.length / pageSize));
   const safePage = Math.min(currentPage, Math.max(1, totalPages));
@@ -263,24 +273,14 @@ export default function CriteriaPage() {
     }
   };
 
-  const handleDiscard = async () => {
+  const handleDiscard = () => {
     periods.discardDraft();
-    // If no saved criteria exist, clear criteria_name so the empty-state card reappears.
-    if ((periods.savedCriteria || []).length === 0 && periods.viewPeriodId) {
-      try {
-        const { setPeriodCriteriaName } = await import("@/shared/api");
-        await setPeriodCriteriaName(periods.viewPeriodId, null);
-        periods.applyPeriodPatch({ id: periods.viewPeriodId, criteria_name: null });
-      } catch (err) {
-        console.error("Failed to clear criteria name on discard:", err?.message);
-      }
-    }
   };
 
   // ── Period rename handlers ────────────────────────────────────
 
   const startPeriodRename = () => {
-    setPeriodRenameVal(viewPeriod?.criteria_name || viewPeriod?.name || "");
+    setPeriodRenameVal(effectiveCriteriaName || viewPeriod?.name || "");
     setPeriodRenaming(true);
     setTimeout(() => {
       periodRenameInputRef.current?.focus();
@@ -293,25 +293,17 @@ export default function CriteriaPage() {
     setPeriodRenameVal("");
   };
 
-  const savePeriodRename = async () => {
+  // Queue rename in the draft; no RPC fires until Save Changes is clicked.
+  const savePeriodRename = () => {
     const trimmed = periodRenameVal.trim();
-    const currentName = viewPeriod?.criteria_name || viewPeriod?.name || "";
+    const currentName = effectiveCriteriaName || viewPeriod?.name || "";
     if (!trimmed || !viewPeriod || trimmed === currentName) {
       cancelPeriodRename();
       return;
     }
-    setPeriodRenameSaving(true);
-    try {
-      const { setPeriodCriteriaName } = await import("@/shared/api");
-      await setPeriodCriteriaName(viewPeriod.id, trimmed);
-      periods.applyPeriodPatch({ id: viewPeriod.id, criteria_name: trimmed });
-    } catch (e) {
-      _toast.error(e?.message || "Failed to rename criteria set");
-    } finally {
-      setPeriodRenaming(false);
-      setPeriodRenameVal("");
-      setPeriodRenameSaving(false);
-    }
+    periods.setPendingCriteriaName(trimmed);
+    setPeriodRenaming(false);
+    setPeriodRenameVal("");
   };
 
   const handlePeriodRenameKeyDown = (e) => {
@@ -337,24 +329,12 @@ export default function CriteriaPage() {
   };
 
   // ── Clear all criteria handler ────────────────────────────────
+  // Queues the clear in the draft; the destructive RPCs run only on Save.
 
-  const handleClearAllCriteria = async () => {
-    setClearAllSubmitting(true);
-    try {
-      const { savePeriodCriteria, setPeriodCriteriaName } = await import("@/shared/api");
-      await savePeriodCriteria(periods.viewPeriodId, []);
-      await setPeriodCriteriaName(periods.viewPeriodId, null);
-      periods.applySavedCriteria([]);
-      periods.applyPeriodPatch({ id: periods.viewPeriodId, criteria_name: null });
-      await periods.loadPeriods();
-      setClearAllOpen(false);
-      setClearAllConfirmText("");
-      _toast.success("All criteria removed");
-    } catch (err) {
-      _toast.error(err?.message || "Failed to clear criteria");
-    } finally {
-      setClearAllSubmitting(false);
-    }
+  const handleClearAllCriteria = () => {
+    periods.markClearAll();
+    setClearAllOpen(false);
+    setClearAllConfirmText("");
   };
 
   // ── Clone from period handler ──────────────────────────────────────
@@ -363,6 +343,7 @@ export default function CriteriaPage() {
     (p) => p.id !== periods.viewPeriodId && p.id
   );
 
+  // Imports criteria from a source period into the draft. No RPC runs until Save.
   const handleClone = async (sourcePeriodId) => {
     setCloneLoading(true);
     try {
@@ -375,16 +356,10 @@ export default function CriteriaPage() {
       }));
       if (cloned.length > 0) {
         periods.updateDraft(cloned);
-        _toast.success(`Cloned ${cloned.length} criteria`);
-        try {
-          const sourcePeriod = periods.periodList.find((p) => p.id === sourcePeriodId);
-          const cloneName = `${sourcePeriod?.criteria_name || sourcePeriod?.name || "Criteria"} (copy)`;
-          const { setPeriodCriteriaName } = await import("@/shared/api");
-          await setPeriodCriteriaName(periods.viewPeriodId, cloneName);
-          periods.applyPeriodPatch({ id: periods.viewPeriodId, criteria_name: cloneName });
-        } catch (nameErr) {
-          console.error("Failed to set criteria name after clone:", nameErr?.message);
-        }
+        const sourcePeriod = periods.periodList.find((p) => p.id === sourcePeriodId);
+        const cloneName = `${sourcePeriod?.criteria_name || sourcePeriod?.name || "Criteria"} (copy)`;
+        periods.setPendingCriteriaName(cloneName);
+        _toast.success(`Cloned ${cloned.length} criteria — click Save to apply.`);
       } else {
         _toast.info("Source period has no criteria to clone");
       }
@@ -395,18 +370,12 @@ export default function CriteriaPage() {
     }
   };
 
-  const handleStartBlank = async () => {
+  // Start-blank just queues the criteria_name in the draft — the empty-state
+  // card disappears and the criteria table appears with the banner up.
+  const handleStartBlank = () => {
     setStartingBlank(true);
-    try {
-      const { setPeriodCriteriaName } = await import("@/shared/api");
-      await setPeriodCriteriaName(periods.viewPeriodId, "Custom Criteria");
-      periods.applyPeriodPatch({ id: periods.viewPeriodId, criteria_name: "Custom Criteria" });
-      _toast.success("Blank criteria set created.");
-    } catch (err) {
-      setPanelError("criteria", err?.message || "Failed to initialize criteria setup. Please try again.");
-    } finally {
-      setStartingBlank(false);
-    }
+    periods.setPendingCriteriaName("Custom Criteria");
+    setStartingBlank(false);
   };
 
   const deleteLabel = deleteIndex !== null
@@ -581,16 +550,10 @@ export default function CriteriaPage() {
                     <button
                       type="button"
                       className="vera-es-clone-item"
-                      onClick={async () => {
+                      onClick={() => {
                         periods.updateDraft(STARTER_CRITERIA);
+                        periods.setPendingCriteriaName("VERA Standard");
                         setShowClonePicker(false);
-                        try {
-                          const { setPeriodCriteriaName } = await import("@/shared/api");
-                          await setPeriodCriteriaName(periods.viewPeriodId, "VERA Standard");
-                          periods.applyPeriodPatch({ id: periods.viewPeriodId, criteria_name: "VERA Standard" });
-                        } catch (nameErr) {
-                          console.error("Failed to set criteria name for template:", nameErr?.message);
-                        }
                       }}
                       disabled={cloneLoading || isLocked}
                     >
@@ -665,7 +628,7 @@ export default function CriteriaPage() {
                     tabIndex={isLocked ? undefined : 0}
                     onKeyDown={isLocked ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") startPeriodRename(); }}
                   >
-                    {viewPeriod?.criteria_name || periods.viewPeriodLabel || "Active Criteria"}
+                    {effectiveCriteriaName || periods.viewPeriodLabel || "Active Criteria"}
                     {!isLocked && <Pencil size={13} strokeWidth={2} className="crt-title-edit-icon" />}
                   </div>
                 )}
@@ -1025,7 +988,7 @@ export default function CriteriaPage() {
           <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
             You are about to permanently delete all criteria from{" "}
             <strong style={{ color: "var(--text-primary)" }}>
-              {viewPeriod?.criteria_name || periods.viewPeriodLabel}
+              {effectiveCriteriaName || periods.viewPeriodLabel}
             </strong>.
           </div>
         </div>
@@ -1044,7 +1007,7 @@ export default function CriteriaPage() {
             <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
               Type{" "}
               <strong style={{ color: "var(--text-primary)" }}>
-                {viewPeriod?.criteria_name || periods.viewPeriodLabel}
+                {effectiveCriteriaName || periods.viewPeriodLabel}
               </strong>{" "}
               to confirm
             </label>
@@ -1053,7 +1016,7 @@ export default function CriteriaPage() {
               type="text"
               value={clearAllConfirmText}
               onChange={(e) => setClearAllConfirmText(e.target.value)}
-              placeholder={`Type ${viewPeriod?.criteria_name || periods.viewPeriodLabel} to confirm`}
+              placeholder={`Type ${effectiveCriteriaName || periods.viewPeriodLabel} to confirm`}
               autoComplete="off"
               spellCheck={false}
               disabled={clearAllSubmitting}
@@ -1074,7 +1037,7 @@ export default function CriteriaPage() {
             type="button"
             className="fs-btn fs-btn-danger"
             onClick={handleClearAllCriteria}
-            disabled={clearAllSubmitting || clearAllConfirmText !== (viewPeriod?.criteria_name || periods.viewPeriodLabel)}
+            disabled={clearAllSubmitting || clearAllConfirmText !== (effectiveCriteriaName || periods.viewPeriodLabel)}
             style={{ flex: 1 }}
           >
             <AsyncButtonContent loading={clearAllSubmitting} loadingText="Deleting…">
@@ -1183,7 +1146,12 @@ export default function CriteriaPage() {
       <SaveBar
         isDirty={periods.isDraftDirty}
         canSave={periods.canSaveDraft}
-        total={periods.draftTotal}
+        total={draftCriteria.length > 0 ? periods.draftTotal : undefined}
+        statusText={
+          periods.pendingClearAll
+            ? "All criteria will be cleared"
+            : (draftCriteria.length === 0 ? "Ready to save" : undefined)
+        }
         onSave={handleCommit}
         onDiscard={handleDiscard}
         saving={saving}

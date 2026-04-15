@@ -2161,6 +2161,84 @@ $$;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_clone_framework(UUID, TEXT, UUID) TO authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- rpc_admin_duplicate_period
+-- Clones an existing period's configuration into a brand-new period:
+--   • new periods row ("<name> (copy)", same season/description, dates NULL,
+--     is_current=false, is_locked=false, is_visible=true, criteria_name copied)
+--   • if source has a framework, clones it ("<framework_name> (copy)") and
+--     attaches to the new period
+--   • freezes the snapshot so period_criteria / period_outcomes /
+--     period_criterion_outcome_maps are populated immediately
+-- Does NOT copy runtime data (projects, jurors, scores, tokens, audit).
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.rpc_admin_duplicate_period(
+  p_source_period_id UUID
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, extensions
+AS $$
+DECLARE
+  v_src            periods%ROWTYPE;
+  v_new_period_id  UUID;
+  v_new_name       TEXT;
+  v_new_fw_name    TEXT;
+  v_new_fw_id      UUID;
+  v_src_fw_name    TEXT;
+BEGIN
+  SELECT * INTO v_src FROM periods WHERE id = p_source_period_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'period_not_found';
+  END IF;
+
+  PERFORM public._assert_org_admin(v_src.organization_id);
+
+  v_new_name := v_src.name || ' (copy)';
+
+  -- Clone framework first (if any), so new period owns an independent config
+  -- and edits to its criteria/outcomes don't leak back to the source.
+  IF v_src.framework_id IS NOT NULL THEN
+    SELECT name INTO v_src_fw_name FROM frameworks WHERE id = v_src.framework_id;
+    v_new_fw_name := COALESCE(v_src_fw_name, 'Framework') || ' (copy)';
+    v_new_fw_id := public.rpc_admin_clone_framework(
+      v_src.framework_id,
+      v_new_fw_name,
+      v_src.organization_id
+    );
+  END IF;
+
+  INSERT INTO periods (
+    organization_id, framework_id, name, season, description,
+    start_date, end_date, is_current, is_locked, is_visible, criteria_name
+  ) VALUES (
+    v_src.organization_id,
+    v_new_fw_id,
+    v_new_name,
+    v_src.season,
+    v_src.description,
+    NULL,
+    NULL,
+    false,
+    false,
+    true,
+    v_src.criteria_name
+  )
+  RETURNING id INTO v_new_period_id;
+
+  -- Freeze the snapshot so period_criteria / period_outcomes / maps are
+  -- populated right away. Non-fatal if it fails (no framework case).
+  IF v_new_fw_id IS NOT NULL THEN
+    PERFORM public.rpc_period_freeze_snapshot(v_new_period_id, false);
+  END IF;
+
+  RETURN v_new_period_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_duplicate_period(UUID) TO authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- rpc_admin_set_period_criteria_name
 -- Sets criteria_name on a period to record that criteria setup has been
 -- initiated (e.g. "Custom Criteria" for blank start, or a framework name).

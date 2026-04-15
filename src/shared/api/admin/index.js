@@ -21,6 +21,7 @@ export {
   createPeriod,
   updatePeriod,
   deletePeriod,
+  duplicatePeriod,
   setEvalLock,
   requestPeriodUnlock,
   resolveUnlockRequest,

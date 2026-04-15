@@ -34,6 +34,7 @@ const CUR_MONTH = _now.getMonth() + 1; // 1–12
 // Spring = Jan–Jun (month < 7), Fall = Jul–Dec (month >= 7)
 const CUR_SEMESTER = CUR_MONTH >= 7 ? 'Fall' : 'Spring';
 const CUR_SEMESTER_LABEL  = `${CUR_SEMESTER} ${CUR_YEAR}`;          // e.g. "Spring 2026"
+const CUR_SEM_SHORT       = `${CUR_SEMESTER[0]}${String(CUR_YEAR).slice(-2)}`; // e.g. "S26"
 const CUR_SEASON_LABEL    = `${CUR_YEAR} Season`;                    // e.g. "2026 Season"
 const CUR_COMP_LABEL      = `${CUR_YEAR} Competition`;               // e.g. "2026 Competition"
 const CUR_CONTEST_LABEL   = `${CUR_YEAR} Contest`;                   // e.g. "2026 Contest"
@@ -795,32 +796,32 @@ const periodData = [];
 
 const orgPeriodsDef = {
   'TEDU-EE': [
-    {name:CUR_SEMESTER_LABEL,frameworkName:`MÜDEK-${CUR_SEMESTER_LABEL}`,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'EE 491/492 Senior Design — 1-Day Poster Evaluation'},
-    {name:'Fall 2025',frameworkName:'MÜDEK-Fall 2025',s:'Fall',start:'2026-01-09',end:'2026-01-09',desc:'EE 491/492 Fall Senior Design — 1-Day Poster Day'},
-    {name:'Spring 2025',frameworkName:'MÜDEK-Spring 2025',s:'Spring',start:'2025-06-11',end:'2025-06-11',desc:'EE Senior Design Spring — 1-Day Poster Presentations'},
-    {name:'Fall 2024',frameworkName:'MÜDEK-Fall 2024',s:'Fall',start:'2025-01-10',end:'2025-01-10',desc:'EE Senior Design Fall — 1-Day Poster Day'}],
+    {name:CUR_SEMESTER_LABEL,frameworkName:`MÜDEK-${CUR_SEM_SHORT}-O`,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'EE 491/492 Senior Design — 1-Day Poster Evaluation'},
+    {name:'Fall 2025',frameworkName:'MÜDEK-F25-O',s:'Fall',start:'2026-01-09',end:'2026-01-09',desc:'EE 491/492 Fall Senior Design — 1-Day Poster Day'},
+    {name:'Spring 2025',frameworkName:'MÜDEK-S25-O',s:'Spring',start:'2025-06-11',end:'2025-06-11',desc:'EE Senior Design Spring — 1-Day Poster Presentations'},
+    {name:'Fall 2024',frameworkName:'MÜDEK-F24-O',s:'Fall',start:'2025-01-10',end:'2025-01-10',desc:'EE Senior Design Fall — 1-Day Poster Day'}],
   'CMU-CS': [
-    {name:CUR_SEMESTER_LABEL,frameworkName:`ABET-${CUR_SEMESTER_LABEL}`,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'CS Capstone — 1-Day Demo Day'},
-    {name:'Fall 2025',frameworkName:'ABET-Fall 2025',s:'Fall',start:'2025-12-06',end:'2025-12-06',desc:'CS Fall Capstone — 1-Day Demo Day'},
-    {name:'Spring 2025',frameworkName:'ABET-Spring 2025',s:'Spring',start:'2025-04-27',end:'2025-04-27',desc:'CS Spring Capstone — 1-Day Demo Day'},
-    {name:'Fall 2024',frameworkName:'ABET-Fall 2024',s:'Fall',start:'2024-12-07',end:'2024-12-07',desc:'CS Fall Capstone — 1-Day Demo Day'}],
+    {name:CUR_SEMESTER_LABEL,frameworkName:`ABET-${CUR_SEM_SHORT}-O`,s:CUR_SEMESTER,start:TODAY,end:TODAY,desc:'CS Capstone — 1-Day Demo Day'},
+    {name:'Fall 2025',frameworkName:'ABET-F25-O',s:'Fall',start:'2025-12-06',end:'2025-12-06',desc:'CS Fall Capstone — 1-Day Demo Day'},
+    {name:'Spring 2025',frameworkName:'ABET-S25-O',s:'Spring',start:'2025-04-27',end:'2025-04-27',desc:'CS Spring Capstone — 1-Day Demo Day'},
+    {name:'Fall 2024',frameworkName:'ABET-F24-O',s:'Fall',start:'2024-12-07',end:'2024-12-07',desc:'CS Fall Capstone — 1-Day Demo Day'}],
   'TEKNOFEST': [
-    {name:CUR_SEASON_LABEL,frameworkName:`CF-${CUR_YEAR}`,s:'Evaluation',start:TODAY,end:TODAY,desc:`TEKNOFEST ${CUR_YEAR} Aviation Competition — 1-Day Finals (Demo)`},
-    {name:'2025 Season',frameworkName:'CF-2025',s:'Evaluation',start:'2025-07-25',end:'2025-07-27',desc:'TEKNOFEST 2025 Aviation Competition — 3-Day Finals (Jul 25–27)'},
-    {name:'2024 Season',frameworkName:'CF-2024',s:'Evaluation',start:'2024-07-25',end:'2024-07-27',desc:'TEKNOFEST 2024 Aviation Competition — 3-Day Finals (Jul 25–27)'}],
+    {name:CUR_SEASON_LABEL,frameworkName:`CF-${CUR_YEAR}-O`,s:'Evaluation',start:TODAY,end:TODAY,desc:`TEKNOFEST ${CUR_YEAR} Aviation Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Season',frameworkName:'CF-2025-O',s:'Evaluation',start:'2025-07-25',end:'2025-07-27',desc:'TEKNOFEST 2025 Aviation Competition — 3-Day Finals (Jul 25–27)'},
+    {name:'2024 Season',frameworkName:'CF-2024-O',s:'Evaluation',start:'2024-07-25',end:'2024-07-27',desc:'TEKNOFEST 2024 Aviation Competition — 3-Day Finals (Jul 25–27)'}],
   'TUBITAK-2204A': [
-    {name:CUR_COMP_LABEL,frameworkName:`RCF-${CUR_YEAR}`,s:'Evaluation',start:TODAY,end:TODAY,desc:`TÜBİTAK 2204-A ${CUR_YEAR} National Science Competition — 1-Day Finals (Demo)`},
-    {name:'2025 Competition',frameworkName:'RCF-2025',s:'Evaluation',start:'2025-06-09',end:'2025-06-10',desc:'TÜBİTAK 2204-A 2025 National Science Competition — 2-Day Finals (Jun 9–10)'},
-    {name:'2024 Competition',frameworkName:'RCF-2024',s:'Evaluation',start:'2024-06-09',end:'2024-06-10',desc:'TÜBİTAK 2204-A 2024 National Science Competition — 2-Day Finals (Jun 9–10)'}],
+    {name:CUR_COMP_LABEL,frameworkName:`RCF-${CUR_YEAR}-O`,s:'Evaluation',start:TODAY,end:TODAY,desc:`TÜBİTAK 2204-A ${CUR_YEAR} National Science Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Competition',frameworkName:'RCF-2025-O',s:'Evaluation',start:'2025-06-09',end:'2025-06-10',desc:'TÜBİTAK 2204-A 2025 National Science Competition — 2-Day Finals (Jun 9–10)'},
+    {name:'2024 Competition',frameworkName:'RCF-2024-O',s:'Evaluation',start:'2024-06-09',end:'2024-06-10',desc:'TÜBİTAK 2204-A 2024 National Science Competition — 2-Day Finals (Jun 9–10)'}],
   'IEEE-APSSDC': [
-    {name:CUR_CONTEST_LABEL,frameworkName:`DCF-${CUR_YEAR}`,s:'Evaluation',start:TODAY,end:TODAY,desc:`IEEE AP-S Student Design Contest ${CUR_YEAR} — 1-Day Evaluation (Demo)`},
-    {name:'2025 Contest',frameworkName:'DCF-2025',s:'Evaluation',start:'2025-07-25',end:'2025-07-26',desc:'IEEE AP-S Student Design Contest 2025 — 2-Day Evaluation (Jul 25–26)'},
-    {name:'2024 Contest',frameworkName:'DCF-2024',s:'Evaluation',start:'2024-07-25',end:'2024-07-26',desc:'IEEE AP-S Student Design Contest 2024 — 2-Day Evaluation (Jul 25–26)'}],
+    {name:CUR_CONTEST_LABEL,frameworkName:`DCF-${CUR_YEAR}-O`,s:'Evaluation',start:TODAY,end:TODAY,desc:`IEEE AP-S Student Design Contest ${CUR_YEAR} — 1-Day Evaluation (Demo)`},
+    {name:'2025 Contest',frameworkName:'DCF-2025-O',s:'Evaluation',start:'2025-07-25',end:'2025-07-26',desc:'IEEE AP-S Student Design Contest 2025 — 2-Day Evaluation (Jul 25–26)'},
+    {name:'2024 Contest',frameworkName:'DCF-2024-O',s:'Evaluation',start:'2024-07-25',end:'2024-07-26',desc:'IEEE AP-S Student Design Contest 2024 — 2-Day Evaluation (Jul 25–26)'}],
   'CANSAT': [
-    {name:CUR_SEASON_LABEL,frameworkName:`MF-${CUR_YEAR}`,s:'Spring',start:TODAY,end:TODAY,desc:`CanSat ${CUR_YEAR} Launch Competition — 1-Day Finals (Demo)`},
-    {name:'2025 Season',frameworkName:'MF-2025',s:'Spring',start:'2025-06-24',end:'2025-06-26',desc:'CanSat 2025 Launch Competition — 3-Day Finals (Jun 24–26)'},
-    {name:'2024 Season',frameworkName:'MF-2024',s:'Spring',start:'2024-06-24',end:'2024-06-26',desc:'CanSat 2024 Launch Competition — 3-Day Finals (Jun 24–26)'},
-    {name:'2027 Season (Draft)',frameworkName:'MF-2027 (Draft)',s:'Spring',start:'2027-06-24',end:'2027-06-26',desc:'CanSat 2027 — Planning Phase',draft:true}],
+    {name:CUR_SEASON_LABEL,frameworkName:`MF-${CUR_YEAR}-O`,s:'Spring',start:TODAY,end:TODAY,desc:`CanSat ${CUR_YEAR} Launch Competition — 1-Day Finals (Demo)`},
+    {name:'2025 Season',frameworkName:'MF-2025-O',s:'Spring',start:'2025-06-24',end:'2025-06-26',desc:'CanSat 2025 Launch Competition — 3-Day Finals (Jun 24–26)'},
+    {name:'2024 Season',frameworkName:'MF-2024-O',s:'Spring',start:'2024-06-24',end:'2024-06-26',desc:'CanSat 2024 Launch Competition — 3-Day Finals (Jun 24–26)'},
+    {name:'2027 Season (Draft)',frameworkName:'MF-D27-O',s:'Spring',start:'2027-06-24',end:'2027-06-26',desc:'CanSat 2027 — Planning Phase',draft:true}],
 };
 
 // Criteria evolution: idx=0 is NEVER touched (current period preserved exactly)
@@ -1386,6 +1387,7 @@ orgs.forEach(o => {
     // Name uses the per-period short label (e.g. "MÜDEK-Spring 2026", "CF-2026").
     const fwId = uuid(`fw-${o.code}-${idx}`);
     const fwName = d.frameworkName || `${o.frameworkName} — ${d.name}`;
+    const criteriaName = fwName.replace(/-O$/, '-R');
     out.push(`INSERT INTO frameworks (id, organization_id, name, description) VALUES ('${fwId}', '${o.id}', '${escapeSql(fwName)}', '${escapeSql(o.frameworkDesc || '')}') ON CONFLICT DO NOTHING;`);
 
     // framework_outcomes — one set per period framework, keyed by outcome code.
@@ -1406,7 +1408,7 @@ orgs.forEach(o => {
         const cDescSql = c.desc ? `'${escapeSql(c.desc)}'` : 'NULL';
         out.push(`INSERT INTO framework_criteria (id, framework_id, key, label, description, max_score, weight, color, rubric_bands, sort_order) VALUES ('${fcId}', '${fwId}', '${c.key}', '${escapeSql(c.label)}', ${cDescSql}, ${c.max}, ${c.weight}, '${c.color}', '${rubricJson}', ${c.sortOrder}) ON CONFLICT DO NOTHING;`);
       });
-      out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', '${d.start}', '${d.end}', false, false, false, NULL, NULL, ${draftTs}) ON CONFLICT DO NOTHING;`);
+      out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, criteria_name, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', '${d.start}', '${d.end}', false, false, false, '${escapeSql(criteriaName)}', NULL, NULL, ${draftTs}) ON CONFLICT DO NOTHING;`);
       return; // draft periods have no period_criteria, projects, jurors, or tokens
     }
 
@@ -1418,7 +1420,7 @@ orgs.forEach(o => {
 
     const startDateSql = isCurrent ? 'CURRENT_DATE' : `'${d.start}'`;
     const endDateSql   = isCurrent ? 'CURRENT_DATE' : `'${d.end}'`;
-    out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', ${startDateSql}, ${endDateSql}, ${isCurrent}, ${!isCurrent}, true, ${frozenTs}, ${activatedTs}, ${updatedTs}) ON CONFLICT DO NOTHING;`);
+    out.push(`INSERT INTO periods (id, organization_id, framework_id, name, season, description, start_date, end_date, is_current, is_locked, is_visible, criteria_name, snapshot_frozen_at, activated_at, updated_at) VALUES ('${pId}', '${o.id}', '${fwId}', '${escapeSql(d.name)}', ${sn}, '${escapeSql(d.desc)}', ${startDateSql}, ${endDateSql}, ${isCurrent}, ${!isCurrent}, true, '${escapeSql(criteriaName)}', ${frozenTs}, ${activatedTs}, ${updatedTs}) ON CONFLICT DO NOTHING;`);
 
     const evo = (criteriaEvolution[o.code] || {})[idx] || null;
     const removedKeys = evo?.removeCriteria || [];

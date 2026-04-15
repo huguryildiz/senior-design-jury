@@ -36,6 +36,7 @@ import {
   X,
   Info,
   ListChecks,
+  Copy,
 } from "lucide-react";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import SetCurrentPeriodModal from "../modals/SetCurrentPeriodModal";
@@ -755,7 +756,6 @@ export default function PeriodsPage() {
                     <div className="periods-mobile-stats-row">
                       <span className="periods-m-stat"><span className={`val${(periodStats[period.id]?.projectCount || 0) === 0 ? " zero" : ""}`}>{periodStats[period.id]?.projectCount ?? "—"}</span> projects</span>
                       <span className="periods-m-stat"><span className={`val${(periodStats[period.id]?.jurorCount || 0) === 0 ? " zero" : ""}`}>{periodStats[period.id]?.jurorCount ?? "—"}</span> jurors</span>
-                      <span className="periods-m-stat"><span className={`val${(periodStats[period.id]?.criteriaCount || 0) === 0 ? " zero" : ""}`}>{periodStats[period.id]?.criteriaCount ?? "—"}</span> criteria</span>
                     </div>
                   </td>
 
@@ -892,6 +892,15 @@ export default function PeriodsPage() {
                       <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); openEditDrawer(period); }}>
                         <Pencil size={13} />
                         Edit Evaluation Period
+                      </button>
+
+                      {/* Duplicate */}
+                      <button
+                        className="floating-menu-item"
+                        onMouseDown={() => { setOpenMenuId(null); periods.handleDuplicatePeriod(period.id); }}
+                      >
+                        <Copy size={13} />
+                        Duplicate Period
                       </button>
 
                       {/* Danger zone */}

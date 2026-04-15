@@ -41,13 +41,20 @@ export function clearRawToken(semesterId) {
 }
 
 // ── Criteria draft scratch (per-period, sessionStorage) ──
+//
+// Payload shape:
+//   { items: [...], pendingCriteriaName?: string|null, pendingClearAll?: boolean }
+// Legacy payload (bare array) is tolerated on read for backward compat.
 
 /** Read unsaved criteria draft for a period (sessionStorage only). */
 export function getCriteriaScratch(periodId) {
   if (!periodId) return null;
   try {
     const raw = sessionStorage.getItem(KEYS.CRITERIA_SCRATCH_PREFIX + periodId);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return { items: parsed };
+    return parsed;
   } catch { return null; }
 }
 
@@ -55,7 +62,8 @@ export function getCriteriaScratch(periodId) {
 export function setCriteriaScratch(periodId, draft) {
   if (!periodId) return;
   try {
-    sessionStorage.setItem(KEYS.CRITERIA_SCRATCH_PREFIX + periodId, JSON.stringify(draft));
+    const payload = Array.isArray(draft) ? { items: draft } : draft;
+    sessionStorage.setItem(KEYS.CRITERIA_SCRATCH_PREFIX + periodId, JSON.stringify(payload));
   } catch {}
 }
 
@@ -68,6 +76,10 @@ export function clearCriteriaScratch(periodId) {
 }
 
 // ── Outcomes draft scratch (per-period, sessionStorage) ──
+//
+// Payload shape:
+//   { outcomes: [...], mappings: [...],
+//     pendingFrameworkName?: string, pendingUnassign?: boolean }
 
 /** Read unsaved outcomes draft for a period (sessionStorage only). */
 export function getOutcomesScratch(periodId) {

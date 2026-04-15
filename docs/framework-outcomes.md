@@ -2,6 +2,7 @@
 
 All framework outcomes defined in the VERA demo seed. Each entry: `code`, `label` (short display name), `description` (full text).
 
+- [Framework & Criteria Set Names](#framework--criteria-set-names)
 - [Per-Period Criterion Weights](#per-period-criterion-weights)
 - [Outcome → Criteria Mappings](#outcome--criteria-mappings)
 - [MÜDEK (TEDU-EE)](#müdek--program-outcomes-tedu-ee)
@@ -10,6 +11,41 @@ All framework outcomes defined in the VERA demo seed. Each entry: `code`, `label
 - [TÜBİTAK 2204-A](#tübi̇tak-2204-a--research-competition-outcomes)
 - [IEEE AP-S SDC](#ieee-ap-s-sdc--design-contest-outcomes)
 - [CanSat](#cansat--mission-outcomes)
+
+---
+
+## Framework & Criteria Set Names
+
+The demo seed writes two distinct names per period so the Periods page can differentiate its **OUTCOME** and **CRITERIA SET** badges:
+
+- `frameworks.name` → **OUTCOME** column, suffix `-O`
+- `periods.criteria_name` → **CRITERIA SET** column, suffix `-R` (Rubric)
+
+Semesters use `<Season-initial><YY>` (e.g. Spring 2026 → `S26`, Fall 2024 → `F24`); competition years stay four digits; drafts use `D<YY>`.
+
+| Org | Period | OUTCOME (`frameworks.name`) | CRITERIA SET (`periods.criteria_name`) |
+| --- | --- | --- | --- |
+| **TEDU-EE** | Spring 2026 (current) | `MÜDEK-S26-O` | `MÜDEK-S26-R` |
+| TEDU-EE | Fall 2025 | `MÜDEK-F25-O` | `MÜDEK-F25-R` |
+| TEDU-EE | Spring 2025 | `MÜDEK-S25-O` | `MÜDEK-S25-R` |
+| TEDU-EE | Fall 2024 | `MÜDEK-F24-O` | `MÜDEK-F24-R` |
+| **CMU-CS** | Spring 2026 (current) | `ABET-S26-O` | `ABET-S26-R` |
+| CMU-CS | Fall 2025 | `ABET-F25-O` | `ABET-F25-R` |
+| CMU-CS | Spring 2025 | `ABET-S25-O` | `ABET-S25-R` |
+| CMU-CS | Fall 2024 | `ABET-F24-O` | `ABET-F24-R` |
+| **TEKNOFEST** | 2026 Season (current) | `CF-2026-O` | `CF-2026-R` |
+| TEKNOFEST | 2025 Season | `CF-2025-O` | `CF-2025-R` |
+| TEKNOFEST | 2024 Season | `CF-2024-O` | `CF-2024-R` |
+| **TÜBİTAK-2204A** | 2026 Competition (current) | `RCF-2026-O` | `RCF-2026-R` |
+| TÜBİTAK-2204A | 2025 Competition | `RCF-2025-O` | `RCF-2025-R` |
+| TÜBİTAK-2204A | 2024 Competition | `RCF-2024-O` | `RCF-2024-R` |
+| **IEEE-APSSDC** | 2026 Contest (current) | `DCF-2026-O` | `DCF-2026-R` |
+| IEEE-APSSDC | 2025 Contest | `DCF-2025-O` | `DCF-2025-R` |
+| IEEE-APSSDC | 2024 Contest | `DCF-2024-O` | `DCF-2024-R` |
+| **CANSAT** | 2026 Season (current) | `MF-2026-O` | `MF-2026-R` |
+| CANSAT | 2025 Season | `MF-2025-O` | `MF-2025-R` |
+| CANSAT | 2024 Season | `MF-2024-O` | `MF-2024-R` |
+| CANSAT | 2027 Season (Draft) | `MF-D27-O` | `MF-D27-R` |
 
 ---
 

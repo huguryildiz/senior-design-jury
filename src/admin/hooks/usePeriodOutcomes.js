@@ -52,6 +52,12 @@ export function usePeriodOutcomes({ periodId }) {
   const [draftOutcomes, setDraftOutcomes] = useState([]);
   const [draftMappings, setDraftMappings] = useState([]);
 
+  // ── Draft meta (framework-level ops queued for next save) ─
+  // `pendingFrameworkName` undefined means no rename queued.
+  // `pendingUnassign` true means "on commit, unassign the framework".
+  const [pendingFrameworkName, setPendingFrameworkNameState] = useState(undefined);
+  const [pendingUnassign, setPendingUnassignState] = useState(false);
+
   // ── Shared state ──────────────────────────────────────────
   const [criteria, setCriteria] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -73,6 +79,8 @@ export function usePeriodOutcomes({ periodId }) {
       setDraftOutcomes([]);
       setDraftMappings([]);
       setCriteria([]);
+      setPendingFrameworkNameState(undefined);
+      setPendingUnassignState(false);
       return;
     }
     let alive = true;
@@ -93,10 +101,18 @@ export function usePeriodOutcomes({ periodId }) {
         if (scratch && isValidScratch(scratch, o)) {
           setDraftOutcomes(scratch.outcomes);
           setDraftMappings(scratch.mappings);
+          setPendingFrameworkNameState(
+            Object.prototype.hasOwnProperty.call(scratch, "pendingFrameworkName")
+              ? scratch.pendingFrameworkName
+              : undefined
+          );
+          setPendingUnassignState(!!scratch.pendingUnassign);
         } else {
           clearOutcomesScratch(periodId);
           setDraftOutcomes(o);
           setDraftMappings(m);
+          setPendingFrameworkNameState(undefined);
+          setPendingUnassignState(false);
         }
       } catch (err) {
         if (!alive) return;
@@ -134,6 +150,8 @@ export function usePeriodOutcomes({ periodId }) {
       clearOutcomesScratch(periodId);
       setDraftOutcomes(o);
       setDraftMappings(m);
+      setPendingFrameworkNameState(undefined);
+      setPendingUnassignState(false);
     } catch (err) {
       if (!mountedRef.current) return;
       setError(err?.message || "Failed to load outcomes data");
@@ -144,7 +162,7 @@ export function usePeriodOutcomes({ periodId }) {
 
   // ── isDirty ───────────────────────────────────────────────
 
-  const isDirty = useMemo(() => {
+  const itemsDirty = useMemo(() => {
     if (draftOutcomes.length !== savedOutcomes.length) return true;
     if (draftMappings.length !== savedMappings.length) return true;
     if (draftOutcomes.some((o) => isTempId(o.id))) return true;
@@ -171,16 +189,24 @@ export function usePeriodOutcomes({ periodId }) {
     return false;
   }, [draftOutcomes, savedOutcomes, draftMappings, savedMappings]);
 
+  const isDirty = useMemo(
+    () => itemsDirty || pendingFrameworkName !== undefined || pendingUnassign,
+    [itemsDirty, pendingFrameworkName, pendingUnassign]
+  );
+
   // ── SessionStorage sync ───────────────────────────────────
 
   useEffect(() => {
     if (!periodId) return;
     if (isDirty) {
-      setOutcomesScratch(periodId, { outcomes: draftOutcomes, mappings: draftMappings });
+      const payload = { outcomes: draftOutcomes, mappings: draftMappings };
+      if (pendingFrameworkName !== undefined) payload.pendingFrameworkName = pendingFrameworkName;
+      if (pendingUnassign) payload.pendingUnassign = true;
+      setOutcomesScratch(periodId, payload);
     } else if (savedOutcomes.length > 0 || savedMappings.length > 0) {
       clearOutcomesScratch(periodId);
     }
-  }, [periodId, isDirty, draftOutcomes, draftMappings, savedOutcomes, savedMappings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [periodId, isDirty, draftOutcomes, draftMappings, savedOutcomes, savedMappings, pendingFrameworkName, pendingUnassign]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Coverage helpers ───────────────────────────────────────
 
@@ -361,7 +387,25 @@ export function usePeriodOutcomes({ periodId }) {
     clearOutcomesScratch(periodId);
     setDraftOutcomes(savedOutcomes);
     setDraftMappings(savedMappings);
+    setPendingFrameworkNameState(undefined);
+    setPendingUnassignState(false);
   }, [savedOutcomes, savedMappings, periodId]);
+
+  // ── Framework-level draft setters (no RPC — deferred to Save) ──
+
+  const setPendingFrameworkName = useCallback((name) => {
+    setPendingFrameworkNameState(name);
+    if (name !== undefined && name !== null) setPendingUnassignState(false);
+  }, []);
+
+  const markUnassign = useCallback(() => {
+    setPendingUnassignState(true);
+    // Clear local outcome/mapping draft — on save the whole framework will be
+    // dropped. Rename intent is also void once the framework goes away.
+    setDraftOutcomes([]);
+    setDraftMappings([]);
+    setPendingFrameworkNameState(undefined);
+  }, []);
 
   // ── commitDraft ───────────────────────────────────────────
 
@@ -369,6 +413,13 @@ export function usePeriodOutcomes({ periodId }) {
     if (!periodId) return;
     setSaving(true);
     try {
+      // If the user queued an unassign, skip outcome/mapping diffs entirely —
+      // the page layer will invoke the unassign RPC and reload, which
+      // supersedes any pending edits.
+      if (pendingUnassign) {
+        clearOutcomesScratch(periodId);
+        return;
+      }
       const tempIdMap = {};
 
       // 1. Create new outcomes (those with temp IDs)
@@ -477,7 +528,7 @@ export function usePeriodOutcomes({ periodId }) {
     } finally {
       if (mountedRef.current) setSaving(false);
     }
-  }, [periodId, draftOutcomes, savedOutcomes, draftMappings, savedMappings, loadAll]);
+  }, [periodId, draftOutcomes, savedOutcomes, draftMappings, savedMappings, loadAll, pendingUnassign]);
 
   return {
     outcomes: draftOutcomes,
@@ -487,6 +538,9 @@ export function usePeriodOutcomes({ periodId }) {
     error,
     saving,
     isDirty,
+    itemsDirty,
+    pendingFrameworkName,
+    pendingUnassign,
     loadAll,
     commitDraft,
     discardDraft,
@@ -499,5 +553,7 @@ export function usePeriodOutcomes({ periodId }) {
     addMapping,
     removeMapping,
     cycleCoverage,
+    setPendingFrameworkName,
+    markUnassign,
   };
 }

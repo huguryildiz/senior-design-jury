@@ -30,15 +30,19 @@ export default function CoverageBar({ bands, maxScore }) {
     "#64748b", // slate
   ];
 
-  // Calculate segment widths as absolute percentages of the track
+  // Calculate segment widths as absolute percentages of the track.
+  // Segment edges align with the next band's min (or maxScore for the last band)
+  // so ticks and segment boundaries line up exactly.
   const segments = sorted.map((band, idx) => {
     const min = Number(band.min) || 0;
-    const max = Number(band.max) || 0;
+    const nextMin = idx < sorted.length - 1
+      ? Number(sorted[idx + 1].min) || 0
+      : maxScore;
     const left  = maxScore > 0 ? (min / maxScore) * 100 : 0;
-    const width = maxScore > 0 ? ((max - min + 1) / (maxScore + 1)) * 100 : 0;
+    const right = maxScore > 0 ? (nextMin / maxScore) * 100 : 0;
     return {
       left:  Math.max(left, 0),
-      width: Math.max(width, 0),
+      width: Math.max(right - left, 0),
       color: colors[idx % colors.length],
     };
   });
@@ -47,12 +51,11 @@ export default function CoverageBar({ bands, maxScore }) {
     ? `✓ Full coverage (0–${maxScore})`
     : `⚠ Gap detected (expected 0–${maxScore})`;
 
-  // Collect tick values: every band boundary + maxScore
+  // Tick values: each band's min + the final maxScore.
+  // We intentionally skip band maxes because (max, nextMin) pairs like (24, 25)
+  // render on top of each other and look broken.
   const ticks = Array.from(
-    new Set([
-      ...sorted.map((b) => Number(b.min)),
-      ...sorted.map((b) => Number(b.max)),
-    ])
+    new Set([...sorted.map((b) => Number(b.min)), maxScore])
   ).sort((a, b) => a - b);
 
   return (

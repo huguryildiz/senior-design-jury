@@ -1,12 +1,27 @@
 import { AlertCircle } from "lucide-react";
 
-export default function SaveBar({ isDirty, canSave, total, onSave, onDiscard, saving }) {
+export default function SaveBar({
+  isDirty,
+  canSave,
+  total,
+  statusText: statusTextOverride,
+  onSave,
+  onDiscard,
+  saving,
+}) {
   if (!isDirty) return null;
 
-  const remaining = 100 - total;
-  const statusText = total === 100
-    ? "Ready to save"
-    : `${Math.abs(remaining)} pts ${remaining > 0 ? "remaining" : "over"}`;
+  let statusText;
+  if (statusTextOverride) {
+    statusText = statusTextOverride;
+  } else if (typeof total === "number") {
+    const remaining = 100 - total;
+    statusText = total === 100
+      ? "Ready to save"
+      : `${Math.abs(remaining)} pts ${remaining > 0 ? "remaining" : "over"}`;
+  } else {
+    statusText = "Ready to save";
+  }
 
   return (
     <div className="crt-save-bar">
