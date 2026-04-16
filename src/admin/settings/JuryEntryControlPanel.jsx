@@ -160,7 +160,10 @@ export default function JuryEntryControlPanel({
         setError("Token generation failed — please try again.");
       }
     } catch (e) {
-      if (e?.unauthorized) {
+      const msg = String(e?.message || "");
+      if (msg.includes("period_not_published")) {
+        setError("Period must be published before generating a QR.");
+      } else if (e?.unauthorized) {
         setError("Unauthorized — check your admin password.");
       } else {
         setError("Could not generate token.");

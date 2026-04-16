@@ -155,6 +155,7 @@ CREATE TABLE periods (
   is_visible          BOOLEAN DEFAULT true,
   activated_at        TIMESTAMPTZ,
   snapshot_frozen_at  TIMESTAMPTZ,
+  closed_at           TIMESTAMPTZ,
   criteria_name       TEXT,
   created_at          TIMESTAMPTZ DEFAULT now(),
   updated_at          TIMESTAMPTZ DEFAULT now()

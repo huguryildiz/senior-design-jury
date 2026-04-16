@@ -17,6 +17,9 @@ import {
   listPeriodStats,
   requestPeriodUnlock,
   listUnlockRequests,
+  checkPeriodReadiness,
+  publishPeriod,
+  closePeriod,
 } from "@/shared/api";
 import {
   Lock,
@@ -25,6 +28,7 @@ import {
   FileEdit,
   Play,
   CheckCircle,
+  CheckCircle2,
   MoreVertical,
   Pencil,
   Eye,
@@ -37,12 +41,17 @@ import {
   Info,
   ListChecks,
   Copy,
+  AlertCircle,
+  ArrowRight,
+  Send,
+  Archive,
 } from "lucide-react";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import SetCurrentPeriodModal from "../modals/SetCurrentPeriodModal";
-import UnlockPeriodModal from "../modals/UnlockPeriodModal";
-import LockPeriodModal from "../modals/LockPeriodModal";
-import RequestUnlockModal from "../modals/RequestUnlockModal";
+import RevertToDraftModal from "../modals/RevertToDraftModal";
+import RequestRevertModal from "../modals/RequestRevertModal";
+import PublishPeriodModal from "../modals/PublishPeriodModal";
+import ClosePeriodModal from "../modals/ClosePeriodModal";
 import DeletePeriodModal from "../modals/DeletePeriodModal";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
 import Pagination from "@/shared/ui/Pagination";
@@ -63,15 +72,19 @@ function formatRelative(ts) {
 }
 
 
-function getPeriodStatus(period) {
-  if (period.is_locked) return "locked";
-  if (period.is_current) return "active";
-  if (period.activated_at) return "completed";
-  return "draft";
+// Five-state lifecycle derivation. Draft splits into "incomplete" / "ready" as
+// a UI nuance — the readiness check flips this flag automatically whenever
+// criteria or projects change. State transitions (Draft→Published→Live→Closed)
+// require deliberate admin actions; readiness does not.
+function getPeriodState(period, hasScores, readiness) {
+  if (period.closed_at) return "closed";
+  if (period.is_locked && hasScores) return "live";
+  if (period.is_locked) return "published";
+  return readiness?.ok ? "draft_ready" : "draft_incomplete";
 }
 
 function StatusPill({ status }) {
-  if (status === "draft") {
+  if (status === "draft_incomplete" || status === "draft_ready" || status === "draft") {
     return (
       <span className="sem-status sem-status-draft">
         <FileEdit size={12} />
@@ -79,27 +92,136 @@ function StatusPill({ status }) {
       </span>
     );
   }
-  if (status === "active") {
+  if (status === "published") {
     return (
-      <span className="sem-status sem-status-active">
+      <span className="sem-status sem-status-published">
+        <Send size={12} />
+        Published
+      </span>
+    );
+  }
+  if (status === "live") {
+    return (
+      <span className="sem-status sem-status-live">
         <Play size={12} />
-        Active
+        Live
       </span>
     );
   }
-  if (status === "completed") {
+  if (status === "closed") {
     return (
-      <span className="sem-status sem-status-completed">
-        <CheckCircle size={12} />
-        Completed
+      <span className="sem-status sem-status-closed">
+        <Archive size={12} />
+        Closed
       </span>
     );
   }
+  // Legacy fallback — should not hit after rollout completes.
   return (
     <span className="sem-status sem-status-locked">
       <Lock size={12} />
       Locked
     </span>
+  );
+}
+
+// ReadinessBadge: shown next to StatusPill on Draft periods. Renders red "N issues
+// before publish" when blocking issues exist, or green "Ready to publish" when
+// all required checks pass. Clicking opens the ReadinessInspector drawer.
+function ReadinessBadge({ readiness, onOpen }) {
+  if (!readiness) return null;
+  const required = (readiness.issues || []).filter((i) => i.severity === "required");
+  const isReady = readiness.ok;
+  return (
+    <button
+      type="button"
+      className={`periods-readiness-badge${isReady ? " ready" : " blocked"}`}
+      onClick={onOpen}
+      title={isReady ? "Ready to publish" : `${required.length} issue${required.length === 1 ? "" : "s"} before publish`}
+    >
+      {isReady ? (
+        <>
+          <CheckCircle2 size={11} strokeWidth={2} />
+          Ready
+        </>
+      ) : (
+        <>
+          <AlertCircle size={11} strokeWidth={2} />
+          {required.length} issue{required.length === 1 ? "" : "s"}
+        </>
+      )}
+    </button>
+  );
+}
+
+// ReadinessInspector: inline popover listing each readiness check. Required
+// items render with a red icon and a "Fix" action; optional items render as
+// muted informational rows. Triggered by clicking the ReadinessBadge.
+function ReadinessInspector({ open, onClose, readiness, onFix }) {
+  if (!open || !readiness) return null;
+  const required = (readiness.issues || []).filter((i) => i.severity === "required");
+  const optional = (readiness.issues || []).filter((i) => i.severity === "optional");
+  const fixTargetFor = (check) => {
+    if (check === "criteria_name_missing" || check === "no_criteria" || check === "weight_mismatch" || check === "missing_rubric_bands") return "criteria";
+    if (check === "no_projects") return "projects";
+    if (check === "no_framework" || check === "no_outcomes") return "outcomes";
+    if (check === "no_jurors") return "jurors";
+    return null;
+  };
+  return (
+    <div className="periods-readiness-inspector" onClick={(e) => e.stopPropagation()}>
+      <div className="periods-readiness-inspector-header">
+        <div>
+          <div className="periods-readiness-inspector-title">Publish readiness</div>
+          <div className="periods-readiness-inspector-sub">
+            {readiness.ok
+              ? "All required checks pass. You can publish this period."
+              : `${required.length} required check${required.length === 1 ? "" : "s"} remaining.`}
+          </div>
+        </div>
+        <button className="periods-readiness-inspector-close" onClick={onClose} aria-label="Close">
+          <X size={13} strokeWidth={2} />
+        </button>
+      </div>
+      {required.length > 0 && (
+        <div className="periods-readiness-section">
+          <div className="periods-readiness-section-label required">Required</div>
+          {required.map((issue) => {
+            const target = fixTargetFor(issue.check);
+            return (
+              <div key={issue.check} className="periods-readiness-row required">
+                <AlertCircle size={12} strokeWidth={2} />
+                <span className="periods-readiness-msg">{issue.msg}</span>
+                {target && (
+                  <button className="periods-readiness-fix" onClick={() => onFix?.(target)}>
+                    Fix <ArrowRight size={10} strokeWidth={2.2} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {optional.length > 0 && (
+        <div className="periods-readiness-section">
+          <div className="periods-readiness-section-label optional">Informational</div>
+          {optional.map((issue) => {
+            const target = fixTargetFor(issue.check);
+            return (
+              <div key={issue.check} className="periods-readiness-row optional">
+                <Info size={12} strokeWidth={2} />
+                <span className="periods-readiness-msg">{issue.msg}</span>
+                {target && (
+                  <button className="periods-readiness-fix" onClick={() => onFix?.(target)}>
+                    Fix <ArrowRight size={10} strokeWidth={2.2} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -114,16 +236,16 @@ function SortIcon({ colKey, sortKey, sortDir }) {
   );
 }
 
-function LifecycleBar({ draft, active, completed, locked }) {
-  const total = draft + active + completed + locked;
+function LifecycleBar({ draft, published, live, closed }) {
+  const total = draft + published + live + closed;
   if (total === 0) return null;
   const pct = (n) => `${(n / total) * 100}%`;
 
   const parts = [];
-  if (active > 0) parts.push(`${active} active`);
-  if (locked > 0) parts.push(`${locked} locked`);
   if (draft > 0) parts.push(`${draft} draft`);
-  if (completed > 0) parts.push(`${completed} completed`);
+  if (published > 0) parts.push(`${published} published`);
+  if (live > 0) parts.push(`${live} live`);
+  if (closed > 0) parts.push(`${closed} closed`);
 
   return (
     <div className="periods-lifecycle-bar">
@@ -133,25 +255,27 @@ function LifecycleBar({ draft, active, completed, locked }) {
       </div>
       <div className="periods-lifecycle-track">
         {draft > 0 && <div className="periods-lifecycle-segment draft" style={{ width: pct(draft) }} />}
-        {active > 0 && <div className="periods-lifecycle-segment active" style={{ width: pct(active) }} />}
-        {completed > 0 && <div className="periods-lifecycle-segment completed" style={{ width: pct(completed) }} />}
-        {locked > 0 && <div className="periods-lifecycle-segment locked" style={{ width: pct(locked) }} />}
+        {published > 0 && <div className="periods-lifecycle-segment published" style={{ width: pct(published) }} />}
+        {live > 0 && <div className="periods-lifecycle-segment live" style={{ width: pct(live) }} />}
+        {closed > 0 && <div className="periods-lifecycle-segment closed" style={{ width: pct(closed) }} />}
       </div>
       <div className="periods-lifecycle-legend">
         <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot draft" /> Draft ({draft})</span>
-        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot active" /> Active ({active})</span>
-        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot completed" /> Completed ({completed})</span>
-        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot locked" /> Locked ({locked})</span>
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot published" /> Published ({published})</span>
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot live" /> Live ({live})</span>
+        <span className="periods-lifecycle-legend-item"><span className="periods-legend-dot closed" /> Closed ({closed})</span>
       </div>
     </div>
   );
 }
 
 function ProgressCell({ period, stats }) {
-  const status = getPeriodStatus(period);
-  const progress = stats?.[period.id]?.progress;
+  const pstats = stats?.[period.id] || {};
+  const progress = pstats.progress;
+  const isDraft = !period.is_locked;
+  const isClosed = !!period.closed_at;
 
-  if (status === "draft") {
+  if (isDraft) {
     return (
       <div className="periods-progress-cell">
         <span className="periods-progress-val muted">—</span>
@@ -160,7 +284,7 @@ function ProgressCell({ period, stats }) {
     );
   }
 
-  const pct = progress ?? (status === "locked" || status === "completed" ? 100 : null);
+  const pct = progress ?? (isClosed ? 100 : null);
   if (pct === null) {
     return (
       <div className="periods-progress-cell">
@@ -212,6 +336,14 @@ export default function PeriodsPage() {
   // Period stats state
   const [periodStats, setPeriodStats] = useState({});
 
+  // Readiness state — map of period_id → { ok, issues, counts } for Draft rows.
+  // Populated after periodList loads; refreshed when stats reload (proxy for
+  // underlying criteria/project changes). Locked periods don't need readiness.
+  const [periodReadiness, setPeriodReadiness] = useState({});
+
+  // Which period's readiness inspector drawer is currently open.
+  const [readinessOpenId, setReadinessOpenId] = useState(null);
+
   // Filter/export panel state
   const [filterOpen, setFilterOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -228,17 +360,20 @@ export default function PeriodsPage() {
   // Delete period modal
   const [deletePeriodTarget, setDeletePeriodTarget] = useState(null);
 
-  // Unlock period modal
-  const [unlockTarget, setUnlockTarget] = useState(null);
+  // Revert-to-Draft modal (direct revert when no scores)
+  const [revertTarget, setRevertTarget] = useState(null);
 
-  // Request-unlock modal (org admin asks super admin to unlock)
-  const [requestUnlockTarget, setRequestUnlockTarget] = useState(null);
+  // Request-revert modal (org admin asks super admin to approve revert)
+  const [requestRevertTarget, setRequestRevertTarget] = useState(null);
 
   // Map of period_id → pending unlock_requests row (refreshed after actions)
   const [pendingRequests, setPendingRequests] = useState({});
 
-  // Lock period confirmation dialog (lock-only, with typed confirmation)
-  const [lockTarget, setLockTarget] = useState(null);
+  // Publish period confirmation dialog (Draft → Published transition)
+  const [publishTarget, setPublishTarget] = useState(null);
+
+  // Close period confirmation dialog (Published/Live → Closed terminal state)
+  const [closeTarget, setCloseTarget] = useState(null);
 
   // Add/edit period drawer
   const [periodDrawerOpen, setPeriodDrawerOpen] = useState(false);
@@ -265,6 +400,29 @@ export default function PeriodsPage() {
       .catch(() => {}); // Non-fatal — columns show "—" on failure
   }, [organizationId, periodList.length]);
 
+  // Load readiness for all Draft (not-yet-locked) periods. Locked periods
+  // already passed readiness, so we skip them. Runs alongside stats reloads
+  // to catch criteria/project edits that may have shifted readiness.
+  useEffect(() => {
+    const draftIds = periodList.filter((p) => !p.is_locked).map((p) => p.id);
+    if (draftIds.length === 0) {
+      setPeriodReadiness({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      draftIds.map((id) =>
+        checkPeriodReadiness(id).then((r) => [id, r]).catch(() => [id, null])
+      )
+    ).then((pairs) => {
+      if (cancelled) return;
+      const next = {};
+      for (const [id, r] of pairs) if (r) next[id] = r;
+      setPeriodReadiness(next);
+    });
+    return () => { cancelled = true; };
+  }, [periodList.length, periodStats]);
+
   // Load pending unlock requests (map by period_id for O(1) lookup)
   const reloadPendingRequests = useCallback(async () => {
     try {
@@ -285,20 +443,30 @@ export default function PeriodsPage() {
 
   // Derived stats
   const totalPeriods = periodList.length;
-  const draftPeriods = periodList.filter((p) => !p.is_locked && !p.is_current && !p.activated_at).length;
-  const activePeriods = periodList.filter((p) => !p.is_locked && p.is_current).length;
-  const completedPeriods = periodList.filter((p) => !p.is_locked && !p.is_current && p.activated_at).length;
-  const lockedPeriods = periodList.filter((p) => p.is_locked).length;
+  // Simplified state-based KPI tallies — derived from the new 5-state model.
+  const draftPeriods = periodList.filter((p) => !p.is_locked).length;
+  const publishedPeriods = periodList.filter((p) => p.is_locked && !p.closed_at && !(periodStats[p.id]?.hasScores)).length;
+  const livePeriods = periodList.filter((p) => p.is_locked && !p.closed_at && periodStats[p.id]?.hasScores).length;
+  const closedPeriods = periodList.filter((p) => !!p.closed_at).length;
 
-  // Filtered list
+  // Helper to pull the canonical state label for a period inside filter/sort
+  // callbacks. Filter maps "draft" → both draft_ready and draft_incomplete.
+  const getState = (p) => getPeriodState(
+    p,
+    !!periodStats[p.id]?.hasScores,
+    periodReadiness[p.id]
+  );
+
+  // Filtered list — filter value is one of all/draft/published/live/closed.
   const filteredList = useMemo(() => periodList.filter((p) => {
-    const status = getPeriodStatus(p);
-    if (statusFilter !== "all" && status !== statusFilter) return false;
-    return true;
-  }), [periodList, statusFilter]);
+    if (statusFilter === "all") return true;
+    const state = getState(p);
+    if (statusFilter === "draft") return state === "draft_ready" || state === "draft_incomplete";
+    return state === statusFilter;
+  }), [periodList, statusFilter, periodStats, periodReadiness]);
 
   const sortedFilteredList = useMemo(() => {
-    const statusRank = { draft: 1, active: 2, completed: 3, locked: 4 };
+    const statusRank = { draft_incomplete: 1, draft_ready: 2, published: 3, live: 4, closed: 5 };
     const rows = [...filteredList];
     rows.sort((a, b) => {
       const direction = sortDir === "asc" ? 1 : -1;
@@ -308,7 +476,7 @@ export default function PeriodsPage() {
       if (sortKey === "name") {
         cmp = aName.localeCompare(bName, "tr", { sensitivity: "base", numeric: true });
       } else if (sortKey === "status") {
-        cmp = (statusRank[getPeriodStatus(a)] || 0) - (statusRank[getPeriodStatus(b)] || 0);
+        cmp = (statusRank[getState(a)] || 0) - (statusRank[getState(b)] || 0);
       } else if (sortKey === "updated_at") {
         const aTs = Date.parse(a.updated_at || "");
         const bTs = Date.parse(b.updated_at || "");
@@ -365,43 +533,91 @@ export default function PeriodsPage() {
     setOpenMenuId(null);
   }
 
-  async function handleLockPeriod() {
-    if (!lockTarget) return;
-    await setEvalLock(lockTarget.id, true);
-    periods.applyPeriodPatch({ id: lockTarget.id, is_locked: true });
-    _toast.success(`${lockTarget.name || "Period"} locked — scores finalized.`);
-    setLockTarget(null);
+  async function handlePublishPeriod() {
+    if (!publishTarget) return;
+    const target = publishTarget;
+    const result = await publishPeriod(target.id);
+    if (result && result.ok === false) {
+      if (result.error_code === "readiness_failed") {
+        _toast.error(`${target.name || "Period"} is not ready to publish. Review the readiness panel.`);
+      } else {
+        _toast.error(`Could not publish ${target.name || "period"}.`);
+      }
+      throw new Error(result.error_code || "publish_failed");
+    }
+    periods.applyPeriodPatch({
+      id: target.id,
+      is_locked: true,
+      activated_at: result?.activated_at || new Date().toISOString(),
+    });
+    // Refresh readiness so the badge clears.
+    setPeriodReadiness((prev) => {
+      const next = { ...prev };
+      delete next[target.id];
+      return next;
+    });
+    _toast.success(
+      result?.already_published
+        ? `${target.name || "Period"} was already published.`
+        : `${target.name || "Period"} published — ready for QR generation.`
+    );
+    setPublishTarget(null);
   }
 
-  async function handleUnlockPeriod() {
-    if (!unlockTarget) return;
-    const target = unlockTarget;
+  async function handleRevertPeriod() {
+    if (!revertTarget) return;
+    const target = revertTarget;
+    // Underlying RPC remains rpc_admin_set_period_lock (wrapped by
+    // setEvalLock). Server rejects when scores exist, prompting the
+    // request-revert flow.
     const result = await setEvalLock(target.id, false);
-    // Server guards org admin from unlocking a period with scores.
-    // Route them into the request-unlock flow instead.
     if (result && result.ok === false) {
       if (result.error_code === "cannot_unlock_period_has_scores") {
-        setUnlockTarget(null);
-        setRequestUnlockTarget(target);
+        setRevertTarget(null);
+        setRequestRevertTarget(target);
         return;
       }
-      _toast.error(`Could not unlock ${target.name || "period"}.`);
-      setUnlockTarget(null);
+      _toast.error(`Could not revert ${target.name || "period"}.`);
+      setRevertTarget(null);
       return;
     }
     periods.applyPeriodPatch({ id: target.id, is_locked: false });
-    _toast.success(`${target.name || "Period"} unlocked — scoring re-enabled.`);
-    setUnlockTarget(null);
+    _toast.success(`${target.name || "Period"} reverted to Draft — structural editing re-enabled.`);
+    setRevertTarget(null);
   }
 
-  async function handleRequestUnlock(reason) {
-    if (!requestUnlockTarget) return { ok: false };
-    const result = await requestPeriodUnlock(requestUnlockTarget.id, reason);
+  async function handleRequestRevert(reason) {
+    if (!requestRevertTarget) return { ok: false };
+    const result = await requestPeriodUnlock(requestRevertTarget.id, reason);
     if (result?.ok) {
-      _toast.success(`Unlock request submitted for ${requestUnlockTarget.name || "period"}.`);
+      _toast.success(`Revert request submitted for ${requestRevertTarget.name || "period"}.`);
       reloadPendingRequests();
     }
     return result;
+  }
+
+  async function handleClosePeriodAction() {
+    if (!closeTarget) return;
+    const target = closeTarget;
+    const result = await closePeriod(target.id);
+    if (result && result.ok === false) {
+      if (result.error_code === "period_not_published") {
+        _toast.error("Publish the period before closing it.");
+      } else {
+        _toast.error(`Could not close ${target.name || "period"}.`);
+      }
+      throw new Error(result.error_code || "close_failed");
+    }
+    periods.applyPeriodPatch({
+      id: target.id,
+      closed_at: result?.closed_at || new Date().toISOString(),
+    });
+    _toast.success(
+      result?.already_closed
+        ? `${target.name || "Period"} was already closed.`
+        : `${target.name || "Period"} closed — rankings archived.`
+    );
+    setCloseTarget(null);
   }
 
   async function handleDeletePeriodViaModal() {
@@ -489,9 +705,9 @@ export default function PeriodsPage() {
                 options={[
                   { value: "all", label: "All" },
                   { value: "draft", label: "Draft" },
-                  { value: "active", label: "Active" },
-                  { value: "completed", label: "Completed" },
-                  { value: "locked", label: "Locked" },
+                  { value: "published", label: "Published" },
+                  { value: "live", label: "Live" },
+                  { value: "closed", label: "Closed" },
                 ]}
                 ariaLabel="Status"
               />
@@ -517,7 +733,7 @@ export default function PeriodsPage() {
               const st = periodStats[p.id] || {};
               const fw = frameworks.find((f) => f.id === p.framework_id);
               return [
-                p.name ?? "", p.season ?? "", getPeriodStatus(p),
+                p.name ?? "", p.season ?? "", getState(p),
                 p.start_date ?? "", p.end_date ?? "",
                 st.projectCount ?? "", st.jurorCount ?? "", st.criteriaCount ?? "",
                 fw?.name ?? "",
@@ -539,7 +755,7 @@ export default function PeriodsPage() {
                 const st = periodStats[p.id] || {};
                 const fw = frameworks.find((f) => f.id === p.framework_id);
                 return [
-                  p.name ?? "", p.season ?? "", getPeriodStatus(p),
+                  p.name ?? "", p.season ?? "", getState(p),
                   p.start_date ?? "", p.end_date ?? "",
                   st.projectCount ?? "", st.jurorCount ?? "", st.criteriaCount ?? "",
                   fw?.name ?? "",
@@ -573,24 +789,24 @@ export default function PeriodsPage() {
           <div className="scores-kpi-item-label">Draft</div>
         </div>
         <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value"><span className="success">{activePeriods}</span></div>
-          <div className="scores-kpi-item-label">Active</div>
+          <div className="scores-kpi-item-value" style={{ color: "#2563eb" }}>{publishedPeriods}</div>
+          <div className="scores-kpi-item-label">Published</div>
         </div>
         <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value" style={{ color: "#b45309" }}>{completedPeriods}</div>
-          <div className="scores-kpi-item-label">Completed</div>
+          <div className="scores-kpi-item-value"><span className="success">{livePeriods}</span></div>
+          <div className="scores-kpi-item-label">Live</div>
         </div>
         <div className="scores-kpi-item">
-          <div className="scores-kpi-item-value">{lockedPeriods}</div>
-          <div className="scores-kpi-item-label">Locked</div>
+          <div className="scores-kpi-item-value" style={{ color: "#64748b" }}>{closedPeriods}</div>
+          <div className="scores-kpi-item-label">Closed</div>
         </div>
       </div>
       {/* Lifecycle Bar */}
       <LifecycleBar
         draft={draftPeriods}
-        active={activePeriods}
-        completed={completedPeriods}
-        locked={lockedPeriods}
+        published={publishedPeriods}
+        live={livePeriods}
+        closed={closedPeriods}
       />
       {/* Error */}
       {panelError && (
@@ -689,14 +905,15 @@ export default function PeriodsPage() {
                 </td>
               </tr>
             ) : pagedList.map((period) => {
-              const status = getPeriodStatus(period);
+              const state = getState(period);
+              const isDraft = state === "draft_ready" || state === "draft_incomplete";
               const isCurrent = !!period.is_current && !period.is_locked;
               return (
                 <tr
                   key={period.id}
                   className={[
                     "mcard",
-                    isCurrent ? "sem-row-current" : status === "draft" ? "sem-row-draft" : "",
+                    isCurrent ? "sem-row-current" : isDraft ? "sem-row-draft" : "",
                     openMenuId === period.id ? "is-active" : "",
                   ].filter(Boolean).join(" ")}
                 >
@@ -705,15 +922,37 @@ export default function PeriodsPage() {
                     <div className="sem-name" style={period.is_locked ? { color: "var(--text-secondary)" } : undefined}>
                       {period.name}
                     </div>
-                    {(status === "active" || status === "draft") && (
+                    {(state === "live" || isDraft) && (
                       <div className="sem-name-sub">
-                        {status === "active" ? "Evaluation in progress" : "Setup in progress"}
+                        {state === "live" ? "Evaluation in progress" : "Setup in progress"}
                       </div>
                     )}
                   </td>
 
                   {/* Status */}
-                  <td data-label="Status"><StatusPill status={status} /></td>
+                  <td data-label="Status">
+                    <div className="periods-status-cell">
+                      <StatusPill status={state} />
+                      {isDraft && (
+                        <div className="periods-readiness-wrap">
+                          <ReadinessBadge
+                            readiness={periodReadiness[period.id]}
+                            onOpen={() => setReadinessOpenId((id) => id === period.id ? null : period.id)}
+                          />
+                          <ReadinessInspector
+                            open={readinessOpenId === period.id}
+                            onClose={() => setReadinessOpenId(null)}
+                            readiness={periodReadiness[period.id]}
+                            onFix={(target) => {
+                              onCurrentSemesterChange?.(period.id);
+                              onNavigate?.(target);
+                              setReadinessOpenId(null);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </td>
 
                   {/* Date Range */}
                   <td data-label="Date Range">
@@ -899,29 +1138,53 @@ export default function PeriodsPage() {
                         Duplicate Period
                       </button>
 
+                      {/* Close Period — only for Published/Live (locked but not yet closed) */}
+                      {period.is_locked && !period.closed_at && (
+                        <button
+                          className="floating-menu-item"
+                          onMouseDown={() => { setOpenMenuId(null); setCloseTarget(period); }}
+                        >
+                          <Archive size={13} />
+                          Close Period
+                        </button>
+                      )}
+
                       {/* Danger zone */}
                       <div className="floating-menu-divider" />
                       {period.is_locked && pendingRequests[period.id] ? (
                         <button className="floating-menu-item" disabled>
                           <LockOpen size={13} />
-                          Unlock Requested — awaiting super admin
+                          Revert Requested — awaiting super admin
                         </button>
                       ) : period.is_locked ? (
                         <button
                           className="floating-menu-item"
-                          onMouseDown={() => { setOpenMenuId(null); setUnlockTarget(period); }}
+                          onMouseDown={() => { setOpenMenuId(null); setRevertTarget(period); }}
                         >
                           <LockOpen size={13} />
-                          Unlock Period
+                          Revert to Draft
                         </button>
                       ) : (
-                        <button
-                          className="floating-menu-item danger"
-                          onMouseDown={() => { setOpenMenuId(null); setLockTarget(period); }}
-                        >
-                          <Lock size={13} />
-                          Lock Period
-                        </button>
+                        (() => {
+                          const readiness = periodReadiness[period.id];
+                          const isReady = readiness?.ok === true;
+                          const blockerCount = (readiness?.issues || []).filter((i) => i.severity === "required").length;
+                          return (
+                            <button
+                              className="floating-menu-item"
+                              disabled={!isReady}
+                              onMouseDown={() => {
+                                if (!isReady) return;
+                                setOpenMenuId(null);
+                                setPublishTarget(period);
+                              }}
+                              title={isReady ? undefined : `Fix ${blockerCount} issue${blockerCount === 1 ? "" : "s"} first`}
+                            >
+                              <Send size={13} />
+                              {isReady ? "Publish Period" : `Publish Period (${blockerCount} issue${blockerCount === 1 ? "" : "s"})`}
+                            </button>
+                          );
+                        })()
                       )}
                       {isCurrent ? (
                         <button className="floating-menu-item" disabled>
@@ -970,26 +1233,33 @@ export default function PeriodsPage() {
         period={deletePeriodTarget}
         onDelete={handleDeletePeriodViaModal}
       />
-      {/* Unlock period modal */}
-      <UnlockPeriodModal
-        open={!!unlockTarget}
-        onClose={() => setUnlockTarget(null)}
-        period={unlockTarget}
-        onUnlock={handleUnlockPeriod}
+      {/* Revert-to-Draft modal */}
+      <RevertToDraftModal
+        open={!!revertTarget}
+        onClose={() => setRevertTarget(null)}
+        period={revertTarget}
+        onRevert={handleRevertPeriod}
       />
-      {/* Lock period modal */}
-      <LockPeriodModal
-        open={!!lockTarget}
-        onClose={() => setLockTarget(null)}
-        period={lockTarget}
-        onLock={handleLockPeriod}
+      {/* Publish period modal */}
+      <PublishPeriodModal
+        open={!!publishTarget}
+        onClose={() => setPublishTarget(null)}
+        period={publishTarget}
+        onPublish={handlePublishPeriod}
       />
-      {/* Request-unlock modal (org admin → super admin approval) */}
-      <RequestUnlockModal
-        open={!!requestUnlockTarget}
-        onClose={() => setRequestUnlockTarget(null)}
-        period={requestUnlockTarget}
-        onRequest={handleRequestUnlock}
+      {/* Close period modal */}
+      <ClosePeriodModal
+        open={!!closeTarget}
+        onClose={() => setCloseTarget(null)}
+        period={closeTarget}
+        onCloseAction={handleClosePeriodAction}
+      />
+      {/* Request-revert modal (org admin → super admin approval) */}
+      <RequestRevertModal
+        open={!!requestRevertTarget}
+        onClose={() => setRequestRevertTarget(null)}
+        period={requestRevertTarget}
+        onRequest={handleRequestRevert}
       />
       {/* Add / Edit period drawer */}
       <AddEditPeriodDrawer

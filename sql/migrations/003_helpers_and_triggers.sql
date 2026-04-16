@@ -315,87 +315,31 @@ CREATE TRIGGER audit_log_trigger
   FOR EACH ROW EXECUTE FUNCTION trigger_audit_log();
 
 -- =============================================================================
--- TRIGGER FUNCTION: trigger_auto_lock_period_on_token
--- =============================================================================
--- Fairness guard: the moment an admin generates the first QR entry token for
--- a period, that period transitions from "setup" to "published". From then on
--- structural fields (criterion weights, rubric bands, outcome mappings,
--- coverage types) must not change, otherwise jurors arriving at different
--- times could score the same project against different rubrics.
---
--- Trigger sets periods.is_locked = true on first entry_token INSERT.
--- Idempotent: no-op if period is already locked. Writes an audit log entry
--- (category='config', severity='medium', actor_type='system').
--- Manual unlock via rpc_admin_set_period_lock stays available.
-
-CREATE OR REPLACE FUNCTION public.trigger_auto_lock_period_on_token()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_was_locked  BOOLEAN;
-  v_period_name TEXT;
-  v_org_id      UUID;
-BEGIN
-  SELECT is_locked, name, organization_id
-    INTO v_was_locked, v_period_name, v_org_id
-  FROM periods
-  WHERE id = NEW.period_id;
-
-  -- Already locked → no-op (keeps trigger idempotent across regenerates)
-  IF COALESCE(v_was_locked, false) THEN
-    RETURN NEW;
-  END IF;
-
-  UPDATE periods
-     SET is_locked = true
-   WHERE id = NEW.period_id;
-
-  PERFORM public._audit_write(
-    v_org_id,
-    'period.auto_lock_on_token',
-    'periods',
-    NEW.period_id,
-    'config'::audit_category,
-    'medium'::audit_severity,
-    jsonb_build_object(
-      'trigger',     'entry_token_insert',
-      'token_id',    NEW.id,
-      'period_name', v_period_name
-    ),
-    jsonb_build_object(
-      'before', jsonb_build_object('is_locked', false),
-      'after',  jsonb_build_object('is_locked', true)
-    ),
-    'system'::audit_actor_type
-  );
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER auto_lock_period_on_token_insert
-  AFTER INSERT ON entry_tokens
-  FOR EACH ROW EXECUTE FUNCTION trigger_auto_lock_period_on_token();
-
--- =============================================================================
 -- PERIOD-LOCK ENFORCEMENT
 -- =============================================================================
--- When periods.is_locked = true (set on first QR entry_token INSERT via
--- trigger_auto_lock_period_on_token), the period's structural content must
--- not change: criteria, outcomes, criterion-outcome maps, project data, or
--- period metadata fields (name/dates/framework/etc.). Juror metadata for
--- jurors assigned to a locked period is also frozen.
+-- Periods lock via the deliberate `rpc_admin_publish_period` action. The UI
+-- exposes a Publish button once a period satisfies the readiness check; the
+-- RPC sets is_locked = true and activated_at = now() in one transaction. QR
+-- entry tokens can only be generated after publishing (gated inside
+-- rpc_admin_generate_entry_token).
+--
+-- Before the lifecycle redesign, a trigger set is_locked on the first entry
+-- token INSERT. That trigger has been removed — lock is no longer a side
+-- effect of QR generation.
+--
+-- When periods.is_locked = true (set by rpc_admin_publish_period), the
+-- period's structural content must not change: criteria, outcomes,
+-- criterion-outcome maps, project data, or period metadata fields
+-- (name/dates/framework/etc.). Juror metadata for jurors assigned to a
+-- locked period is also frozen.
 --
 -- Exceptions (intentionally mutable while locked):
 --   * juror_period_auth rows (PIN, session, edit-mode runtime state)
 --   * scores / score_feedback (the whole point of a locked period)
---   * entry_tokens INSERT (the lock trigger lives here)
+--   * entry_tokens INSERT (QR generation remains allowed after publish)
 --   * jurors INSERT (new juror registration stays allowed — rpc_jury_authenticate)
---   * periods.is_locked / is_current / activated_at / snapshot_frozen_at
---     updates (orchestration + unlock flow must still work)
+--   * periods.is_locked / is_current / activated_at / snapshot_frozen_at /
+--     closed_at updates (orchestration + unlock + close flow must still work)
 
 -- Central helper — callable from RPCs for clean early-exit, and from
 -- table triggers as the shared check.

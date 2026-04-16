@@ -1,20 +1,22 @@
-// src/admin/modals/LockPeriodModal.jsx
-// Modal: confirm locking an evaluation period.
-// Danger layout with typed confirmation — irreversible scoring freeze.
+// src/admin/modals/RevertToDraftModal.jsx
+// Modal: confirm reverting a Published period back to Draft. Used when the
+// admin wants to fix structural content (criteria, projects) after publishing
+// but before any juror has submitted scores. Typed confirmation required —
+// QR tokens are revoked on revert.
 //
 // Props:
-//   open    — boolean
-//   onClose — () => void
-//   period  — { id, name }
-//   onLock  — () => Promise<void>
+//   open     — boolean
+//   onClose  — () => void
+//   period   — { id, name }
+//   onRevert — () => Promise<void>
 
 import { useState, useEffect } from "react";
-import { AlertCircle, Lock } from "lucide-react";
+import { AlertCircle, LockOpen } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
-export default function LockPeriodModal({ open, onClose, period, onLock }) {
-  const [locking, setLocking] = useState(false);
+export default function RevertToDraftModal({ open, onClose, period, onRevert }) {
+  const [reverting, setReverting] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
@@ -30,32 +32,33 @@ export default function LockPeriodModal({ open, onClose, period, onLock }) {
     onClose();
   };
 
-  const handleLock = async () => {
+  const handleRevert = async () => {
     setError("");
-    setLocking(true);
+    setReverting(true);
     try {
-      await onLock?.();
+      await onRevert?.();
       setConfirmName("");
       onClose();
     } catch (e) {
-      setError(e?.message || "Could not lock the period. Try again.");
+      setError(e?.message || "Could not revert the period. Try again.");
     } finally {
-      setLocking(false);
+      setReverting(false);
     }
   };
 
-  const canLock = confirmName === period?.name;
+  const canRevert = confirmName === period?.name;
 
   return (
     <Modal open={open} onClose={handleClose} size="sm" centered>
       <div className="fs-modal-header">
         <div className="fs-modal-icon danger">
-          <Lock size={22} />
+          <LockOpen size={22} />
         </div>
-        <div className="fs-title" style={{ textAlign: "center" }}>Lock Evaluation Period?</div>
+        <div className="fs-title" style={{ textAlign: "center" }}>Revert to Draft?</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
           <strong style={{ color: "var(--text-primary)" }}>{period?.name}</strong>{" "}
-          will be locked. All scores are finalized and the period becomes read-only.
+          will return to Draft. Structural editing will be re-enabled and any
+          active QR tokens will be revoked.
         </div>
       </div>
 
@@ -79,7 +82,7 @@ export default function LockPeriodModal({ open, onClose, period, onLock }) {
             placeholder={period?.name ? `Type ${period.name} to confirm` : "Type the period name to confirm"}
             autoComplete="off"
             spellCheck={false}
-            disabled={locking}
+            disabled={reverting}
           />
         </div>
       </div>
@@ -92,7 +95,7 @@ export default function LockPeriodModal({ open, onClose, period, onLock }) {
           type="button"
           className="fs-btn fs-btn-secondary"
           onClick={handleClose}
-          disabled={locking}
+          disabled={reverting}
           style={{ flex: 1 }}
         >
           Cancel
@@ -100,12 +103,12 @@ export default function LockPeriodModal({ open, onClose, period, onLock }) {
         <button
           type="button"
           className="fs-btn fs-btn-danger"
-          onClick={handleLock}
-          disabled={locking || !canLock}
+          onClick={handleRevert}
+          disabled={reverting || !canRevert}
           style={{ flex: 1 }}
         >
-          <AsyncButtonContent loading={locking} loadingText="Locking…">
-            Lock Period
+          <AsyncButtonContent loading={reverting} loadingText="Reverting…">
+            Revert to Draft
           </AsyncButtonContent>
         </button>
       </div>

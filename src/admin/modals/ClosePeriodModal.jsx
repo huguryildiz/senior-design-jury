@@ -1,20 +1,22 @@
-// src/admin/modals/UnlockPeriodModal.jsx
-// Modal: confirm unlocking an evaluation period.
-// Warning layout — reversible action, no typed confirmation required.
+// src/admin/modals/ClosePeriodModal.jsx
+// Modal: confirm closing a Live period. Closing is a terminal action that
+// signals the scoring window is over — jurors can no longer submit new
+// scores and QR codes become inert. Reverting a closed period requires
+// super admin approval via the existing unlock-request flow.
 //
 // Props:
-//   open     — boolean
-//   onClose  — () => void
-//   period   — { id, name }
-//   onUnlock — () => Promise<void>
+//   open    — boolean
+//   onClose — () => void
+//   period  — { id, name }
+//   onCloseAction — () => Promise<void>
 
 import { useState, useEffect } from "react";
-import { AlertCircle, LockOpen } from "lucide-react";
+import { AlertCircle, Archive } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
-export default function UnlockPeriodModal({ open, onClose, period, onUnlock }) {
-  const [unlocking, setUnlocking] = useState(false);
+export default function ClosePeriodModal({ open, onClose, period, onCloseAction }) {
+  const [closing, setClosing] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
@@ -30,32 +32,33 @@ export default function UnlockPeriodModal({ open, onClose, period, onUnlock }) {
     onClose();
   };
 
-  const handleUnlock = async () => {
+  const handleConfirm = async () => {
     setError("");
-    setUnlocking(true);
+    setClosing(true);
     try {
-      await onUnlock?.();
+      await onCloseAction?.();
       setConfirmName("");
       onClose();
     } catch (e) {
-      setError(e?.message || "Could not unlock the period. Try again.");
+      setError(e?.message || "Could not close the period. Try again.");
     } finally {
-      setUnlocking(false);
+      setClosing(false);
     }
   };
 
-  const canUnlock = confirmName === period?.name;
+  const canConfirm = confirmName === period?.name;
 
   return (
     <Modal open={open} onClose={handleClose} size="sm" centered>
       <div className="fs-modal-header">
-        <div className="fs-modal-icon danger">
-          <LockOpen size={22} />
+        <div className="fs-modal-icon warning">
+          <Archive size={22} />
         </div>
-        <div className="fs-title" style={{ textAlign: "center" }}>Unlock Evaluation Period?</div>
+        <div className="fs-title" style={{ textAlign: "center" }}>Close Evaluation Period?</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
           <strong style={{ color: "var(--text-primary)" }}>{period?.name}</strong>{" "}
-          will be unlocked and jurors can resume submitting evaluations.
+          will be closed. No new scores will be accepted, active QR tokens become
+          inert, and rankings are archived. Reverting requires super admin approval.
         </div>
       </div>
 
@@ -66,7 +69,6 @@ export default function UnlockPeriodModal({ open, onClose, period, onUnlock }) {
             <div className="fs-alert-body">{error}</div>
           </div>
         )}
-
         <div>
           <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
             Type <strong style={{ color: "var(--text-primary)" }}>{period?.name}</strong> to confirm
@@ -79,7 +81,7 @@ export default function UnlockPeriodModal({ open, onClose, period, onUnlock }) {
             placeholder={period?.name ? `Type ${period.name} to confirm` : "Type the period name to confirm"}
             autoComplete="off"
             spellCheck={false}
-            disabled={unlocking}
+            disabled={closing}
           />
         </div>
       </div>
@@ -92,7 +94,7 @@ export default function UnlockPeriodModal({ open, onClose, period, onUnlock }) {
           type="button"
           className="fs-btn fs-btn-secondary"
           onClick={handleClose}
-          disabled={unlocking}
+          disabled={closing}
           style={{ flex: 1 }}
         >
           Cancel
@@ -100,12 +102,12 @@ export default function UnlockPeriodModal({ open, onClose, period, onUnlock }) {
         <button
           type="button"
           className="fs-btn fs-btn-danger"
-          onClick={handleUnlock}
-          disabled={unlocking || !canUnlock}
+          onClick={handleConfirm}
+          disabled={closing || !canConfirm}
           style={{ flex: 1 }}
         >
-          <AsyncButtonContent loading={unlocking} loadingText="Unlocking…">
-            Unlock Period
+          <AsyncButtonContent loading={closing} loadingText="Closing…">
+            Close Period
           </AsyncButtonContent>
         </button>
       </div>

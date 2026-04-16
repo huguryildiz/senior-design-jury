@@ -610,6 +610,342 @@ $$;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_create_org_and_membership(TEXT, TEXT, TEXT, TEXT) TO authenticated;
 
 -- =============================================================================
+-- rpc_admin_check_period_readiness
+-- =============================================================================
+-- Evaluates whether a period meets the minimum requirements to be published.
+-- Returns { ok: boolean, issues: [{ check, msg, severity }] } where issues
+-- contains both blocking (severity='required') and informational
+-- (severity='optional') items. Publishing is allowed only when every required
+-- item passes. UI surfaces both kinds — required ones block the Publish
+-- button, optional ones render as warnings.
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_check_period_readiness(
+  p_period_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_org_id          UUID;
+  v_period          periods%ROWTYPE;
+  v_criteria_count  INT;
+  v_weight_total    NUMERIC;
+  v_missing_bands   INT;
+  v_project_count   INT;
+  v_framework_id    UUID;
+  v_outcome_count   INT;
+  v_juror_count     INT;
+  v_issues          JSONB := '[]'::jsonb;
+  v_ok              BOOLEAN := true;
+BEGIN
+  -- Fetch + authorize.
+  SELECT * INTO v_period FROM periods WHERE id = p_period_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'period_not_found';
+  END IF;
+  v_org_id := v_period.organization_id;
+
+  IF NOT (
+    current_user_is_super_admin()
+    OR EXISTS (
+      SELECT 1 FROM memberships
+      WHERE user_id = auth.uid() AND organization_id = v_org_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  -- Required: criteria_name set.
+  IF v_period.criteria_name IS NULL OR btrim(v_period.criteria_name) = '' THEN
+    v_ok := false;
+    v_issues := v_issues || jsonb_build_object(
+      'check', 'criteria_name_missing',
+      'msg', 'Criteria set needs a name.',
+      'severity', 'required'
+    );
+  END IF;
+
+  -- Required: ≥1 criterion + weights = 100 + rubric bands present on each.
+  SELECT COUNT(*), COALESCE(SUM(weight), 0),
+         COUNT(*) FILTER (
+           WHERE rubric_bands IS NULL
+              OR jsonb_typeof(rubric_bands) <> 'array'
+              OR jsonb_array_length(rubric_bands) = 0
+         )
+    INTO v_criteria_count, v_weight_total, v_missing_bands
+    FROM period_criteria
+   WHERE period_id = p_period_id;
+
+  IF v_criteria_count = 0 THEN
+    v_ok := false;
+    v_issues := v_issues || jsonb_build_object(
+      'check', 'no_criteria',
+      'msg', 'Add at least one criterion.',
+      'severity', 'required'
+    );
+  ELSE
+    IF v_weight_total <> 100 THEN
+      v_ok := false;
+      v_issues := v_issues || jsonb_build_object(
+        'check', 'weight_mismatch',
+        'msg', format('Criterion weights total %s; must equal 100.', v_weight_total),
+        'severity', 'required'
+      );
+    END IF;
+    IF v_missing_bands > 0 THEN
+      v_ok := false;
+      v_issues := v_issues || jsonb_build_object(
+        'check', 'missing_rubric_bands',
+        'msg', format('%s criterion(s) missing rubric bands.', v_missing_bands),
+        'severity', 'required'
+      );
+    END IF;
+  END IF;
+
+  -- Required: ≥1 project.
+  SELECT COUNT(*) INTO v_project_count FROM projects WHERE period_id = p_period_id;
+  IF v_project_count = 0 THEN
+    v_ok := false;
+    v_issues := v_issues || jsonb_build_object(
+      'check', 'no_projects',
+      'msg', 'Add at least one project.',
+      'severity', 'required'
+    );
+  END IF;
+
+  -- Optional: framework + outcomes.
+  v_framework_id := v_period.framework_id;
+  IF v_framework_id IS NULL THEN
+    v_issues := v_issues || jsonb_build_object(
+      'check', 'no_framework',
+      'msg', 'No outcome framework assigned (optional — required only for outcome reporting).',
+      'severity', 'optional'
+    );
+  ELSE
+    SELECT COUNT(*) INTO v_outcome_count FROM period_outcomes WHERE period_id = p_period_id;
+    IF v_outcome_count = 0 THEN
+      v_issues := v_issues || jsonb_build_object(
+        'check', 'no_outcomes',
+        'msg', 'Framework assigned but no outcomes frozen yet.',
+        'severity', 'optional'
+      );
+    END IF;
+  END IF;
+
+  -- Optional: jurors pre-registered. Jurors can self-register via QR, so this
+  -- is not blocking — but we surface it as a hint.
+  SELECT COUNT(*) INTO v_juror_count FROM juror_period_auth WHERE period_id = p_period_id;
+  IF v_juror_count = 0 THEN
+    v_issues := v_issues || jsonb_build_object(
+      'check', 'no_jurors',
+      'msg', 'No jurors pre-registered (jurors can still self-register via QR).',
+      'severity', 'optional'
+    );
+  END IF;
+
+  -- Optional: start/end dates filled.
+  IF v_period.start_date IS NULL OR v_period.end_date IS NULL THEN
+    v_issues := v_issues || jsonb_build_object(
+      'check', 'no_dates',
+      'msg', 'Start or end date not set.',
+      'severity', 'optional'
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', v_ok,
+    'issues', v_issues,
+    'counts', jsonb_build_object(
+      'criteria', v_criteria_count,
+      'weight_total', v_weight_total,
+      'projects', v_project_count,
+      'jurors', v_juror_count,
+      'outcomes', COALESCE(v_outcome_count, 0)
+    )
+  )::JSON;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_check_period_readiness(UUID) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_publish_period
+-- =============================================================================
+-- Transitions a period from Draft to Published. Runs the readiness check
+-- first; if any required issues remain, fails with 'readiness_failed' and
+-- returns the full issues list so the UI can surface them. On success, sets
+-- is_locked = true and activated_at = now(). Idempotent — already-published
+-- periods return ok with already_published = true.
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_publish_period(
+  p_period_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_org_id        UUID;
+  v_period_name   TEXT;
+  v_is_locked     BOOLEAN;
+  v_activated_at  TIMESTAMPTZ;
+  v_readiness     JSON;
+  v_ok            BOOLEAN;
+BEGIN
+  SELECT organization_id, name, is_locked, activated_at
+    INTO v_org_id, v_period_name, v_is_locked, v_activated_at
+    FROM periods WHERE id = p_period_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'period_not_found';
+  END IF;
+
+  IF NOT (
+    current_user_is_super_admin()
+    OR EXISTS (
+      SELECT 1 FROM memberships
+      WHERE user_id = auth.uid() AND organization_id = v_org_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  -- Idempotent: already published → no-op success.
+  IF COALESCE(v_is_locked, false) THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'already_published', true,
+      'activated_at', v_activated_at
+    )::JSON;
+  END IF;
+
+  -- Readiness gate.
+  v_readiness := public.rpc_admin_check_period_readiness(p_period_id);
+  v_ok := (v_readiness->>'ok')::BOOLEAN;
+  IF NOT v_ok THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'readiness_failed',
+      'readiness', v_readiness
+    )::JSON;
+  END IF;
+
+  UPDATE periods
+     SET is_locked    = true,
+         activated_at = COALESCE(activated_at, now())
+   WHERE id = p_period_id
+   RETURNING activated_at INTO v_activated_at;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'period.publish',
+    'periods',
+    p_period_id,
+    'config'::audit_category,
+    'medium'::audit_severity,
+    jsonb_build_object('period_name', v_period_name),
+    jsonb_build_object(
+      'before', jsonb_build_object('is_locked', false),
+      'after',  jsonb_build_object('is_locked', true, 'activated_at', v_activated_at)
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'already_published', false,
+    'activated_at', v_activated_at
+  )::JSON;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_publish_period(UUID) TO authenticated;
+
+-- =============================================================================
+-- rpc_admin_close_period
+-- =============================================================================
+-- Transitions a Published or Live period to Closed by setting closed_at.
+-- Closed periods reject new score inserts (enforced separately) and QR
+-- generation (already gated on is_locked, which remains true). Idempotent —
+-- already-closed periods return ok with already_closed = true.
+
+CREATE OR REPLACE FUNCTION public.rpc_admin_close_period(
+  p_period_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_org_id       UUID;
+  v_period_name  TEXT;
+  v_is_locked    BOOLEAN;
+  v_closed_at    TIMESTAMPTZ;
+BEGIN
+  SELECT organization_id, name, is_locked, closed_at
+    INTO v_org_id, v_period_name, v_is_locked, v_closed_at
+    FROM periods WHERE id = p_period_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'period_not_found';
+  END IF;
+
+  IF NOT (
+    current_user_is_super_admin()
+    OR EXISTS (
+      SELECT 1 FROM memberships
+      WHERE user_id = auth.uid() AND organization_id = v_org_id
+    )
+  ) THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  IF NOT COALESCE(v_is_locked, false) THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error_code', 'period_not_published'
+    )::JSON;
+  END IF;
+
+  IF v_closed_at IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'already_closed', true,
+      'closed_at', v_closed_at
+    )::JSON;
+  END IF;
+
+  UPDATE periods
+     SET closed_at = now()
+   WHERE id = p_period_id
+   RETURNING closed_at INTO v_closed_at;
+
+  PERFORM public._audit_write(
+    v_org_id,
+    'period.close',
+    'periods',
+    p_period_id,
+    'config'::audit_category,
+    'medium'::audit_severity,
+    jsonb_build_object('period_name', v_period_name),
+    jsonb_build_object(
+      'before', jsonb_build_object('closed_at', null),
+      'after',  jsonb_build_object('closed_at', v_closed_at)
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'already_closed', false,
+    'closed_at', v_closed_at
+  )::JSON;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.rpc_admin_close_period(UUID) TO authenticated;
+
+-- =============================================================================
 -- rpc_admin_generate_entry_token
 -- =============================================================================
 -- Uses security_policy->>'qrTtl' (12h/24h/48h/7d) to determine token TTL.
@@ -627,11 +963,12 @@ DECLARE
   v_token_hash TEXT;
   v_expires_at TIMESTAMPTZ;
   v_org_id     UUID;
+  v_is_locked  BOOLEAN;
   v_ttl_str    TEXT;
   v_ttl        INTERVAL;
 BEGIN
   -- Serialize generation per period to avoid parallel active-token races.
-  SELECT organization_id INTO v_org_id
+  SELECT organization_id, is_locked INTO v_org_id, v_is_locked
   FROM periods
   WHERE id = p_period_id
   FOR UPDATE;
@@ -647,6 +984,15 @@ BEGIN
     )
   ) THEN
     RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  -- Gate: QR generation requires the period to be Published (is_locked=true).
+  -- Before the lifecycle redesign an auto-lock trigger on the first token
+  -- INSERT made this implicit; now publish is a deliberate admin action via
+  -- rpc_admin_publish_period, and QR is allowed only afterwards.
+  IF NOT COALESCE(v_is_locked, false) THEN
+    RAISE EXCEPTION 'period_not_published' USING
+      HINT = 'Publish the period before generating QR codes.';
   END IF;
 
   -- Read qrTtl from security_policy; fall back to '24h'.

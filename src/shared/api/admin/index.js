@@ -33,6 +33,9 @@ export {
   setPeriodCriteriaName,
   getPeriodCounts,
   listPeriodStats,
+  checkPeriodReadiness,
+  publishPeriod,
+  closePeriod,
 } from "./periods";
 
 export {

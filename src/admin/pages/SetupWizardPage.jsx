@@ -21,6 +21,8 @@ import {
   assignFrameworkToPeriod,
   getVeraStandardCriteria,
   setPeriodCriteriaName,
+  checkPeriodReadiness,
+  publishPeriod,
 } from "@/shared/api";
 import { CRITERIA } from "@/shared/constants";
 import QRCodeStyling from "qr-code-styling";
@@ -1084,11 +1086,35 @@ function StepReview({ periodId, onComplete, onBack, loading }) {
 
   const generateToken = async () => {
     try {
+      // Step 7 is the wizard's publish checkpoint. Run readiness first — if
+      // any required check fails, the wizard surfaces the issues inline and
+      // stops before attempting publish.
+      const readiness = await checkPeriodReadiness(periodId);
+      if (!readiness?.ok) {
+        const blockers = (readiness?.issues || [])
+          .filter((i) => i.severity === "required")
+          .map((i) => i.msg)
+          .join(" · ");
+        toast.error(blockers ? `Cannot publish: ${blockers}` : "Period is not ready to publish.");
+        return;
+      }
+      // Publish is idempotent; if the period is already Published, this
+      // returns { already_published: true } and we proceed straight to QR.
+      const publishResult = await publishPeriod(periodId);
+      if (publishResult && publishResult.ok === false) {
+        toast.error("Failed to publish period.");
+        return;
+      }
       const token = await generateEntryToken(periodId);
       setEntryToken(token);
-      toast.success("Entry token generated");
+      toast.success("Period published — entry token ready.");
     } catch (err) {
-      toast.error("Failed to generate token: " + err.message);
+      const msg = String(err?.message || "");
+      if (msg.includes("period_not_published")) {
+        toast.error("Period must be published before generating a token.");
+      } else {
+        toast.error("Failed to generate token: " + msg);
+      }
     }
   };
 
@@ -1208,7 +1234,7 @@ function StepReview({ periodId, onComplete, onBack, loading }) {
           </div>
         ) : (
           <button className="sw-btn sw-btn-ghost" onClick={generateToken}>
-            Generate Entry Token
+            Publish & Generate Token
           </button>
         )}
       </div>

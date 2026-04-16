@@ -352,7 +352,7 @@ export async function listPeriodStats(organizationId) {
 
   // Initialize all periods with 0 counts and null progress
   for (const periodId of periodIds) {
-    stats[periodId] = { projectCount: 0, jurorCount: 0, criteriaCount: 0, criteriaLabels: [], progress: null };
+    stats[periodId] = { projectCount: 0, jurorCount: 0, criteriaCount: 0, criteriaLabels: [], progress: null, hasScores: false };
   }
 
   // Count projects
@@ -372,7 +372,7 @@ export async function listPeriodStats(organizationId) {
     s.criteriaLabels.push(criterion.label);
   }
 
-  // Calculate progress for each period
+  // Calculate progress for each period + track score presence
   const sheetsByPeriod = {};
   for (const sheet of (scoreSheets || [])) {
     if (!sheetsByPeriod[sheet.period_id]) {
@@ -382,6 +382,7 @@ export async function listPeriodStats(organizationId) {
     if (sheet.status === "submitted") {
       sheetsByPeriod[sheet.period_id].submitted += 1;
     }
+    stats[sheet.period_id].hasScores = true;
   }
 
   for (const periodId of periodIds) {
@@ -408,4 +409,64 @@ export async function setPeriodCriteriaName(periodId, name) {
     p_name:      name ?? null,
   });
   if (error) throw error;
+}
+
+/**
+ * Check whether a period meets the minimum requirements to be published.
+ * Server-side readiness evaluation — UI uses the result to render the
+ * "N issues before publish" badge and to gate the Publish button.
+ *
+ * Issues returned with severity:
+ *   - "required": blocks publish (must be fixed)
+ *   - "optional": informational only (publishing still allowed)
+ *
+ * @param {string} periodId
+ * @returns {Promise<{
+ *   ok: boolean,
+ *   issues: Array<{ check: string, msg: string, severity: "required"|"optional" }>,
+ *   counts: { criteria: number, weight_total: number, projects: number, jurors: number, outcomes: number }
+ * }>}
+ */
+export async function checkPeriodReadiness(periodId) {
+  if (!periodId) throw new Error("checkPeriodReadiness: periodId required");
+  const { data, error } = await supabase.rpc("rpc_admin_check_period_readiness", {
+    p_period_id: periodId,
+  });
+  if (error) throw error;
+  return data || { ok: false, issues: [], counts: {} };
+}
+
+/**
+ * Transition a period from Draft to Published. Server-side readiness check
+ * runs first; if any required check fails, returns `{ ok: false,
+ * error_code: 'readiness_failed', readiness }` so the UI can list the
+ * blocking issues without a second round-trip. Idempotent — re-publishing
+ * an already-published period returns `{ ok: true, already_published: true }`.
+ *
+ * @param {string} periodId
+ * @returns {Promise<{ ok: boolean, already_published?: boolean, activated_at?: string, error_code?: string, readiness?: object }>}
+ */
+export async function publishPeriod(periodId) {
+  if (!periodId) throw new Error("publishPeriod: periodId required");
+  const { data, error } = await supabase.rpc("rpc_admin_publish_period", {
+    p_period_id: periodId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Close a Published or Live period — sets closed_at, marking it terminal.
+ * Idempotent. Requires the period to be Published first (is_locked=true).
+ *
+ * @param {string} periodId
+ * @returns {Promise<{ ok: boolean, already_closed?: boolean, closed_at?: string, error_code?: string }>}
+ */
+export async function closePeriod(periodId) {
+  if (!periodId) throw new Error("closePeriod: periodId required");
+  const { data, error } = await supabase.rpc("rpc_admin_close_period", {
+    p_period_id: periodId,
+  });
+  if (error) throw error;
+  return data;
 }

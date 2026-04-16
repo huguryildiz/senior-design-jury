@@ -53,10 +53,13 @@
   transition: width 0.4s ease;
 }
 
-.periods-lifecycle-segment.draft    { background: linear-gradient(90deg, #818cf8, #6366f1); }
-.periods-lifecycle-segment.active   { background: linear-gradient(90deg, #34d399, #10b981); }
+.periods-lifecycle-segment.draft     { background: linear-gradient(90deg, #818cf8, #6366f1); }
+.periods-lifecycle-segment.active    { background: linear-gradient(90deg, #34d399, #10b981); }
 .periods-lifecycle-segment.completed { background: linear-gradient(90deg, #fbbf24, #d97706); }
-.periods-lifecycle-segment.locked   { background: linear-gradient(90deg, #94a3b8, #64748b); }
+.periods-lifecycle-segment.locked    { background: linear-gradient(90deg, #94a3b8, #64748b); }
+.periods-lifecycle-segment.published { background: linear-gradient(90deg, #60a5fa, #2563eb); }
+.periods-lifecycle-segment.live      { background: linear-gradient(90deg, #34d399, #10b981); }
+.periods-lifecycle-segment.closed    { background: linear-gradient(90deg, #94a3b8, #64748b); }
 
 .periods-lifecycle-legend {
   display: flex;
@@ -81,10 +84,13 @@
   flex-shrink: 0;
 }
 
-.periods-legend-dot.draft    { background: #6366f1; }
-.periods-legend-dot.active   { background: #10b981; }
+.periods-legend-dot.draft     { background: #6366f1; }
+.periods-legend-dot.active    { background: #10b981; }
 .periods-legend-dot.completed { background: #d97706; }
-.periods-legend-dot.locked   { background: #64748b; }
+.periods-legend-dot.locked    { background: #64748b; }
+.periods-legend-dot.published { background: #2563eb; }
+.periods-legend-dot.live      { background: #10b981; }
+.periods-legend-dot.closed    { background: #64748b; }
 
 /* ─── Table card wrapper ─────────────────────────────────── */
 .periods-table-card {
@@ -389,9 +395,15 @@ button.periods-cset-badge:hover svg {
 .sem-status-active { background: var(--success-soft); color: #15803d }
 .sem-status-completed { background: rgba(217,119,6,.08); color: #b45309 }
 .sem-status-locked { background: rgba(100,116,139,.08); color: #64748b }
+.sem-status-published { background: rgba(37,99,235,.08); color: #2563eb }
+.sem-status-live { background: var(--success-soft); color: #15803d }
+.sem-status-closed { background: rgba(100,116,139,.10); color: #64748b }
 
 .dark-mode .sem-status-draft { background: rgba(129,140,248,.1); color: #a5b4fc }
 .dark-mode .sem-status-completed { background: rgba(251,191,36,.08); color: #fbbf24 }
+.dark-mode .sem-status-published { background: rgba(96,165,250,.14); color: #93c5fd }
+.dark-mode .sem-status-live { background: rgba(74,222,128,.14); color: #86efac }
+.dark-mode .sem-status-closed { background: rgba(148,163,184,.14); color: #cbd5e1 }
 
 /* ─── Stat columns ────────────────────────────────────────── */
 .sem-stat { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em }
@@ -605,4 +617,202 @@ button.periods-cset-badge:hover svg {
   border-style: solid;
   color: rgb(165, 180, 252);
 }
+
+/* ── Readiness badge + inspector ───────────────────────── */
+
+.periods-status-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.periods-readiness-wrap {
+  position: relative;
+}
+
+.periods-readiness-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.13s, border-color 0.13s, transform 0.08s;
+  white-space: nowrap;
+}
+
+.periods-readiness-badge.blocked {
+  background: rgba(225, 29, 72, 0.08);
+  color: #e11d48;
+  border-color: rgba(225, 29, 72, 0.22);
+}
+
+.periods-readiness-badge.blocked:hover {
+  background: rgba(225, 29, 72, 0.14);
+  border-color: rgba(225, 29, 72, 0.38);
+}
+
+.periods-readiness-badge.ready {
+  background: rgba(34, 197, 94, 0.09);
+  color: #16a34a;
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.periods-readiness-badge.ready:hover {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.40);
+}
+
+.dark-mode .periods-readiness-badge.blocked {
+  background: rgba(244, 63, 94, 0.14);
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.dark-mode .periods-readiness-badge.ready {
+  background: rgba(74, 222, 128, 0.14);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.periods-readiness-inspector {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
+  padding: 12px;
+}
+
+.dark-mode .periods-readiness-inspector {
+  background: var(--surface);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.40), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.periods-readiness-inspector-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.periods-readiness-inspector-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+  margin-bottom: 2px;
+}
+
+.periods-readiness-inspector-sub {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  text-align: justify;
+  text-justify: inter-word;
+  line-height: 1.4;
+}
+
+.periods-readiness-inspector-close {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.periods-readiness-inspector-close:hover {
+  background: rgba(100, 116, 139, 0.10);
+  color: var(--text-secondary);
+}
+
+.periods-readiness-section {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.periods-readiness-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.periods-readiness-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.periods-readiness-section-label.required { color: #e11d48; }
+.periods-readiness-section-label.optional { color: var(--text-tertiary); }
+
+.periods-readiness-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.periods-readiness-row.required > svg { color: #e11d48; flex-shrink: 0; margin-top: 2px; }
+.periods-readiness-row.optional > svg { color: var(--text-tertiary); flex-shrink: 0; margin-top: 2px; }
+
+.periods-readiness-msg {
+  flex: 1;
+  color: var(--text-primary);
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+.periods-readiness-row.optional .periods-readiness-msg {
+  color: var(--text-secondary);
+}
+
+.periods-readiness-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.13s, border-color 0.13s;
+}
+
+.periods-readiness-fix:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.dark-mode .periods-readiness-fix {
+  color: rgb(165, 180, 252);
+}
+
+.dark-mode .periods-readiness-fix:hover {
+  background: rgba(129, 140, 248, 0.13);
+  border-color: rgba(129, 140, 248, 0.40);
+}
+
 

@@ -1,6 +1,6 @@
 // src/admin/modals/SetCurrentPeriodModal.jsx
 // Modal: confirm switching the active evaluation period.
-// Uses the same visual structure as UnlockPeriodModal with typed confirmation.
+// Uses the same visual structure as RevertToDraftModal with typed confirmation.
 //
 // Props:
 //   open      — boolean

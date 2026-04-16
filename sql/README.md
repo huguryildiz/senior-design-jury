@@ -175,7 +175,7 @@ sql/
 
 | Table | Key columns |
 |-------|-------------|
-| `periods` | `organization_id`, `framework_id`, `name`, `season`, `is_current`, `is_locked`, `snapshot_frozen_at`, `criteria_name` |
+| `periods` | `organization_id`, `framework_id`, `name`, `season`, `is_current`, `is_locked`, `snapshot_frozen_at`, `closed_at`, `criteria_name` |
 | `projects` | `period_id`, `project_no`, `title`, `members JSONB`, `advisor_name`, `advisor_affiliation` |
 | `jurors` | `organization_id`, `juror_name`, `affiliation`, `email`, `avatar_color` |
 | `juror_period_auth` | PK(`juror_id`, `period_id`), `pin_hash` (bcrypt), `session_token_hash` (SHA-256), `session_expires_at`, `failed_attempts`, `locked_until`, `edit_enabled`, `edit_reason`, `edit_expires_at`, `final_submitted_at` |

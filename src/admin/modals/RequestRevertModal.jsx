@@ -1,6 +1,8 @@
-// src/admin/modals/RequestUnlockModal.jsx
-// Modal: org admin requests super-admin approval to unlock a period that has
-// scores. Sebep zorunlu (min 10 char). Fire-and-forget email goes to super admins.
+// src/admin/modals/RequestRevertModal.jsx
+// Modal: org admin requests super-admin approval to revert a Live or Closed
+// period back to Draft. Reason required (min 10 char). Fire-and-forget email
+// goes to super admins. Underlying RPCs unchanged (rpc_admin_request_unlock +
+// rpc_super_admin_resolve_unlock); this is a UI rename.
 //
 // Props:
 //   open      — boolean
@@ -21,11 +23,11 @@ function mapErrorCode(code) {
     case "reason_too_short":
       return `Please provide at least ${MIN_REASON} characters.`;
     case "period_not_locked":
-      return "This period is not currently locked.";
+      return "This period is not currently published.";
     case "period_has_no_scores":
-      return "No scores exist yet — you can unlock directly instead.";
+      return "No scores exist yet — you can revert directly instead.";
     case "pending_request_exists":
-      return "An unlock request is already pending for this period.";
+      return "A revert request is already pending for this period.";
     case "unauthorized":
       return "Unauthorized — check your session.";
     case "period_not_found":
@@ -35,7 +37,7 @@ function mapErrorCode(code) {
   }
 }
 
-export default function RequestUnlockModal({ open, onClose, period, onRequest }) {
+export default function RequestRevertModal({ open, onClose, period, onRequest }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -81,16 +83,16 @@ export default function RequestUnlockModal({ open, onClose, period, onRequest })
         <div className="fs-modal-icon warning">
           <ShieldAlert size={22} strokeWidth={2} />
         </div>
-        <div className="fs-title" style={{ textAlign: "center" }}>Request Unlock Approval</div>
+        <div className="fs-title" style={{ textAlign: "center" }}>Request Revert to Draft</div>
         <div className="fs-subtitle" style={{ textAlign: "center", marginTop: 4 }}>
           <strong style={{ color: "var(--text-primary)" }}>{period?.name}</strong>{" "}
-          already has evaluation scores. A super admin must approve the unlock.
+          already has evaluation scores. A super admin must approve reverting it to Draft.
         </div>
       </div>
 
       <div className="fs-modal-body" style={{ paddingTop: 2, display: "flex", flexDirection: "column", gap: 10 }}>
         <FbAlert variant="warning" title="Why approval is required">
-          Once jurors have submitted scores, changing criterion weights, rubric bands, or outcome mappings makes prior scores inconsistent. Include enough detail so the super admin can decide quickly.
+          Once jurors have submitted scores, reverting to Draft re-opens structural editing — changing criterion weights, rubric bands, or outcome mappings makes prior scores inconsistent. Include enough detail so the super admin can decide quickly.
         </FbAlert>
 
         {error && (

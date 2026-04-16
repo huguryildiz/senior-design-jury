@@ -325,7 +325,14 @@ export default function EntryControlPage() {
       }
     } catch (e) {
       console.error("[generateEntryToken]", e);
-      setError(e?.unauthorized ? "Unauthorized — check your session." : (e?.message || "Could not generate token."));
+      const msg = String(e?.message || "");
+      if (msg.includes("period_not_published")) {
+        setError("This period is not published yet. Publish it first from the Periods page.");
+      } else if (e?.unauthorized) {
+        setError("Unauthorized — check your session.");
+      } else {
+        setError(msg || "Could not generate token.");
+      }
     } finally {
       setRegenerating(false);
     }
