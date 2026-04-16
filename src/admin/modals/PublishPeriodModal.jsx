@@ -12,6 +12,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, Send } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import FbAlert from "@/shared/ui/FbAlert";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function PublishPeriodModal({ open, onClose, period, onPublish }) {
@@ -62,19 +63,13 @@ export default function PublishPeriodModal({ open, onClose, period, onPublish })
             <div className="fs-alert-body">{error}</div>
           </div>
         )}
-        <ul style={{
-          margin: 0,
-          paddingLeft: 18,
-          fontSize: 12.5,
-          color: "var(--text-secondary)",
-          lineHeight: 1.6,
-          textAlign: "justify",
-          textJustify: "inter-word",
-        }}>
-          <li>Criteria, rubric bands, and project list are frozen.</li>
-          <li>New jurors can still self-register via QR.</li>
-          <li>You can revert to Draft later if no scores have been submitted.</li>
-        </ul>
+        <FbAlert variant="info" title="What changes on publish">
+          <ul className="fs-modal-info-list">
+            <li>Criteria, rubric bands, and project list are frozen.</li>
+            <li>New jurors can still self-register via QR.</li>
+            <li>You can revert to Draft later if no scores have been submitted.</li>
+          </ul>
+        </FbAlert>
       </div>
 
       <div
