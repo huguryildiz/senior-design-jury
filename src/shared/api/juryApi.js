@@ -5,6 +5,7 @@ import { supabase } from "./core/client";
 import { withRetry } from "./core/retry";
 import { formatMembers } from "./fieldMapping";
 import { invokeEdgeFunction } from "./core/invokeEdgeFunction";
+import { randomUUID } from "../lib/randomUUID";
 
 // ── Juror auth (RPCs) ────────────────────────────────────────
 
@@ -203,7 +204,7 @@ export async function finalizeJurorSubmission(periodId, jurorId, sessionToken) {
     p_period_id: periodId,
     p_juror_id: jurorId,
     p_session_token: sessionToken,
-    p_correlation_id: crypto.randomUUID(),
+    p_correlation_id: randomUUID(),
   });
   if (error) throw error;
   return data;
