@@ -123,9 +123,23 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
 
     try {
       const sessionToken = stateRef.current.jurorSessionToken;
-      if (!sessionToken) throw new Error("juror_session_missing");
-      const ok = await finalizeJurorSubmission(sid, jid, sessionToken);
-      if (!ok) throw new Error("finalize_failed");
+      if (!sessionToken) {
+        const e = new Error("juror_session_missing");
+        e.code = "P0401";
+        throw e;
+      }
+      // RPC returns JSON — always truthy even on failure. Inspect the `ok`
+      // field so the client doesn't silently treat `{ok: false, ...}` as
+      // a successful finalize.
+      const result = await finalizeJurorSubmission(sid, jid, sessionToken);
+      if (!result || result.ok === false) {
+        const code = String(result?.error_code || "finalize_failed");
+        const e = new Error(code);
+        if (code === "session_not_found" || code === "invalid_session") {
+          e.code = "P0401";
+        }
+        throw e;
+      }
 
       scoring.setDoneScores({ ...s });
       scoring.setDoneComments({ ...c });
@@ -151,8 +165,11 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
         loading.setProjects(uiProjects);
       }).catch(() => {});
     } catch (e) {
-      // Keep user in eval mode; submission didn't finalize.
-      if (isSessionExpiredError(e)) {
+      // Keep user in eval mode; submission didn't finalize. Log the raw
+      // error so diagnostic detail survives the generic UI toast.
+      console.error("[finalize] failed", e);
+      const msg = String(e?.message || "");
+      if (isSessionExpiredError(e) || msg === "juror_session_missing") {
         // Session expired mid-finalization. Block further writes and surface the
         // distinct sessionExpired state (set by writeGroup or here) so the UI
         // can show "Your session has expired" rather than a generic failure.
@@ -162,8 +179,11 @@ export function useJuryLifecycleHandlers({ identity, session, scoring, loading, 
       } else if (isPeriodLockedError(e)) {
         editState.setEditLockActive(true);
         setSubmitError("Evaluations are locked for this period.");
+      } else if (msg === "juror_blocked") {
+        editState.setEditLockActive(true);
+        setSubmitError("This juror has been blocked. Please contact the coordinators.");
       } else {
-        setSubmitError("Final submission failed. Please try again.");
+        setSubmitError(`Final submission failed (${msg || "unknown"}). Please try again.`);
       }
     } finally {
       loading.setLoadingState(null);
