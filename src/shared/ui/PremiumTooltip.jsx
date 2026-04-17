@@ -2,17 +2,17 @@
 // Global premium glass tooltip — mirrors the Consensus badge hover style.
 // Usage: <PremiumTooltip text="..."><YourElement /></PremiumTooltip>
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 
 export default function PremiumTooltip({ children, text, position = "top" }) {
   const [visible, setVisible] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [coords, setCoords] = useState({ top: -9999, left: -9999 });
   const [side, setSide] = useState(position);
   const triggerRef = useRef(null);
   const tipRef = useRef(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!visible || !triggerRef.current || !tipRef.current) return;
 
     const place = () => {
@@ -32,6 +32,9 @@ export default function PremiumTooltip({ children, text, position = "top" }) {
       let top = s === "top"
         ? tr.top - tp.height - gap
         : tr.bottom + gap;
+
+      // clamp vertically so tooltip never exits the viewport
+      top = Math.max(gap, Math.min(top, vh - tp.height - gap));
 
       let left = tr.left + tr.width / 2 - tp.width / 2;
       if (left < gap) left = gap;

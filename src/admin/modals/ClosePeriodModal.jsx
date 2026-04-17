@@ -13,6 +13,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, Archive } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import FbAlert from "@/shared/ui/FbAlert";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function ClosePeriodModal({ open, onClose, period, onCloseAction }) {
@@ -63,6 +64,10 @@ export default function ClosePeriodModal({ open, onClose, period, onCloseAction 
       </div>
 
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
+        <FbAlert variant="danger" title="This action cannot be undone" style={{ marginBottom: 12 }}>
+          Reopening a closed period requires super admin approval. All QR tokens become inert immediately.
+        </FbAlert>
+
         {error && (
           <div className="fs-alert danger" style={{ marginBottom: 12, textAlign: "left" }}>
             <div className="fs-alert-icon"><AlertCircle size={15} /></div>

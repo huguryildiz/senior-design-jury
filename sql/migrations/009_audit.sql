@@ -477,7 +477,8 @@ BEGIN
   END IF;
 
   UPDATE periods
-  SET is_locked = COALESCE(p_locked, false)
+  SET is_locked = COALESCE(p_locked, false),
+      closed_at = CASE WHEN NOT COALESCE(p_locked, false) THEN NULL ELSE closed_at END
   WHERE id = p_period_id;
 
   -- Revert to Draft (locked -> unlocked) must invalidate any active QR

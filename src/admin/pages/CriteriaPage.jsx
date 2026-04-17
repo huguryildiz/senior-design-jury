@@ -21,6 +21,7 @@ import {
   MoveUp,
   MoveDown,
   Info,
+  Download,
 } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useToast } from "@/shared/hooks/useToast";
@@ -43,6 +44,9 @@ import {
   CRITERION_COLORS,
 } from "@/admin/criteria/criteriaFormHelpers";
 import "../../styles/pages/criteria.css";
+import { useAuth } from "@/auth";
+import ExportPanel from "../components/ExportPanel";
+import { useCriteriaExport } from "../hooks/useCriteriaExport";
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -126,6 +130,7 @@ export default function CriteriaPage() {
   // ── Row action menus ──────────────────────────────────────────
 
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // ── Delete modal state ────────────────────────────────────────
 
@@ -164,6 +169,12 @@ export default function CriteriaPage() {
   const outcomeConfig = periods.outcomeConfig || [];
   const isLocked = !!(viewPeriod?.is_locked);
   const [saving, setSaving] = useState(false);
+
+  const { activeOrganization } = useAuth();
+  const { generateFile: generateCriteriaFile, handleExport: handleCriteriaExport } = useCriteriaExport({
+    criteria: draftCriteria,
+    periodName: periods.viewPeriodLabel || "",
+  });
 
   // Single outcome-mapping draft owned at the page level; the edit drawer
   // mutates this instance so the SaveBar commits mappings alongside criteria.
@@ -714,6 +725,13 @@ export default function CriteriaPage() {
               </div>
             </div>
             <div className="crt-header-actions">
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => setExportOpen((v) => !v)}
+              >
+                <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
+                {" "}Export
+              </button>
               {isLocked ? (
                 <div className="crt-lock-badge">
                   <Lock size={11} strokeWidth={2.2} />
@@ -730,6 +748,17 @@ export default function CriteriaPage() {
               )}
             </div>
           </div>
+          {exportOpen && (
+            <ExportPanel
+              title="Export Criteria"
+              subtitle="Download evaluation criteria with rubric bands and outcome mappings."
+              meta={`${(draftCriteria || []).length} criteria · ${periods.viewPeriodLabel || "—"}`}
+              organization={activeOrganization?.name || ""}
+              onClose={() => setExportOpen(false)}
+              generateFile={generateCriteriaFile}
+              onExport={handleCriteriaExport}
+            />
+          )}
             <table className="crt-table table-standard table-pill-balance">
               <colgroup>
                 <col style={{ width: "4%" }} />

@@ -3627,9 +3627,12 @@ body:not(.dark-mode) .ph-avatar-menu-item--danger:hover { background: rgba(239,6
   box-shadow:0 12px 36px rgba(0,0,0,0.40),inset 0 1px 0 rgba(255,255,255,0.04);
   font-size:11.5px;font-weight:500;color:rgba(255,255,255,0.88);
   letter-spacing:0.15px;
-  opacity:0;transform:translateY(4px);
-  animation:dropdown-in .15s ease-out forwards;
+  opacity:0;
 }
+.premium-tooltip-box.tip-top  {animation:tooltip-rise  .15s ease-out forwards}
+.premium-tooltip-box.tip-bottom{animation:tooltip-drop  .15s ease-out forwards}
+@keyframes tooltip-rise  {from{opacity:0;transform:translateY( 5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tooltip-drop  {from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
 .premium-tooltip-box.is-visible{opacity:1;transform:translateY(0)}
 .premium-tooltip-box::after{
   content:'';position:absolute;left:50%;

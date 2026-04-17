@@ -1,6 +1,7 @@
 // src/admin/pages/PeriodsPage.jsx — Phase 7
 // Evaluation Periods management page.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
@@ -53,6 +54,7 @@ import {
   Workflow,
 } from "lucide-react";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
+import { useFloating } from "@/shared/hooks/useFloating";
 import RevertToDraftModal from "../modals/RevertToDraftModal";
 import RequestRevertModal from "../modals/RequestRevertModal";
 import PublishPeriodModal from "../modals/PublishPeriodModal";
@@ -134,102 +136,116 @@ function StatusPill({ status }) {
   );
 }
 
-// ReadinessBadge: shown next to StatusPill on Draft periods. Renders red "N issues
-// before publish" when blocking issues exist, or green "Ready to publish" when
-// all required checks pass. Clicking opens the ReadinessInspector drawer.
-function ReadinessBadge({ readiness, onOpen }) {
-  if (!readiness) return null;
-  const required = (readiness.issues || []).filter((i) => i.severity === "required");
-  const isReady = readiness.ok;
-  return (
-    <button
-      type="button"
-      className={`periods-readiness-badge${isReady ? " ready" : " blocked"}`}
-      onClick={onOpen}
-    >
-      {isReady ? (
-        <>
-          <CheckCircle2 size={11} strokeWidth={2} />
-          Ready
-        </>
-      ) : (
-        <>
-          <AlertCircle size={11} strokeWidth={2} />
-          {required.length} issue{required.length === 1 ? "" : "s"}
-        </>
-      )}
-    </button>
-  );
-}
+// ReadinessPopover: self-contained badge + portal inspector for Draft periods.
+// Uses useFloating so the panel is never clipped by ancestor overflow:hidden.
+function ReadinessPopover({ readiness, onFix }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const { floatingRef, floatingStyle } = useFloating({
+    triggerRef,
+    isOpen,
+    onClose: () => setIsOpen(false),
+    placement: 'bottom-start',
+    offset: 6,
+    zIndex: 'var(--z-dropdown)',
+  });
 
-// ReadinessInspector: inline popover listing each readiness check. Required
-// items render with a red icon and a "Fix" action; optional items render as
-// muted informational rows. Triggered by clicking the ReadinessBadge.
-function ReadinessInspector({ open, onClose, readiness, onFix }) {
-  if (!open || !readiness) return null;
+  if (!readiness) return null;
+
   const required = (readiness.issues || []).filter((i) => i.severity === "required");
   const optional = (readiness.issues || []).filter((i) => i.severity === "optional");
+  const isReady = readiness.ok;
+
   const fixTargetFor = (check) => {
-    if (check === "criteria_name_missing" || check === "no_criteria" || check === "weight_mismatch" || check === "missing_rubric_bands") return "criteria";
+    if (["criteria_name_missing", "no_criteria", "weight_mismatch", "missing_rubric_bands"].includes(check)) return "criteria";
     if (check === "no_projects") return "projects";
     if (check === "no_framework" || check === "no_outcomes") return "outcomes";
     if (check === "no_jurors") return "jurors";
     return null;
   };
+
   return (
-    <div className="periods-readiness-inspector" onClick={(e) => e.stopPropagation()}>
-      <div className="periods-readiness-inspector-header">
-        <div>
-          <div className="periods-readiness-inspector-title">Publish readiness</div>
-          <div className="periods-readiness-inspector-sub">
-            {readiness.ok
-              ? "All required checks pass. You can publish this period."
-              : `${required.length} required check${required.length === 1 ? "" : "s"} remaining.`}
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`periods-readiness-badge${isReady ? " ready" : " blocked"}`}
+        onClick={() => setIsOpen((o) => !o)}
+      >
+        {isReady ? (
+          <>
+            <CheckCircle2 size={11} strokeWidth={2} />
+            Ready
+          </>
+        ) : (
+          <>
+            <AlertCircle size={11} strokeWidth={2} />
+            {required.length} issue{required.length === 1 ? "" : "s"}
+          </>
+        )}
+      </button>
+      {isOpen && createPortal(
+        <div
+          ref={floatingRef}
+          className="periods-readiness-inspector"
+          style={floatingStyle}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="periods-readiness-inspector-header">
+            <div>
+              <div className="periods-readiness-inspector-title">Publish readiness</div>
+              <div className="periods-readiness-inspector-sub">
+                {isReady
+                  ? "All required checks pass. You can publish this period."
+                  : `${required.length} required check${required.length === 1 ? "" : "s"} remaining.`}
+              </div>
+            </div>
+            <button className="periods-readiness-inspector-close" onClick={() => setIsOpen(false)} aria-label="Close">
+              <X size={13} strokeWidth={2} />
+            </button>
           </div>
-        </div>
-        <button className="periods-readiness-inspector-close" onClick={onClose} aria-label="Close">
-          <X size={13} strokeWidth={2} />
-        </button>
-      </div>
-      {required.length > 0 && (
-        <div className="periods-readiness-section">
-          <div className="periods-readiness-section-label required">Required</div>
-          {required.map((issue) => {
-            const target = fixTargetFor(issue.check);
-            return (
-              <div key={issue.check} className="periods-readiness-row required">
-                <AlertCircle size={12} strokeWidth={2} />
-                <span className="periods-readiness-msg">{issue.msg}</span>
-                {target && (
-                  <button className="periods-readiness-fix" onClick={() => onFix?.(target)}>
-                    Fix <ArrowRight size={10} strokeWidth={2.2} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
+          {required.length > 0 && (
+            <div className="periods-readiness-section">
+              <div className="periods-readiness-section-label required">Required</div>
+              {required.map((issue) => {
+                const target = fixTargetFor(issue.check);
+                return (
+                  <div key={issue.check} className="periods-readiness-row required">
+                    <AlertCircle size={12} strokeWidth={2} />
+                    <span className="periods-readiness-msg">{issue.msg}</span>
+                    {target && (
+                      <button className="periods-readiness-fix" onClick={() => { onFix?.(target); setIsOpen(false); }}>
+                        Fix <ArrowRight size={10} strokeWidth={2.2} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {optional.length > 0 && (
+            <div className="periods-readiness-section">
+              <div className="periods-readiness-section-label optional">Informational</div>
+              {optional.map((issue) => {
+                const target = fixTargetFor(issue.check);
+                return (
+                  <div key={issue.check} className="periods-readiness-row optional">
+                    <Info size={12} strokeWidth={2} />
+                    <span className="periods-readiness-msg">{issue.msg}</span>
+                    {target && (
+                      <button className="periods-readiness-fix" onClick={() => { onFix?.(target); setIsOpen(false); }}>
+                        Fix <ArrowRight size={10} strokeWidth={2.2} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>,
+        document.body
       )}
-      {optional.length > 0 && (
-        <div className="periods-readiness-section">
-          <div className="periods-readiness-section-label optional">Informational</div>
-          {optional.map((issue) => {
-            const target = fixTargetFor(issue.check);
-            return (
-              <div key={issue.check} className="periods-readiness-row optional">
-                <Info size={12} strokeWidth={2} />
-                <span className="periods-readiness-msg">{issue.msg}</span>
-                {target && (
-                  <button className="periods-readiness-fix" onClick={() => onFix?.(target)}>
-                    Fix <ArrowRight size={10} strokeWidth={2.2} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -419,10 +435,9 @@ function LifecycleGuide() {
               </div>
             ))}
           </div>
-          <div className="periods-lifecycle-guide-footer">
-            <Info size={12} strokeWidth={2} />
+          <FbAlert variant="info" style={{ marginTop: 12 }}>
             Each transition requires an explicit admin action. Closed periods are permanent and cannot be re-opened.
-          </div>
+          </FbAlert>
         </div>
       )}
     </div>
@@ -468,18 +483,31 @@ export default function PeriodsPage() {
   // underlying criteria/project changes). Locked periods don't need readiness.
   const [periodReadiness, setPeriodReadiness] = useState({});
 
-  // Which period's readiness inspector drawer is currently open.
-  const [readinessOpenId, setReadinessOpenId] = useState(null);
-
   // Filter/export panel state
   const [filterOpen, setFilterOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortKey, setSortKey] = useState("updated_at");
+  const [dateRangeFilter, setDateRangeFilter] = useState("all");
+  const [frameworkFilter, setFrameworkFilter] = useState("all");
+  const [progressFilter, setProgressFilter] = useState("all");
+  const [readinessFilter, setReadinessFilter] = useState("all");
+  const [hasProjectsFilter, setHasProjectsFilter] = useState("all");
+  const [hasJurorsFilter, setHasJurorsFilter] = useState("all");
+  const [sortKey, setSortKey] = useState("start_date");
   const [sortDir, setSortDir] = useState("desc");
 
   // Active filter count
-  const activeFilterCount = statusFilter !== "all" ? 1 : 0;
+  const activeFilterCount = [statusFilter, dateRangeFilter, frameworkFilter, progressFilter, readinessFilter, hasProjectsFilter, hasJurorsFilter].filter((v) => v !== "all").length;
+
+  function clearAllFilters() {
+    setStatusFilter("all");
+    setDateRangeFilter("all");
+    setFrameworkFilter("all");
+    setProgressFilter("all");
+    setReadinessFilter("all");
+    setHasProjectsFilter("all");
+    setHasJurorsFilter("all");
+  }
 
   // Delete period modal
   const [deletePeriodTarget, setDeletePeriodTarget] = useState(null);
@@ -545,7 +573,7 @@ export default function PeriodsPage() {
       setPeriodReadiness(next);
     });
     return () => { cancelled = true; };
-  }, [periodList.length, periodStats]);
+  }, [periodList.map((p) => `${p.id}:${p.is_locked}:${p.closed_at ?? ""}`).sort().join(","), periodStats]);
 
   // Load pending unlock requests (map by period_id for O(1) lookup)
   const reloadPendingRequests = useCallback(async () => {
@@ -581,13 +609,72 @@ export default function PeriodsPage() {
     periodReadiness[p.id]
   );
 
-  // Filtered list — filter value is one of all/draft/published/live/closed.
-  const filteredList = useMemo(() => periodList.filter((p) => {
-    if (statusFilter === "all") return true;
-    const state = getState(p);
-    if (statusFilter === "draft") return state === "draft_ready" || state === "draft_incomplete";
-    return state === statusFilter;
-  }), [periodList, statusFilter, periodStats, periodReadiness]);
+  // Filtered list
+  const filteredList = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    return periodList.filter((p) => {
+      const state = getState(p);
+      const stats = periodStats[p.id] || {};
+
+      // Status
+      if (statusFilter !== "all") {
+        if (statusFilter === "draft" && state !== "draft_ready" && state !== "draft_incomplete") return false;
+        if (statusFilter !== "draft" && state !== statusFilter) return false;
+      }
+
+      // Date range
+      if (dateRangeFilter !== "all") {
+        const start = p.start_date ? new Date(p.start_date) : null;
+        const end = p.end_date ? new Date(p.end_date) : null;
+        if (dateRangeFilter === "this_year") {
+          const inYear = (start && start.getFullYear() === currentYear) || (end && end.getFullYear() === currentYear);
+          if (!inYear) return false;
+        } else if (dateRangeFilter === "past") {
+          if (!end || end >= now) return false;
+        } else if (dateRangeFilter === "future") {
+          if (!start || start <= now) return false;
+        }
+      }
+
+      // Framework
+      if (frameworkFilter !== "all") {
+        if (frameworkFilter === "not_set" && p.framework_id) return false;
+        if (frameworkFilter !== "not_set" && p.framework_id !== frameworkFilter) return false;
+      }
+
+      // Progress
+      if (progressFilter !== "all") {
+        const progress = stats.progress ?? null;
+        const isClosed = !!p.closed_at;
+        if (progressFilter === "not_started" && (stats.hasScores && progress > 0)) return false;
+        if (progressFilter === "in_progress" && (!stats.hasScores || progress === null || progress >= 100 || isClosed)) return false;
+        if (progressFilter === "complete" && !isClosed && (progress === null || progress < 100)) return false;
+      }
+
+      // Readiness (draft periods only)
+      if (readinessFilter !== "all") {
+        if (readinessFilter === "ready" && state !== "draft_ready") return false;
+        if (readinessFilter === "incomplete" && state !== "draft_incomplete") return false;
+      }
+
+      // Has projects
+      if (hasProjectsFilter !== "all") {
+        const count = stats.projectCount ?? 0;
+        if (hasProjectsFilter === "yes" && count === 0) return false;
+        if (hasProjectsFilter === "no" && count > 0) return false;
+      }
+
+      // Has jurors
+      if (hasJurorsFilter !== "all") {
+        const count = stats.jurorCount ?? 0;
+        if (hasJurorsFilter === "yes" && count === 0) return false;
+        if (hasJurorsFilter === "no" && count > 0) return false;
+      }
+
+      return true;
+    });
+  }, [periodList, statusFilter, dateRangeFilter, frameworkFilter, progressFilter, readinessFilter, hasProjectsFilter, hasJurorsFilter, periodStats, periodReadiness]);
 
   const sortedFilteredList = useMemo(() => {
     const statusRank = { draft_incomplete: 1, draft_ready: 2, published: 3, live: 4, closed: 5 };
@@ -601,6 +688,12 @@ export default function PeriodsPage() {
         cmp = aName.localeCompare(bName, "tr", { sensitivity: "base", numeric: true });
       } else if (sortKey === "status") {
         cmp = (statusRank[getState(a)] || 0) - (statusRank[getState(b)] || 0);
+      } else if (sortKey === "start_date") {
+        const aTs = Date.parse(a.start_date || "");
+        const bTs = Date.parse(b.start_date || "");
+        const aValue = Number.isFinite(aTs) ? aTs : Number.NEGATIVE_INFINITY;
+        const bValue = Number.isFinite(bTs) ? bTs : Number.NEGATIVE_INFINITY;
+        cmp = aValue - bValue;
       } else if (sortKey === "updated_at") {
         const aTs = Date.parse(a.updated_at || "");
         const bTs = Date.parse(b.updated_at || "");
@@ -742,7 +835,7 @@ export default function PeriodsPage() {
       setRevertTarget(null);
       return;
     }
-    periods.applyPeriodPatch({ id: target.id, is_locked: false });
+    periods.applyPeriodPatch({ id: target.id, is_locked: false, closed_at: null });
     // Server-side RPCs revoke entry_tokens on revert; mirror that on the
     // client so Entry Control doesn't display a stale plaintext QR.
     storageClearRawToken(target.id);
@@ -855,7 +948,7 @@ export default function PeriodsPage() {
                 <Filter size={14} strokeWidth={2} style={{ verticalAlign: "-1px", marginRight: "4px", opacity: 0.5, display: "inline" }} />
                 Filter Periods
               </h4>
-              <div className="filter-panel-sub">Narrow evaluation periods by status and lock state.</div>
+              <div className="filter-panel-sub">Narrow evaluation periods by status, date, framework, and setup state.</div>
             </div>
             <button className="filter-panel-close" onClick={() => setFilterOpen(false)}>&#215;</button>
           </div>
@@ -865,7 +958,7 @@ export default function PeriodsPage() {
               <CustomSelect
                 compact
                 value={statusFilter}
-                onChange={(v) => setStatusFilter(v)}
+                onChange={setStatusFilter}
                 options={[
                   { value: "all", label: "All" },
                   { value: "draft", label: "Draft" },
@@ -876,7 +969,93 @@ export default function PeriodsPage() {
                 ariaLabel="Status"
               />
             </div>
-            <button className="btn btn-outline btn-sm filter-clear-btn" onClick={() => setStatusFilter("all")}>
+            <div className="filter-group">
+              <label>Date Range</label>
+              <CustomSelect
+                compact
+                value={dateRangeFilter}
+                onChange={setDateRangeFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "this_year", label: "This year" },
+                  { value: "past", label: "Past" },
+                  { value: "future", label: "Future" },
+                ]}
+                ariaLabel="Date Range"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Framework</label>
+              <CustomSelect
+                compact
+                value={frameworkFilter}
+                onChange={setFrameworkFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "not_set", label: "Not set" },
+                  ...(frameworks || []).map((fw) => ({ value: fw.id, label: fw.name })),
+                ]}
+                ariaLabel="Framework"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Progress</label>
+              <CustomSelect
+                compact
+                value={progressFilter}
+                onChange={setProgressFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "not_started", label: "Not started" },
+                  { value: "in_progress", label: "In progress" },
+                  { value: "complete", label: "Complete" },
+                ]}
+                ariaLabel="Progress"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Readiness</label>
+              <CustomSelect
+                compact
+                value={readinessFilter}
+                onChange={setReadinessFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "ready", label: "Ready to publish" },
+                  { value: "incomplete", label: "Has issues" },
+                ]}
+                ariaLabel="Readiness"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Has Projects</label>
+              <CustomSelect
+                compact
+                value={hasProjectsFilter}
+                onChange={setHasProjectsFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
+                ]}
+                ariaLabel="Has Projects"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Has Jurors</label>
+              <CustomSelect
+                compact
+                value={hasJurorsFilter}
+                onChange={setHasJurorsFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "yes", label: "Yes" },
+                  { value: "no", label: "No" },
+                ]}
+                ariaLabel="Has Jurors"
+              />
+            </div>
+            <button className="btn btn-outline btn-sm filter-clear-btn" onClick={clearAllFilters}>
               <X size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
               {" "}Clear
             </button>
@@ -892,46 +1071,58 @@ export default function PeriodsPage() {
           organization={activeOrganization?.name || ""}
           onClose={() => setExportOpen(false)}
           generateFile={async (fmt) => {
-            const header = ["Name", "Season", "Status", "Start Date", "End Date", "Projects", "Jurors", "Criteria", "Framework", "Locked", "Created"];
+            const header = ["Period", "Status", "Date Range", "Progress", "Projects", "Jurors", "Criteria Set", "Outcome", "Updated At"];
             const rows = sortedFilteredList.map((p) => {
               const st = periodStats[p.id] || {};
               const fw = frameworks.find((f) => f.id === p.framework_id);
+              const isDraft = !p.is_locked;
+              const pct = isDraft ? null : (st.progress ?? (p.closed_at ? 100 : null));
+              const criteriaCount = st.criteriaCount ?? 0;
               return [
-                p.name ?? "", p.season ?? "", getState(p),
-                p.start_date ?? "", p.end_date ?? "",
-                st.projectCount ?? "", st.jurorCount ?? "", st.criteriaCount ?? "",
-                fw?.name ?? "",
-                p.is_locked ? "Yes" : "No",
-                formatFull(p.created_at),
+                p.name ?? "",
+                getState(p),
+                p.start_date && p.end_date ? `${p.start_date} – ${p.end_date}` : (p.start_date ?? p.end_date ?? "—"),
+                pct !== null ? `${pct}%` : "—",
+                st.projectCount ?? "",
+                st.jurorCount ?? "",
+                p.criteria_name || (criteriaCount > 0 ? `${criteriaCount} criteria` : "Not set"),
+                fw?.name ?? "Not set",
+                formatFull(p.updated_at),
               ];
             });
             return generateTableBlob(fmt, {
-              filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "all",
+              filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "",
               tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
               department: activeOrganization?.institution || "", pdfTitle: "VERA — Evaluation Periods",
-              header, rows, colWidths: [24, 10, 12, 12, 12, 10, 10, 10, 18, 8, 16],
+              header, rows, colWidths: [24, 12, 22, 12, 10, 10, 16, 16, 16],
             });
           }}
           onExport={async (fmt) => {
             try {
-              const header = ["Name", "Season", "Status", "Start Date", "End Date", "Projects", "Jurors", "Criteria", "Framework", "Locked", "Created"];
+              const header = ["Period", "Status", "Date Range", "Progress", "Projects", "Jurors", "Criteria Set", "Outcome", "Updated At"];
               const rows = sortedFilteredList.map((p) => {
                 const st = periodStats[p.id] || {};
                 const fw = frameworks.find((f) => f.id === p.framework_id);
+                const isDraft = !p.is_locked;
+                const pct = isDraft ? null : (st.progress ?? (p.closed_at ? 100 : null));
+                const criteriaCount = st.criteriaCount ?? 0;
                 return [
-                  p.name ?? "", p.season ?? "", getState(p),
-                  p.start_date ?? "", p.end_date ?? "",
-                  st.projectCount ?? "", st.jurorCount ?? "", st.criteriaCount ?? "",
-                  fw?.name ?? "",
-                  p.is_locked ? "Yes" : "No",
-                  formatFull(p.created_at),
+                  p.name ?? "",
+                  getState(p),
+                  p.start_date && p.end_date ? `${p.start_date} – ${p.end_date}` : (p.start_date ?? p.end_date ?? "—"),
+                  pct !== null ? `${pct}%` : "—",
+                  st.projectCount ?? "",
+                  st.jurorCount ?? "",
+                  p.criteria_name || (criteriaCount > 0 ? `${criteriaCount} criteria` : "Not set"),
+                  fw?.name ?? "Not set",
+                  formatFull(p.updated_at),
                 ];
               });
               await downloadTable(fmt, {
-                filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "all",
+                filenameType: "Periods", sheetName: "Evaluation Periods", periodName: "",
                 tenantCode: activeOrganization?.code || "", organization: activeOrganization?.name || "",
                 department: activeOrganization?.institution || "", pdfTitle: "VERA — Evaluation Periods",
-                header, rows, colWidths: [24, 10, 12, 12, 12, 10, 10, 10, 18, 8, 16],
+                header, rows, colWidths: [24, 12, 22, 12, 10, 10, 16, 16, 16],
               });
               setExportOpen(false);
               const fmtLabel = fmt === "pdf" ? "PDF" : fmt === "csv" ? "CSV" : "Excel";
@@ -996,14 +1187,16 @@ export default function PeriodsPage() {
               <th className={`sortable${sortKey === "status" ? " sorted" : ""}`} style={{ width: "84px" }} onClick={() => handleSort("status")}>
                 Status <SortIcon colKey="status" sortKey={sortKey} sortDir={sortDir} />
               </th>
-              <th style={{ width: "110px" }}>Date Range</th>
+              <th className={`sortable${sortKey === "start_date" ? " sorted" : ""}`} style={{ width: "110px" }} onClick={() => handleSort("start_date")}>
+                Date Range <SortIcon colKey="start_date" sortKey={sortKey} sortDir={sortDir} />
+              </th>
               <th style={{ width: "60px", textAlign: "center" }}>Progress</th>
               <th className="col-projects" style={{ width: "48px", textAlign: "center" }}>Projects</th>
               <th className="col-jurors" style={{ width: "44px", textAlign: "center" }}>Jurors</th>
               <th style={{ width: "100px" }}>Criteria Set</th>
               <th style={{ width: "80px" }}>Outcome</th>
               <th className={`sortable${sortKey === "updated_at" ? " sorted" : ""}`} style={{ width: "70px" }} onClick={() => handleSort("updated_at")}>
-                Updated <SortIcon colKey="updated_at" sortKey={sortKey} sortDir={sortDir} />
+                Updated At <SortIcon colKey="updated_at" sortKey={sortKey} sortDir={sortDir} />
               </th>
               <th style={{ width: "32px" }}>Actions</th>
             </tr>
@@ -1018,7 +1211,7 @@ export default function PeriodsPage() {
             ) : filteredList.length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: "center", padding: "48px 24px" }}>
-                  {statusFilter !== "all" ? (
+                  {activeFilterCount > 0 ? (
                     <div style={{ color: "var(--text-tertiary)" }}>
                       No periods match the current filter.
                     </div>
@@ -1080,7 +1273,6 @@ export default function PeriodsPage() {
                     "mcard",
                     isDraft ? "sem-row-draft" : "",
                     openMenuId === period.id ? "is-active" : "",
-                    readinessOpenId === period.id ? "sem-row-readiness-open" : "",
                   ].filter(Boolean).join(" ")}
                 >
                   {/* Period name */}
@@ -1100,22 +1292,13 @@ export default function PeriodsPage() {
                     <div className="periods-status-cell">
                       <StatusPill status={state} />
                       {isDraft && (
-                        <div className="periods-readiness-wrap">
-                          <ReadinessBadge
-                            readiness={periodReadiness[period.id]}
-                            onOpen={() => setReadinessOpenId((id) => id === period.id ? null : period.id)}
-                          />
-                          <ReadinessInspector
-                            open={readinessOpenId === period.id}
-                            onClose={() => setReadinessOpenId(null)}
-                            readiness={periodReadiness[period.id]}
-                            onFix={(target) => {
-                              onCurrentSemesterChange?.(period.id);
-                              onNavigate?.(target);
-                              setReadinessOpenId(null);
-                            }}
-                          />
-                        </div>
+                        <ReadinessPopover
+                          readiness={periodReadiness[period.id]}
+                          onFix={(target) => {
+                            onCurrentSemesterChange?.(period.id);
+                            onNavigate?.(target);
+                          }}
+                        />
                       )}
                     </div>
                   </td>

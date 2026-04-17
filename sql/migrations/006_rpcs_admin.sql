@@ -881,10 +881,11 @@ SECURITY DEFINER
 SET search_path = public, auth
 AS $$
 DECLARE
-  v_org_id       UUID;
-  v_period_name  TEXT;
-  v_is_locked    BOOLEAN;
-  v_closed_at    TIMESTAMPTZ;
+  v_org_id         UUID;
+  v_period_name    TEXT;
+  v_is_locked      BOOLEAN;
+  v_closed_at      TIMESTAMPTZ;
+  v_revoked_count  INT := 0;
 BEGIN
   SELECT organization_id, name, is_locked, closed_at
     INTO v_org_id, v_period_name, v_is_locked, v_closed_at
@@ -923,6 +924,16 @@ BEGIN
    WHERE id = p_period_id
    RETURNING closed_at INTO v_closed_at;
 
+  -- Revoke all active entry tokens so the QR code stops working immediately.
+  WITH revoked AS (
+    UPDATE entry_tokens
+       SET is_revoked = true, revoked_at = now()
+     WHERE period_id = p_period_id
+       AND is_revoked = false
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO v_revoked_count FROM revoked;
+
   PERFORM public._audit_write(
     v_org_id,
     'period.close',
@@ -930,7 +941,7 @@ BEGIN
     p_period_id,
     'config'::audit_category,
     'medium'::audit_severity,
-    jsonb_build_object('period_name', v_period_name),
+    jsonb_build_object('period_name', v_period_name, 'tokens_revoked', v_revoked_count),
     jsonb_build_object(
       'before', jsonb_build_object('closed_at', null),
       'after',  jsonb_build_object('closed_at', v_closed_at)
@@ -940,7 +951,8 @@ BEGIN
   RETURN jsonb_build_object(
     'ok', true,
     'already_closed', false,
-    'closed_at', v_closed_at
+    'closed_at', v_closed_at,
+    'tokens_revoked', v_revoked_count
   )::JSON;
 END;
 $$;

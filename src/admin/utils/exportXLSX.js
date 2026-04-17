@@ -348,3 +348,115 @@ export async function exportRankingsXLSX(ranked, criteria, { periodName = "", te
   XLSX.utils.book_append_sheet(wb, ws, "Rankings");
   XLSX.writeFile(wb, buildExportFilename("Rankings", periodName, "xlsx", tenantCode));
 }
+
+export async function exportCriteriaXLSX(criteria, { periodName = "", tenantCode = "" } = {}) {
+  const XLSX = await import("xlsx-js-style");
+  function makeWs(headers, rows, widths) {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws["!cols"] = widths.map((w) => ({ wch: w }));
+    return ws;
+  }
+  function rubricBandsText(c) {
+    const bands = [...(c.rubric || [])].sort((a, b) => (b.min ?? 0) - (a.min ?? 0));
+    return bands.map((b) => `${b.label || b.level || ""} (${b.min ?? ""}–${b.max ?? ""})`).join(", ");
+  }
+  function mappingText(c) {
+    return (c.outcomes || [])
+      .map((code) => `${code} (${c.outcomeTypes?.[code] === "indirect" ? "Indirect" : "Direct"})`)
+      .join(", ");
+  }
+  const criteriaRows = (criteria || []).map((c, i) => [
+    i + 1,
+    c.label || "",
+    c.max ?? "",
+    rubricBandsText(c),
+    mappingText(c),
+  ]);
+  const rubricRows = [];
+  (criteria || []).forEach((c) => {
+    const bands = [...(c.rubric || [])].sort((a, b) => (b.min ?? 0) - (a.min ?? 0));
+    bands.forEach((band) =>
+      rubricRows.push([c.label || "", band.label || band.level || "", band.min ?? "", band.max ?? ""])
+    );
+  });
+  const mappingRows = [];
+  (criteria || []).forEach((c) => {
+    (c.outcomes || []).forEach((code) => {
+      const type = c.outcomeTypes?.[code] || "direct";
+      mappingRows.push([c.label || "", code, type === "direct" ? "Direct" : "Indirect"]);
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    wb,
+    makeWs(["#", "Criterion", "Weight", "Rubric Bands", "Mapping"], criteriaRows, [6, 28, 10, 36, 24]),
+    "Criteria"
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    makeWs(["Criterion", "Band", "Min", "Max"], rubricRows, [28, 18, 8, 8]),
+    "Rubric"
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    makeWs(["Criterion", "Outcome Code", "Type"], mappingRows, [28, 14, 12]),
+    "Mappings"
+  );
+  XLSX.writeFile(wb, buildExportFilename("Criteria", periodName, "xlsx", tenantCode));
+}
+
+export async function exportOutcomesXLSX(outcomes, criteria, mappings, { periodName = "", tenantCode = "" } = {}) {
+  const XLSX = await import("xlsx-js-style");
+  function makeWs(headers, rows, widths) {
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws["!cols"] = widths.map((w) => ({ wch: w }));
+    return ws;
+  }
+  function mappedCriteriaText(outcomeId) {
+    return (mappings || [])
+      .filter((m) => m.period_outcome_id === outcomeId)
+      .map((m) => {
+        const c = (criteria || []).find((cr) => cr.id === m.period_criterion_id);
+        const type = m.coverage_type === "direct" ? "Direct" : "Indirect";
+        return c ? `${c.label} (${type})` : "";
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+  const outcomesRows = (outcomes || []).map((o) => {
+    const om           = (mappings || []).filter((m) => m.period_outcome_id === o.id);
+    const directCount  = om.filter((m) => m.coverage_type === "direct").length;
+    const indirectCount = om.filter((m) => m.coverage_type === "indirect").length;
+    const coverage     = directCount > 0 ? "Direct" : indirectCount > 0 ? "Indirect" : "Unmapped";
+    return [o.code || "", o.label || "", mappedCriteriaText(o.id), coverage];
+  });
+  const mappingRows = (mappings || [])
+    .map((m) => {
+      const outcome = (outcomes || []).find((o) => o.id === m.period_outcome_id);
+      const criterion = (criteria || []).find((c) => c.id === m.period_criterion_id);
+      if (!outcome || !criterion) return null;
+      return [
+        outcome.code || "",
+        outcome.label || "",
+        criterion.label || "",
+        m.coverage_type === "direct" ? "Direct" : "Indirect",
+      ];
+    })
+    .filter(Boolean);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    wb,
+    makeWs(
+      ["Code", "Outcome", "Mapped Criteria", "Coverage"],
+      outcomesRows,
+      [10, 30, 40, 12]
+    ),
+    "Outcomes"
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    makeWs(["Outcome", "Outcome Name", "Criterion", "Type"], mappingRows, [10, 30, 28, 12]),
+    "Mappings"
+  );
+  XLSX.writeFile(wb, buildExportFilename("Outcomes", periodName, "xlsx", tenantCode));
+}

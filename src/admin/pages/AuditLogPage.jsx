@@ -139,7 +139,7 @@ function ActionIcon({ action = "", chipType = "" }) {
 
 // ── Component ─────────────────────────────────────────────────
 export default function AuditLogPage() {
-  const { organizationId } = useAdminContext();
+  const { organizationId, selectedPeriod } = useAdminContext();
   const { isSuper } = useAuth();
   const _toast = useToast();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
@@ -207,6 +207,12 @@ export default function AuditLogPage() {
     } else if (preset === "30d") {
       const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       setAuditFilters((f) => ({ ...f, startDate: start.toISOString().slice(0, 16), endDate: "" }));
+    } else if (preset === "period" && selectedPeriod?.start_date) {
+      setAuditFilters((f) => ({
+        ...f,
+        startDate: `${selectedPeriod.start_date}T00:00`,
+        endDate: selectedPeriod.end_date ? `${selectedPeriod.end_date}T23:59` : "",
+      }));
     }
   }
 
@@ -483,11 +489,23 @@ export default function AuditLogPage() {
                   { value: "today",  label: "Today" },
                   { value: "7d",     label: "Last 7 days" },
                   { value: "30d",    label: "Last 30 days" },
+                  ...(selectedPeriod?.start_date ? [{ value: "period", label: selectedPeriod.name }] : []),
                   { value: "custom", label: "Custom range…" },
                 ]}
                 ariaLabel="Date range"
               />
             </div>
+            {datePreset === "period" && selectedPeriod?.start_date && (
+              <div className="filter-group">
+                <label>Date Range</label>
+                <div className="audit-period-range-label">
+                  {selectedPeriod.start_date}
+                  {selectedPeriod.end_date && selectedPeriod.end_date !== selectedPeriod.start_date
+                    ? ` – ${selectedPeriod.end_date}`
+                    : ""}
+                </div>
+              </div>
+            )}
             {datePreset === "custom" && (
               <div className="filter-group">
                 <label>From</label>

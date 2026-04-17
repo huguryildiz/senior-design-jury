@@ -13,6 +13,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, LockOpen } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
+import FbAlert from "@/shared/ui/FbAlert";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 
 export default function RevertToDraftModal({ open, onClose, period, onRevert }) {
@@ -63,6 +64,10 @@ export default function RevertToDraftModal({ open, onClose, period, onRevert }) 
       </div>
 
       <div className="fs-modal-body" style={{ paddingTop: 2 }}>
+        <FbAlert variant="warning" title="Active QR tokens will be revoked" style={{ marginBottom: 12 }}>
+          Any jurors who received an entry link or scanned a QR code will lose access until you publish again.
+        </FbAlert>
+
         {error && (
           <div className="fs-alert danger" style={{ marginBottom: 12, textAlign: "left" }}>
             <div className="fs-alert-icon"><AlertCircle size={15} /></div>

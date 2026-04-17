@@ -629,10 +629,6 @@ button.periods-cset-badge:hover svg {
   gap: 4px;
 }
 
-.periods-readiness-wrap {
-  position: relative;
-}
-
 .periods-readiness-badge {
   display: inline-flex;
   align-items: center;
@@ -682,23 +678,7 @@ button.periods-cset-badge:hover svg {
   border-color: rgba(74, 222, 128, 0.35);
 }
 
-.periods-readiness-wrap {
-  position: relative;
-}
-
-/* When the inspector is open, promote the whole row's stacking context so
-   subsequent rows in DOM order do not paint over the absolutely-positioned
-   inspector panel. */
-.sem-table tbody tr.sem-row-readiness-open {
-  position: relative;
-  z-index: 100;
-}
-
 .periods-readiness-inspector {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 100;
   width: 340px;
   max-width: calc(100vw - 32px);
   background: var(--bg-card);
@@ -1037,11 +1017,14 @@ button.periods-cset-badge:hover svg {
 
 .periods-lifecycle-guide-action-label {
   font-size: 10px;
-  color: var(--text-secondary);
-  font-weight: 600;
+  color: #2563eb;
+  font-weight: 700;
   text-align: center;
   letter-spacing: 0.02em;
   margin-top: -2px;
+}
+.dark-mode .periods-lifecycle-guide-action-label {
+  color: #93c5fd;
 }
 
 .periods-lifecycle-guide-footer {

@@ -3,7 +3,7 @@
 // Matches vera-premium-prototype.html mockup.
 
 import { useState, useRef, useEffect } from "react";
-import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, Network, AlertCircle, XCircle, CheckCircle, AlertTriangle, Circle, Info, Lock, LockKeyhole, PencilLine } from "lucide-react";
+import { Pencil, Trash2, Copy, MoreVertical, BadgeCheck, Network, AlertCircle, XCircle, CheckCircle, AlertTriangle, Circle, Info, Lock, LockKeyhole, PencilLine, Download } from "lucide-react";
 import { updateFramework, cloneFramework, assignFrameworkToPeriod, unassignPeriodFramework, listFrameworks } from "@/shared/api";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { usePeriodOutcomes } from "../hooks/usePeriodOutcomes";
@@ -18,6 +18,9 @@ import Pagination from "@/shared/ui/Pagination";
 import SaveBar from "@/admin/criteria/SaveBar";
 import "../../styles/pages/outcomes.css";
 import "../../styles/pages/setup-wizard.css";
+import { useAuth } from "@/auth";
+import ExportPanel from "../components/ExportPanel";
+import { useOutcomesExport } from "../hooks/useOutcomesExport";
 
 // ── Coverage helpers ─────────────────────────────────────────
 
@@ -261,6 +264,13 @@ export default function OutcomesPage() {
   // ── Data hook ─────────────────────────────────────────────
 
   const fw = usePeriodOutcomes({ periodId: selectedPeriodId });
+  const { activeOrganization } = useAuth();
+  const { generateFile: generateOutcomesFile, handleExport: handleOutcomesExport } = useOutcomesExport({
+    outcomes: fw.outcomes,
+    criteria: fw.criteria,
+    mappings: fw.mappings,
+    periodName: selectedPeriod?.name || "",
+  });
 
   // Effective framework name reflects any queued rename in the draft so the
   // UI updates instantly without hitting the DB.
@@ -271,6 +281,7 @@ export default function OutcomesPage() {
 
   const [sortOrder, setSortOrder] = useState("asc");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [pageSize, setPageSize] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -876,6 +887,13 @@ export default function OutcomesPage() {
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setExportOpen((v) => !v)}
+                >
+                  <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
+                  {" "}Export
+                </button>
                 {isLocked ? (
                   <span className="acc-lock-badge">
                     <Lock size={11} strokeWidth={2.5} />
@@ -892,6 +910,17 @@ export default function OutcomesPage() {
                 )}
               </div>
             </div>
+            {exportOpen && (
+              <ExportPanel
+                title="Export Outcomes"
+                subtitle="Download programme outcomes with criterion mappings and coverage analysis."
+                meta={`${(fw.outcomes || []).length} outcomes · ${selectedPeriod?.name || "—"}`}
+                organization={activeOrganization?.name || ""}
+                onClose={() => setExportOpen(false)}
+                generateFile={generateOutcomesFile}
+                onExport={handleOutcomesExport}
+              />
+            )}
             <div className="table-wrap" style={{ border: "none" }}>
               {fw.loading && fw.outcomes.length === 0 ? (
                 <div className="acc-empty-state" style={{ padding: "32px 24px" }}>

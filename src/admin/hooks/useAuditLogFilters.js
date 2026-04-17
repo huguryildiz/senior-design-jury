@@ -241,7 +241,7 @@ export function useAuditLogFilters({ organizationId, isMobile, setMessage }) {
       await downloadTable(format, {
         filenameType: "Audit",
         sheetName: "Audit Log",
-        periodName: "all",
+        periodName: "",
         tenantCode: organizationCode,
         pdfTitle: "VERA — Audit Log",
         pdfSubtitle: `${all.length} events · ${auditSearch ? `Search: "${auditSearch}"` : "All time"}`,
