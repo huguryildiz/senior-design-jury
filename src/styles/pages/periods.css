@@ -676,6 +676,23 @@ button.periods-cset-badge:hover svg {
   .sem-table tbody tr.es-row td {
     display: block; width: 100%; padding: 0;
   }
+
+  /* ── Dark mode — repaint config strip + ring track ── */
+  .dark-mode .sem-table td[data-label="Criteria Set"],
+  .dark-mode .sem-table td[data-label="Outcome Set"] {
+    background: linear-gradient(180deg, rgba(21, 29, 50, 0.40) 0%, rgba(28, 39, 64, 0.55) 100%) !important; /* nested-panel-ok */
+    border-top-color: rgba(255, 255, 255, 0.06);
+  }
+  .dark-mode .sem-table td[data-label="Criteria Set"] {
+    border-right-color: rgba(255, 255, 255, 0.06);
+  }
+  .dark-mode .periods-mring-fill {
+    background: conic-gradient(var(--ring-color, var(--accent)) var(--pct, 0deg), rgba(255, 255, 255, 0.07) 0);
+  }
+  .dark-mode .periods-mring.ring-draft     { --ring-color: #818cf8; }
+  .dark-mode .periods-mring.ring-live      { --ring-color: #34d399; }
+  .dark-mode .periods-mring.ring-closed    { --ring-color: #94a3b8; }
+  .dark-mode .sem-row-published .periods-mring.ring-live { --ring-color: #60a5fa; }
 }
 
 /* Hide the mobile ring + footer cells outside the portrait media query */
