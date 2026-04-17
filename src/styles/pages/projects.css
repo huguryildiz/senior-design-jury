@@ -375,9 +375,6 @@
   border-color: var(--accent);
   color: #fff;
 }
-body:not(.dark-mode) .filter-toggle-btn--active {
-  color: #fff;
-}
 
 /* ─── Filter panel rows ───────────────────────────────────── */
 .filter-row {
