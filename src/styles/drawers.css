@@ -1505,3 +1505,117 @@ textarea.fs-outcome-input{min-height:38px;max-height:120px}
 .psd-members-row {
   margin-top: 8px;
 }
+
+/* ── JurorScoresDrawer project-row overrides ── */
+.jsd-proj-row {
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: flex-start;
+}
+.jsd-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 3px;
+}
+.jsd-no-group {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.jsd-proj-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.jsd-proj-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.jsd-proj-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+.jsd-proj-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.jsd-total-score {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 32px;
+  text-align: right;
+}
+.jsd-total-score.muted {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+.jsd-crit-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.jsd-crit-bar-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.jsd-crit-bar-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.jsd-bar-track {
+  height: 5px;
+  min-height: 5px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+  width: 100%;
+}
+.jsd-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+.jsd-crit-bar-score {
+  text-align: right;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.jsd-score-val {
+  font-weight: 600;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.jsd-score-max {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.jsd-score-empty {
+  color: var(--text-tertiary);
+}

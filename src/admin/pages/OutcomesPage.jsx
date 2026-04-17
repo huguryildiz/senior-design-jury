@@ -215,7 +215,7 @@ function OutcomeRow({
               style={isLocked ? { opacity: 0.4, pointerEvents: "none" } : {}}
             >
               <Trash2 size={13} strokeWidth={2} />
-              Remove Outcome
+              Delete Outcome
             </button>
           </FloatingMenu>
         </div>
@@ -633,34 +633,34 @@ export default function OutcomesPage() {
         <FbAlert variant="danger" style={{ marginBottom: 16 }}>{panelError}</FbAlert>
       )}
       {/* Page title */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
-        <div>
+      <div className="sem-header">
+        <div className="sem-header-left">
           <div className="page-title">Outcomes &amp; Mapping</div>
           <div className="page-desc">Map evaluation criteria to programme outcomes and track coverage.</div>
         </div>
         {!noFramework && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <div className="sem-header-actions mobile-toolbar-stack">
             <FilterButton
+              className="mobile-toolbar-filter"
               activeCount={activeFilterCount}
               isOpen={filterOpen}
               onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
             />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm mobile-toolbar-export"
               onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}
             >
               <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
               {" "}Export
             </button>
             {isLocked ? (
-              <span className="acc-lock-badge">
+              <span className="acc-lock-badge mobile-toolbar-primary">
                 <Lock size={11} strokeWidth={2.5} />
                 Evaluation Active
               </span>
             ) : (
               <button
-                className="btn btn-primary btn-sm"
-                style={{ width: "auto", padding: "6px 14px", fontSize: 12, background: "var(--accent)", boxShadow: "none" }}
+                className="btn btn-primary btn-sm mobile-toolbar-primary"
                 onClick={() => setAddDrawerOpen(true)}
               >
                 + Add Outcome
@@ -967,6 +967,13 @@ export default function OutcomesPage() {
               <div className="scores-kpi-item-label">Unmapped</div>
             </div>
           </div>
+          <button
+            className="btn btn-primary btn-sm mobile-primary-below-kpi"
+            onClick={() => !isLocked && setAddDrawerOpen(true)}
+            disabled={isLocked}
+          >
+            + Add Outcome
+          </button>
 
           {/* Coverage progress bar */}
           {totalOutcomes > 0 && (
@@ -1030,7 +1037,7 @@ export default function OutcomesPage() {
                         className="floating-menu-item danger"
                         onMouseDown={() => { setOpenMenuId(null); setUnassignFwOpen(true); setUnassignFwConfirmText(""); }}
                       >
-                        <Trash2 size={13} strokeWidth={2} />Remove Outcome
+                        <Trash2 size={13} strokeWidth={2} />Delete Outcome
                       </button>
                     </FloatingMenu>
                   )}

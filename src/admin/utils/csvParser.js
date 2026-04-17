@@ -89,10 +89,20 @@ function detectAndMap(rawRows, colMap, positionalOrder) {
 
 /**
  * Parse a projects CSV file.
+ * @param {File} file
+ * @param {Array} [existingProjects] — projects already in the selected period; rows whose
+ *   title matches (normalized) will be marked duplicate. Within-file duplicates are also
+ *   detected — the first occurrence is valid, subsequent rows are marked duplicate.
  * @returns {{ rows, stats, detectedColumns, warningMessage, file }}
- *   rows: [{ rowNum, groupNo, title, members, status, statusLabel, group_no }]
+ *   rows: [{ rowNum, title, members, status, statusLabel }]
  */
-export async function parseProjectsCsv(file) {
+export async function parseProjectsCsv(file, existingProjects = []) {
+  const existingTitles = new Set(
+    existingProjects
+      .map((p) => normName(p?.title || ""))
+      .filter(Boolean)
+  );
+
   return new Promise((resolve) => {
     Papa.parse(file, {
       header: false,
@@ -103,7 +113,8 @@ export async function parseProjectsCsv(file) {
 
         const rowOffset = firstDataIdx + (hasHeader ? 2 : 1);
         const rows = [];
-        let valid = 0, error = 0;
+        const seenInFile = new Set();
+        let valid = 0, duplicate = 0, error = 0;
 
         dataRows.forEach((raw, i) => {
           const rowNum = i + rowOffset;
@@ -111,12 +122,22 @@ export async function parseProjectsCsv(file) {
           const members = (raw[colIndices.members] ?? "").toString().trim();
 
           const hasTitle = title.length > 0;
+          const normTitle = normName(title);
           let status = "ok", statusLabel = "";
           if (!hasTitle) {
             status = "err";
             statusLabel = "Missing title";
             error += 1;
+          } else if (existingTitles.has(normTitle)) {
+            status = "skip";
+            statusLabel = "Duplicate";
+            duplicate += 1;
+          } else if (seenInFile.has(normTitle)) {
+            status = "skip";
+            statusLabel = "Duplicate in file";
+            duplicate += 1;
           } else {
+            seenInFile.add(normTitle);
             valid += 1;
           }
 
@@ -130,17 +151,29 @@ export async function parseProjectsCsv(file) {
         });
 
         let warningMessage = null;
-        if (error > 0) {
+        if (duplicate > 0 || error > 0) {
+          const parts = [];
+          if (duplicate > 0) parts.push(`${duplicate} duplicate`);
+          if (error > 0) parts.push(`${error} error${error !== 1 ? "s" : ""}`);
           const details = rows
-            .filter((r) => r.status === "err")
-            .map((r) => `Row ${r.rowNum}: ${r.statusLabel || "invalid"} (cannot import).`)
+            .filter((r) => r.status !== "ok")
+            .map((r) => {
+              if (r.status === "skip" && r.statusLabel === "Duplicate in file")
+                return `Row ${r.rowNum}: "${r.title}" appears more than once in this file (will be skipped).`;
+              if (r.status === "skip")
+                return `Row ${r.rowNum}: "${r.title}" already exists in this evaluation period (will be skipped).`;
+              if (r.status === "err")
+                return `Row ${r.rowNum}: ${r.statusLabel || "invalid"} (cannot import).`;
+              return null;
+            })
+            .filter(Boolean)
             .join(" ");
-          warningMessage = { title: `${error} error${error !== 1 ? "s" : ""}`, desc: details };
+          warningMessage = { title: parts.join(", "), desc: details };
         }
 
         resolve({
           rows,
-          stats: { valid, duplicate: 0, error, total: dataRows.length },
+          stats: { valid, duplicate, error, total: dataRows.length },
           detectedColumns,
           warningMessage,
           file: { name: file.name, sizeLabel: sizeLabel(file) },
@@ -185,6 +218,7 @@ export async function parseJurorsCsv(file, existingJurors = []) {
 
         const rowOffset = firstDataIdx + (hasHeader ? 2 : 1);
         const rows = [];
+        const seenInFile = new Set();
         let valid = 0, duplicate = 0, error = 0;
 
         dataRows.forEach((raw, i) => {
@@ -193,16 +227,22 @@ export async function parseJurorsCsv(file, existingJurors = []) {
           const affiliation = (raw[colIndices.affiliation] ?? "").toString().trim();
           const email       = (raw[colIndices.email]       ?? "").toString().trim();
 
+          const normJuror = normName(jurorName);
           let status = "ok", statusLabel = "";
           if (!jurorName) {
             status = "err";
             statusLabel = "No name";
             error += 1;
-          } else if (existingNames.has(normName(jurorName))) {
+          } else if (existingNames.has(normJuror)) {
             status = "skip";
             statusLabel = "Duplicate";
             duplicate += 1;
+          } else if (seenInFile.has(normJuror)) {
+            status = "skip";
+            statusLabel = "Duplicate in file";
+            duplicate += 1;
           } else {
+            seenInFile.add(normJuror);
             valid += 1;
           }
 
@@ -217,23 +257,25 @@ export async function parseJurorsCsv(file, existingJurors = []) {
           });
         });
 
-        // Build per-row warning summary for duplicates + errors
         let warningMessage = null;
         if (duplicate > 0 || error > 0) {
           const parts = [];
           if (duplicate > 0) parts.push(`${duplicate} duplicate`);
           if (error > 0) parts.push(`${error} error`);
-          const title = parts.join(", ");
           const details = rows
             .filter((r) => r.status !== "ok")
             .map((r) => {
-              if (r.status === "skip") return `Row ${r.rowNum}: ${r.name} already exists in this evaluation period (will be skipped).`;
-              if (r.status === "err") return `Row ${r.rowNum}: juror name is missing — cannot import.`;
+              if (r.status === "skip" && r.statusLabel === "Duplicate in file")
+                return `Row ${r.rowNum}: "${r.name}" appears more than once in this file (will be skipped).`;
+              if (r.status === "skip")
+                return `Row ${r.rowNum}: "${r.name}" already exists in this evaluation period (will be skipped).`;
+              if (r.status === "err")
+                return `Row ${r.rowNum}: juror name is missing — cannot import.`;
               return null;
             })
             .filter(Boolean)
             .join(" ");
-          warningMessage = { title, desc: details };
+          warningMessage = { title: parts.join(", "), desc: details };
         }
 
         resolve({

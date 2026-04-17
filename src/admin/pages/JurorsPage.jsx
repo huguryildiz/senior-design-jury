@@ -13,8 +13,7 @@ import RemoveJurorModal from "../modals/RemoveJurorModal";
 import ResetPinModal from "../modals/ResetPinModal";
 import ImportJurorsModal from "../modals/ImportJurorsModal";
 import EnableEditingModal from "../modals/EnableEditingModal";
-import JurorReviewsModal from "../modals/JurorReviewsModal";
-import ProjectScoresDrawer from "../drawers/ProjectScoresDrawer";
+import JurorScoresDrawer from "../drawers/JurorScoresDrawer";
 import AddJurorDrawer from "../drawers/AddJurorDrawer";
 import EditJurorDrawer from "../drawers/EditJurorDrawer";
 import { sendJurorPinEmail, getActiveEntryTokenPlain, logExportInitiated } from "@/shared/api";
@@ -25,15 +24,15 @@ import {
   Filter,
   LockOpen,
   Lock,
-  FileText,
   ClipboardList,
   Trash2,
   Clock,
   MoreVertical,
   Pencil,
-  Icon,
   Users,
   Upload,
+  Download,
+  Search,
   Plus,
   Info,
   XCircle,
@@ -52,6 +51,7 @@ import "../../styles/pages/jurors.css";
 
 import JurorBadge from "../components/JurorBadge";
 import JurorStatusPill from "../components/JurorStatusPill";
+import { jurorInitials, jurorAvatarBg, jurorAvatarFg } from "../utils/jurorIdentity";
 
 function formatRelative(ts) {
   if (!ts) return "—";
@@ -153,13 +153,6 @@ function mobileScoreStyle(score) {
   return { color: "#475569" };
 }
 
-function mobileBarFill(status) {
-  if (status === "completed") return "var(--success)";
-  if (status === "editing")   return "#60a5fa";
-  if (status === "in_progress" || status === "ready_to_submit") return "var(--warning)";
-  return "rgba(100,116,139,0.3)";
-}
-
 function SortIcon({ colKey, sortKey, sortDir }) {
   if (sortKey !== colKey) {
     return <span className="sort-icon sort-icon-inactive">▲</span>;
@@ -182,9 +175,6 @@ export default function JurorsPage() {
     onCurrentSemesterChange,
     onViewReviews,
     onNavigate,
-    rawScores = [],
-    summaryData = [],
-    allJurors = [],
   } = useAdminContext();
   const _toast = useToast();
   const { activeOrganization } = useAuth();
@@ -265,8 +255,7 @@ export default function JurorsPage() {
 
   // Enable editing mode modal
   const [editModeJuror, setEditModeJuror] = useState(null);
-  const [reviewsJuror, setReviewsJuror] = useState(null);
-  const [scoresProject, setScoresProject] = useState(null);
+  const [scoresJuror, setScoresJuror] = useState(null);
 
   // ── Data loading ────────────────────────────────────────────
   useEffect(() => {
@@ -549,6 +538,39 @@ export default function JurorsPage() {
             <div className="page-title">Jurors</div>
             <div className="page-desc">Manage juror assignments, progress, access, and scoring activity across the active term.</div>
           </div>
+          <div className="sem-header-actions mobile-toolbar-stack">
+            <div className="jurors-search-wrap mobile-toolbar-search">
+              <Search size={14} strokeWidth={2} style={{ opacity: 0.45 }} />
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Search jurors..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <FilterButton
+              className="mobile-toolbar-filter"
+              activeCount={activeFilterCount}
+              isOpen={filterOpen}
+              onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
+            />
+            <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
+              <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
+              {" "}Export
+            </button>
+            <button className="btn btn-outline btn-sm mobile-toolbar-secondary" onClick={() => setImportOpen(true)}>
+              <Upload size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
+              {" "}Import
+            </button>
+            <button
+              className="btn btn-primary btn-sm mobile-toolbar-primary"
+              onClick={openAddModal}
+            >
+              <Plus size={13} strokeWidth={2.2} />
+              Add Juror
+            </button>
+          </div>
         </div>
       </div>
       {/* KPI strip */}
@@ -560,80 +582,13 @@ export default function JurorsPage() {
         <div className="scores-kpi-item"><div className="scores-kpi-item-value"><span className="accent">{readyJurors}</span></div><div className="scores-kpi-item-label">Ready to Submit</div></div>
         <div className="scores-kpi-item"><div className="scores-kpi-item-value">{notStartedJurors}</div><div className="scores-kpi-item-label">Not Started</div></div>
       </div>
-      {/* Toolbar */}
-      <div className="jurors-toolbar mobile-toolbar-stack">
-        <div className="jurors-search-wrap mobile-toolbar-search">
-          <Icon
-            iconNode={[]}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </Icon>
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search jurors..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <FilterButton
-          className="mobile-toolbar-filter"
-          activeCount={activeFilterCount}
-          isOpen={filterOpen}
-          onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
-        />
-        <div className="jurors-toolbar-spacer mobile-toolbar-spacer" />
-        <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
-          <Icon
-            iconNode={[]}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ verticalAlign: "-1px" }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </Icon>
-          {" "}Export
-        </button>
-        <button className="btn btn-outline btn-sm mobile-toolbar-secondary" onClick={() => setImportOpen(true)}>
-          <Icon
-            iconNode={[]}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ verticalAlign: "-1px" }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </Icon>
-          {" "}Import
-        </button>
-        <button
-          className="btn btn-primary btn-sm mobile-toolbar-secondary"
-          style={{ width: "auto", padding: "6px 14px", fontSize: "12px" }}
-          onClick={openAddModal}
-        >
-          + Add Juror
-        </button>
-      </div>
+      <button
+        className="btn btn-primary btn-sm mobile-primary-below-kpi"
+        onClick={openAddModal}
+      >
+        <Plus size={13} strokeWidth={2.2} />
+        Add Juror
+      </button>
       {/* Filter panel */}
       {filterOpen && (
         <div className="filter-panel show">
@@ -824,6 +779,36 @@ export default function JurorsPage() {
                     <div style={{ textAlign: "center", padding: "40px 24px", color: "var(--text-tertiary)", fontSize: 13 }}>
                       Select an evaluation period above to manage jurors.
                     </div>
+                  ) : jurorList.length > 0 ? (
+                    /* ── Case 2b: jurors exist but filters/search hide them all ── */
+                    <div className="vera-es-no-data">
+                      <div className="vera-es-icon vera-es-icon--juror">
+                        <Search size={20} strokeWidth={1.8} />
+                      </div>
+                      <div className="vera-es-no-data-title">No jurors match your filters</div>
+                      <div className="vera-es-no-data-desc">
+                        {activeFilterCount > 0 && search.trim()
+                          ? "Try adjusting your search or clearing active filters to see more jurors."
+                          : activeFilterCount > 0
+                            ? "Try adjusting or clearing the active filters to see more jurors."
+                            : "No jurors match your current search. Try a different keyword."}
+                      </div>
+                      <div className="vera-es-no-data-actions">
+                        {search.trim() && (
+                          <button className="btn btn-outline btn-sm" onClick={() => setSearch("")}>
+                            <XCircle size={13} strokeWidth={2} /> Clear search
+                          </button>
+                        )}
+                        {activeFilterCount > 0 && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => { setStatusFilter("all"); setAffilFilter("all"); }}
+                          >
+                            <XCircle size={13} strokeWidth={2.2} /> Clear filters
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     /* ── Case 3: period selected, no jurors yet ── */
                     <div className="vera-es-no-data">
@@ -965,21 +950,11 @@ export default function JurorsPage() {
                         )
                       )}
                       <button
-                        className="floating-menu-item"
-                        onMouseDown={() => { setOpenMenuId(null); setReviewsJuror(juror); }}
+                        className="floating-menu-item floating-menu-item--highlight"
+                        onMouseDown={() => { setOpenMenuId(null); setScoresJuror(juror); }}
                       >
                         <ClipboardList size={13} />
                         View Scores
-                      </button>
-                      <button
-                        className="floating-menu-item"
-                        onMouseDown={() => {
-                          setOpenMenuId(null);
-                          setReviewsJuror(juror);
-                        }}
-                      >
-                        <FileText size={13} />
-                        View Reviews
                       </button>
                       <div className="floating-menu-divider" />
                       <button className="floating-menu-item danger" onMouseDown={() => { setOpenMenuId(null); openRemoveModal(juror); }}>
@@ -988,76 +963,105 @@ export default function JurorsPage() {
                       </button>
                     </FloatingMenu>
                   </td>
-                  {/* Mobile card — hidden on desktop, shown at ≤768px */}
+                  {/* Mobile card — hidden on desktop, shown at ≤768px portrait */}
                   <td className="col-mobile-card">
                     <div className={`mcard jc${openMenuId === jid ? " is-active" : ""}`}>
-                      <div className="jc-main">
-                        <JurorBadge name={name} affiliation={juror.affiliation} size="lg" />
-                        <div className="jc-right">
-                          <JurorStatusPill status={status} />
-                          <FloatingMenu
-                            isOpen={openMenuId === jid && shouldUseCardLayout}
-                            onClose={() => setOpenMenuId(null)}
-                            placement="bottom-end"
-                            trigger={
-                              <button
-                                className="jc-kebab"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuId((prev) => (prev === jid ? null : jid));
-                                }}
-                              >
-                                ···
-                              </button>
-                            }
-                          >
-                            <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); openEditModal(juror); }}>
-                              <SquarePen size={13} />
-                              Edit Juror
+                      {/* ── Header ── */}
+                      <div className="jc-header">
+                        <div
+                          className="jc-avatar"
+                          style={{ background: jurorAvatarBg(name), color: jurorAvatarFg(name) }}
+                        >
+                          {jurorInitials(name)}
+                        </div>
+                        <div className="jc-meta">
+                          <span className="jc-meta-name">{name}</span>
+                          {juror.affiliation && (
+                            <span className="jc-meta-org">{juror.affiliation}</span>
+                          )}
+                          <span className="jc-meta-pill">
+                            <JurorStatusPill status={status} />
+                          </span>
+                        </div>
+                        <FloatingMenu
+                          isOpen={openMenuId === jid && shouldUseCardLayout}
+                          onClose={() => setOpenMenuId(null)}
+                          placement="bottom-end"
+                          trigger={
+                            <button
+                              className="jc-kebab"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId((prev) => (prev === jid ? null : jid));
+                              }}
+                            >
+                              <MoreVertical size={15} strokeWidth={2} />
                             </button>
-                            <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); openPinResetModal(juror); }}>
-                              <Lock size={13} />
-                              Reset PIN
-                            </button>
-                            <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); setReviewsJuror(juror); }}>
-                              <ClipboardList size={13} />
-                              View Scores
-                            </button>
-                            <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); setReviewsJuror(juror); }}>
-                              <FileText size={13} />
-                              View Reviews
-                            </button>
-                            <div className="floating-menu-divider" />
-                            <button className="floating-menu-item danger" onMouseDown={() => { setOpenMenuId(null); openRemoveModal(juror); }}>
-                              <Trash2 size={13} />
-                              Remove Juror
-                            </button>
-                          </FloatingMenu>
+                          }
+                        >
+                          <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); openEditModal(juror); }}>
+                            <SquarePen size={13} />
+                            Edit Juror
+                          </button>
+                          <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); openPinResetModal(juror); }}>
+                            <Lock size={13} />
+                            Reset PIN
+                          </button>
+                          <button className="floating-menu-item floating-menu-item--highlight" onMouseDown={() => { setOpenMenuId(null); setScoresJuror(juror); }}>
+                            <ClipboardList size={13} />
+                            View Scores
+                          </button>
+                          <div className="floating-menu-divider" />
+                          <button className="floating-menu-item danger" onMouseDown={() => { setOpenMenuId(null); openRemoveModal(juror); }}>
+                            <Trash2 size={13} />
+                            Remove Juror
+                          </button>
+                        </FloatingMenu>
+                      </div>
+
+                      {/* ── Stats strip ── */}
+                      <div className="jc-stats">
+                        <div className="jc-stat">
+                          <span className={`jcs-val${scored >= total && total > 0 ? " val-done" : scored > 0 ? " val-partial" : " val-zero"}`}>
+                            {scored}
+                          </span>
+                          <span className="jcs-key">SCORED</span>
+                        </div>
+                        <div className="jc-stat">
+                          <span className="jcs-val val-zero">{total}</span>
+                          <span className="jcs-key">ASSIGNED</span>
+                        </div>
+                        <div className="jc-stat">
+                          <span className={`jcs-val${total === 0 ? " val-zero" : scored >= total ? " val-done" : " val-amber"}`}>
+                            {total === 0 ? "—" : `${Math.round((scored / total) * 100)}%`}
+                          </span>
+                          <span className="jcs-key">DONE</span>
                         </div>
                       </div>
-                      <div className="jc-divider" />
-                      <div className="jc-progress">
-                        <div className="jc-bar-wrap">
+
+                      {/* ── Progress bar ── */}
+                      <div className="jc-prog-block">
+                        <div className="jc-prog-header">
+                          <span>Progress</span>
+                          <span className={`jc-prog-count${total === 0 ? " val-zero" : scored >= total ? " val-done" : " val-partial"}`}>
+                            <span className="jc-prog-nums">{scored} / {total}</span> projects
+                          </span>
+                        </div>
+                        <div className="jc-prog-bar">
                           {total > 0 && (
                             <div
-                              className="jc-bar-fill"
-                              style={{ width: `${pct}%`, background: mobileBarFill(status) }}
+                              className={`jc-prog-fill${scored >= total ? " fill-complete" : " fill-partial"}`}
+                              style={{ width: `${Math.min(100, Math.round((scored / total) * 100))}%` }}
                             />
                           )}
                         </div>
-                        <span className="jc-proj-count">
-                          {total > 0
-                            ? <><span>{scored}</span>/{total}</>
-                            : <span style={{ color: "var(--text-tertiary)" }}>0/0</span>
-                          }
-                        </span>
                       </div>
-                      {lastActive && (
-                        <div className="jc-footer">
-                          <Clock size={9} strokeWidth={2.5} />
-                          <span>{formatRelative(lastActive)}</span>
-                        </div>
-                      )}
+
+                      {/* ── Footer ── */}
+                      <div className="jc-footer">
+                        <Clock size={11} strokeWidth={2} style={{ opacity: 0.7 }} />
+                        <span>{lastActive ? formatRelative(lastActive) : "Never active"}</span>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -1154,36 +1158,15 @@ export default function JurorsPage() {
         } : null}
         onEnable={handleEnableEditMode}
       />
-      <JurorReviewsModal
-        open={!!reviewsJuror}
-        onClose={() => setReviewsJuror(null)}
-        juror={reviewsJuror}
-        scoreRows={jurorsHook.scoreRows}
-        projects={projectsHook.projects}
-        onOpenFullReviews={() => {
-          setReviewsJuror(null);
-          onViewReviews?.(reviewsJuror);
-        }}
-        onViewProjectScores={(projectId) => {
-          const project = projectsHook.projects.find(
-            (p) => String(p.id || p.project_id) === String(projectId)
-          );
-          if (project) {
-            setReviewsJuror(null);
-            setScoresProject(project);
-          }
-        }}
-      />
-      <ProjectScoresDrawer
-        open={!!scoresProject}
-        onClose={() => setScoresProject(null)}
-        project={scoresProject}
+      <JurorScoresDrawer
+        open={!!scoresJuror}
+        onClose={() => setScoresJuror(null)}
+        juror={scoresJuror}
         periodId={periods.viewPeriodId}
         periodLabel={periods.viewPeriodLabel}
-        rawScores={rawScores}
-        summaryData={summaryData}
-        allJurors={allJurors}
-        onOpenReviews={() => onNavigate?.("reviews")}
+        scoreRows={jurorsHook.scoreRows}
+        projects={projectsHook.projects}
+        onOpenReviews={() => { setScoresJuror(null); onViewReviews?.(scoresJuror); }}
       />
       <ImportJurorsModal
         open={importOpen}

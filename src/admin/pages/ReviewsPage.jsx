@@ -10,7 +10,9 @@
 
 import { useMemo, useState } from "react";
 import { useAdminContext } from "../hooks/useAdminContext";
-import { CheckCircle2, Download, Filter, MessageSquare, Search, Send, X, Icon, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Circle, CircleCheck, CircleDotDashed, CircleSlash, Clock, Download, Filter, Icon, MessageSquare, PencilLine, Search, Send, X, XCircle } from "lucide-react";
+import JurorStatusPill from "@/admin/components/JurorStatusPill";
+import ScoreStatusPill from "@/admin/components/ScoreStatusPill";
 import { useReviewsFilters } from "../hooks/useReviewsFilters";
 import { logExportInitiated } from "@/shared/api";
 import { useToast } from "@/shared/hooks/useToast";
@@ -36,140 +38,14 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import { StudentNames } from "@/shared/ui/EntityMeta";
 import "../../styles/pages/reviews.css";
 
-// ── Score status pill ─────────────────────────────────────────
-function ScorePill({ status }) {
-  if (status === "scored") {
-    return (
-      <span className="pill pill-scored">
-        <Icon
-          iconNode={[]}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round">
-          <path d="m20 6-11 11-5-5" />
-        </Icon>Scored
-              </span>
-    );
-  }
-  if (status === "partial") {
-    return (
-      <span className="pill pill-partial">
-        <Icon
-          iconNode={[]}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round">
-          <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
-        </Icon>Partial
-              </span>
-    );
-  }
-  return (
-    <span className="pill pill-empty">
-      <Icon
-        iconNode={[]}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-      </Icon>Empty
-          </span>
-  );
-}
 
 // ── Juror progress pill ───────────────────────────────────────
 function JurorPill({ status, submittedTs }) {
-  if (status === "completed") {
-    const pill = (
-      <span className="pill pill-completed">
-        <Icon
-          iconNode={[]}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round">
-          <path d="m20 6-11 11-5-5" />
-        </Icon>
-        Completed
-      </span>
-    );
-    return submittedTs && submittedTs !== "—"
-      ? <PremiumTooltip text={`Completed: ${submittedTs}`}>{pill}</PremiumTooltip>
-      : pill;
+  const pill = <JurorStatusPill status={status} />;
+  if (status === "completed" && submittedTs && submittedTs !== "—") {
+    return <PremiumTooltip text={`Completed: ${submittedTs}`}>{pill}</PremiumTooltip>;
   }
-  if (status === "ready_to_submit") {
-    return (
-      <span className="pill pill-ready">
-        <Icon
-          iconNode={[]}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.1"
-          strokeLinecap="round"
-          strokeLinejoin="round">
-          <path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" />
-        </Icon>Ready to Submit
-              </span>
-    );
-  }
-  if (status === "in_progress") {
-    return (
-      <span className="pill pill-progress">
-        <Icon
-          iconNode={[]}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round">
-          <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
-        </Icon>In Progress
-              </span>
-    );
-  }
-  if (status === "editing") {
-    return (
-      <span className="pill pill-editing">
-        <Icon
-          iconNode={[]}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round">
-          <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-        </Icon>Editing
-              </span>
-    );
-  }
-  return (
-    <span className="pill pill-not-started">
-      <Icon
-        iconNode={[]}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-      </Icon>Not Started
-          </span>
-  );
+  return pill;
 }
 
 // ── Sort indicator ────────────────────────────────────────────
@@ -534,7 +410,7 @@ export default function ReviewsPage() {
           <div className="reviews-legend-strip">
             <div className="reviews-legend-item scored">
               <div className="reviews-legend-icon-wrap scored">
-                <CheckCircle2 size={13} strokeWidth={2} />
+                <Check size={13} strokeWidth={2.5} />
               </div>
               <div>
                 <div className="reviews-legend-label scored">Scored</div>
@@ -543,9 +419,7 @@ export default function ReviewsPage() {
             </div>
             <div className="reviews-legend-item partial">
               <div className="reviews-legend-icon-wrap partial">
-                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="8" strokeDasharray="2.5 2.5" /><circle cx="12" cy="12" r="1.3" />
-                </Icon>
+                <CircleDotDashed size={13} strokeWidth={2} />
               </div>
               <div>
                 <div className="reviews-legend-label partial">Partial</div>
@@ -554,9 +428,7 @@ export default function ReviewsPage() {
             </div>
             <div className="reviews-legend-item empty">
               <div className="reviews-legend-icon-wrap empty">
-                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                </Icon>
+                <Circle size={13} strokeWidth={2.2} />
               </div>
               <div>
                 <div className="reviews-legend-label empty">Empty</div>
@@ -570,9 +442,7 @@ export default function ReviewsPage() {
           <div className="reviews-legend-strip">
             <div className="reviews-legend-item completed">
               <div className="reviews-legend-icon-wrap completed">
-                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" /><path d="M9.2 12.4 11.3 14.5 15 10.8" />
-                </Icon>
+                <CircleCheck size={13} strokeWidth={2} />
               </div>
               <div>
                 <div className="reviews-legend-label completed">Completed</div>
@@ -590,9 +460,7 @@ export default function ReviewsPage() {
             </div>
             <div className="reviews-legend-item progress">
               <div className="reviews-legend-icon-wrap progress">
-                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 1.8" />
-                </Icon>
+                <Clock size={13} strokeWidth={2} />
               </div>
               <div>
                 <div className="reviews-legend-label progress">In Progress</div>
@@ -601,9 +469,7 @@ export default function ReviewsPage() {
             </div>
             <div className="reviews-legend-item not-started">
               <div className="reviews-legend-icon-wrap not-started">
-                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                </Icon>
+                <CircleSlash size={13} strokeWidth={2} />
               </div>
               <div>
                 <div className="reviews-legend-label not-started">Not Started</div>
@@ -612,9 +478,7 @@ export default function ReviewsPage() {
             </div>
             <div className="reviews-legend-item editing">
               <div className="reviews-legend-icon-wrap editing">
-                <Icon iconNode={[]} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </Icon>
+                <PencilLine size={13} strokeWidth={2} />
               </div>
               <div>
                 <div className="reviews-legend-label editing">Editing</div>
@@ -859,7 +723,7 @@ export default function ReviewsPage() {
                       ) : "—"}
                     </td>
                     <td className="col-status text-center">
-                      <ScorePill status={row.effectiveStatus} />
+                      <ScoreStatusPill status={row.effectiveStatus} />
                     </td>
                     <td className="col-progress text-center">
                       <JurorPill status={row.jurorStatus} submittedTs={submittedTs} />

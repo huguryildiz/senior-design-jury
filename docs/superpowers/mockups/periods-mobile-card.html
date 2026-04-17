@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Periods — Mobile Card Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-page:#f0f4f8; --bg-card:#ffffff; --surface-1:#eef2f8; --surface-2:#e3eaf4;
+    --border:rgba(15,23,42,0.08); --border-strong:rgba(15,23,42,0.13);
+    --text-primary:#111827; --text-secondary:#4b5675; --text-tertiary:#94a3b8; --text-quaternary:#cbd5e1;
+    --accent:#3b82f6; --accent-dark:#2563eb; --accent-soft:rgba(59,130,246,0.07);
+    --success:#15803d; --warning:#d97706; --danger:#e11d48;
+    --radius:10px; --radius-sm:6px; --radius-lg:14px;
+    --shadow-card:0 1px 4px rgba(15,23,42,0.06),0 4px 16px rgba(15,23,42,0.04),0 0 0 1px rgba(15,23,42,0.04);
+    --font:'Plus Jakarta Sans',-apple-system,sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background:
+      radial-gradient(ellipse 70% 50% at 15% 10%,rgba(59,130,246,0.03) 0%,transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 85%,rgba(139,92,246,0.02) 0%,transparent 60%),
+      var(--bg-page);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 16px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-head {
+    max-width: 1200px; margin: 0 auto 28px;
+    text-align: center;
+  }
+  .page-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .page-head p { color: var(--text-tertiary); font-size: 13px; margin-top: 6px; }
+
+  .mock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 380px));
+    gap: 28px;
+    justify-content: center;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .phone {
+    width: 360px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, #f0f3f8 0%, #e6ebf3 100%);
+    border: 1px solid #d4dbe6;
+    box-shadow: 0 12px 40px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.04);
+    overflow: hidden;
+  }
+  .phone-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px 6px;
+    font-size: 11px; color: var(--text-secondary); font-weight: 600;
+  }
+  .phone-head .dots { display:flex; gap:4px; }
+  .phone-head .dot { width:7px; height:7px; border-radius:50%; background:#c8d2df; }
+  .phone-body {
+    padding: 12px 14px 20px;
+    min-height: 560px;
+  }
+  .phone-title {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
+    padding: 2px 4px 10px;
+    color: var(--text-primary);
+  }
+
+  /* ─────────── CARD SHELL ─────────── */
+  .pcard {
+    background: var(--bg-card);
+    border: 1px solid #d8dee8;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 0 0 1px rgba(15,23,42,0.02);
+    margin-bottom: 12px;
+    overflow: hidden;
+    position: relative;
+    transition: box-shadow .2s, transform .1s;
+  }
+  .pcard:hover { box-shadow: 0 2px 8px rgba(15,23,42,0.07), 0 0 0 1px rgba(15,23,42,0.03); }
+
+  /* State rail — left accent */
+  .pcard.state-draft    { border-left: 3px solid rgba(79,70,229,0.35); }
+  .pcard.state-live     { border-left: 3px solid #10b981; }
+  .pcard.state-closed   { border-left: 3px solid #94a3b8; }
+
+  /* ─────────── HERO ─────────── */
+  .pcard-hero {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 14px 12px;
+  }
+
+  /* Progress ring */
+  .pring {
+    position: relative; width: 52px; height: 52px;
+  }
+  .pring-fill {
+    position: relative; width: 52px; height: 52px; border-radius: 50%;
+    background: conic-gradient(var(--ring-color, var(--accent)) var(--pct, 0deg), rgba(15,23,42,0.08) 0);
+  }
+  .pring-fill::after {
+    content:""; position:absolute; inset:3px; border-radius:50%;
+    background: var(--bg-card);
+  }
+  .pring-inner {
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1; z-index:1;
+  }
+  .pring-num  { font-size:14px; font-weight:700; color: var(--ring-color, var(--accent)); font-family: var(--mono); letter-spacing: -0.5px; }
+  .pring-lbl  { font-size:7px; color: var(--text-tertiary); text-transform:uppercase; letter-spacing:0.6px; margin-top:2px; font-weight:700; }
+
+  /* Ring color per state */
+  .pcard.state-draft  .pring { --ring-color: #6366f1; }
+  .pcard.state-live   .pring { --ring-color: #10b981; }
+  .pcard.state-closed .pring { --ring-color: #64748b; }
+
+  /* Title block */
+  .ptitle-block { min-width:0; }
+  .ptitle-eyebrow {
+    display: flex; align-items:center; gap: 6px;
+    font-size: 9.5px; font-weight: 700;
+    color: var(--accent); letter-spacing: 0.7px; text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .pcard.state-live   .ptitle-eyebrow { color: #10b981; }
+  .pcard.state-closed .ptitle-eyebrow { color: #64748b; }
+  .ptitle-eyebrow .live-dot {
+    width:6px; height:6px; border-radius:50%; background:#10b981;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+
+  .ptitle {
+    font-size: 15px; font-weight: 700; letter-spacing: -0.3px;
+    color: var(--text-primary); line-height: 1.25;
+  }
+  .psubtitle {
+    font-size: 11.5px; color: var(--text-tertiary);
+    margin-top: 2px; font-weight: 500;
+  }
+
+  /* Kebab */
+  .pkebab {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-tertiary);
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer; transition: background .15s, border-color .15s;
+    align-self: start;
+  }
+  .pkebab:hover { background: var(--surface-1); border-color: var(--border); color: var(--text-secondary); }
+
+  /* ─────────── META ROW (date + status) ─────────── */
+  .pmeta {
+    display:flex; align-items:center; justify-content: space-between;
+    gap: 10px;
+    padding: 0 14px 12px;
+  }
+  .pdate {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size: 11.5px; color: var(--text-secondary); font-weight: 500;
+    font-family: var(--mono);
+  }
+  .pdate .arrow { color: var(--text-quaternary); }
+  .pdate .icon  { color: var(--text-tertiary); }
+
+  .pstatus-group { display:flex; align-items:center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+  /* Status pills */
+  .spill {
+    display:inline-flex; align-items:center; gap:4px;
+    padding: 2px 9px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 600; line-height: 1.5;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .spill-draft    { background: rgba(99,102,241,0.09); color:#4f46e5; border-color: rgba(99,102,241,0.22); }
+  .spill-live     { background: rgba(16,185,129,0.10); color:#047857; border-color: rgba(16,185,129,0.24); }
+  .spill-closed   { background: rgba(100,116,139,0.10); color:#475569; border-color: rgba(100,116,139,0.20); }
+  .spill-ready    { background: rgba(34,197,94,0.09); color:#16a34a; border-color: rgba(34,197,94,0.22); }
+  .spill-blocked  { background: rgba(225,29,72,0.08); color:#e11d48; border-color: rgba(225,29,72,0.22); }
+
+  /* ─────────── CONFIG STRIP (criteria · outcome) ─────────── */
+  .pconfig {
+    display:flex; gap: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, rgba(248,250,253,0.6) 0%, rgba(243,246,251,0.9) 100%);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .pcfg-col {
+    flex: 1 1 0; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .pcfg-lbl {
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.6px;
+    color: var(--text-quaternary); text-transform: uppercase;
+  }
+  .pcfg-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(99,102,241,0.07);
+    border: 1px solid rgba(99,102,241,0.20);
+    color: #4f46e5; font-size: 10.5px; font-weight: 600;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: var(--mono); letter-spacing: -0.1px;
+  }
+  .pcfg-badge.outcome {
+    background: rgba(59,130,246,0.07);
+    border-color: rgba(59,130,246,0.20);
+    color: var(--accent-dark);
+  }
+  .pcfg-notset {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size: 11px; color: var(--text-tertiary); font-style: italic;
+  }
+  .pcfg-add {
+    width:18px; height:18px; border-radius:5px;
+    border: 1px dashed var(--border-strong);
+    display:inline-flex; align-items:center; justify-content:center;
+    color: var(--text-tertiary); cursor:pointer; background: transparent;
+  }
+  .pcfg-add:hover { border-style:solid; border-color: rgba(99,102,241,0.40); color: var(--accent); }
+
+  /* ─────────── FOOTER STATS ─────────── */
+  .pfooter {
+    display:flex; align-items:center; justify-content: space-between;
+    padding: 9px 14px;
+    font-size: 11px; color: var(--text-tertiary);
+    gap: 10px;
+  }
+  .pstats { display:flex; gap: 14px; align-items:center; }
+  .pstat {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size: 11px; color: var(--text-tertiary); font-weight: 500;
+  }
+  .pstat .val {
+    font-weight: 700; color: var(--text-secondary);
+    font-family: var(--mono); font-size: 11.5px;
+  }
+  .pstat .val.zero { color: var(--text-quaternary); }
+  .pupdated { font-size: 10.5px; color: var(--text-tertiary); }
+
+  /* Variant labels */
+  .variant-label {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-tertiary);
+    letter-spacing: 0.8px; text-transform: uppercase;
+    margin: 18px 4px 8px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .variant-label::after {
+    content:""; flex:1; height:1px; background: var(--border);
+  }
+
+  /* ICON (svg) sizing */
+  .ic { width: 11px; height: 11px; stroke-width: 2; flex-shrink: 0; }
+  .ic-sm { width: 10px; height: 10px; stroke-width: 2; flex-shrink: 0; }
+
+  /* Caption under each phone */
+  .phone-caption {
+    text-align:center; margin-top: 10px;
+    font-size: 12px; color: var(--text-secondary); font-weight: 600;
+  }
+  .phone-caption span { color: var(--text-tertiary); font-weight: 400; }
+</style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>Periods — Mobile Card Redesign</h1>
+    <p>Progress-ring hero pattern (Projects sayfasıyla paralel) · 360px portrait mockup</p>
+  </div>
+
+  <div class="mock-grid">
+    <!-- ════════ VARIANT A: Progress Ring Hero ════════ -->
+    <div>
+      <div class="phone">
+        <div class="phone-head">
+          <span>9:41</span>
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        </div>
+        <div class="phone-body">
+          <div class="phone-title">All Evaluation Periods</div>
+
+          <!-- ═══ DRAFT (in setup) — readiness ring ═══ -->
+          <div class="pcard state-draft">
+            <div class="pcard-hero">
+              <div class="pring" style="--pct: 180deg;">
+                <div class="pring-fill">
+                  <div class="pring-inner">
+                    <span class="pring-num">50%</span>
+                    <span class="pring-lbl">SETUP</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ptitle-block">
+                <div class="ptitle-eyebrow">
+                  <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  EVALUATION PERIOD
+                </div>
+                <div class="ptitle">Spring 2026</div>
+                <div class="psubtitle">Setup in progress</div>
+              </div>
+              <button class="pkebab" aria-label="Actions">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+
+            <div class="pmeta">
+              <span class="pdate">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Apr 17 <span class="arrow">→</span> Apr 27
+              </span>
+              <div class="pstatus-group">
+                <span class="spill spill-draft">
+                  <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Draft
+                </span>
+                <span class="spill spill-blocked">
+                  <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  2 blockers
+                </span>
+              </div>
+            </div>
+
+            <div class="pconfig">
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Criteria Set</div>
+                <div>
+                  <span class="pcfg-badge">
+                    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    MÜDEK-S26-R
+                  </span>
+                </div>
+              </div>
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Outcome</div>
+                <div>
+                  <span class="pcfg-badge outcome">
+                    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>
+                    MÜDEK-S26-O
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pfooter">
+              <div class="pstats">
+                <span class="pstat"><span class="val">5</span> projects</span>
+                <span class="pstat"><span class="val">16</span> jurors</span>
+              </div>
+              <span class="pupdated">2h ago</span>
+            </div>
+          </div>
+
+          <!-- ═══ LIVE — evaluation ring ═══ -->
+          <div class="pcard state-live">
+            <div class="pcard-hero">
+              <div class="pring" style="--pct: 246deg;">
+                <div class="pring-fill">
+                  <div class="pring-inner">
+                    <span class="pring-num">68%</span>
+                    <span class="pring-lbl">EVAL</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ptitle-block">
+                <div class="ptitle-eyebrow">
+                  <span class="live-dot"></span>
+                  LIVE EVALUATION
+                </div>
+                <div class="ptitle">Fall 2025</div>
+                <div class="psubtitle">43 of 64 scorecards complete</div>
+              </div>
+              <button class="pkebab" aria-label="Actions">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+
+            <div class="pmeta">
+              <span class="pdate">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Jan 8 <span class="arrow">→</span> Jan 22
+              </span>
+              <div class="pstatus-group">
+                <span class="spill spill-live">
+                  <span class="live-dot" style="width:5px;height:5px;box-shadow:0 0 0 2px rgba(16,185,129,0.18);"></span>
+                  Live
+                </span>
+              </div>
+            </div>
+
+            <div class="pconfig">
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Criteria Set</div>
+                <div>
+                  <span class="pcfg-badge">
+                    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    MÜDEK-F25-R
+                  </span>
+                </div>
+              </div>
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Outcome</div>
+                <div>
+                  <span class="pcfg-badge outcome">
+                    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>
+                    MÜDEK-F25-O
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pfooter">
+              <div class="pstats">
+                <span class="pstat"><span class="val">8</span> projects</span>
+                <span class="pstat"><span class="val">24</span> jurors</span>
+              </div>
+              <span class="pupdated">4m ago</span>
+            </div>
+          </div>
+
+          <!-- ═══ CLOSED — 100% ring ═══ -->
+          <div class="pcard state-closed">
+            <div class="pcard-hero">
+              <div class="pring" style="--pct: 360deg;">
+                <div class="pring-fill">
+                  <div class="pring-inner">
+                    <span class="pring-num">100%</span>
+                    <span class="pring-lbl">DONE</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ptitle-block">
+                <div class="ptitle-eyebrow">
+                  <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  ARCHIVED
+                </div>
+                <div class="ptitle">Spring 2025</div>
+                <div class="psubtitle">Closed · results locked</div>
+              </div>
+              <button class="pkebab" aria-label="Actions">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+
+            <div class="pmeta">
+              <span class="pdate">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                May 12 <span class="arrow">→</span> May 26, 25
+              </span>
+              <div class="pstatus-group">
+                <span class="spill spill-closed">
+                  <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Closed
+                </span>
+              </div>
+            </div>
+
+            <div class="pconfig">
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Criteria Set</div>
+                <div>
+                  <span class="pcfg-badge">
+                    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    MÜDEK-S25-R
+                  </span>
+                </div>
+              </div>
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Outcome</div>
+                <div>
+                  <span class="pcfg-badge outcome">
+                    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>
+                    MÜDEK-S25-O
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pfooter">
+              <div class="pstats">
+                <span class="pstat"><span class="val">7</span> projects</span>
+                <span class="pstat"><span class="val">19</span> jurors</span>
+              </div>
+              <span class="pupdated">10 months ago</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="phone-caption">Variant A — Progress Ring Hero <span>(recommended)</span></div>
+    </div>
+
+    <!-- ════════ VARIANT B: Countdown / Status Medallion ════════ -->
+    <div>
+      <div class="phone">
+        <div class="phone-head">
+          <span>9:41</span>
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        </div>
+        <div class="phone-body">
+          <div class="phone-title">All Evaluation Periods</div>
+
+          <!-- DRAFT -->
+          <div class="pcard state-draft">
+            <div class="pcard-hero" style="grid-template-columns: auto 1fr auto; gap: 14px;">
+              <div style="width:54px; height:54px; border-radius:14px;
+                          background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(99,102,241,0.04));
+                          border:1px solid rgba(99,102,241,0.22);
+                          display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <span style="font-family:var(--mono); font-size:18px; font-weight:800; color:#4f46e5; line-height:1;">10</span>
+                <span style="font-size:7.5px; font-weight:700; color:#4f46e5; letter-spacing:0.8px; margin-top:2px;">DAYS</span>
+              </div>
+              <div class="ptitle-block">
+                <div class="ptitle-eyebrow">OPENS IN</div>
+                <div class="ptitle">Spring 2026</div>
+                <div class="psubtitle">Apr 17 → Apr 27</div>
+              </div>
+              <button class="pkebab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+            </div>
+
+            <div class="pmeta">
+              <div class="pstatus-group" style="justify-content:flex-start;">
+                <span class="spill spill-draft">Draft</span>
+                <span class="spill spill-blocked">2 blockers</span>
+              </div>
+              <span style="font-size:11px; color:var(--text-tertiary);"><strong style="color:var(--text-secondary); font-family:var(--mono);">50%</strong> setup complete</span>
+            </div>
+
+            <div class="pconfig">
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Criteria Set</div>
+                <div><span class="pcfg-badge">MÜDEK-S26-R</span></div>
+              </div>
+              <div class="pcfg-col">
+                <div class="pcfg-lbl">Outcome</div>
+                <div><span class="pcfg-badge outcome">MÜDEK-S26-O</span></div>
+              </div>
+            </div>
+
+            <div class="pfooter">
+              <div class="pstats">
+                <span class="pstat"><span class="val">5</span> projects</span>
+                <span class="pstat"><span class="val">16</span> jurors</span>
+              </div>
+              <span class="pupdated">2h ago</span>
+            </div>
+          </div>
+
+          <!-- LIVE -->
+          <div class="pcard state-live">
+            <div class="pcard-hero" style="grid-template-columns: auto 1fr auto; gap: 14px;">
+              <div style="width:54px; height:54px; border-radius:14px;
+                          background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.04));
+                          border:1px solid rgba(16,185,129,0.28);
+                          display:flex; flex-direction:column; align-items:center; justify-content:center;
+                          position:relative;">
+                <span class="live-dot" style="position:absolute; top:6px; right:6px;"></span>
+                <span style="font-family:var(--mono); font-size:17px; font-weight:800; color:#047857; line-height:1;">68%</span>
+                <span style="font-size:7.5px; font-weight:700; color:#047857; letter-spacing:0.8px; margin-top:2px;">EVAL</span>
+              </div>
+              <div class="ptitle-block">
+                <div class="ptitle-eyebrow"><span class="live-dot"></span>LIVE NOW</div>
+                <div class="ptitle">Fall 2025</div>
+                <div class="psubtitle">43 of 64 scorecards</div>
+              </div>
+              <button class="pkebab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+            </div>
+
+            <div class="pmeta">
+              <span class="pdate">Jan 8 <span class="arrow">→</span> Jan 22</span>
+              <div class="pstatus-group"><span class="spill spill-live"><span class="live-dot" style="width:5px;height:5px;box-shadow:0 0 0 2px rgba(16,185,129,0.18);"></span>Live</span></div>
+            </div>
+
+            <div class="pconfig">
+              <div class="pcfg-col"><div class="pcfg-lbl">Criteria Set</div><div><span class="pcfg-badge">MÜDEK-F25-R</span></div></div>
+              <div class="pcfg-col"><div class="pcfg-lbl">Outcome</div><div><span class="pcfg-badge outcome">MÜDEK-F25-O</span></div></div>
+            </div>
+
+            <div class="pfooter">
+              <div class="pstats">
+                <span class="pstat"><span class="val">8</span> projects</span>
+                <span class="pstat"><span class="val">24</span> jurors</span>
+              </div>
+              <span class="pupdated">4m ago</span>
+            </div>
+          </div>
+
+          <!-- CLOSED -->
+          <div class="pcard state-closed">
+            <div class="pcard-hero" style="grid-template-columns: auto 1fr auto; gap: 14px;">
+              <div style="width:54px; height:54px; border-radius:14px;
+                          background: linear-gradient(135deg, rgba(100,116,139,0.12), rgba(100,116,139,0.04));
+                          border:1px solid rgba(100,116,139,0.22);
+                          display:flex; align-items:center; justify-content:center;
+                          color:#475569;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="ptitle-block">
+                <div class="ptitle-eyebrow">ARCHIVED</div>
+                <div class="ptitle">Spring 2025</div>
+                <div class="psubtitle">Results locked</div>
+              </div>
+              <button class="pkebab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+            </div>
+
+            <div class="pmeta">
+              <span class="pdate">May 12 <span class="arrow">→</span> May 26, 25</span>
+              <div class="pstatus-group"><span class="spill spill-closed">Closed</span></div>
+            </div>
+
+            <div class="pconfig">
+              <div class="pcfg-col"><div class="pcfg-lbl">Criteria Set</div><div><span class="pcfg-badge">MÜDEK-S25-R</span></div></div>
+              <div class="pcfg-col"><div class="pcfg-lbl">Outcome</div><div><span class="pcfg-badge outcome">MÜDEK-S25-O</span></div></div>
+            </div>
+
+            <div class="pfooter">
+              <div class="pstats">
+                <span class="pstat"><span class="val">7</span> projects</span>
+                <span class="pstat"><span class="val">19</span> jurors</span>
+              </div>
+              <span class="pupdated">10 months ago</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="phone-caption">Variant B — Status Medallion <span>(countdown/badge hybrid)</span></div>
+    </div>
+  </div>
+
+  <div style="max-width:900px; margin: 40px auto 0; padding: 20px 24px;
+              background: var(--bg-card); border:1px solid var(--border); border-radius: var(--radius-lg);
+              box-shadow: var(--shadow-card); font-size: 13px; line-height: 1.55; color: var(--text-secondary);">
+    <h2 style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:10px; letter-spacing:-0.2px;">Design notes</h2>
+    <ul style="padding-left: 20px; display:flex; flex-direction:column; gap:6px;">
+      <li><strong>Variant A</strong> mirrors the Projects card pattern exactly: ring / title / kebab hero → meta row → config strip → footer stats. Ring color changes per state (indigo · green · slate). Metric is adaptive — setup % for draft, eval % for live, 100% for closed.</li>
+      <li><strong>Variant B</strong> uses a squared medallion instead of a ring. Draft shows a countdown (“10 DAYS”), live shows a mini % tile with pulse dot, closed shows a lock icon. More informationally varied but breaks the Projects symmetry.</li>
+      <li>Both variants collapse the sparse eyebrow-labeled rows from the current layout into a <em>dense config strip</em> where criteria + outcome sit side by side (saves ~60px vertical).</li>
+      <li>Date range moves into a meta row with the status pill, removing its own labeled block.</li>
+      <li>Readiness blockers surface as a compact <code>2 blockers</code> pill next to the Draft pill instead of a separate Ready/Blocked row.</li>
+      <li>Footer keeps <code>projects · jurors · updated</code> consistent with Projects for scannability.</li>
+    </ul>
+  </div>
+
+</body>
+</html>

@@ -1,61 +1,13 @@
 import { useMemo } from "react";
-import { ClipboardCheck, ClipboardList, ExternalLink, X, Icon } from "lucide-react";
+import { ClipboardCheck, ClipboardList, ExternalLink, X } from "lucide-react";
 import Modal from "@/shared/ui/Modal";
 import { formatTs } from "@/admin/utils/adminUtils";
+import ScoreStatusPill from "@/admin/components/ScoreStatusPill";
 
-function statusMeta(row) {
-  if (row?.reviewState === "scored") {
-    return { label: "Scored", className: "pill-scored", kind: "scored" };
-  }
-  if (row?.reviewState === "partial") {
-    return { label: "Partial", className: "pill-partial", kind: "partial" };
-  }
-  return { label: "Not Started", className: "pill-not-started", kind: "empty" };
-}
-
-function ScorePillIcon({ kind }) {
-  if (kind === "scored") {
-    return (
-      <Icon
-        iconNode={[]}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round">
-        <path d="m20 6-11 11-5-5" />
-      </Icon>
-    );
-  }
-  if (kind === "partial") {
-    return (
-      <Icon
-        iconNode={[]}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round">
-        <circle cx="12" cy="12" r="1" />
-        <circle cx="19" cy="12" r="1" />
-        <circle cx="5" cy="12" r="1" />
-      </Icon>
-    );
-  }
-  return (
-    <Icon
-      iconNode={[]}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-    </Icon>
-  );
+function reviewStatus(row) {
+  if (row?.reviewState === "scored") return "scored";
+  if (row?.reviewState === "partial") return "partial";
+  return "empty";
 }
 
 export default function JurorReviewsModal({
@@ -157,7 +109,6 @@ export default function JurorReviewsModal({
                 </tr>
               ) : (
                 rows.map((row) => {
-                  const meta = statusMeta(row);
                   return (
                     <tr key={row.id}>
                       <td className="jrm-group">
@@ -168,10 +119,7 @@ export default function JurorReviewsModal({
                         {typeof row.total === "number" ? row.total : "—"}
                       </td>
                       <td>
-                        <span className={`pill ${meta.className} jrm-status-pill`}>
-                          <ScorePillIcon kind={meta.kind} />
-                          {meta.label}
-                        </span>
+                        <ScoreStatusPill status={reviewStatus(row)} className="jrm-status-pill" />
                       </td>
                       <td className="jrm-submitted text-right vera-datetime-text">{formatTs(row.updatedAt || row.createdAt)}</td>
                       {onViewProjectScores && (

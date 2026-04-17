@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Pagination from "@/shared/ui/Pagination";
 import { useAdminContext } from "../hooks/useAdminContext";
-import { ClipboardList, Filter, UserRound, MoreVertical, Pencil, Copy, Trash2, Icon, FolderOpen, Upload, Plus, Info, LockKeyhole, Lock } from "lucide-react";
+import { ClipboardList, Filter, UserRound, MoreVertical, Pencil, Copy, Trash2, Icon, FolderOpen, Upload, Plus, Info, LockKeyhole, Lock, Download, Search, XCircle } from "lucide-react";
 import { useToast } from "@/shared/hooks/useToast";
 import { useAuth } from "@/auth";
 import FbAlert from "@/shared/ui/FbAlert";
@@ -40,10 +40,7 @@ const COLUMNS = [
 function getProjectCell(p, key, avgMap) {
   if (key === "group_no")   return p.group_no ?? "";
   if (key === "title")      return p.title ?? "";
-  if (key === "members") {
-    if (Array.isArray(p.members)) return p.members.join(", ");
-    return String(p.members || "");
-  }
+  if (key === "members") return membersToString(p.members);
   if (key === "avg_score")  return avgMap?.get(p.id) ?? "—";
   if (key === "updated_at") return formatFull(p.updated_at) || "—";
   return "";
@@ -457,12 +454,44 @@ export default function ProjectsPage() {
   return (
     <div id="page-projects">
       {/* Header */}
-      <div className="jurors-page-header">
-        <div className="jurors-page-header-top">
-          <div className="jurors-page-header-left">
-            <div className="page-title">Projects</div>
-            <div className="page-desc">Manage project records, student teams, and evaluation coverage for the active term.</div>
+      <div className="sem-header">
+        <div className="sem-header-left">
+          <div className="page-title">Projects</div>
+          <div className="page-desc">Manage project records, student teams, and evaluation coverage for the active term.</div>
+        </div>
+        <div className="sem-header-actions mobile-toolbar-stack">
+          <div className="jurors-search-wrap mobile-toolbar-search">
+            <Search size={14} strokeWidth={2} style={{ opacity: 0.45 }} />
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Search projects..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
+          <FilterButton
+            className="mobile-toolbar-filter"
+            activeCount={filterActiveCount}
+            isOpen={filterOpen}
+            onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
+          />
+          <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
+            <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
+            {" "}Export
+          </button>
+          <button className="btn btn-outline btn-sm mobile-toolbar-secondary" onClick={() => !isLocked && setImportOpen(true)} disabled={isLocked}>
+            <Upload size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
+            {" "}Import
+          </button>
+          <button
+            className="btn btn-primary btn-sm mobile-toolbar-primary"
+            onClick={() => !isLocked && setAddDrawerOpen(true)}
+            disabled={isLocked}
+          >
+            <Plus size={13} strokeWidth={2.2} />
+            Add Project
+          </button>
         </div>
       </div>
       {/* KPI strip */}
@@ -480,81 +509,14 @@ export default function ProjectsPage() {
           <div className="scores-kpi-item-label">Evaluated</div>
         </div>
       </div>
-      {/* Toolbar */}
-      <div className="jurors-toolbar mobile-toolbar-stack">
-        <div className="jurors-search-wrap mobile-toolbar-search">
-          <Icon
-            iconNode={[]}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </Icon>
-          <input
-            className="search-input"
-            type="text"
-            placeholder="Search projects..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <FilterButton
-          className="mobile-toolbar-filter"
-          activeCount={filterActiveCount}
-          isOpen={filterOpen}
-          onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
-        />
-        <div className="jurors-toolbar-spacer mobile-toolbar-spacer" />
-        <button className="btn btn-outline btn-sm mobile-toolbar-export" onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}>
-          <Icon
-            iconNode={[]}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ verticalAlign: "-1px" }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </Icon>
-          {" "}Export
-        </button>
-        <button className="btn btn-outline btn-sm mobile-toolbar-secondary" onClick={() => !isLocked && setImportOpen(true)} disabled={isLocked}>
-          <Icon
-            iconNode={[]}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ verticalAlign: "-1px" }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </Icon>
-          {" "}Import
-        </button>
-        <button
-          className="btn btn-primary btn-sm mobile-toolbar-secondary"
-          style={{ width: "auto", padding: "6px 14px", fontSize: "12px", background: "var(--accent)", boxShadow: "none" }}
-          onClick={() => !isLocked && setAddDrawerOpen(true)}
-          disabled={isLocked}
-        >
-          + Add Project
-        </button>
-      </div>
+      <button
+        className="btn btn-primary btn-sm mobile-primary-below-kpi"
+        onClick={() => !isLocked && setAddDrawerOpen(true)}
+        disabled={isLocked}
+      >
+        <Plus size={13} strokeWidth={2.2} />
+        Add Project
+      </button>
       {/* Lock banner */}
       {isLocked && periods.viewPeriodId && (
         <div className="lock-notice">
@@ -594,56 +556,63 @@ export default function ProjectsPage() {
             <button className="filter-panel-close" onClick={() => setFilterOpen(false)}>&#215;</button>
           </div>
           <div className="filter-row">
-            <div className="filter-row-label">Evaluation Status</div>
-            <div className="filter-toggle-group">
-              {[["all", "All"], ["evaluated", "Evaluated"], ["not_evaluated", "Not Evaluated"]].map(([val, label]) => (
-                <button
-                  key={val}
-                  className={`filter-toggle-btn${filters.evalStatus === val ? " filter-toggle-btn--active" : ""}`}
-                  onClick={() => setFilters((f) => ({ ...f, evalStatus: val }))}
-                >{label}</button>
-              ))}
+            <div className="filter-group">
+              <label>Evaluation Status</label>
+              <div className="filter-toggle-group">
+                {[["all", "All"], ["evaluated", "Evaluated"], ["not_evaluated", "Not Evaluated"]].map(([val, lbl]) => (
+                  <button
+                    key={val}
+                    className={`filter-toggle-btn${filters.evalStatus === val ? " filter-toggle-btn--active" : ""}`}
+                    onClick={() => setFilters((f) => ({ ...f, evalStatus: val }))}
+                  >{lbl}</button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="filter-row">
-            <div className="filter-row-label">Advisor</div>
-            <CustomSelect
-              value={filters.advisor}
-              onChange={(val) => setFilters((f) => ({ ...f, advisor: val }))}
-              options={[{ value: "", label: "All Advisors" }, ...distinctAdvisors.map((a) => ({ value: a, label: a }))]}
-              placeholder="All Advisors"
-            />
-          </div>
-          <div className="filter-row">
-            <div className="filter-row-label">Score Band</div>
-            <div className="filter-toggle-group">
-              {[["all", "All"], ["high", "High ≥85%"], ["mid", "Mid 70–84%"], ["low", "Low <70%"]].map(([val, label]) => (
-                <button
-                  key={val}
-                  className={`filter-toggle-btn${filters.scoreBand === val ? " filter-toggle-btn--active" : ""}`}
-                  onClick={() => setFilters((f) => ({ ...f, scoreBand: val }))}
-                >{label}</button>
-              ))}
+            <div className="filter-group">
+              <label>Advisor</label>
+              <CustomSelect
+                compact
+                value={filters.advisor}
+                onChange={(val) => setFilters((f) => ({ ...f, advisor: val }))}
+                options={[{ value: "", label: "All Advisors" }, ...distinctAdvisors.map((a) => ({ value: a, label: a }))]}
+                placeholder="All Advisors"
+                ariaLabel="Advisor"
+              />
             </div>
-          </div>
-          <div className="filter-row">
-            <div className="filter-row-label">Team Size</div>
-            <div className="filter-toggle-group">
-              {[["all", "All"], ["small", "1–2"], ["mid", "3–4"], ["large", "5+"]].map(([val, label]) => (
-                <button
-                  key={val}
-                  className={`filter-toggle-btn${filters.teamSize === val ? " filter-toggle-btn--active" : ""}`}
-                  onClick={() => setFilters((f) => ({ ...f, teamSize: val }))}
-                >{label}</button>
-              ))}
+            <div className="filter-group">
+              <label>Score Band</label>
+              <div className="filter-toggle-group">
+                {[["all", "All"], ["high", "High ≥85%"], ["mid", "Mid 70–84%"], ["low", "Low <70%"]].map(([val, lbl]) => (
+                  <button
+                    key={val}
+                    className={`filter-toggle-btn${filters.scoreBand === val ? " filter-toggle-btn--active" : ""}`}
+                    onClick={() => setFilters((f) => ({ ...f, scoreBand: val }))}
+                  >{lbl}</button>
+                ))}
+              </div>
             </div>
+            <div className="filter-group">
+              <label>Team Size</label>
+              <div className="filter-toggle-group">
+                {[["all", "All"], ["small", "1–2"], ["mid", "3–4"], ["large", "5+"]].map(([val, lbl]) => (
+                  <button
+                    key={val}
+                    className={`filter-toggle-btn${filters.teamSize === val ? " filter-toggle-btn--active" : ""}`}
+                    onClick={() => setFilters((f) => ({ ...f, teamSize: val }))}
+                  >{lbl}</button>
+                ))}
+              </div>
+            </div>
+            {filterActiveCount > 0 && (
+              <button
+                className="btn btn-outline btn-sm filter-clear-btn"
+                onClick={() => setFilters({ evalStatus: "all", advisor: "", scoreBand: "all", teamSize: "all" })}
+              >
+                <XCircle size={12} strokeWidth={2} style={{ opacity: 0.5, verticalAlign: "-1px" }} />
+                {" "}Clear all
+              </button>
+            )}
           </div>
-          {filterActiveCount > 0 && (
-            <button
-              className="filter-clear-link"
-              onClick={() => setFilters({ evalStatus: "all", advisor: "", scoreBand: "all", teamSize: "all" })}
-            >Clear all filters</button>
-          )}
         </div>
       )}
       {/* Export panel */}
@@ -657,7 +626,7 @@ export default function ProjectsPage() {
           department={activeOrganization?.institution || ""}
           onClose={() => setExportOpen(false)}
           generateFile={async (fmt) => {
-            const header = COLUMNS.map((c) => c.label);
+            const header = COLUMNS.map((c) => c.key === "avg_score" && periodMaxScore != null ? `Avg Score (${periodMaxScore})` : c.label);
             const rows = sortedFilteredList.map((p) => COLUMNS.map((c) => getProjectCell(p, c.key, projectAvgMap)));
             return generateTableBlob(fmt, {
               filenameType: "Projects", sheetName: "Projects",
@@ -669,7 +638,7 @@ export default function ProjectsPage() {
           }}
           onExport={async (fmt) => {
             try {
-              const header = COLUMNS.map((c) => c.label);
+              const header = COLUMNS.map((c) => c.key === "avg_score" && periodMaxScore != null ? `Avg Score (${periodMaxScore})` : c.label);
               const rows = sortedFilteredList.map((p) => COLUMNS.map((c) => getProjectCell(p, c.key, projectAvgMap)));
               await logExportInitiated({
                 action: "export.projects",
@@ -771,6 +740,36 @@ export default function ProjectsPage() {
                     /* Case 2: periods exist but none selected */
                     <div style={{ textAlign: "center", padding: "40px 24px", color: "var(--text-tertiary)", fontSize: 13 }}>
                       Select an evaluation period above to manage projects.
+                    </div>
+                  ) : projectList.length > 0 ? (
+                    /* Case 2b: projects exist but filters/search hide them all */
+                    <div className="vera-es-no-data">
+                      <div className="vera-es-icon vera-es-icon--project">
+                        <Search size={20} strokeWidth={1.8} />
+                      </div>
+                      <div className="vera-es-no-data-title">No projects match your filters</div>
+                      <div className="vera-es-no-data-desc">
+                        {filterActiveCount > 0 && search.trim()
+                          ? "Try adjusting your search or clearing active filters to see more projects."
+                          : filterActiveCount > 0
+                            ? "Try adjusting or clearing the active filters to see more projects."
+                            : "No projects match your current search. Try a different keyword."}
+                      </div>
+                      <div className="vera-es-no-data-actions">
+                        {search.trim() && (
+                          <button className="btn btn-outline btn-sm" onClick={() => setSearch("")}>
+                            <XCircle size={13} strokeWidth={2} /> Clear search
+                          </button>
+                        )}
+                        {filterActiveCount > 0 && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => setFilters({ evalStatus: "all", advisor: "", scoreBand: "all", teamSize: "all" })}
+                          >
+                            <XCircle size={13} strokeWidth={2.2} /> Clear filters
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     /* Case 3: period selected but no projects */
@@ -994,7 +993,7 @@ export default function ProjectsPage() {
       <ImportCsvModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        parseFile={(f) => parseProjectsCsv(f)}
+        parseFile={(f) => parseProjectsCsv(f, projects.projects || [])}
         onImport={async (rows) => {
           cancelImportRef.current = false;
           const result = await projects.handleImportProjects(rows, { cancelRef: cancelImportRef });

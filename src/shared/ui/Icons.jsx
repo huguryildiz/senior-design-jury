@@ -105,6 +105,9 @@ import {
   BarChart2,
   Star,
   Play,
+  CircleCheck,
+  PencilLine,
+  CircleSlash,
 } from "lucide-react";
 
 export function HomeIcon({ size = 16, className = "", ...props }) {
@@ -509,6 +512,18 @@ export function StarIcon({ size = 16, className = "", ...props }) {
 
 export function PlayIcon({ size = 16, className = "", ...props }) {
   return <Play size={size} className={className} {...props} />;
+}
+
+export function CircleCheckIcon({ size = 16, className = "", ...props }) {
+  return <CircleCheck size={size} className={className} {...props} />;
+}
+
+export function PencilLineIcon({ size = 16, className = "", ...props }) {
+  return <PencilLine size={size} className={className} {...props} />;
+}
+
+export function CircleSlashIcon({ size = 16, className = "", ...props }) {
+  return <CircleSlash size={size} className={className} {...props} />;
 }
 
 // Brand icon — no lucide equivalent, kept as inline SVG.

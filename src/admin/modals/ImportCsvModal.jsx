@@ -194,9 +194,8 @@ export default function ImportCsvModal({ open, onClose, parseFile, onImport }) {
                   </div>
                 )}
                 <div style={{
-                  marginTop: 14, padding: "8px 12px",
-                  background: "var(--bg-card)", borderRadius: "var(--radius-sm)",
-                  display: "inline-block", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.6,
+                  marginTop: 14,
+                  fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.6,
                 }}>
                   <strong>Format:</strong> Group, Title, Team Members
                   <br />

@@ -1956,3 +1956,22 @@
   box-shadow: inset 0 2px 0 var(--accent);
   background: var(--surface-1);
 }
+
+/* ── Mobile portrait: title → KPI → Add → toolbar (match Jurors/Projects pattern) ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  #page-accreditation {
+    display: flex;
+    flex-direction: column;
+  }
+  #page-accreditation > .sem-header { display: contents; }
+  #page-accreditation > * { order: 20; }
+  #page-accreditation > .sem-header > .sem-header-left { order: -4; }
+  #page-accreditation > .scores-kpi-strip { order: -2; }
+  #page-accreditation > .mobile-primary-below-kpi { order: -1; }
+  /* .sem-header-actions (Filter + Export toolbar) stays at order 0 — below Add button */
+  #page-accreditation > .sem-header > .sem-header-actions { order: 0; margin-bottom: 12px; }
+  #page-accreditation > .filter-panel { order: 1; }
+  #page-accreditation > .export-panel { order: 2; }
+  #page-accreditation > .lock-notice { order: 3; }
+  #page-accreditation > .acc-coverage-progress { order: 4; }
+}

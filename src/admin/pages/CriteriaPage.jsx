@@ -481,27 +481,28 @@ export default function CriteriaPage() {
           <div className="page-desc">Define scoring rubrics and criteria weights for the active evaluation period.</div>
         </div>
         {periods.viewPeriodId && (draftCriteria.length > 0 || scratchMode) && !pendingCriteriaPreview && (
-          <div className="crt-header-actions">
+          <div className="crt-header-actions mobile-toolbar-stack">
             <FilterButton
+              className="mobile-toolbar-filter"
               activeCount={activeFilterCount}
               isOpen={filterOpen}
               onClick={() => { setFilterOpen((v) => !v); setExportOpen(false); }}
             />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm mobile-toolbar-export"
               onClick={() => { setExportOpen((v) => !v); setFilterOpen(false); }}
             >
               <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
               {" "}Export
             </button>
             {isLocked ? (
-              <div className="crt-lock-badge">
+              <div className="crt-lock-badge mobile-toolbar-primary">
                 <Lock size={11} strokeWidth={2.2} />
                 Evaluation Active
               </div>
             ) : (
               <button
-                className="crt-add-btn"
+                className="btn btn-primary btn-sm mobile-toolbar-primary"
                 onClick={() => setEditingIndex(-1)}
               >
                 <Plus size={13} strokeWidth={2.2} />
@@ -511,6 +512,15 @@ export default function CriteriaPage() {
           </div>
         )}
       </div>
+      {periods.viewPeriodId && (draftCriteria.length > 0 || scratchMode) && !pendingCriteriaPreview && !isLocked && (
+        <button
+          className="btn btn-primary btn-sm mobile-primary-below-kpi"
+          onClick={() => setEditingIndex(-1)}
+        >
+          <Plus size={13} strokeWidth={2.2} />
+          Add Criterion
+        </button>
+      )}
       {exportOpen && (
         <ExportPanel
           title="Export Criteria"
@@ -1006,7 +1016,7 @@ export default function CriteriaPage() {
                               style={isLocked ? { opacity: 0.4, pointerEvents: "none" } : {}}
                             >
                               <Trash2 size={13} strokeWidth={2} />
-                              Remove
+                              Delete Criterion
                             </button>
                           </FloatingMenu>
                         </div>
@@ -1110,7 +1120,7 @@ export default function CriteriaPage() {
                           onMouseDown={() => { setOpenMenuId(null); setDeleteIndex(i); }}
                         >
                           <Trash2 size={13} strokeWidth={2} />
-                          Remove
+                          Delete Criterion
                         </button>
                       </FloatingMenu>
                     </div>

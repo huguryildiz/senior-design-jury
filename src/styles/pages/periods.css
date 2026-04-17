@@ -425,6 +425,20 @@ button.periods-cset-badge:hover svg {
    - Footer: stats + updated
    ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) and (orientation: portrait) {
+  /* ── Header reorder: title → KPI → Add → toolbar ── */
+  .periods-page {
+    display: flex;
+    flex-direction: column;
+  }
+  .periods-page > .sem-header { display: contents; }
+  .periods-page > .sem-header > .sem-header-left { order: -3; }
+  .periods-page > .scores-kpi-strip { order: -2; }
+  .periods-page > .mobile-primary-below-kpi { order: -1; }
+  /* .sem-header-actions defaults to order: 0 → falls below Add button */
+
+  /* Breathing room between the toolbar and the Period Lifecycle card */
+  .periods-page > .periods-lifecycle-guide { margin-top: 14px; }
+
   .periods-lifecycle-bar { padding: 12px 14px; }
   .periods-lifecycle-legend { flex-wrap: wrap; gap: 8px 14px; }
 

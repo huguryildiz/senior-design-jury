@@ -12,13 +12,16 @@ function csvFile(content, name = "test.csv") {
 
 describe("parseJurorsCsv", () => {
   qaTest("import.csv.juror.duplicate", async () => {
-    const csv = "Name,Affiliation\nDr. Ali Yılmaz,TEDU\nProf. Zeynep Kaya,METU";
-    // existingJurors uses juryName field (not juror_name)
+    const csv = "Name,Affiliation\nDr. Ali Yılmaz,TEDU\nProf. Zeynep Kaya,METU\nprof. zeynep kaya,METU";
+    // Row 1 matches existing (juryName field), Row 3 repeats Row 2 within the file
     const existing = [{ juryName: "Dr. Ali Yılmaz" }];
     const result = await parseJurorsCsv(csvFile(csv), existing);
     const statuses = result.rows.map((r) => r.status);
-    expect(statuses).toEqual(["skip", "ok"]);
-    expect(result.stats.duplicate).toBe(1);
+    // Row 1: matches existing → skip; Row 2: new → ok; Row 3: in-file dup of row 2 → skip
+    expect(statuses).toEqual(["skip", "ok", "skip"]);
+    expect(result.rows[0].statusLabel).toBe("Duplicate");
+    expect(result.rows[2].statusLabel).toBe("Duplicate in file");
+    expect(result.stats.duplicate).toBe(2);
     expect(result.stats.valid).toBe(1);
   });
 
@@ -42,6 +45,19 @@ describe("parseProjectsCsv", () => {
     expect(result.stats.valid).toBe(2);
     // No groupNo surfaced in row objects.
     expect(result.rows[0].groupNo).toBeUndefined();
+  });
+
+  qaTest("import.csv.project.duplicate", async () => {
+    const csv = "Title,Members\nDrone Nav,Can E.\ndrone nav,Elif S.\nIoT Hub,Zeynep K.";
+    const existing = [{ title: "IoT Hub" }];
+    const result = await parseProjectsCsv(csvFile(csv), existing);
+    const statuses = result.rows.map((r) => r.status);
+    // Row 1: new → ok; Row 2: in-file dup of row 1 → skip; Row 3: matches existing → skip
+    expect(statuses).toEqual(["ok", "skip", "skip"]);
+    expect(result.stats.duplicate).toBe(2);
+    expect(result.stats.valid).toBe(1);
+    expect(result.rows[1].statusLabel).toBe("Duplicate in file");
+    expect(result.rows[2].statusLabel).toBe("Duplicate");
   });
 
   qaTest("import.csv.project.missing_title", async () => {

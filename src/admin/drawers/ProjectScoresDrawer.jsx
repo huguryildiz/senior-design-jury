@@ -20,6 +20,8 @@ import { TeamMembersInline } from "@/shared/ui/EntityMeta";
 import JurorBadge from "@/admin/components/JurorBadge";
 import JurorStatusPill from "@/admin/components/JurorStatusPill";
 import { listPeriodCriteria } from "@/shared/api";
+import { CRITERION_COLORS } from "@/admin/criteria/criteriaFormHelpers";
+import { jurorInitials, jurorAvatarBg, jurorAvatarFg } from "@/admin/utils/jurorIdentity";
 
 function bandFor(pct) {
   if (pct >= 85) return { key: "excel", label: "Excellent" };
@@ -33,6 +35,30 @@ function stdDev(nums) {
   const mean = nums.reduce((s, v) => s + v, 0) / nums.length;
   const variance = nums.reduce((s, v) => s + (v - mean) ** 2, 0) / nums.length;
   return Math.sqrt(variance);
+}
+
+function CritBar({ label, color, val, maxScore }) {
+  const pct = val != null && maxScore > 0 ? Math.min(100, (val / maxScore) * 100) : 0;
+  return (
+    <div className="jsd-crit-bar-row">
+      <div className="jsd-crit-bar-label">{label}</div>
+      <div className="jsd-bar-track">
+        {val != null && (
+          <div className="jsd-bar-fill" style={{ width: `${pct}%`, backgroundColor: color }} />
+        )}
+      </div>
+      <div className="jsd-crit-bar-score">
+        {val != null ? (
+          <>
+            <span className="jsd-score-val" style={{ color }}>{val}</span>
+            <span className="jsd-score-max">/{maxScore}</span>
+          </>
+        ) : (
+          <span className="jsd-score-empty">—</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function ProjectScoresDrawer({
@@ -61,6 +87,14 @@ export default function ProjectScoresDrawer({
   }, [open, periodId]);
 
   const projectId = project?.id || null;
+
+  const criteriaWithColor = useMemo(() =>
+    criteria.map((c, i) => ({
+      ...c,
+      resolvedColor: c.color || CRITERION_COLORS[i % CRITERION_COLORS.length],
+    })),
+    [criteria]
+  );
 
   const memberList = useMemo(() => {
     const m = project?.members;
@@ -168,6 +202,7 @@ export default function ProjectScoresDrawer({
         comments: (s.comments || "").trim(),
         outlier: isOutlier,
         updatedAt: s.updatedAt || s.updated_at || null,
+        sheet: s,
       });
     }
     rows.sort((a, b) => {
@@ -322,21 +357,55 @@ export default function ProjectScoresDrawer({
             <div className="psd-empty psd-empty-card">No juror activity yet.</div>
           ) : (
             jurorRows.map((j) => (
-              <div key={j.jurorId} className="psd-juror-row">
-                <div className="psd-juror-main">
-                  <JurorBadge name={j.name} affiliation={j.affiliation} size="sm" />
+              <div key={j.jurorId} className="psd-juror-row jsd-proj-row">
+                <div className="jsd-group">
+                  <div
+                    style={{
+                      width: 22, height: 22, borderRadius: "50%",
+                      background: jurorAvatarBg(j.name), color: jurorAvatarFg(j.name),
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 8, fontWeight: 700, letterSpacing: "-0.3px", flexShrink: 0, lineHeight: 1,
+                    }}
+                  >
+                    {jurorInitials(j.name)}
+                  </div>
                 </div>
-                <div className="psd-juror-tags">
-                  <JurorStatusPill status={j.status === "submitted" ? "completed" : "in_progress"} />
-                  {j.outlier && (
-                    <span className="psd-tag outlier">
-                      <AlertTriangle size={10} strokeWidth={2.4} />
-                      Outlier
-                    </span>
+                <div className="jsd-proj-content">
+                  <div className="jsd-proj-header">
+                    <div className="jsd-proj-name">
+                      {j.name}
+                      {j.affiliation && (
+                        <span style={{ color: "var(--text-tertiary)", fontWeight: 400, marginLeft: 6, fontSize: 11 }}>
+                          {j.affiliation}
+                        </span>
+                      )}
+                    </div>
+                    <div className="jsd-proj-right">
+                      <JurorStatusPill status={j.status === "submitted" ? "completed" : "in_progress"} />
+                      {j.outlier && (
+                        <span className="psd-tag outlier">
+                          <AlertTriangle size={10} strokeWidth={2.4} />
+                          Outlier
+                        </span>
+                      )}
+                      <span className={`jsd-total-score ${j.total == null ? "muted" : ""}`}>
+                        {j.total != null ? j.total.toFixed(1) : "—"}
+                      </span>
+                    </div>
+                  </div>
+                  {j.sheet && criteriaWithColor.length > 0 && (
+                    <div className="jsd-crit-bars">
+                      {criteriaWithColor.map((c) => (
+                        <CritBar
+                          key={c.key}
+                          label={c.label}
+                          color={c.resolvedColor}
+                          val={j.sheet?.[c.key] ?? null}
+                          maxScore={Number(c.max_score) || 20}
+                        />
+                      ))}
+                    </div>
                   )}
-                </div>
-                <div className={`psd-juror-score ${j.total == null ? "muted" : ""}`}>
-                  {j.total != null ? j.total.toFixed(1) : "—"}
                 </div>
               </div>
             ))

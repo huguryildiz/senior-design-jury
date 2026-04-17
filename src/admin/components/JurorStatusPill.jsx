@@ -1,52 +1,28 @@
 // src/admin/components/JurorStatusPill.jsx
-// Shared status pill for juror workflow states.
+// Juror workflow progress pill: Completed / In Progress / Editing / Ready to Submit / Not Started
 // Uses global .pill classes from status-pills.css.
 
 import {
-  CheckCircle2Icon,
+  CircleCheckIcon,
   SendIcon,
-  Clock3Icon,
-  PencilIcon,
-  CircleIcon,
+  ClockIcon,
+  PencilLineIcon,
+  CircleSlashIcon,
 } from "@/shared/ui/Icons";
 
-export default function JurorStatusPill({ status }) {
-  if (status === "completed") {
-    return (
-      <span className="pill pill-completed">
-        <CheckCircle2Icon size={12} />
-        Completed
-      </span>
-    );
-  }
-  if (status === "ready_to_submit") {
-    return (
-      <span className="pill pill-ready">
-        <SendIcon size={12} />
-        Ready to Submit
-      </span>
-    );
-  }
-  if (status === "in_progress") {
-    return (
-      <span className="pill pill-progress">
-        <Clock3Icon size={12} />
-        In Progress
-      </span>
-    );
-  }
-  if (status === "editing") {
-    return (
-      <span className="pill pill-editing">
-        <PencilIcon size={12} />
-        Editing
-      </span>
-    );
-  }
+const PILL_CONFIG = {
+  completed:       { cls: "pill-completed",   Icon: CircleCheckIcon, label: "Completed" },
+  ready_to_submit: { cls: "pill-ready",        Icon: SendIcon,        label: "Ready to Submit" },
+  in_progress:     { cls: "pill-progress",     Icon: ClockIcon,       label: "In Progress" },
+  editing:         { cls: "pill-editing",      Icon: PencilLineIcon,  label: "Editing" },
+};
+
+export default function JurorStatusPill({ status, className = "" }) {
+  const cfg = PILL_CONFIG[status] ?? { cls: "pill-not-started", Icon: CircleSlashIcon, label: "Not Started" };
   return (
-    <span className="pill pill-not-started">
-      <CircleIcon size={12} />
-      Not Started
+    <span className={`pill ${cfg.cls}${className ? ` ${className}` : ""}`}>
+      <cfg.Icon size={12} />
+      {cfg.label}
     </span>
   );
 }

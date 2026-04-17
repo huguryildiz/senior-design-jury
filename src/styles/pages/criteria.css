@@ -1407,6 +1407,23 @@ body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;b
   #drawer-edit-single-criterion .crt-save-btn { min-height: 34px; padding: 0 16px; white-space: nowrap; }
 }
 
+/* ── Mobile portrait: title → Add → toolbar (match Jurors/Projects pattern) ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  #page-criteria {
+    display: flex;
+    flex-direction: column;
+  }
+  #page-criteria > .crt-header { display: contents; }
+  #page-criteria > * { order: 20; }
+  #page-criteria > .crt-header > .crt-header-left { order: -4; }
+  #page-criteria > .mobile-primary-below-kpi { order: -1; }
+  /* .crt-header-actions (Filter + Export toolbar) stays at order 0 — below Add button */
+  #page-criteria > .crt-header > .crt-header-actions { order: 0; margin-bottom: 12px; }
+  #page-criteria > .filter-panel { order: 1; }
+  #page-criteria > .export-panel { order: 2; }
+  #page-criteria > .lock-notice { order: 3; }
+}
+
 /* ── Page action row: portrait ─────────────────────────────────── */
 @media (max-width: 768px) and (orientation: portrait) {
   #page-criteria .crt-chips-row {
@@ -1576,6 +1593,16 @@ body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;b
 
   .crt-add-btn {
     justify-content: center;
+    width: 100%;
+    min-height: 36px;
+    order: 0 !important;
+  }
+
+  .mobile-toolbar-stack .crt-lock-badge {
+    width: 100%;
+    justify-content: center;
+    min-height: 36px;
+    order: 0 !important;
   }
 
   .crt-clone-header-btn {

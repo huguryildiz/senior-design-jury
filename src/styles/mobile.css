@@ -288,6 +288,23 @@ html {
   .mobile-toolbar-stack .mobile-toolbar-export { order: 3; }
   .mobile-toolbar-stack .mobile-toolbar-secondary { order: 4; }
 
+  /* Global: hide in-header primary Add button; rendered below KPI strip instead */
+  .mobile-toolbar-stack .mobile-toolbar-primary { display: none !important; }
+}
+
+/* Global mobile-only primary action rendered below the KPI strip */
+.mobile-primary-below-kpi { display: none; }
+@media (max-width: 768px) and (orientation: portrait) {
+  .mobile-primary-below-kpi {
+    display: flex !important;
+    width: 100%;
+    min-height: 38px;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 8px;
+  }
+
   .mobile-toolbar-stack .btn {
     width: 100%;
     min-height: 36px;
@@ -299,6 +316,11 @@ html {
     width: auto;
     justify-self: stretch;
   }
+}
+
+/* ── Global: gap between page description and KPI strip ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  .scores-kpi-strip { margin-top: 12px; }
 }
 
 /* ── Global justified text for alerts and cards on mobile ── */

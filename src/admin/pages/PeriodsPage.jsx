@@ -53,6 +53,7 @@ import {
   ChevronUp,
   Workflow,
   XCircle,
+  Search,
 } from "lucide-react";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import { useFloating } from "@/shared/hooks/useFloating";
@@ -535,6 +536,7 @@ export default function PeriodsPage() {
   const [readinessFilter, setReadinessFilter] = useState("all");
   const [hasProjectsFilter, setHasProjectsFilter] = useState("all");
   const [hasJurorsFilter, setHasJurorsFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("start_date");
   const [sortDir, setSortDir] = useState("desc");
 
@@ -655,9 +657,16 @@ export default function PeriodsPage() {
   const filteredList = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
+    const q = search.trim().toLowerCase();
     return periodList.filter((p) => {
       const state = getState(p);
       const stats = periodStats[p.id] || {};
+
+      // Search (name)
+      if (q) {
+        const name = String(p.name || "").toLowerCase();
+        if (!name.includes(q)) return false;
+      }
 
       // Status
       if (statusFilter !== "all") {
@@ -716,7 +725,7 @@ export default function PeriodsPage() {
 
       return true;
     });
-  }, [periodList, statusFilter, dateRangeFilter, frameworkFilter, progressFilter, readinessFilter, hasProjectsFilter, hasJurorsFilter, periodStats, periodReadiness]);
+  }, [periodList, search, statusFilter, dateRangeFilter, frameworkFilter, progressFilter, readinessFilter, hasProjectsFilter, hasJurorsFilter, periodStats, periodReadiness]);
 
   const sortedFilteredList = useMemo(() => {
     const statusRank = { draft_incomplete: 1, draft_ready: 2, published: 3, live: 4, closed: 5 };
@@ -972,6 +981,16 @@ export default function PeriodsPage() {
           <div className="page-desc">Manage evaluation periods, active sessions, and locked historical records.</div>
         </div>
         <div className="sem-header-actions mobile-toolbar-stack">
+          <div className="jurors-search-wrap mobile-toolbar-search">
+            <Search size={14} strokeWidth={2} style={{ opacity: 0.45 }} />
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Search periods..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <FilterButton
             className="mobile-toolbar-filter"
             activeCount={activeFilterCount}
@@ -982,7 +1001,7 @@ export default function PeriodsPage() {
             <Download size={14} strokeWidth={2} style={{ verticalAlign: "-1px" }} />
             {" "}Export
           </button>
-          <button className="btn btn-primary btn-sm mobile-toolbar-secondary" onClick={openAddDrawer}>
+          <button className="btn btn-primary btn-sm mobile-toolbar-primary" onClick={openAddDrawer}>
             <Plus size={13} strokeWidth={2.2} />
             Add Period
           </button>
@@ -1206,6 +1225,10 @@ export default function PeriodsPage() {
           <div className="scores-kpi-item-label">Closed</div>
         </div>
       </div>
+      <button className="btn btn-primary btn-sm mobile-primary-below-kpi" onClick={openAddDrawer}>
+        <Plus size={13} strokeWidth={2.2} />
+        Add Period
+      </button>
       {/* Lifecycle Guide — explanatory block */}
       <LifecycleGuide />
       {/* Lifecycle Bar — distribution of current periods */}
@@ -1273,9 +1296,11 @@ export default function PeriodsPage() {
             ) : filteredList.length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: "center", padding: "48px 24px" }}>
-                  {activeFilterCount > 0 ? (
+                  {activeFilterCount > 0 || search.trim() ? (
                     <div style={{ color: "var(--text-tertiary)" }}>
-                      No periods match the current filter.
+                      {search.trim() && activeFilterCount === 0
+                        ? "No periods match your search."
+                        : "No periods match the current filter."}
                     </div>
                   ) : (
                     <div style={{ display: "flex", justifyContent: "center" }}>
@@ -1543,7 +1568,7 @@ export default function PeriodsPage() {
                       {/* Edit */}
                       <button className="floating-menu-item" onMouseDown={() => { setOpenMenuId(null); openEditDrawer(period); }}>
                         <Pencil size={13} />
-                        Edit Evaluation Period
+                        Edit Period
                       </button>
 
                       {/* Duplicate */}

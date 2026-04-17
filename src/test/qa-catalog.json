@@ -3805,8 +3805,8 @@
     "module": "Import",
     "area": "CSV Parser — Jurors",
     "story": "Duplicate Detection",
-    "scenario": "marks existing juror name as duplicate regardless of juryName vs juror_name field",
-    "whyItMatters": "Juror objects from the hook can carry juryName instead of juror_name; missing this causes all rows to appear Valid.",
+    "scenario": "marks existing juror name as duplicate, and within-file repeats as duplicate-in-file",
+    "whyItMatters": "Juror objects from the hook can carry juryName instead of juror_name; missing this causes all rows to appear Valid. Within-file detection catches repeated names before hitting the DB.",
     "risk": "Duplicate jurors silently imported, DB constraint error at write time.",
     "coverageStrength": "Strong",
     "severity": "critical"
@@ -3832,6 +3832,17 @@
     "risk": "Blank-title rows slip through and create untitled projects.",
     "coverageStrength": "Medium",
     "severity": "normal"
+  },
+  {
+    "id": "import.csv.project.duplicate",
+    "module": "Import",
+    "area": "CSV Parser — Projects",
+    "story": "Duplicate Detection",
+    "scenario": "marks title matching an existing project in the period, and within-file repeats, as duplicate",
+    "whyItMatters": "Without dedupe, re-importing a CSV silently creates duplicate project rows in the same period.",
+    "risk": "Duplicate projects pollute rankings, break juror assignments, and confuse exports.",
+    "coverageStrength": "Strong",
+    "severity": "critical"
   },
   {
     "id": "import.csv.juror.error",

@@ -1,5 +1,23 @@
 /* Projects page — Phase 7 */
 
+/* ─── Mobile portrait: title → KPI → Add → toolbar (match Jurors page) ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  #page-projects {
+    display: flex;
+    flex-direction: column;
+  }
+  /* Flatten sem-header so its children become direct children of #page-projects */
+  #page-projects > .sem-header { display: contents; }
+  #page-projects > .sem-header > .sem-header-left { order: -3; }
+  #page-projects > .scores-kpi-strip { order: -2; }
+  #page-projects > .mobile-primary-below-kpi { order: -1; }
+  /* .sem-header-actions (toolbar) defaults to order: 0 → falls below Add button */
+
+  /* Breathing room between last toolbar button (Import) and the first project card */
+  #page-projects > .table-wrap { margin-top: 14px; }
+}
+
+
 /* ─── Desktop: override layout.css max-content so table fits viewport ── */
 @media (min-width: 769px) {
   #page-projects .table-wrap {
@@ -148,6 +166,8 @@
     font-size: 14px;
     font-weight: 700;
     color: var(--ring, var(--text-tertiary));
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace);
+    font-variant-numeric: tabular-nums;
   }
   #projects-main-table .mobile-rank-ring-lbl {
     font-size: 7px;
@@ -156,6 +176,7 @@
     letter-spacing: 0.5px;
     margin-top: 1px;
     font-weight: 600;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace);
   }
 
   /* Mobile: hide plain-text line, keep JurorBadge advisor block */
@@ -353,6 +374,8 @@
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+  align-items: center;
+  min-height: 38px;
 }
 .filter-toggle-btn {
   padding: 4px 11px;
@@ -376,21 +399,7 @@
   color: #fff;
 }
 
-/* ─── Filter panel rows ───────────────────────────────────── */
-.filter-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-.filter-row:last-of-type { margin-bottom: 0; }
-.filter-row-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-tertiary);
-}
+/* ─── Filter clear link ───────────────────────────────────── */
 .filter-clear-link {
   display: inline-block;
   margin-top: 16px;
