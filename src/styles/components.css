@@ -5362,4 +5362,10 @@ body:not(.dark-mode) .vera-es-pending-wrap {
 .reviews-table tbody tr.is-selected,
 .acc-table tbody tr.acc-row.is-selected {
   border-color: var(--accent);
+  /* Inset ring ensures the accent frame is visible even when the
+     host uses `overflow: hidden` + `border-radius` (a combination
+     that can clip a 1px bottom border on some retina / dark-mode
+     renderers). The inset shadow is painted above inner content
+     but below descendant backgrounds, so nested panels stay intact. */
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
