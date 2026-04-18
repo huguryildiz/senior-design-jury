@@ -37,7 +37,7 @@ const FULL_ROW = {
 
 describe("ReviewMobileCard", () => {
   qaTest("reviews.mobile_card.01", () => {
-    const { container } = render(<ReviewMobileCard row={FULL_ROW} criteria={CRITERIA_4} />);
+    render(<ReviewMobileCard row={FULL_ROW} criteria={CRITERIA_4} />);
     // Score values appear in cells
     expect(screen.getByText("25")).toBeTruthy();
     expect(screen.getByText("28")).toBeTruthy();
