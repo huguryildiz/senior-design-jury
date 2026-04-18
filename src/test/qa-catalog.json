@@ -4488,5 +4488,38 @@
     "risk": "A zero-filled arc implies the juror scored zero, which is wrong.",
     "coverageStrength": "Strong",
     "severity": "normal"
+  },
+  {
+    "id": "heatmap.mobile.card.01",
+    "module": "Heatmap / Mobile",
+    "area": "Heatmap — Mobile Card",
+    "story": "Card renders collapsed by default",
+    "scenario": "on mount, project rows are hidden and the summary strip with project count is visible",
+    "whyItMatters": "Default collapsed state keeps long juror lists scannable on phones.",
+    "risk": "Default-expanded would overwhelm the viewport with 10+ rows per juror.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "heatmap.mobile.card.02",
+    "module": "Heatmap / Mobile",
+    "area": "Heatmap — Mobile Card",
+    "story": "Tapping the header toggles expansion",
+    "scenario": "clicking the card's header toggles aria-expanded and reveals or hides the project rows",
+    "whyItMatters": "Expand/collapse is the only way to see per-project scores; the interaction must work reliably.",
+    "risk": "Broken toggle would strand all detail views on mobile.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "heatmap.mobile.card.03",
+    "module": "Heatmap / Mobile",
+    "area": "Heatmap — Mobile Card",
+    "story": "Partial cells render the ! badge",
+    "scenario": "an expanded row whose cell is partial shows the score and a ! flag badge",
+    "whyItMatters": "Partial scores must be visually distinguished so admins don't misread them as final.",
+    "risk": "Losing the partial flag hides incomplete evaluations.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
   }
 ]
