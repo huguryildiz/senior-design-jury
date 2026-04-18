@@ -14,6 +14,7 @@ import { StudentNames } from "@/shared/ui/EntityMeta";
 import CustomSelect from "@/shared/ui/CustomSelect";
 import { FilterButton } from "../../shared/ui/FilterButton.jsx";
 import Pagination from "@/shared/ui/Pagination";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 
 // ── Competition ranking ──────────────────────────────────────────
 // Tied scores share the same rank; next rank skips (1,1,3,4,…).
@@ -193,6 +194,7 @@ export default function RankingsPage() {
   } = useAdminContext();
   const _toast = useToast();
   const { activeOrganization } = useAuth();
+  const rowsScopeRef = useCardSelection();
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -845,7 +847,7 @@ export default function RankingsPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={rowsScopeRef}>
                 {loading && (
                   <tr>
                     <td
@@ -864,7 +866,7 @@ export default function RankingsPage() {
                     const members = proj.members || proj.students || "";
 
                     return (
-                      <tr key={proj.id} className={`mcard${rank <= 3 ? " ranking-highlight" : ""}`}>
+                      <tr key={proj.id} data-card-selectable="" className={`mcard${rank <= 3 ? " ranking-highlight" : ""}`}>
                         <td className="col-rank" data-label="Rank">
                           <MedalCell rank={rank} />
                         </td>

@@ -1986,26 +1986,7 @@ body:not(.dark-mode) .crt-save-bar{background:#f6f8fb;border-top-color:#d8dee8;b
   letter-spacing: 0.2px;
 }
 
-.crt-mobile-card-menu-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  border-radius: 7px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  transition: background .13s, color .13s;
-  flex-shrink: 0;
-  padding: 0;
-}
-
-.crt-mobile-card-menu-btn:hover {
-  background: var(--surface-1);
-  color: var(--text-primary);
-}
+/* Mobile card kebab uses global .row-action-btn (components.css). */
 
 /* ── Section label (Rubric Bands / Outcomes) ─────────────────── */
 

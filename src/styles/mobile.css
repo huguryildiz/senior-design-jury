@@ -424,32 +424,11 @@ body:not(.dark-mode) :is(
     -webkit-touch-callout: none;
   }
 
-  /* Cards are not tappable — kebab menu is the sole row entrypoint.
-     No :hover, :active, or :focus-visible accents (mobile Safari leaves
-     :hover stuck after a tap, which was creating persistent blue rings).
-     Only .is-active (or legacy .menu-open / .row-menu-open) indicates
-     the kebab is open. */
-  #projects-main-table tbody tr.menu-open,
-  #projects-main-table tbody tr.row-menu-open,
-  #projects-main-table tbody tr.is-active,
-  #jurors-main-table tbody tr.menu-open,
-  #jurors-main-table tbody tr.row-menu-open,
-  #jurors-main-table tbody tr.is-active,
-  .sem-table tbody tr.menu-open,
-  .sem-table tbody tr.is-active,
-  .organizations-table tbody tr.menu-open,
-  .organizations-table tbody tr.is-active,
-  .ranking-table tbody tr.menu-open,
-  .ranking-table tbody tr.is-active,
-  .reviews-table tbody tr.menu-open,
-  .crt-table tbody tr.menu-open,
-  .entry-history-table tbody tr.menu-open,
-  .pin-lock-table tbody tr.menu-open,
-  .overview-top-projects-table tbody tr.menu-open,
-  .acc-table tbody tr.acc-row.menu-open {
-    border-color: var(--accent);
-    box-shadow: var(--card-i-shadow-open);
-  }
+  /* Row highlight is driven globally by .is-selected
+     (components.css) via the useCardSelection hook. See
+     docs/superpowers/specs/2026-04-18-mobile-card-tap-behavior-design.md.
+     Legacy .menu-open / .row-menu-open / row-level .is-active
+     classes are deprecated — do not reintroduce them here. */
 }
 
 /* ───────────────────────────────────────────────────────────

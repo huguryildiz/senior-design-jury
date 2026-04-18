@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import CustomSelect from "@/shared/ui/CustomSelect";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import { sortMobileJurors, MOBILE_SORT_KEYS } from "./mobileSort.js";
 import JurorHeatmapCard from "./JurorHeatmapCard.jsx";
 import ProjectAveragesCard from "./ProjectAveragesCard.jsx";
@@ -40,6 +41,7 @@ export default function HeatmapMobileList({
   getCellDisplay,
 }) {
   const [sortKey, setSortKey] = useState("avg_desc");
+  const cardListRef = useCardSelection();
 
   const rowAvgMap = useMemo(() => {
     const m = new Map();
@@ -69,7 +71,7 @@ export default function HeatmapMobileList({
       {sortedJurors.length === 0 ? (
         <div className="hm-card hm-card-empty">No jurors to display.</div>
       ) : (
-        <div className="hm-card-list">
+        <div className="hm-card-list" ref={cardListRef}>
           {sortedJurors.map(juror => {
             const originalIdx = visibleJurors.findIndex(j => j.key === juror.key);
             const rows = buildRows(juror, groups, lookup, activeTab, activeCriteria, getCellDisplay);

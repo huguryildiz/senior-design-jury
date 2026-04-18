@@ -4609,5 +4609,49 @@
     "risk": "Losing the partial flag hides incomplete evaluations.",
     "coverageStrength": "Strong",
     "severity": "normal"
+  },
+  {
+    "id": "use-card-selection.selects-target",
+    "module": "Shared / Hooks",
+    "area": "useCardSelection — Single-Selection",
+    "story": "Tapping a card adds .is-selected to it",
+    "scenario": "pointerdown on a selectable card inside the scope adds the .is-selected class to that card",
+    "whyItMatters": "Selection is the single source of truth for the admin mobile card tap model; every selected card must gain the class.",
+    "risk": "If the class is not applied the visual border highlight never shows and users lose the 'which row did I touch' anchor.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "use-card-selection.deselects-siblings",
+    "module": "Shared / Hooks",
+    "area": "useCardSelection — Single-Selection",
+    "story": "Selecting one card deselects its siblings",
+    "scenario": "pointerdown on a second selectable card removes .is-selected from the previously selected sibling",
+    "whyItMatters": "Only one card should be selected at a time so the visual model remains unambiguous across long lists.",
+    "risk": "Multiple simultaneously selected cards would produce a trail of highlighted rows and confuse the user.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "use-card-selection.skips-inline-controls",
+    "module": "Shared / Hooks",
+    "area": "useCardSelection — Inline Controls",
+    "story": "Taps on inline controls do not select the card",
+    "scenario": "pointerdown on an element with .row-inline-control does not add .is-selected to the enclosing card",
+    "whyItMatters": "Inline controls (comment toggle, nav badges, inline editors) must act independently of the row selection state.",
+    "risk": "Inline taps selecting the row would hijack the intended action and confuse the interaction model.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "use-card-selection.toggles-same-card",
+    "module": "Shared / Hooks",
+    "area": "useCardSelection — Toggle",
+    "story": "Tapping a selected card a second time deselects it",
+    "scenario": "pointerdown on the currently selected card removes its .is-selected class",
+    "whyItMatters": "A toggle behavior lets users clear the selection without needing a separate 'clear' affordance.",
+    "risk": "Without toggle the selection would stick until another card is tapped, preventing clean clears.",
+    "coverageStrength": "Medium",
+    "severity": "normal"
   }
 ]

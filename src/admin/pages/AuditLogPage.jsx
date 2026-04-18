@@ -17,6 +17,7 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import { getActorInfo, formatActionLabel, formatActionDetail, formatSentence, formatDiffChips, detectAnomalies, CATEGORY_META, SEVERITY_META, groupBulkEvents, formatEventMeta, addDaySeparators } from "../utils/auditUtils";
 import { AUDIT_TABLE_COLUMNS } from "../utils/auditColumns";
 import AuditEventDrawer from "../components/AuditEventDrawer";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import Pagination from "@/shared/ui/Pagination";
 
 // ── Chip helpers ──────────────────────────────────────────────
@@ -151,6 +152,7 @@ export default function AuditLogPage() {
   const [sortKey, setSortKey] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
   const [selectedLog, setSelectedLog] = useState(null);
+  const auditScopeRef = useCardSelection();
   const [savedView, setSavedView] = useState("All activity");
 
   const [typeFilter, setTypeFilter] = useState("");
@@ -793,7 +795,7 @@ export default function AuditLogPage() {
           </div>
 
           {/* Mobile portrait card list */}
-          <div className="audit-card-list">
+          <div className="audit-card-list" ref={auditScopeRef}>
             {showAuditSkeleton && Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="mcard amc">
                 <div className="amc-body">
@@ -832,7 +834,8 @@ export default function AuditLogPage() {
               return (
                 <div
                   key={log.id}
-                  className={["mcard", "amc", isWarning ? "amc-warning" : "", isSelected ? "is-active" : ""].filter(Boolean).join(" ")}
+                  data-card-selectable=""
+                  className={["mcard", "amc", isWarning ? "amc-warning" : ""].filter(Boolean).join(" ")}
                   data-cat={log.category || undefined}
                   data-sev={(log.severity === "high" || log.severity === "critical") ? log.severity : undefined}
                   onClick={() => setSelectedLog(isSelected ? null : log)}

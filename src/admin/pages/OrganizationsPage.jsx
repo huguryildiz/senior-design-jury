@@ -9,6 +9,7 @@ import { useAuth } from "@/auth";
 import { useToast } from "@/shared/hooks/useToast";
 import FbAlert from "@/shared/ui/FbAlert";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import Drawer from "@/shared/ui/Drawer";
 import Modal from "@/shared/ui/Modal";
 import { useManageOrganizations } from "../hooks/useManageOrganizations";
@@ -190,6 +191,7 @@ export default function OrganizationsPage() {
   const _toast = useToast();
   const setMessage = useCallback((msg) => { if (msg) _toast.success(msg); }, [_toast]);
   const noop = useCallback(() => {}, []);
+  const orgsScopeRef = useCardSelection();
 
   // ── Guard: super admin only ──────────────────────────────────
   if (!isSuper) {
@@ -1445,7 +1447,7 @@ export default function OrganizationsPage() {
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={orgsScopeRef}>
                 {sortedFilteredOrgs.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-sm text-muted" style={{ textAlign: "center", padding: "18px 0" }}>
@@ -1461,7 +1463,7 @@ export default function OrganizationsPage() {
                     return (
                       <tr
                         key={org.id}
-                        className={openOrgActionMenuId === org.id ? "menu-open" : ""}
+                        data-card-selectable=""
                         data-initials={initials}
                         style={{ "--org-hue": hue }}
                       >
@@ -1479,7 +1481,7 @@ export default function OrganizationsPage() {
                         <td data-label="Actions" className="text-right">
                           <div style={{ display: "inline-flex" }}>
                             <FloatingMenu
-                              trigger={<button className="juror-action-btn" title="Actions" onClick={(e) => { e.stopPropagation(); setOpenOrgActionMenuId((prev) => (prev === org.id ? null : org.id)); }}><MoreVertical size={14} /></button>}
+                              trigger={<button className="row-action-btn" title="Actions" onClick={(e) => { e.stopPropagation(); setOpenOrgActionMenuId((prev) => (prev === org.id ? null : org.id)); }}><MoreVertical size={18} strokeWidth={2} /></button>}
                               isOpen={openOrgActionMenuId === org.id}
                               onClose={() => setOpenOrgActionMenuId(null)}
                               placement="top-end"

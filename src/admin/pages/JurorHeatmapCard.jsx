@@ -83,7 +83,10 @@ export default function JurorHeatmapCard({
   const label = expanded ? "Collapse juror card" : "Expand juror card";
 
   return (
-    <article className={`hm-card${expanded ? " is-expanded" : ""}`}>
+    <article
+      data-card-selectable=""
+      className={`hm-card${expanded ? " is-expanded" : ""}`}
+    >
       <button
         type="button"
         className="hm-card-toggle"

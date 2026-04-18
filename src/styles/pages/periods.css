@@ -409,10 +409,10 @@ button.periods-cset-badge:hover svg {
 .sem-stat-label { font-size: 10.5px; color: var(--text-tertiary); font-weight: 400; font-family: var(--font) }
 .sem-updated { color: inherit }
 
-/* ─── Row action button + dropdown ───────────────────────── */
+/* ─── Row action dropdown ────────────────────────────────────
+   Trigger button styles moved to global .row-action-btn in
+   components.css (single source of truth across all admin pages). */
 .sem-action-wrap { position: relative }
-.sem-action-btn { padding: 4px 6px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--text-tertiary); font-size: 12px; transition: all .12s }
-.sem-action-btn:hover { background: var(--surface-1); border-color: var(--border); color: var(--text-primary) }
 .sem-action-menu { display: none; position: absolute; top: calc(100% + 6px); right: 0; min-width: 220px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06); z-index: 80; padding: 5px; animation: dropdown-in .18s cubic-bezier(.21,1.02,.73,1) }
 .sem-action-menu.open { display: block }
 .sem-action-menu-label { padding: 6px 11px 4px; font-size: 10px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.6px }
@@ -741,18 +741,13 @@ button.periods-cset-badge:hover svg {
    Loaded AFTER mobile.css so these win on coarse pointer. ─────────── */
 @media (hover: none), (pointer: coarse) {
   .periods-page .sem-table tbody tr,
-  .periods-page .sem-table tbody tr:hover,
-  .periods-page .sem-table tbody tr.menu-open,
-  .periods-page .sem-table tbody tr.is-active {
+  .periods-page .sem-table tbody tr:hover {
     background: transparent !important;
     box-shadow: none !important;
   }
-  .periods-page .sem-action-btn:hover,
-  .periods-page .sem-action-btn:focus {
-    background: transparent;
-    border-color: transparent;
-    color: var(--text-tertiary);
-  }
+  /* Legacy .menu-open / .is-active row highlight removed — global
+     .is-selected rule (components.css) and the .row-action-btn base
+     styles now cover both. */
 }
 
 /* ─── Landscape compact ───────────────────────────────────────

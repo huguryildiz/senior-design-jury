@@ -42,6 +42,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { formatDateTime as fmtDate, formatDate } from "@/shared/lib/dateUtils";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 
 
 function fmtExpiry(ts) {
@@ -176,6 +177,7 @@ export default function EntryControlPage() {
     allJurors = [],
     isDemoMode = false,
   } = useAdminContext();
+  const historyScopeRef = useCardSelection();
   const periodId = selectedPeriodId;
   const periodName = selectedPeriod?.name || selectedPeriod?.period_name || selectedPeriod?.semester_name || "";
 
@@ -1127,10 +1129,10 @@ export default function EntryControlPage() {
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={historyScopeRef}>
               {hasTokenHistory ? (
                 sortedTokenHistory.map((token) => (
-                  <tr key={token.id} style={token.is_active ? { background: "var(--accent-soft)" } : undefined}>
+                  <tr key={token.id} data-card-selectable="" style={token.is_active ? { background: "var(--accent-soft)" } : undefined}>
                     <td className="mono" data-label="Reference ID" style={token.is_active ? { fontWeight: 700, color: "var(--accent)" } : {}}>
                       {token.access_id}
                     </td>

@@ -8,6 +8,7 @@ import { useManagePeriods } from "../hooks/useManagePeriods";
 import { useManageProjects } from "../hooks/useManageProjects";
 import { useManageJurors } from "../hooks/useManageJurors";
 import { useAdminResponsiveTableMode } from "../hooks/useAdminResponsiveTableMode";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import PinResultModal from "../modals/PinResultModal";
 import RemoveJurorModal from "../modals/RemoveJurorModal";
 import ResetPinModal from "../modals/ResetPinModal";
@@ -244,6 +245,7 @@ export default function JurorsPage() {
 
   const [openMenuId, setOpenMenuId] = useState(null);
   const { shouldUseCardLayout } = useAdminResponsiveTableMode();
+  const rowsScopeRef = useCardSelection();
 
   // Import CSV state
   const [importOpen, setImportOpen] = useState(false);
@@ -770,7 +772,7 @@ export default function JurorsPage() {
               <th style={{ textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
-          <tbody className={openMenuId ? "has-open-menu" : ""}>
+          <tbody ref={rowsScopeRef} className={openMenuId ? "has-open-menu" : ""}>
             {loadingCount > 0 && filteredList.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
@@ -940,14 +942,14 @@ export default function JurorsPage() {
                       placement="bottom-end"
                       trigger={
                         <button
-                          className="juror-action-btn"
+                          className="row-action-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenMenuId((prev) => (prev === jid ? null : jid));
                           }}
                           title="Actions"
                         >
-                          <MoreVertical size={14} />
+                          <MoreVertical size={18} strokeWidth={2} />
                         </button>
                       }
                     >
@@ -1006,7 +1008,7 @@ export default function JurorsPage() {
                   </td>
                   {/* Mobile card — hidden on desktop, shown at ≤768px portrait */}
                   <td className="col-mobile-card">
-                    <div className={`mcard jc${openMenuId === jid ? " is-active" : ""}`}>
+                    <div className="mcard jc" data-card-selectable="">
                       {/* ── Header ── */}
                       <div className="jc-header">
                         <div
@@ -1028,13 +1030,13 @@ export default function JurorsPage() {
                           placement="bottom-end"
                           trigger={
                             <button
-                              className="jc-kebab"
+                              className="row-action-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenMenuId((prev) => (prev === jid ? null : jid));
                               }}
                             >
-                              <MoreVertical size={15} strokeWidth={2} />
+                              <MoreVertical size={18} strokeWidth={2} />
                             </button>
                           }
                         >

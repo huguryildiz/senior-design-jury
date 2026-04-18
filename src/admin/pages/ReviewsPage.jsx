@@ -21,6 +21,7 @@ import { useAuth } from "@/auth";
 import SendReportModal from "@/admin/modals/SendReportModal";
 import { FilterButton } from "@/shared/ui/FilterButton.jsx";
 import Pagination from "@/shared/ui/Pagination";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import {
   buildProjectMetaMap,
   buildJurorEditMap,
@@ -221,6 +222,7 @@ export default function ReviewsPage() {
   } = useAdminContext();
   const jurors = allJurors;
   const filters = useReviewsFilters(criteriaConfig);
+  const mobileScopeRef = useCardSelection();
 
   const {
     filterJuror, setFilterJuror,
@@ -709,7 +711,7 @@ export default function ReviewsPage() {
       />
       {/* Table / Mobile card list */}
       {isMobilePortrait ? (
-        <div className="reviews-mobile-list">
+        <div className="reviews-mobile-list" ref={mobileScopeRef}>
           {pageRows.length === 0 ? (
             <div className="reviews-empty-row">No reviews match the current filters.</div>
           ) : (

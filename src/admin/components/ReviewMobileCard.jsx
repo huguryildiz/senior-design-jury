@@ -100,7 +100,10 @@ export default function ReviewMobileCard({ row, criteria }) {
   const hasSubmittedTs = submittedTs && submittedTs !== "—";
 
   return (
-    <div className={`rmc-card${isPartial ? " rmc-card--partial" : ""}`}>
+    <div
+      data-card-selectable=""
+      className={`rmc-card${isPartial ? " rmc-card--partial" : ""}`}
+    >
       <div className="rmc-header">
         <div className="rmc-juror">
           <div
@@ -158,7 +161,7 @@ export default function ReviewMobileCard({ row, criteria }) {
           <div className="rmc-footer-left">
             {row.comments && (
               <button
-                className={`rmc-comment-btn${commentOpen ? " rmc-comment-btn--active" : ""}`}
+                className={`rmc-comment-btn row-inline-control${commentOpen ? " rmc-comment-btn--active" : ""}`}
                 onClick={() => setCommentOpen((v) => !v)}
                 aria-label="Toggle comment"
               >

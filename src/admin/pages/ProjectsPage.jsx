@@ -25,6 +25,7 @@ import { avatarGradient, initials } from "@/shared/ui/avatarColor";
 import JurorBadge from "../components/JurorBadge";
 import PremiumTooltip from "@/shared/ui/PremiumTooltip";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import { formatDateTime as formatFull } from "@/shared/lib/dateUtils";
 import "../../styles/pages/projects.css";
 
@@ -131,6 +132,7 @@ export default function ProjectsPage() {
   } = useAdminContext();
   const _toast = useToast();
   const { activeOrganization } = useAuth();
+  const rowsScopeRef = useCardSelection();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
   const [panelError, setPanelErrorState] = useState("");
   const setPanelError = useCallback((_panel, msg) => setPanelErrorState(msg || ""), []);
@@ -699,7 +701,7 @@ export default function ProjectsPage() {
               <th style={{ width: "8%", textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={rowsScopeRef}>
             {loadingCount > 0 && filteredList.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
@@ -823,7 +825,7 @@ export default function ProjectsPage() {
                 </td>
               </tr>
             ) : pagedList.map((project) => (
-              <tr key={project.id} className={`mcard${openMenuId === project.id ? " is-active" : ""}`}>
+              <tr key={project.id} data-card-selectable="" className="mcard">
                 <td className="text-center col-no" data-label="No">
                   <span className="mobile-rank-ring" aria-hidden="true">
                     <span
@@ -907,14 +909,14 @@ export default function ProjectsPage() {
                     placement="bottom-end"
                     trigger={
                       <button
-                        className="juror-action-btn"
+                        className="row-action-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenMenuId((prev) => (prev === project.id ? null : project.id));
                         }}
                         title="Actions"
                       >
-                        <MoreVertical size={14} />
+                        <MoreVertical size={18} strokeWidth={2} />
                       </button>
                     }
                   >

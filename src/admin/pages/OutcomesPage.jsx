@@ -11,6 +11,7 @@ import { useAdminContext } from "../hooks/useAdminContext";
 import { usePeriodOutcomes } from "../hooks/usePeriodOutcomes";
 import { useToast } from "@/shared/hooks/useToast";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import AddOutcomeDrawer from "../drawers/AddOutcomeDrawer";
 import OutcomeDetailDrawer from "../drawers/OutcomeDetailDrawer";
 import Modal from "@/shared/ui/Modal";
@@ -107,6 +108,7 @@ function OutcomeRow({
 
   return (
     <tr
+      data-card-selectable=""
       className="acc-row"
       onClick={() => onEdit(outcome)}
       style={{ cursor: "pointer" }}
@@ -181,10 +183,10 @@ function OutcomeRow({
           <FloatingMenu
             trigger={
               <button
-                className="juror-action-btn"
+                className="row-action-btn"
                 onClick={(e) => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : menuKey); }}
               >
-                <MoreVertical size={14} />
+                <MoreVertical size={18} strokeWidth={2} />
               </button>
             }
             isOpen={isMenuOpen}
@@ -283,6 +285,7 @@ export default function OutcomesPage() {
 
   const [sortOrder, setSortOrder] = useState("asc");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const rowsScopeRef = useCardSelection();
   const [exportOpen, setExportOpen] = useState(false);
   const [pageSize, setPageSize] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1098,7 +1101,7 @@ export default function OutcomesPage() {
                       <th style={{ width: 44 }} className="text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody ref={rowsScopeRef}>
                     {pageRows.length === 0 && fw.outcomes.length > 0 && (
                       <tr>
                         <td colSpan={5} style={{ textAlign: "center", padding: "40px 24px", color: "var(--text-tertiary)" }}>

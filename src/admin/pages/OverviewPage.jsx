@@ -4,6 +4,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { CheckCircle2, Circle, X } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import JurorBadge from "../components/JurorBadge";
 import JurorStatusPill from "../components/JurorStatusPill";
 import { SubmissionTimelineChart } from "@/charts/SubmissionTimelineChart";
@@ -100,6 +101,7 @@ export default function OverviewPage() {
     loading = false,
     onNavigate,
   } = useAdminContext();
+  const topProjectsScopeRef = useCardSelection();
   const [jurorTableExpanded, setJurorTableExpanded] = useState(false);
   const [avgPopoverOpen, setAvgPopoverOpen] = useState(false);
   const [avgPopoverPos, setAvgPopoverPos] = useState({ top: 0, left: 0 });
@@ -696,7 +698,7 @@ export default function OverviewPage() {
                 <th>Highlight</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={topProjectsScopeRef}>
               {topProjects.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="text-center text-muted" style={{ padding: "24px 16px" }}>
@@ -705,7 +707,7 @@ export default function OverviewPage() {
                 </tr>
               ) : (
                 topProjects.map((p, i) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} data-card-selectable="">
                     <td className="mono text-center" style={{ fontWeight: 700, color: i === 0 ? "var(--accent)" : undefined }}>
                       <span className="overview-top-rank">{i + 1}</span>
                     </td>

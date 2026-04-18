@@ -5282,3 +5282,92 @@ body:not(.dark-mode) .vera-es-pending-wrap {
     padding-bottom: 4px !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Row action button (kebab) — global. Renamed from the legacy
+   .juror-action-btn; consolidated here so every admin page
+   (Projects, Jurors, Periods, Organizations, Criteria, Outcomes)
+   shares a single tap target and active-state style.
+   Mobile portrait widens the tap zone to the WCAG 2.2 AAA /
+   Apple HIG 44×44px minimum without enlarging the visible icon.
+   ───────────────────────────────────────────────────────────── */
+.row-action-btn {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  transition: background .12s ease-out, transform 80ms ease-out, color .12s;
+}
+.row-action-btn:hover {
+  background: var(--surface-1);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.row-action-btn:active {
+  background: var(--surface-1);
+  transform: scale(0.96);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+  .row-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+  .row-action-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Mobile card selection (global rule).
+
+   All admin mobile cards share a single-selection model: tap →
+   .is-selected is applied to the target card (border turns
+   var(--accent)); sibling cards lose their selection. Selection
+   is driven by useCardSelection (src/shared/hooks/useCardSelection.js).
+   Only the border reacts — background and inner elements stay
+   untouched so the "nested panel yasağı" rule is preserved.
+
+   See: docs/superpowers/specs/2026-04-18-mobile-card-tap-behavior-design.md
+   ───────────────────────────────────────────────────────────── */
+.mcard,
+.hm-card,
+.rmc-card,
+.crt-mobile-card,
+.acc-m-card,
+.organizations-table tbody tr,
+.entry-history-table tbody tr,
+.pin-lock-table tbody tr,
+.overview-top-projects-table tbody tr,
+.ranking-table tbody tr,
+.reviews-table tbody tr,
+.acc-table tbody tr.acc-row {
+  transition: border-color 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mcard.is-selected,
+.hm-card.is-selected,
+.rmc-card.is-selected,
+.crt-mobile-card.is-selected,
+.acc-m-card.is-selected,
+.organizations-table tbody tr.is-selected,
+.entry-history-table tbody tr.is-selected,
+.pin-lock-table tbody tr.is-selected,
+.overview-top-projects-table tbody tr.is-selected,
+.ranking-table tbody tr.is-selected,
+.reviews-table tbody tr.is-selected,
+.acc-table tbody tr.acc-row.is-selected {
+  border-color: var(--accent);
+}

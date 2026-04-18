@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { LockOpen, Settings, Check, Clock, AlertCircle } from "lucide-react";
 import { useAdminContext } from "../hooks/useAdminContext";
 import { usePinBlocking } from "../hooks/usePinBlocking";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import { useSecurityPolicy } from "@/auth/SecurityPolicyContext";
 import { formatTs } from "../utils/adminUtils";
 import FbAlert from "@/shared/ui/FbAlert";
@@ -74,6 +75,7 @@ export default function PinBlockingPage() {
   const policy = useSecurityPolicy();
   const navigate = useNavigate();
   const [unlockAllOpen, setUnlockAllOpen] = useState(false);
+  const lockScopeRef = useCardSelection();
   const {
     lockedJurors,
     todayLockEvents,
@@ -194,7 +196,7 @@ export default function PinBlockingPage() {
                     <th className="text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody ref={lockScopeRef}>
                   {loading ? (
                     <tr>
                       <td colSpan={6} className="text-sm text-muted" style={{ textAlign: "center", padding: "18px 0" }}>
@@ -209,7 +211,7 @@ export default function PinBlockingPage() {
                     </tr>
                   ) : (
                     lockedJurors.map((j) => (
-                      <tr key={j.jurorId}>
+                      <tr key={j.jurorId} data-card-selectable="">
                         <td data-label="Juror">
                           <JurorBadge name={j.jurorName} affiliation={j.affiliation} size="sm" />
                         </td>

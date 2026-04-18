@@ -33,6 +33,7 @@ import Modal from "@/shared/ui/Modal";
 import AsyncButtonContent from "@/shared/ui/AsyncButtonContent";
 import FbAlert from "@/shared/ui/FbAlert";
 import FloatingMenu from "@/shared/ui/FloatingMenu";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import EditSingleCriterionDrawer from "@/admin/drawers/EditSingleCriterionDrawer";
 import StarterCriteriaDrawer, { STARTER_CRITERIA } from "@/admin/drawers/StarterCriteriaDrawer";
 import WeightBudgetBar from "@/admin/criteria/WeightBudgetBar";
@@ -86,6 +87,8 @@ export default function CriteriaPage() {
   const _toast = useToast();
   const setMessage = useCallback((msg) => { if (msg) _toast.success(msg); }, [_toast]);
   const shouldUseCardLayout = true;
+  const desktopScopeRef = useCardSelection();
+  const mobileScopeRef = useCardSelection();
 
   const [panelError, setPanelErrorState] = useState("");
   const setPanelError = useCallback((_panel, msg) => setPanelErrorState(msg || ""), []);
@@ -865,7 +868,7 @@ export default function CriteriaPage() {
                   <th className="col-action" style={{ width: "6%" }}>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={desktopScopeRef}>
                 {pageRows.length === 0 && (
                   <tr className="crt-empty-row">
                     <td colSpan={6} style={{ textAlign: "center", padding: "40px 24px", color: "var(--text-tertiary)" }}>
@@ -898,7 +901,7 @@ export default function CriteriaPage() {
                   const menuKey = `crt-row-${i}`;
                   const isMenuOpen = openMenuId === menuKey;
                   return (
-                    <tr key={criterion.key || i} style={{ "--row-color": criterion.color || CRITERION_COLORS[i % CRITERION_COLORS.length] }}>
+                    <tr key={criterion.key || i} data-card-selectable="" className="mcard" style={{ "--row-color": criterion.color || CRITERION_COLORS[i % CRITERION_COLORS.length] }}>
                       <td data-label="#"><span className="crt-row-num">{i + 1}</span></td>
                       <td data-label="Criterion">
                         <div className="crt-name">
@@ -924,7 +927,7 @@ export default function CriteriaPage() {
                             {rubric.map((band, bi) => (
                               <span
                                 key={bi}
-                                className={`crt-band-pill ${rubricBandClass(band.level || band.label)}`}
+                                className={`crt-band-pill row-inline-control ${rubricBandClass(band.level || band.label)}`}
                                 onClick={isLocked ? undefined : () => openEditor(i, "rubric")}
                                 style={{ cursor: isLocked ? "default" : "pointer", opacity: isLocked ? 0.65 : 1 }}
                               >
@@ -946,7 +949,7 @@ export default function CriteriaPage() {
                             return (
                               <span
                                 key={code}
-                                className={`crt-mapping-pill${isIndirect ? " indirect" : ""}${isLocked ? " disabled" : ""}`}
+                                className={`crt-mapping-pill row-inline-control${isIndirect ? " indirect" : ""}${isLocked ? " disabled" : ""}`}
                                 onClick={isLocked ? undefined : () => openEditor(i, "mapping")}
                                 aria-label={`${code} ${isIndirect ? "indirect" : "direct"} mapping`}
                                 aria-disabled={isLocked || undefined}
@@ -957,7 +960,7 @@ export default function CriteriaPage() {
                           })}
                           {!isLocked && (
                             <span
-                              className="crt-mapping-add"
+                              className="crt-mapping-add row-inline-control"
                               onClick={() => openEditor(i, "mapping")}
                             >
                               +
@@ -968,7 +971,7 @@ export default function CriteriaPage() {
                       <td className="col-crt-actions">
                         <div style={{ display: "flex", justifyContent: "center" }}>
                           <FloatingMenu
-                            trigger={<button className="juror-action-btn" aria-label="Actions" onClick={(e) => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : menuKey); }}><MoreVertical size={14} /></button>}
+                            trigger={<button className="row-action-btn" aria-label="Actions" onClick={(e) => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : menuKey); }}><MoreVertical size={18} strokeWidth={2} /></button>}
                             isOpen={isMenuOpen}
                             onClose={() => setOpenMenuId(null)}
                             placement="bottom-end"
@@ -1030,7 +1033,7 @@ export default function CriteriaPage() {
             </table>
           {/* Mobile card list — hidden on desktop via CSS */}
           {shouldUseCardLayout && draftCriteria.length > 0 && (
-            <div className="crt-mobile-list">
+            <div className="crt-mobile-list" ref={mobileScopeRef}>
               {pageRows.map((criterion, rowIdx) => {
                 const i = draftCriteria.indexOf(criterion);
                 const rubric = Array.isArray(criterion.rubric) ? criterion.rubric : [];
@@ -1043,12 +1046,13 @@ export default function CriteriaPage() {
                 return (
                   <div
                     key={criterion.key || i}
+                    data-card-selectable=""
                     className={`crt-mobile-card${isLocked ? " crt-mobile-card--locked" : ""}`}
                   >
                     {/* Header */}
                     <div className="crt-mobile-card-header">
                       <button
-                        className="crt-mobile-card-header-tap"
+                        className="crt-mobile-card-header-tap row-inline-control"
                         onClick={() => !isLocked && openEditor(i)}
                         style={{ cursor: isLocked ? "default" : "pointer" }}
                         tabIndex={isLocked ? -1 : 0}
@@ -1075,14 +1079,14 @@ export default function CriteriaPage() {
                       <FloatingMenu
                         trigger={
                           <button
-                            className="crt-mobile-card-menu-btn"
+                            className="row-action-btn"
                             aria-label="Actions"
                             onClick={(e) => {
                               e.stopPropagation();
                               setOpenMenuId(isMenuOpen ? null : menuKey);
                             }}
                           >
-                            <MoreVertical size={14} />
+                            <MoreVertical size={18} strokeWidth={2} />
                           </button>
                         }
                         isOpen={isMenuOpen}

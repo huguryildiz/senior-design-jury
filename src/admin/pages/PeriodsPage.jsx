@@ -12,6 +12,7 @@ import CustomSelect from "@/shared/ui/CustomSelect";
 import FbAlert from "@/shared/ui/FbAlert";
 import AddEditPeriodDrawer from "../drawers/AddEditPeriodDrawer";
 import { FilterButton } from "@/shared/ui/FilterButton.jsx";
+import useCardSelection from "@/shared/hooks/useCardSelection";
 import {
   setEvalLock,
   deletePeriod,
@@ -500,6 +501,7 @@ export default function PeriodsPage() {
   } = useAdminContext();
   const _toast = useToast();
   const { activeOrganization } = useAuth();
+  const rowsScopeRef = useCardSelection();
   const setMessage = (msg) => { if (msg) _toast.success(msg); };
   const [panelError, setPanelErrorState] = useState("");
   const setPanelError = useCallback((_panel, msg) => setPanelErrorState(msg || ""), []);
@@ -1265,7 +1267,7 @@ export default function PeriodsPage() {
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={rowsScopeRef}>
             {loadingCount > 0 && filteredList.length === 0 ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px" }}>
@@ -1363,10 +1365,10 @@ export default function PeriodsPage() {
               return (
                 <tr
                   key={period.id}
+                  data-card-selectable=""
                   className={[
                     "mcard",
                     "sem-row-" + (state === "draft_ready" || state === "draft_incomplete" ? "draft" : state),
-                    openMenuId === period.id ? "is-active" : "",
                   ].filter(Boolean).join(" ")}
                 >
                   {/* Mobile ring (portrait only — hidden on desktop via CSS) */}
@@ -1476,7 +1478,7 @@ export default function PeriodsPage() {
                           {hasData ? (
                             <PremiumTooltip text="Go to Criteria page">
                               <button
-                                className="periods-cset-badge"
+                                className="periods-cset-badge row-inline-control"
                                 onClick={() => {
                                   onCurrentSemesterChange?.(period.id);
                                   onNavigate?.("criteria");
@@ -1491,7 +1493,7 @@ export default function PeriodsPage() {
                               <span className="periods-notset-label">Not set</span>
                               <PremiumTooltip text="Configure criteria">
                                 <button
-                                  className="periods-notset-add-btn"
+                                  className="periods-notset-add-btn row-inline-control"
                                   onClick={() => {
                                     onCurrentSemesterChange?.(period.id);
                                     onNavigate?.("criteria");
@@ -1516,7 +1518,7 @@ export default function PeriodsPage() {
                           {fw ? (
                             <PremiumTooltip text="Go to Outcomes page">
                               <button
-                                className="periods-fw-badge clickable"
+                                className="periods-fw-badge clickable row-inline-control"
                                 onClick={() => {
                                   onCurrentSemesterChange?.(period.id);
                                   onNavigate?.("outcomes");
@@ -1530,7 +1532,7 @@ export default function PeriodsPage() {
                               <span className="periods-notset-label">Not set</span>
                               <PremiumTooltip text="Configure framework">
                                 <button
-                                  className="periods-notset-add-btn"
+                                  className="periods-notset-add-btn row-inline-control"
                                   onClick={() => {
                                     onCurrentSemesterChange?.(period.id);
                                     onNavigate?.("outcomes");
@@ -1561,14 +1563,14 @@ export default function PeriodsPage() {
                       placement="bottom-end"
                       trigger={
                         <button
-                          className="sem-action-btn"
+                          className="row-action-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenMenuId((prev) => (prev === period.id ? null : period.id));
                           }}
                           title="Actions"
                         >
-                          <MoreVertical size={14} />
+                          <MoreVertical size={18} strokeWidth={2} />
                         </button>
                       }
                     >
