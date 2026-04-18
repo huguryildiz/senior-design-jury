@@ -4466,5 +4466,27 @@
     "risk": "Accidentally reordering would change the default-visible option in the dropdown.",
     "coverageStrength": "Medium",
     "severity": "low"
+  },
+  {
+    "id": "heatmap.mobile.donut.01",
+    "module": "Heatmap / Mobile",
+    "area": "Heatmap — Mobile Donut",
+    "story": "Donut renders score and max",
+    "scenario": "donut shows the numeric value in the center and exposes the score-and-max aria-label",
+    "whyItMatters": "The donut is the juror card's hero element; its number and accessibility label are the primary signal.",
+    "risk": "Missing value or label would leave screen-reader users with no juror average.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "heatmap.mobile.donut.02",
+    "module": "Heatmap / Mobile",
+    "area": "Heatmap — Mobile Donut",
+    "story": "Donut handles empty average",
+    "scenario": "when value is null the donut shows an em-dash and no filled arc",
+    "whyItMatters": "Jurors with no scored cells must render clearly as empty, not as a misleading zero.",
+    "risk": "A zero-filled arc implies the juror scored zero, which is wrong.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
   }
 ]
