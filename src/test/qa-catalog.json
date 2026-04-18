@@ -4367,5 +4367,38 @@
     "risk": "Silent overwrite would destroy carefully configured criteria.",
     "coverageStrength": "Strong",
     "severity": "normal"
+  },
+  {
+    "id": "reviews.kpi.01",
+    "module": "Scores / Details",
+    "area": "Reviews KPI — Coverage",
+    "story": "Completed Coverage Shows Correct Fraction",
+    "scenario": "2 of 4 assigned jurors completed → displays '2 / 4'; all completed → 100%; none assigned → '—'",
+    "whyItMatters": "Coverage is the primary completion signal admins track on evaluation day.",
+    "risk": "Wrong denominator silently misreports completion progress.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "reviews.kpi.02",
+    "module": "Scores / Details",
+    "area": "Reviews KPI — Pending Submit",
+    "story": "Pending Submit Counts Unique Ready-to-Submit Jurors",
+    "scenario": "2 jurors in ready_to_submit state (one appears in 2 rows) → count is 2, not 3",
+    "whyItMatters": "Admin uses this to chase jurors who finished scoring but forgot to submit.",
+    "risk": "Overcounting duplicate rows would inflate the pending number.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
+  },
+  {
+    "id": "reviews.kpi.03",
+    "module": "Scores / Details",
+    "area": "Reviews KPI — Juror Agreement Spread",
+    "story": "Spread Computes Average Inter-Juror Sigma Across Projects",
+    "scenario": "Two projects each with σ=5 → Δ 5.0; in-progress rows excluded; single-juror projects excluded; no qualifying data → '—'",
+    "whyItMatters": "High spread flags projects where jurors disagree, which may need arbitration.",
+    "risk": "Including non-completed rows or projects with <2 jurors would distort the metric.",
+    "coverageStrength": "Strong",
+    "severity": "normal"
   }
 ]

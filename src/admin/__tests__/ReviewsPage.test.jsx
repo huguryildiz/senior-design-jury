@@ -5,6 +5,8 @@ vi.mock("@/auth", () => ({
   useAuth: () => ({ activeOrganization: null }),
 }));
 
+vi.mock("../hooks/useAdminContext");
+import { useAdminContext } from "../hooks/useAdminContext";
 import ReviewsPage from "../pages/ReviewsPage";
 import { qaTest } from "../../test/qaTest.js";
 
@@ -99,27 +101,24 @@ function renderDetails() {
     },
   ];
   const jurors = [
-    { key: "j1", jurorId: "j1", name: "Alice", dept: "EE", editEnabled: false },
-    { key: "j2", jurorId: "j2", name: "Bob", dept: "EE", editEnabled: true },
-    { key: "j3", jurorId: "j3", name: "Cara", dept: "EE", editEnabled: false },
+    { key: "j1", jurorId: "j1", name: "Alice", dept: "EE", editEnabled: false, finalSubmittedAt: "2026-03-10T11:00:00.000Z" },
+    { key: "j2", jurorId: "j2", name: "Bob",   dept: "EE", editEnabled: true,  finalSubmittedAt: "" },
+    { key: "j3", jurorId: "j3", name: "Cara",  dept: "EE", editEnabled: false, finalSubmittedAt: "" },
   ];
-
-  return render(
-    <ReviewsPage
-      data={data}
-      jurors={jurors}
-      assignedJurors={jurors}
-      groups={[]}
-      periodName="2026 Spring"
-      summaryData={[]}
-      loading={false}
-      criteriaConfig={MOCK_CRITERIA}
-    />
-  );
+  useAdminContext.mockReturnValue({
+    data,
+    allJurors: jurors,
+    assignedJurors: jurors,
+    groups: [],
+    periodName: "2026 Spring",
+    summaryData: [],
+    loading: false,
+    criteriaConfig: MOCK_CRITERIA,
+  });
+  return render(<ReviewsPage />);
 }
 
 function renderDetails2() {
-  // Extended fixture with 4 rows for consistency tests
   const data = [
     {
       period: "2026 Spring", jurorId: "j1", juryName: "Alice", affiliation: "EE",
@@ -151,30 +150,43 @@ function renderDetails2() {
     },
   ];
   const jurors = [
-    { key: "j1", jurorId: "j1", name: "Alice", dept: "EE", editEnabled: false },
-    { key: "j2", jurorId: "j2", name: "Bob", dept: "EE", editEnabled: true },
-    { key: "j3", jurorId: "j3", name: "Cara", dept: "EE", editEnabled: false },
-    { key: "j4", jurorId: "j4", name: "Dave", dept: "CS", editEnabled: false },
+    { key: "j1", jurorId: "j1", name: "Alice", dept: "EE", editEnabled: false, finalSubmittedAt: "2026-03-10T11:00:00.000Z" },
+    { key: "j2", jurorId: "j2", name: "Bob",   dept: "EE", editEnabled: true,  finalSubmittedAt: "" },
+    { key: "j3", jurorId: "j3", name: "Cara",  dept: "EE", editEnabled: false, finalSubmittedAt: "" },
+    { key: "j4", jurorId: "j4", name: "Dave",  dept: "CS", editEnabled: false, finalSubmittedAt: "" },
   ];
-  return render(
-    <ReviewsPage
-      data={data} jurors={jurors} assignedJurors={jurors}
-      groups={[]} periodName="2026 Spring" summaryData={[]} loading={false}
-      criteriaConfig={MOCK_CRITERIA}
-    />
-  );
+  useAdminContext.mockReturnValue({
+    data,
+    allJurors: jurors,
+    assignedJurors: jurors,
+    groups: [],
+    periodName: "2026 Spring",
+    summaryData: [],
+    loading: false,
+    criteriaConfig: MOCK_CRITERIA,
+  });
+  return render(<ReviewsPage />);
 }
 
 function openFilterPanel() {
   fireEvent.click(screen.getByRole("button", { name: "Filter" }));
 }
 
-function setPanelSelect(label, value) {
+function setPanelSelect(labelText, optionText) {
   const groups = Array.from(document.querySelectorAll(".filter-group"));
-  const group = groups.find((g) => g.querySelector("label")?.textContent?.trim() === label);
-  const select = group?.querySelector("select");
-  expect(select).toBeTruthy();
-  fireEvent.change(select, { target: { value } });
+  const group = groups.find(
+    (g) => g.querySelector("label")?.textContent?.trim() === labelText
+  );
+  expect(group).toBeTruthy();
+  const trigger = group.querySelector("[aria-haspopup='listbox']");
+  expect(trigger).toBeTruthy();
+  fireEvent.click(trigger);
+  const options = Array.from(document.querySelectorAll("[role='option']"));
+  const opt = options.find(
+    (o) => o.textContent?.trim().toLowerCase() === optionText.toLowerCase()
+  );
+  expect(opt).toBeTruthy();
+  fireEvent.mouseDown(opt);
 }
 
 function rowFor(name) {
@@ -242,7 +254,7 @@ describe("Reviews filters", () => {
       expect(rowFor("Cara")).toBeNull();
     });
 
-    fireEvent.click(screen.getByText("Clear filters →"));
+    fireEvent.click(screen.getByRole("button", { name: /clear all/i }));
 
     await waitFor(() => {
       expect(rowFor("Alice")).toBeInTheDocument();
