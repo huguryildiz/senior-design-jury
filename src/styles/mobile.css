@@ -55,9 +55,24 @@ html {
   .pin-lock-table tbody tr:hover:not(.is-selected),
   .overview-top-projects-table tbody tr:hover:not(.is-selected),
   .acc-table tbody tr.acc-row:hover:not(.is-selected) {
-    background: var(--bg-card);
-    border-color: var(--border);
-    box-shadow: var(--card-i-shadow-base);
+    background: var(--bg-card) !important;
+    border-color: var(--border) !important;
+    box-shadow: var(--card-i-shadow-base) !important;
+  }
+  /* Dark mode paints rgba(255,255,255,0.025) !important on every hovered td;
+     iOS sticky-hover keeps :hover after tap so this lingers visibly on cards. */
+  #projects-main-table tbody tr:hover:not(.is-selected) td,
+  #jurors-main-table tbody tr:hover:not(.is-selected) td,
+  .sem-table tbody tr:hover:not(.is-selected) td,
+  .organizations-table tbody tr:hover:not(.is-selected) td,
+  .ranking-table tbody tr:hover:not(.is-selected) td,
+  .reviews-table tbody tr:hover:not(.is-selected) td,
+  .crt-table tbody tr:hover:not(.is-selected) td,
+  .entry-history-table tbody tr:hover:not(.is-selected) td,
+  .pin-lock-table tbody tr:hover:not(.is-selected) td,
+  .overview-top-projects-table tbody tr:hover:not(.is-selected) td,
+  .acc-table tbody tr.acc-row:hover:not(.is-selected) td {
+    background: transparent !important;
   }
 }
 

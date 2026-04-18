@@ -905,7 +905,7 @@ export default function JurorsPage() {
               const lastActive = juror.lastSeenAt || juror.last_activity_at || juror.finalSubmittedAt || juror.final_submitted_at;
 
               return (
-                <tr key={jid}>
+                <tr key={jid} className="mcard" data-card-selectable="">
                   <td className="col-juror">
                     <JurorBadge name={name} affiliation={juror.affiliation} size="sm" />
                   </td>
@@ -1008,7 +1008,7 @@ export default function JurorsPage() {
                   </td>
                   {/* Mobile card — hidden on desktop, shown at ≤768px portrait */}
                   <td className="col-mobile-card">
-                    <div className="mcard jc" data-card-selectable="">
+                    <div className="jc">
                       {/* ── Header ── */}
                       <div className="jc-header">
                         <div
